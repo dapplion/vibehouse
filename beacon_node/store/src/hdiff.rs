@@ -358,9 +358,10 @@ impl BytesDiff {
     }
 
     pub fn apply_xdelta(&self, source: &[u8], target: &mut Vec<u8>) -> Result<(), Error> {
-        // TODO(#36): Dynamic buffer allocation. This is a stopgap until we implement a schema
-        // change to store the output buffer size inside the `BytesDiff`.
-        let mut output_length = ((source.len() + self.bytes.len()) * 3) / 2;
+        // Parse the VCDIFF header to get the exact target window size, avoiding the
+        // guess-and-double allocation loop. Falls back to a heuristic if parsing fails.
+        let mut output_length = vcdiff_target_window_size(&self.bytes)
+            .unwrap_or(((source.len() + self.bytes.len()) * 3) / 2);
         let mut num_resizes = 0;
         loop {
             match xdelta3::decode_with_output_len(&self.bytes, source, output_length as u32) {
@@ -809,6 +810,69 @@ impl StorageStrategy {
     pub fn is_snapshot(&self) -> bool {
         matches!(self, Self::Snapshot)
     }
+}
+
+/// Read a VCDIFF variable-length integer (RFC 3284 Section 2).
+///
+/// Each byte has 7 data bits (MSB-first) and 1 continuation bit (bit 7).
+/// The last byte has bit 7 = 0.
+fn read_vcdiff_integer(bytes: &[u8], offset: &mut usize) -> Option<usize> {
+    let mut result: usize = 0;
+    loop {
+        let byte = *bytes.get(*offset)?;
+        *offset += 1;
+        result = result.checked_shl(7)?.checked_add((byte & 0x7F) as usize)?;
+        if byte & 0x80 == 0 {
+            return Some(result);
+        }
+    }
+}
+
+/// Parse the target window size from a VCDIFF-encoded delta (RFC 3284).
+///
+/// The VCDIFF format stores the target window length in the window header,
+/// which lets us allocate the exact output buffer size without guessing.
+fn vcdiff_target_window_size(delta: &[u8]) -> Option<usize> {
+    const VCDIFF_MAGIC: [u8; 4] = [0xD6, 0xC3, 0xC4, 0x00];
+
+    if delta.len() < 5 || delta[..4] != VCDIFF_MAGIC {
+        return None;
+    }
+
+    let mut offset = 4;
+    let hdr_indicator = *delta.get(offset)?;
+    offset += 1;
+
+    // Skip secondary compressor ID if VCD_DECOMPRESS is set
+    if hdr_indicator & 0x01 != 0 {
+        offset += 1;
+    }
+    // Skip code table data if VCD_CODETABLE is set
+    if hdr_indicator & 0x02 != 0 {
+        let code_table_len = read_vcdiff_integer(delta, &mut offset)?;
+        offset += code_table_len;
+    }
+    // Skip application data if VCD_APPHEADER is set
+    if hdr_indicator & 0x04 != 0 {
+        let app_data_len = read_vcdiff_integer(delta, &mut offset)?;
+        offset += app_data_len;
+    }
+
+    // Window section
+    let win_indicator = *delta.get(offset)?;
+    offset += 1;
+
+    // Skip source/target segment info if VCD_SOURCE or VCD_TARGET is set
+    if win_indicator & 0x03 != 0 {
+        let _segment_size = read_vcdiff_integer(delta, &mut offset)?;
+        let _segment_position = read_vcdiff_integer(delta, &mut offset)?;
+    }
+
+    // Delta encoding length (skip)
+    let _delta_encoding_len = read_vcdiff_integer(delta, &mut offset)?;
+
+    // Target window length — the exact output size
+    read_vcdiff_integer(delta, &mut offset)
 }
 
 #[cfg(test)]
@@ -1339,5 +1403,78 @@ mod tests {
             moduli.next_snapshot_slot(Slot::new(0)).unwrap(),
             Slot::new(0)
         );
+    }
+
+    // ── VCDIFF header parsing ──
+
+    #[test]
+    fn vcdiff_target_size_from_known_delta() {
+        // Encode a known source → target pair and verify the parsed size matches.
+        let source = vec![1u8, 2, 3, 4, 5, 6, 7];
+        let target = vec![1u8, 2, 3, 4, 5, 6, 7];
+        let delta = xdelta3::encode(&target, &source).unwrap();
+        let parsed_size = vcdiff_target_window_size(&delta);
+        assert_eq!(parsed_size, Some(target.len()));
+    }
+
+    #[test]
+    fn vcdiff_target_size_different_lengths() {
+        // Target is larger than source.
+        let source = vec![0u8; 100];
+        let target = vec![42u8; 500];
+        let delta = xdelta3::encode(&target, &source).unwrap();
+        assert_eq!(vcdiff_target_window_size(&delta), Some(500));
+
+        // Target is smaller than source.
+        let source = vec![0u8; 500];
+        let target = vec![42u8; 100];
+        let delta = xdelta3::encode(&target, &source).unwrap();
+        assert_eq!(vcdiff_target_window_size(&delta), Some(100));
+    }
+
+    #[test]
+    fn vcdiff_target_size_large_similar_data() {
+        // Simulate beacon state-like data: large, mostly similar.
+        let mut rng = SmallRng::seed_from_u64(42);
+        let source: Vec<u8> = (0..10_000).map(|_| rng.random()).collect();
+        let mut target = source.clone();
+        // Modify a few bytes.
+        for i in (0..target.len()).step_by(1000) {
+            target[i] = target[i].wrapping_add(1);
+        }
+        let delta = xdelta3::encode(&target, &source).unwrap();
+        assert_eq!(vcdiff_target_window_size(&delta), Some(10_000));
+    }
+
+    #[test]
+    fn vcdiff_target_size_empty_source() {
+        let source = vec![];
+        let target = vec![1u8, 2, 3];
+        let delta = xdelta3::encode_with_output_len(&target, &source, 1024).unwrap();
+        assert_eq!(vcdiff_target_window_size(&delta), Some(3));
+    }
+
+    #[test]
+    fn vcdiff_target_size_invalid_input() {
+        assert_eq!(vcdiff_target_window_size(&[]), None);
+        assert_eq!(vcdiff_target_window_size(&[0, 0, 0, 0, 0]), None);
+        assert_eq!(vcdiff_target_window_size(&[0xD6, 0xC3]), None);
+    }
+
+    #[test]
+    fn vcdiff_roundtrip_with_bytes_diff() {
+        // Verify that BytesDiff::apply produces the correct result when using
+        // the VCDIFF header parser for buffer allocation.
+        let mut rng = SmallRng::seed_from_u64(99);
+        let source: Vec<u8> = (0..5_000).map(|_| rng.random()).collect();
+        let mut target_expected = source.clone();
+        for i in (0..target_expected.len()).step_by(500) {
+            target_expected[i] = target_expected[i].wrapping_add(7);
+        }
+
+        let diff = BytesDiff::compute(&source, &target_expected).unwrap();
+        let mut target_actual = Vec::new();
+        diff.apply(&source, &mut target_actual).unwrap();
+        assert_eq!(target_actual, target_expected);
     }
 }
