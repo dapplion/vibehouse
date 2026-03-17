@@ -123,6 +123,10 @@ impl<E: EthSpec> DataColumnSidecar<E> {
         }
     }
 
+    pub fn is_gloas(&self) -> bool {
+        matches!(self, DataColumnSidecar::Gloas(_))
+    }
+
     pub fn block_proposer_index(&self) -> Option<u64> {
         match self {
             DataColumnSidecar::Fulu(inner) => {

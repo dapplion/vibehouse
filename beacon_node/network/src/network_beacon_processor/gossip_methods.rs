@@ -719,6 +719,26 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                             column_sidecar,
                         ));
                     }
+                    GossipDataColumnError::BlockUnknown {
+                        block_root: unknown_root,
+                    } => {
+                        debug!(
+                            action = "deferring validation",
+                            %unknown_root,
+                            "Block not yet known for Gloas data column sidecar"
+                        );
+                        self.propagate_validation_result(
+                            message_id,
+                            peer_id,
+                            MessageAcceptance::Ignore,
+                        );
+                        // Queue for deferred validation — reuse the same sync path
+                        // as ParentUnknown (the block will arrive via gossip or sync).
+                        self.send_sync_message(SyncMessage::UnknownParentDataColumn(
+                            peer_id,
+                            column_sidecar,
+                        ));
+                    }
                     GossipDataColumnError::PubkeyCacheTimeout
                     | GossipDataColumnError::BeaconChainError(_) => {
                         crit!(
@@ -743,7 +763,8 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     | GossipDataColumnError::MaxBlobsPerBlockExceeded { .. }
                     | GossipDataColumnError::InconsistentCommitmentsLength { .. }
                     | GossipDataColumnError::InconsistentProofsLength { .. }
-                    | GossipDataColumnError::NotFinalizedDescendant { .. } => {
+                    | GossipDataColumnError::NotFinalizedDescendant { .. }
+                    | GossipDataColumnError::SlotMismatch { .. } => {
                         debug!(
                             error = ?err,
                             %slot,
