@@ -42,9 +42,8 @@ use tokio::time::Duration;
 use tree_hash::TreeHash;
 use types::application_domain::ApplicationDomain;
 use types::{
-    AggregateSignature, BitList, Domain, EthSpec, ExecutionBlockHash, Hash256, Keypair,
-    MainnetEthSpec, RelativeEpoch, SelectionProof, SignedRoot, SingleAttestation, Slot,
-    attestation::AttestationBase,
+    Domain, EthSpec, ExecutionBlockHash, Hash256, Keypair, MainnetEthSpec, RelativeEpoch,
+    SelectionProof, SignedRoot, SingleAttestation, Slot,
 };
 use vibehouse_network::{Enr, PeerId, types::SyncState};
 
@@ -4143,12 +4142,17 @@ impl ApiTester {
             .unwrap()
             .data;
 
-        // TODO(#36) make fork-agnostic
-        let mut attestation = Attestation::Base(AttestationBase {
-            aggregation_bits: BitList::with_capacity(duty.committee_length as usize).unwrap(),
-            data: attestation_data,
-            signature: AggregateSignature::infinity(),
-        });
+        let mut attestation = Attestation::empty_for_signing(
+            duty.committee_index,
+            duty.committee_length as usize,
+            attestation_data.slot,
+            attestation_data.beacon_block_root,
+            attestation_data.source,
+            attestation_data.target,
+            &self.chain.spec,
+            false,
+        )
+        .unwrap();
 
         attestation
             .sign(
