@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1709 (Mar 17) — health check, all stable
+
+- Spec: v1.7.0-alpha.3 still latest release (note: latest *tagged* release is v1.6.1, mainnet). Master HEAD still at 1baa05e. No new commits.
+- CI: latest run green (success).
+- Open Gloas PRs: #4992 (PTC lookbehind, still OPEN, same head d76a278b0a), #4962. No status changes.
+- cargo audit: unchanged — rsa RUSTSEC-2023-0071 (no fix), RUSTSEC-2025-0141 (bincode unmaintained, via sp1-verifier). 5 unmaintained crate warnings (allowed).
+- No semver-compatible dependency updates available.
+- No code changes needed.
+
 ### run 1708 (Mar 17) — health check, all stable
 
 - Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at 1baa05e. No new commits.
