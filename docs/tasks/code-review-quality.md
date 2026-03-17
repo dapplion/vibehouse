@@ -1722,3 +1722,11 @@ Exhaustive search of 100+ source files across all directories (common/, consensu
 **Nightly flake fix**: `override_backend_with_mdbx_file_present` slasher test flaked in nightly CI (March 16, pre-diagnostics). Root cause: `std::fs::write` doesn't guarantee directory entry visibility on all CI filesystems. Fix: replaced with explicit `File::create` + `sync_all()` on both file and parent directory. Test verified with `--features "mdbx"` and all backends.
 
 **Audit sweep**: checked all remaining TODOs, clippy, build warnings, cargo audit, unused deps. Everything clean. Spec tracked to v1.7.0-alpha.3 (latest). `cargo-machete` false positives on `ethereum_ssz*`/`rand` (used by `TestRandom` derive macro).
+
+### Run 1770 (2026-03-17)
+
+**Status check**: all priorities DONE, CI green, clippy clean (zero warnings), spec tracked to v1.7.0-alpha.3 (latest release). Nightly `network-tests (fulu)` failure was on commit before fix `8f8faa7de` — already resolved, next nightly will pass.
+
+**Spec audit**: checked 15 recently merged consensus-specs PRs. PR #5001 (`parent_block_root` in bid filtering key) already implemented — our `is_highest_value_bid` uses `(slot, parent_block_hash, parent_block_root)` tuple. PR #5002 (wording clarification) is doc-only. PR #5005 (test fixture fix) already handled. No open Gloas PRs are merged/actionable.
+
+**Code quality scan**: reviewed production code for unwraps, unnecessary clones, visibility issues. Findings are all pre-existing architectural patterns (state clones in block_verification.rs, ExecutionPayload clones in engine API) — not quick fixes, and not regressions from autonomous development.
