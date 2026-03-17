@@ -29,6 +29,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1747 (Mar 17) — fix nightly fulu network test failure
+
+- **Fixed**: `finalized_sync_not_enough_custody_peers_on_start` test was failing in nightly `network-tests (fulu)`. Root cause: test expected zero network events after adding a single peer, but peer group tracking (#34) changed behavior — block requests now go out immediately even without enough custody column peers. Column requests are deferred until enough peers join. Removed stale `expect_empty_network()` assertion. Test still validates that sync completes successfully after sufficient peers are added.
+- Spec: v1.7.0-alpha.3 still latest release. Master HEAD at 1baa05e.
+- CI: mock EL execution requests run passed (all jobs green). Nightly had only the fulu network test failure (now fixed).
+- Open Gloas PRs: #4992, #5008, #4960, #4939, #4932, #4843, #4840, #4630. All OPEN, none merged.
+
 ### run 1746 (Mar 17) — health check, all stable
 
 - Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at #5005 (Mar 15). No new commits.
