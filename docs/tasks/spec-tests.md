@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1779 (Mar 17) — health check, all stable
+
+- **CI**: check+clippy+fmt + ef-tests + network+op_pool + http_api green on HEAD (`90bc28d`). Unit tests + beacon_chain tests still running. Nightly failure on stale commit `837cf89` — known issue, fix already in HEAD.
+- **Build**: `cargo check --release` clean (17s). Zero clippy warnings.
+- **Spec**: v1.7.0-alpha.3 still latest release. No new merged Gloas PRs.
+- **Open Gloas PRs**: #4992 (cached PTCs) still open (approved but not merged). #4939, #4960, #4932 still in review.
+- **cargo audit**: unchanged (1 vulnerability rsa RUSTSEC-2023-0071, 5 allowed warnings).
+- No code changes needed.
+
 ### run 1778 (Mar 17) — health check, all stable
 
 - **CI**: check+clippy+fmt + ef-tests green on HEAD (`f904f82`). Unit/integration test jobs still running. Nightly failure on stale commit `837cf89` confirmed as known issue (fix `8f8faa7de` already in HEAD) — `finalized_sync_not_enough_custody_peers_on_start` test.
