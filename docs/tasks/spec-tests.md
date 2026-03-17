@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1778 (Mar 17) — health check, all stable
+
+- **CI**: check+clippy+fmt + ef-tests green on HEAD (`f904f82`). Unit/integration test jobs still running. Nightly failure on stale commit `837cf89` confirmed as known issue (fix `8f8faa7de` already in HEAD) — `finalized_sync_not_enough_custody_peers_on_start` test.
+- **Build**: `cargo check --release` clean. Zero warnings.
+- **Spec**: v1.7.0-alpha.3 still latest release. No new merged Gloas PRs.
+- **Open Gloas PRs**: #4992 (cached PTCs) still open. #4939, #4960, #4932 still in review.
+- **Code review**: reviewed envelope request from attestation code (runs 1773-1776) — LRU debounce, clean implementation.
+- **cargo audit**: unchanged (1 vulnerability rsa RUSTSEC-2023-0071, 5 allowed warnings).
+- No code changes needed.
+
 ### run 1777 (Mar 17) — health check, all stable
 
 - **CI**: check+clippy+fmt green on HEAD (`6664f2d`). Test jobs still in progress. Nightly failure on stale commit `837cf89` (44 commits behind HEAD) — fix `8f8faa7de` already in HEAD, tonight's nightly should be green.
