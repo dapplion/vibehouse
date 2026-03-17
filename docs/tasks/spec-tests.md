@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1780 (Mar 17) — health check, all stable
+
+- **CI**: all 7 jobs green on HEAD (`0c6bdf8`). Nightly `network-tests (fulu)` failure on stale commit `837cf89` (known — `finalized_sync_not_enough_custody_peers_on_start`, fix in HEAD).
+- **Build**: `cargo check --release` clean (0.4s cached). Zero warnings.
+- **Spec**: v1.7.0-alpha.3 still latest release. Reviewed merged PRs since alpha.3: #5001 (parent_block_root in bid filtering) already implemented, #5002 (wording clarification) no code change needed, #5005 (test fix) test-only.
+- **Open Gloas PRs**: #4992 (cached PTCs), #4960, #4932, #4843 (variable PTC deadline) — all still open/unmerged.
+- **cargo audit**: unchanged (1 vulnerability rsa RUSTSEC-2023-0071, 5 allowed warnings).
+- No code changes needed.
+
 ### run 1779 (Mar 17) — health check, all stable
 
 - **CI**: check+clippy+fmt + ef-tests + network+op_pool + http_api green on HEAD (`90bc28d`). Unit tests + beacon_chain tests still running. Nightly failure on stale commit `837cf89` — known issue, fix already in HEAD.
