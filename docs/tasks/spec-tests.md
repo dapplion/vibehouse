@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1745 (Mar 17) — health check, all stable
+
+- Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at #5005 (Mar 15). No new commits.
+- CI: mock EL execution requests run in progress — check+clippy+fmt passed, ef-tests passed, network+op_pool passed, beacon_chain/http_api/unit tests running.
+- Nightly: in progress — slasher, state-transition-vectors, setup-matrix, several op-pool jobs passed. beacon_chain/network/http_api jobs still running.
+- Open Gloas PRs: #4992 (cached PTCs), #5008 (field name fix), #4960, #4939, #4932, #4843, #4840, #4630. All OPEN, none merged since last run.
+- cargo audit: unchanged — rsa RUSTSEC-2023-0071 (no fix). 5 unmaintained crate warnings.
+- Remaining #36 TODOs: 8 items, all blocked on externals or non-critical refactors.
+- No code changes needed.
+
 ### run 1744 (Mar 17) — health check, all stable
 
 - Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at #5005 (Mar 15). No new commits.
