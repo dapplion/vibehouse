@@ -1,7 +1,7 @@
 use super::*;
 use alloy_rlp::RlpEncodable;
 use serde::{Deserialize, Serialize};
-use ssz::Decode;
+use ssz::{Decode, Encode};
 use strum::EnumString;
 use superstruct::superstruct;
 use types::beacon_block_body::KzgCommitments;
@@ -538,6 +538,34 @@ impl<E: EthSpec> TryFrom<JsonExecutionRequests> for ExecutionRequests<E> {
             }
         }
         Ok(requests)
+    }
+}
+
+impl<E: EthSpec> From<ExecutionRequests<E>> for JsonExecutionRequests {
+    fn from(requests: ExecutionRequests<E>) -> Self {
+        let mut entries = Vec::new();
+        if !requests.deposits.is_empty() {
+            entries.push(format!(
+                "0x{:02x}{}",
+                RequestType::Deposit.to_u8(),
+                hex::encode(requests.deposits.as_ssz_bytes())
+            ));
+        }
+        if !requests.withdrawals.is_empty() {
+            entries.push(format!(
+                "0x{:02x}{}",
+                RequestType::Withdrawal.to_u8(),
+                hex::encode(requests.withdrawals.as_ssz_bytes())
+            ));
+        }
+        if !requests.consolidations.is_empty() {
+            entries.push(format!(
+                "0x{:02x}{}",
+                RequestType::Consolidation.to_u8(),
+                hex::encode(requests.consolidations.as_ssz_bytes())
+            ));
+        }
+        JsonExecutionRequests(entries)
     }
 }
 
@@ -1227,6 +1255,65 @@ mod tests {
             .unwrap_err(),
             RequestsError::EmptyRequest(1)
         ));
+    }
+
+    #[test]
+    fn test_execution_requests_json_roundtrip() {
+        let deposit_request = DepositRequest {
+            pubkey: PublicKeyBytes::empty(),
+            withdrawal_credentials: Hash256::repeat_byte(0xaa),
+            amount: 32_000_000_000,
+            signature: SignatureBytes::empty(),
+            index: 5,
+        };
+        let withdrawal_request = WithdrawalRequest {
+            amount: 1_000_000_000,
+            source_address: Address::repeat_byte(0xbb),
+            validator_pubkey: PublicKeyBytes::empty(),
+        };
+        let consolidation_request = ConsolidationRequest {
+            source_address: Address::repeat_byte(0xcc),
+            source_pubkey: PublicKeyBytes::empty(),
+            target_pubkey: PublicKeyBytes::empty(),
+        };
+
+        // Full roundtrip: all three request types
+        let mut requests = ExecutionRequests::<MainnetEthSpec>::default();
+        requests.deposits.push(deposit_request).unwrap();
+        requests.withdrawals.push(withdrawal_request).unwrap();
+        requests.consolidations.push(consolidation_request).unwrap();
+
+        let json: JsonExecutionRequests = requests.into();
+        assert_eq!(json.0.len(), 3);
+        let roundtripped =
+            ExecutionRequests::<MainnetEthSpec>::try_from(json).expect("roundtrip should succeed");
+        assert_eq!(roundtripped.deposits.len(), 1);
+        assert_eq!(roundtripped.deposits[0], deposit_request);
+        assert_eq!(roundtripped.withdrawals.len(), 1);
+        assert_eq!(roundtripped.withdrawals[0], withdrawal_request);
+        assert_eq!(roundtripped.consolidations.len(), 1);
+        assert_eq!(roundtripped.consolidations[0], consolidation_request);
+
+        // Partial: only deposits
+        let mut deposits_only = ExecutionRequests::<MainnetEthSpec>::default();
+        deposits_only.deposits.push(deposit_request).unwrap();
+        let json: JsonExecutionRequests = deposits_only.into();
+        assert_eq!(json.0.len(), 1);
+        let roundtripped =
+            ExecutionRequests::<MainnetEthSpec>::try_from(json).expect("deposits-only roundtrip");
+        assert_eq!(roundtripped.deposits.len(), 1);
+        assert!(roundtripped.withdrawals.is_empty());
+        assert!(roundtripped.consolidations.is_empty());
+
+        // Empty: no requests
+        let empty = ExecutionRequests::<MainnetEthSpec>::default();
+        let json: JsonExecutionRequests = empty.into();
+        assert!(json.0.is_empty());
+        let roundtripped =
+            ExecutionRequests::<MainnetEthSpec>::try_from(json).expect("empty roundtrip");
+        assert!(roundtripped.deposits.is_empty());
+        assert!(roundtripped.withdrawals.is_empty());
+        assert!(roundtripped.consolidations.is_empty());
     }
 
     // ── Gloas JSON conversion roundtrip tests ──────────────

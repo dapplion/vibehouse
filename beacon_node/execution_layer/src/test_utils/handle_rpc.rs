@@ -363,6 +363,13 @@ pub async fn handle_rpc<E: EthSpec>(
                 ));
             }
 
+            let json_execution_requests: JsonExecutionRequests = ctx
+                .execution_requests
+                .lock()
+                .clone()
+                .map(JsonExecutionRequests::from)
+                .unwrap_or_default();
+
             match method {
                 ENGINE_GET_PAYLOAD_V1 => {
                     Ok(serde_json::to_value(JsonExecutionPayload::from(response)).unwrap())
@@ -416,8 +423,7 @@ pub async fn handle_rpc<E: EthSpec>(
                                 ))?
                                 .into(),
                             should_override_builder: false,
-                            // TODO(#36): add EL requests in mock el
-                            execution_requests: Default::default(),
+                            execution_requests: json_execution_requests.clone(),
                         })
                         .unwrap()
                     }
@@ -435,7 +441,7 @@ pub async fn handle_rpc<E: EthSpec>(
                                 ))?
                                 .into(),
                             should_override_builder: false,
-                            execution_requests: Default::default(),
+                            execution_requests: json_execution_requests.clone(),
                         })
                         .unwrap()
                     }
@@ -450,7 +456,7 @@ pub async fn handle_rpc<E: EthSpec>(
                                 ))?
                                 .into(),
                             should_override_builder: false,
-                            execution_requests: Default::default(),
+                            execution_requests: json_execution_requests,
                         })
                         .unwrap()
                     }

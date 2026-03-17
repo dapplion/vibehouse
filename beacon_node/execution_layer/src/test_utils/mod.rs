@@ -184,6 +184,7 @@ impl<E: EthSpec> MockServer<E> {
             fcu_payload_statuses: <_>::default(),
             syncing_response: Arc::new(Mutex::new(Ok(false))),
             engine_capabilities: Arc::new(RwLock::new(DEFAULT_ENGINE_CAPABILITIES)),
+            execution_requests: <_>::default(),
             _phantom: PhantomData,
         });
 
@@ -575,6 +576,7 @@ pub struct Context<E: EthSpec> {
     pub syncing_response: Arc<Mutex<Result<bool, String>>>,
 
     pub engine_capabilities: Arc<RwLock<EngineCapabilities>>,
+    pub execution_requests: Arc<Mutex<Option<types::ExecutionRequests<E>>>>,
     pub _phantom: PhantomData<E>,
 }
 
