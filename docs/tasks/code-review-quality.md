@@ -1693,3 +1693,26 @@ Exhaustive search of 100+ source files across all directories (common/, consensu
 4. **Updated all TODO references** from `#31` to their specific issue number
 
 **Result**: Zero TODOs reference #31 anymore. All remaining TODOs have focused issue links. Issue #31 closed.
+
+### Run 1689: operation pool lock optimization (#36)
+
+**Scope**: Operation pool attestation lock contention reduction.
+
+**Change**: Pre-electra forks don't need write access for cross-committee aggregation. Changed `get_attestations_for_block` to take a read lock for pre-electra (instead of write-then-downgrade). Reduces lock contention on the attestation pool for all pre-electra blocks.
+
+**Spec check**: Reviewed consensus-specs commits since v1.7.0-alpha.3. Two merged PRs:
+- #5001 (parent_block_root in bid filtering key) — already implemented correctly in our `observed_execution_bids.rs`
+- #5002 (payload signature verification wording) — documentation-only, no code change needed
+- #4940 (initial fork choice tests for Gloas) — test generators only, fixtures not yet released
+
+**Remaining #36 items assessment**:
+- Boot node DOS/multiaddr: design work, low priority
+- EIP-7892 blob overestimation: needs HTTP API spec changes (epoch in response), not actionable
+- EIP-7892 blob schedule default: current `vec![]` is correct for non-Fulu forks
+- Unsafe blst code: waiting on upstream `blst` crate safe API
+- EL mock requests: test-only, default value works fine
+- EL error enum refactor: large refactor, low impact
+- Persist aggregation pools: feature work, needs DB schema design
+- PeerDAS checkpoint sync: depends on PeerDAS feature implementation
+- Subnet service dynamic bitfield: minor optimization (max 64 entries)
+- Store hdiff dynamic buffer: needs schema migration, not a quick fix
