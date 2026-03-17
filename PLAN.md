@@ -91,7 +91,7 @@ All 5 phases complete: (1) clippy/doc/dead-code/unwrap audit, (2) architecture r
 - **Sync: NoPeer graceful handling** — DONE (#33): range sync leaves batches in AwaitingDownload on NoPeer instead of faking download failures; retried via resume() when peers join
 - **Sync: custody column robustness** — DONE (#32): empty custody column responses now count as download failures (bounded by MAX_CUSTODY_COLUMN_DOWNLOAD_ATTEMPTS)
 - **Deterministic test crypto** — DONE (#36 partial): SecretKey/Signature TestRandom implementations now use deterministic RNG via interop keypairs KDF
-- **Sync: peer group tracking** — DONE (#34 partial): batch downloads track PeerGroup instead of single PeerId, so all peers contributing blocks/columns are penalized on failure; remaining: decouple block and column requests for independent retry
+- **Sync: peer group tracking** — DONE (#34): batch downloads track PeerGroup instead of single PeerId; block and column requests decoupled — blocks download immediately, columns deferred until custody peers available
 
 ---
 
