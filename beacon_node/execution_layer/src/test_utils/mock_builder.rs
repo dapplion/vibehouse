@@ -549,10 +549,7 @@ impl<E: EthSpec> MockBuilder<E> {
                     Some(BroadcastValidation::ConsensusAndEquivocation),
                 )
                 .await
-                .map_err(|e| {
-                    // XXX: this should really be a 400
-                    format!("Failed to post blinded block {e:?}")
-                })?;
+                .map_err(|e| format!("Failed to post blinded block {e:?}"))?;
         }
         Ok(FullPayloadContents::new(payload, blobs))
     }

@@ -748,6 +748,17 @@ pub async fn reconstruct_block<T: BeaconChainTypes>(
                 .propose_blinded_beacon_block(block_root, &block, &chain.spec)
                 .await
                 .map_err(|e| {
+                    // If the builder returned a client error (4xx), propagate it as a
+                    // 400 rather than wrapping it in a 500. This happens when the block
+                    // itself is invalid (e.g. unknown parent).
+                    if let execution_layer::Error::Builder(ref builder_err) = e
+                        && builder_err.status().is_some_and(|s| s.is_client_error())
+                    {
+                        return ApiError::bad_request(format!(
+                            "Blind block proposal failed: {:?}",
+                            e
+                        ));
+                    }
                     ApiError::server_error(format!("Blind block proposal failed: {:?}", e))
                 })? {
                 SubmitBlindedBlockResponse::V1(full_payload) => {

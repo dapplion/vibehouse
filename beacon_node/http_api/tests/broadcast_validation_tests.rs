@@ -866,14 +866,8 @@ pub async fn blinded_gossip_invalid() {
     let error_response: eth2::Error = response.err().unwrap();
     let pre_finalized_block_root = Hash256::zero();
     /* mandated by Beacon API spec */
-    if tester.harness.spec.is_fulu_scheduled() {
-        // XXX: this should be a 400 but is a 500 due to the mock-builder being janky
-        assert_eq!(
-            error_response.status(),
-            Some(StatusCode::INTERNAL_SERVER_ERROR)
-        );
-    } else {
-        assert_eq!(error_response.status(), Some(StatusCode::BAD_REQUEST));
+    assert_eq!(error_response.status(), Some(StatusCode::BAD_REQUEST));
+    if !tester.harness.spec.is_fulu_scheduled() {
         assert_server_message_error(
             error_response,
             format!("BAD_REQUEST: ParentUnknown {{ parent_root: {pre_finalized_block_root:?} }}"),
@@ -929,11 +923,7 @@ pub async fn blinded_gossip_partial_pass() {
         .await;
     if tester.harness.spec.is_fulu_scheduled() {
         let error_response = response.unwrap_err();
-        // XXX: this should be a 400 but is a 500 due to the mock-builder being janky
-        assert_eq!(
-            error_response.status(),
-            Some(StatusCode::INTERNAL_SERVER_ERROR)
-        );
+        assert_eq!(error_response.status(), Some(StatusCode::BAD_REQUEST));
     } else {
         assert_eq!(response.unwrap().status(), StatusCode::ACCEPTED);
     }
@@ -1094,14 +1084,8 @@ pub async fn blinded_consensus_invalid() {
     let error_response: eth2::Error = response.err().unwrap();
 
     /* mandated by Beacon API spec */
-    if tester.harness.spec.is_fulu_scheduled() {
-        // XXX: this should be a 400 but is a 500 due to the mock-builder being janky
-        assert_eq!(
-            error_response.status(),
-            Some(StatusCode::INTERNAL_SERVER_ERROR)
-        );
-    } else {
-        assert_eq!(error_response.status(), Some(StatusCode::BAD_REQUEST));
+    assert_eq!(error_response.status(), Some(StatusCode::BAD_REQUEST));
+    if !tester.harness.spec.is_fulu_scheduled() {
         assert_server_message_error(
             error_response,
             format!("BAD_REQUEST: ParentUnknown {{ parent_root: {pre_finalized_block_root:?} }}"),
@@ -1160,14 +1144,8 @@ pub async fn blinded_consensus_gossip() {
     let error_response: eth2::Error = response.err().unwrap();
 
     /* mandated by Beacon API spec */
-    if tester.harness.spec.is_fulu_scheduled() {
-        // XXX: this should be a 400 but is a 500 due to the mock-builder being janky
-        assert_eq!(
-            error_response.status(),
-            Some(StatusCode::INTERNAL_SERVER_ERROR)
-        );
-    } else {
-        assert_eq!(error_response.status(), Some(StatusCode::BAD_REQUEST));
+    assert_eq!(error_response.status(), Some(StatusCode::BAD_REQUEST));
+    if !tester.harness.spec.is_fulu_scheduled() {
         assert_server_message_error(
             error_response,
             format!(
@@ -1287,13 +1265,8 @@ pub async fn blinded_equivocation_invalid() {
     let error_response: eth2::Error = response.err().unwrap();
 
     /* mandated by Beacon API spec */
-    if tester.harness.spec.is_fulu_scheduled() {
-        assert_eq!(
-            error_response.status(),
-            Some(StatusCode::INTERNAL_SERVER_ERROR)
-        );
-    } else {
-        assert_eq!(error_response.status(), Some(StatusCode::BAD_REQUEST));
+    assert_eq!(error_response.status(), Some(StatusCode::BAD_REQUEST));
+    if !tester.harness.spec.is_fulu_scheduled() {
         assert_server_message_error(
             error_response,
             format!("BAD_REQUEST: ParentUnknown {{ parent_root: {pre_finalized_block_root:?} }}"),
@@ -1372,13 +1345,8 @@ pub async fn blinded_equivocation_consensus_early_equivocation() {
 
     let error_response: eth2::Error = response.err().unwrap();
 
-    if tester.harness.spec.is_fulu_scheduled() {
-        assert_eq!(
-            error_response.status(),
-            Some(StatusCode::INTERNAL_SERVER_ERROR)
-        );
-    } else {
-        assert_eq!(error_response.status(), Some(StatusCode::BAD_REQUEST));
+    assert_eq!(error_response.status(), Some(StatusCode::BAD_REQUEST));
+    if !tester.harness.spec.is_fulu_scheduled() {
         assert_server_message_error(error_response, "BAD_REQUEST: Slashable".to_string());
     }
 }
@@ -1433,15 +1401,8 @@ pub async fn blinded_equivocation_gossip() {
     let error_response: eth2::Error = response.err().unwrap();
 
     /* mandated by Beacon API spec */
-    if tester.harness.spec.is_fulu_scheduled() {
-        // XXX: this should be a 400 but is a 500 due to the mock-builder being janky
-        assert_eq!(
-            error_response.status(),
-            Some(StatusCode::INTERNAL_SERVER_ERROR),
-            "{error_response:?}"
-        );
-    } else {
-        assert_eq!(error_response.status(), Some(StatusCode::BAD_REQUEST));
+    assert_eq!(error_response.status(), Some(StatusCode::BAD_REQUEST));
+    if !tester.harness.spec.is_fulu_scheduled() {
         assert_server_message_error(
             error_response,
             format!(
