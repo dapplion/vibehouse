@@ -3,7 +3,6 @@
 use clap::{Arg, ArgAction, Command};
 use clap_utils::{FLAG_HEADER, get_color_style};
 
-// TODO: Add DOS prevention CLI params (#36)
 pub fn cli_app() -> Command {
     Command::new("boot_node")
         .about("Start a special vibehouse process that only serves as a discv5 boot-node. This \
@@ -69,8 +68,8 @@ pub fn cli_app() -> Command {
             Arg::new("boot-nodes")
                 .long("boot-nodes")
                 .allow_hyphen_values(true)
-                .value_name("ENR-LIST/Multiaddr")
-                .help("One or more comma-delimited base64-encoded ENR's or multiaddr strings of peers to initially add to the local routing table")
+                .value_name("ENR-LIST")
+                .help("One or more comma-delimited base64-encoded ENR's of peers to initially add to the local routing table")
                 .action(ArgAction::Set)
                 .display_order(0)
         )

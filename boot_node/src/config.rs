@@ -18,7 +18,6 @@ use vibehouse_network::{
 
 /// A set of configuration parameters for the bootnode, established from CLI arguments.
 pub struct BootNodeConfig<E: EthSpec> {
-    // TODO: generalise to multiaddr (#36)
     pub boot_nodes: Vec<Enr>,
     pub local_enr: Enr,
     pub local_key: CombinedKey,
@@ -182,7 +181,6 @@ impl<E: EthSpec> BootNodeConfig<E> {
 pub struct BootNodeConfigSerialization {
     pub ipv4_listen_socket: Option<SocketAddrV4>,
     pub ipv6_listen_socket: Option<SocketAddrV6>,
-    // TODO: generalise to multiaddr (#36)
     pub boot_nodes: Vec<Enr>,
     pub local_enr: Enr,
     pub disable_packet_filter: bool,
