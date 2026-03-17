@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1680 (Mar 17) — TODO cleanup, all stable
+
+**Health check**: all stable
+- CI: all green — nightly passed, CI green, spec-test-version-check green.
+- Spec: v1.7.0-alpha.3 still latest release. All 12 open Gloas PRs still OPEN.
+- cargo check: 0 warnings.
+- **TODO cleanup**: cleaned up ~50 TODOs missing issue links per CLAUDE.md rule #6. Created tracking issue #31. Removed stale merge-era comments, converted informational notes to regular comments, added #31 links to all actionable TODOs across 46 files.
+
 ### run 1679 (Mar 17) — health check, all stable
 
 **Health check**: all stable
