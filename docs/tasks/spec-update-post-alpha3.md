@@ -121,6 +121,16 @@ Scanned open PRs in ethereum/consensus-specs for upcoming changes that could aff
 **New EIPs being bundled into Gloas:**
 - #4840: EIP-7843 (SLOTNUM opcode) — EL-side, no CL impact expected
 
+### run 1796 (Mar 18) — spec audit, CI review
+
+- Re-scanned consensus-specs PRs merged since Mar 15: only #5005 (test-only, already tracked)
+- #5001 (parent_block_root bid filtering): confirmed already implemented — our `observed_execution_bids.rs` uses `(slot, parent_block_hash, parent_block_root)` tuple
+- #4940 (Gloas fork choice tests): confirmed all test fixtures present and passing — `fork_choice_on_execution_payload` passes, all 9 fork choice test suites pass
+- No new open PRs close to merging that require code changes
+- CI: latest push run green (all 7 jobs). Nightly flake in `network-tests (fulu)` — `finalized_sync_not_enough_custody_peers_on_start` — likely stale CI build artifact; passes 10/10 locally and in full suite
+- Clippy: clean across beacon_chain, network, state_processing, types, fork_choice
+- **No code changes needed. Spec fully tracked.**
+
 **Attestation validation change (not merged yet):**
 - #4939: Request missing payload envelopes when index-1 attestations indicate payload present — DONE: vibehouse now requests envelopes via ExecutionPayloadEnvelopesByRoot when index-1 attestation arrives but envelope not seen (run 1773)
 - #5008: Fix field name block_root → beacon_block_root in ExecutionPayloadEnvelopesByRoot spec text — doc-only, vibehouse already uses correct field name
