@@ -335,6 +335,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 - Remaining #36 TODOs (7): all blocked on externals (EIP-7892, blst safe API) or minor refactoring.
 - No code changes needed.
 
+### run 1768 (Mar 17) — devnet verification, all stable
+
+- Spec: v1.7.0-alpha.3 still latest. No new merged Gloas PRs since #5005 (Mar 15).
+- CI: all green. Nightly failure (fulu network test) was from pre-fix commit; fix 8f8faa7de already on main.
+- Devnet: passed — finalized_epoch=8, 4 nodes, gloas fork healthy. Verified today's changes (KZG fix, data column gossip simplification).
+- Open Gloas PRs: unchanged (#4992, #4960, #4932, #4840, #4630 + others). None merged.
+- cargo audit: unchanged — rsa RUSTSEC-2023-0071 (no fix).
+- No code changes needed.
+
 ### run 1727 (Mar 17) — health check, all stable
 
 - Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at 1baa05e. No new commits since run 1726.
