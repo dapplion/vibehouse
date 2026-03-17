@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1699 (Mar 17) — health check, all stable
+
+- Spec: v1.7.0-alpha.3 still latest release. Only #5005 merged since Mar 15 (test fix, already handled).
+- CI: all 7 jobs green. Nightly: green (dispatch re-run passed, schedule flake was pre-slasher-fix).
+- Open Gloas PRs: #5008, #4992, #4960, #4939, #4932, #4843, #4840, #4630. All OPEN, NOT MERGED. No status changes.
+- cargo audit: unchanged (rsa RUSTSEC-2023-0071, no fix). No semver-compatible crate updates.
+- Remaining #36 TODOs: all blocked on external deps (EIP-7892, PeerDAS, blst). No actionable changes.
+- No code changes needed.
+
 ### run 1698 (Mar 17) — health check, all stable
 
 - Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new commits.
