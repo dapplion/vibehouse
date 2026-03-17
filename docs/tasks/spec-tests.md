@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1679 (Mar 17) — health check, all stable
+
+**Health check**: all stable
+- CI: all green — nightly passed (slasher flake fixed in prior run), CI green, spec-test-version-check green.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. Only 1 commit since alpha.3: #5005 (test fix, no code impact).
+- Verified: PR #5001 (parent_block_root in bid filtering) already implemented in our codebase (3-tuple key in observed_execution_bids.rs).
+- Open Gloas PRs: #5008, #4992, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4630. All OPEN, NOT MERGED.
+- PR #4992 (cached PTCs): still OPEN, mergeable, last updated Mar 16. Our ptc-lookbehind branch ready.
+- cargo check: 0 warnings.
+- No actionable work.
+
 ### run 1678 (Mar 17) — health check, all stable
 
 **Health check**: all stable
