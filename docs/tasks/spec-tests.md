@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1738 (Mar 17) — health check, all stable
+
+- Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at 1baa05e. No new commits since run 1737.
+- CI: latest run green (success). Clippy: clean (0 warnings).
+- Open Gloas PRs: #5008, #4992, #4962, #4960, #4939, #4932, #4843, #4840, #4630. All OPEN, none merged.
+- Notable: #4992 (cached PTCs) has mergeable_state=clean — may merge soon. Would add `previous_ptc`/`current_ptc` Vector fields to BeaconState and modify `process_slots`/`get_ptc`.
+- cargo audit: unchanged — rsa RUSTSEC-2023-0071 (no fix). 5 unmaintained crate warnings (allowed).
+- No code changes needed.
+
 ### run 1737 (Mar 17) — health check, all stable
 
 - Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at 1baa05e. No new commits since run 1736.
