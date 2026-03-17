@@ -212,3 +212,15 @@ Verified vibehouse handles the edge cases from all three test PRs:
 - Clippy clean, CI green, nightly Fulu failure confirmed as pre-fix timing
 - Devnet health check: finalized_epoch=8 (slot 80, epoch 10), no stalls, Gloas fork transition clean
 - No code changes needed
+
+### run 1767 (Mar 17) — spec tracking refresh
+
+- No new consensus-specs merges since last check (latest merged: #5005, Mar 15)
+- All tracked open Gloas PRs still open/unmerged
+- Verified #5001 (parent_block_root in bid filtering key) already implemented — 3-tuple `(Slot, ExecutionBlockHash, Hash256)` in `observed_execution_bids.rs:48`
+- Verified #4940 (initial Gloas fork choice tests) — our EF test runner already handles `on_execution_payload` steps and `head_payload_status` checks
+- Verified #5002 (payload signature verification wording) — doc-only, no functional change
+- Clippy clean, CI green
+- Nightly Fulu failure (Mar 17) confirmed as timing: `finalized_sync_not_enough_custody_peers_on_start` fixed in 8f8faa7de before nightly completed
+- `cargo audit`: 1 medium advisory (RUSTSEC-2023-0071 in `rsa` via `jsonwebtoken`) — no fix available upstream
+- No code changes needed
