@@ -180,3 +180,15 @@ Verified vibehouse handles the edge cases from all three test PRs:
   - workspace (excl heavy crates): 4914/4914 pass (8 web3signer failures are JRE infrastructure, not code)
 - Clippy clean, CI green
 - No code changes needed
+
+### run 1760 (Mar 17) — spec tracking refresh
+
+- No new consensus-specs merges since last check (latest merged Gloas PR: #5002, Mar 13)
+- Latest spec test release still v1.7.0-alpha.3 — vibehouse already pinned
+- All 11 tracked open Gloas PRs still open/unmerged
+- Two approved PRs close to merge (#4892 remove impossible branch in is_supporting_vote, #4898 remove pending from tiebreaker) — vibehouse already aligned with both
+- #4992 (cached PTCs in state) has one approval, still in discussion — will need implementation when merged
+- #4954 (Store.time → Store.time_ms) awaiting review — limited impact (fork choice test handler only)
+- Nightly failure (Mar 17) was already fixed in 8f8faa7de (pre-fix commit ran); verified test passes locally
+- Clippy clean, CI green
+- No code changes needed
