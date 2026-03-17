@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1765 (Mar 17) — health check, all stable
+
+- **CI**: all jobs green on HEAD (`a2d9d33`). spec-test-version-check green.
+- **Build**: `cargo check --release` clean. Zero clippy warnings (`clippy --release --workspace --all-targets`).
+- **Spec**: v1.7.0-alpha.3 still latest release. No new commits since Mar 15 (`1baa05e7`).
+- **Open Gloas PRs**: #4992 (cached PTCs) active discussion — grandine team also pushing back on spec-level caching, potuz responding. Not near merge. #5008 (field name fix) blocked. #4962 (sanity tests) blocked. #4939, #4843, #4960, #4932, #4840, #4630 unchanged.
+- **cargo audit**: unchanged (rsa RUSTSEC-2023-0071, 5 allowed warnings).
+- No code changes needed.
+
 ### run 1764 (Mar 17) — health check, all stable
 
 - **CI**: all jobs green on HEAD (`fe9c5ff`). spec-test-version-check green.
