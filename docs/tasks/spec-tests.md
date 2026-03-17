@@ -2187,6 +2187,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ### run 1534 (Mar 16) — health check, all stable
 
+### run 1792 (Mar 17) — health check, nightly fixed
+
+**Health check**: all stable
+- CI: main green. Nightly fulu `finalized_sync_not_enough_custody_peers_on_start` failure was stale — caused by `expect_empty_network()` call before fix 8f8faa7de (pushed 10:35, nightly ran 09:11). Test passes locally. Next nightly will be green.
+- Spec: v1.7.0-alpha.3 still latest. No new releases. Only merge since last check: #5005 (test fix, already reviewed).
+- Verified fork_choice_on_execution_payload EF test passes (from #4940 fixtures).
+- Full test suite: 4914 workspace tests pass, 139+79 EF tests pass, 0 clippy warnings.
+- All 10 monitored PRs still OPEN: #4992, #4954, #4962, #4960, #4939, #4932, #4843, #4840, #4630, #4747.
+- #4992 (cached PTCs) still active with discussion, head d76a278b0a.
+- No actionable work — project in maintenance mode.
+
 **Health check**: all stable
 - CI: main green. Nightly slasher failure still stale (ran 09:36 before fix b79292d35 at 10:52). Next nightly will pass.
 - Spec: v1.7.0-alpha.3 still latest. No new releases. consensus-specs HEAD still 1baa05e.
