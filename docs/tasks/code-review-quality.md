@@ -1742,3 +1742,14 @@ Exhaustive search of 100+ source files across all directories (common/, consensu
 **Slasher test hardening**: the `override_backend_with_mdbx_file_present` test was still vulnerable to CI filesystem flakes despite previous fsync fixes. Added: (1) read file back after write as a filesystem barrier, (2) moved config path visibility check BEFORE calling `override_backend()` so diagnostic fires before the confusing assertion.
 
 **Spec check**: no new consensus-specs releases since v1.7.0-alpha.3. All open Gloas PRs still unmerged. No actionable work.
+
+### Run 1775 (2026-03-17)
+
+**Spec tracking**: reviewed post-alpha.3 merged PRs (#5001, #5002, #5005). All already implemented or non-actionable.
+
+**Test coverage**: added 3 tests for `MissingEnvelopeFromAttestation` sync path (from run 1774's envelope request feature):
+- `missing_envelope_from_attestation_triggers_request` — verifies ExecutionPayloadEnvelopesByRoot request fires
+- `missing_envelope_from_attestation_debounced` — verifies duplicate messages for same block root are debounced
+- `missing_envelope_different_blocks_not_debounced` — verifies independent block roots get separate requests
+
+**CI status**: all nightly flakes from prior runs already fixed on HEAD. Current CI run green for check+clippy, ef-tests, network+op_pool.
