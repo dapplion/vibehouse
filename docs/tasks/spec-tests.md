@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1750 (Mar 17) — health check, all stable
+
+- **CI**: all jobs green. Latest run (KZG verification fix) passed all jobs.
+- **Nightly**: `network-tests (fulu)` failure was stale — ran on commit `837cf89` (run 1743), before the fix in run 1747. Tonight's nightly should pass.
+- **Spec**: v1.7.0-alpha.3 still latest release. No new commits since Mar 15 (`1baa05e7`).
+- **Open Gloas PRs**: #4992 (cached PTCs, 1 approval from jtraglia, active discussion), #5008 (field name fix, no reviews), #4939 (envelope requests, comments only), #4960, #4932, #4843, #4840, #4630. All OPEN, none merged.
+- **Prepared**: `cached-ptc` branch exists with PR #4992 implementation, needs rebase from run 1397 base when spec PR merges.
+- **cargo audit**: unchanged — rsa RUSTSEC-2023-0071 (no fix). 5 unmaintained crate warnings.
+- **#36 TODOs**: 8 items remaining, all blocked on externals (EIP-7892, blst safe API, PeerDAS) or non-critical refactors.
+- No code changes needed.
+
 ### run 1749 (Mar 17) — health check, devnet verification, Gloas data column audit
 
 - **CI**: all jobs green (KZG verification fix). ef-tests, clippy, beacon_chain, http_api, unit, network+op_pool all passed.
