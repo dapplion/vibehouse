@@ -97,6 +97,9 @@ All 5 phases complete: (1) clippy/doc/dead-code/unwrap audit, (2) architecture r
 - **DataColumnsByRootRequester refactor** — DONE (#36 partial): removed single-variant enum, DataColumnsByRootRequestId now contains CustodyId directly
 - **Operation pool lock optimization** — DONE (#36 partial): pre-electra forks use read lock instead of write-then-downgrade for attestation pool access
 - **HDiff buffer allocation** — DONE (#36 partial): parse VCDIFF header (RFC 3284) for exact target window size instead of guess-and-double loop
+- **Slasher test diagnostics** — DONE (#36 partial): improved override_backend_with_mdbx_file_present test with better error reporting for CI flake diagnosis
+- **Boot node CLI cleanup** — DONE (#36 partial): removed inapplicable multiaddr/DOS TODOs (boot node is discv5-only), fixed misleading help text
+- **Subnet service TODO cleanup** — DONE (#36 partial): removed dynamic bitfield TODO (HashSet is fine for ≤64 subnets)
 
 ---
 

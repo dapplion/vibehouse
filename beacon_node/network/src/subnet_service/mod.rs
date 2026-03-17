@@ -89,7 +89,6 @@ pub struct SubnetService<T: BeaconChainTypes> {
     scheduled_subscriptions: HashSetDelay<ExactSubnet>,
 
     /// A list of permanent subnets that this node is subscribed to.
-    // TODO(#36): Shift this to a dynamic bitfield
     permanent_attestation_subscriptions: HashSet<Subnet>,
 
     /// A collection timeouts to track the existence of aggregate validator subscriptions at an

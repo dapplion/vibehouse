@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1692 (Mar 17) — #36 TODO cleanup, slasher flake diagnostics
+
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new commits since run 1691.
+- CI: check+clippy+fmt ✓, ef-tests ✓, other jobs still running. Nightly: last scheduled run had slasher flake, re-run passed.
+- Improved slasher `override_backend_with_mdbx_file_present` test with better error diagnostics for next CI flake occurrence.
+- Cleaned up boot node TODOs: removed inapplicable multiaddr/DOS TODOs (boot node is discv5-only), fixed misleading CLI help text.
+- Removed subnet service dynamic bitfield TODO (HashSet is fine for ≤64 subnets).
+- Audited remaining 9 #36 TODOs: 3 blocked on EIP-7892, 1 on blst upstream, 1 on PeerDAS, 1 on pool persistence feature, 3 low-value refactoring. All valid deferred items.
+- `cargo audit`: only known `rsa` vulnerability (no fix available, transitive via jsonwebtoken), 5 unmaintained crate warnings.
+
 ### run 1691 (Mar 17) — hdiff VCDIFF header parsing, health check
 
 - Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new commits.
