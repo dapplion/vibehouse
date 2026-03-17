@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1749 (Mar 17) — health check, devnet verification, Gloas data column audit
+
+- **CI**: all jobs green (KZG verification fix). ef-tests, clippy, beacon_chain, http_api, unit, network+op_pool all passed.
+- **Nightly failure**: `network-tests (fulu)` failed on `finalized_sync_not_enough_custody_peers_on_start` — stale (nightly ran on commit before the fix in run 1747). Next nightly will pass.
+- **Devnet**: 4-node devnet passed — finalized_epoch=8 through Gloas fork. KZG verification fix works end-to-end.
+- **Audit**: thorough review of all Gloas data column sidecar code paths. All critical paths properly handle the Fulu→Gloas differences (no embedded commitments, no signed_block_header, no inclusion proof). Found minor `SseDataColumnSidecar` falls back to empty commitments for Gloas — acceptable behavior.
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since last check. Open: #4992 (cached PTCs, 1 approval), #5008 (field name fix), #4939, #4960 etc.
+- cargo audit: unchanged — rsa RUSTSEC-2023-0071 (no fix).
+
 ### run 1748 (Mar 17) — spec audit + gloas data column gossip simplification
 
 - **Spec audit**: audited 15 functional Gloas spec PRs merged to master since alpha.3. 14/15 already implemented in vibehouse. See `docs/tasks/spec-update-post-alpha3.md` for full audit.
