@@ -103,3 +103,31 @@ For Gloas sidecars (where `bid = block.body.signed_execution_payload_bid.message
 - #4880: Retroactive downscoring explicitly deferred by the spec itself — gossipsub doesn't support it. Queueing path works.
 - #4950: Our by_root handlers serve everything in storage — already more permissive than spec minimum. No restriction needed.
 - **All spec tracking items resolved. Task DONE.**
+
+### run 1750 (Mar 17) — open PR scan
+
+Scanned open PRs in ethereum/consensus-specs for upcoming changes that could affect vibehouse:
+
+**Fork choice (vibehouse already aligned with proposed changes):**
+- #4892: Remove impossible branch in `is_supporting_vote` — vibehouse already uses `==` check (proto_array_fork_choice.rs:1687)
+- #4898: Remove PENDING from tiebreaker condition — vibehouse's `get_payload_tiebreaker` already omits PENDING check
+
+**Open design questions (no action yet):**
+- #4899: Should proposer boost be counted in `is_parent_strong`? — unresolved, tracking only
+- #4843: Variable PTC deadline — could change PTC timing assumptions
+- #4992: Cached PTCs in state — new BeaconState field, tagged for both gloas and heze
+
+**New EIPs being bundled into Gloas:**
+- #4840: EIP-7843 (SLOTNUM opcode) — EL-side, no CL impact expected
+
+**New test PRs (not merged yet):**
+- #4960: Fork choice test with new validator deposit via envelope + reorg
+- #4932: Sanity/blocks tests with payload attestation coverage
+- #4962: Missed payload + withdrawal interaction tests
+
+Verified vibehouse handles the edge cases from all three test PRs:
+- Payload attestation slot validation: `data.slot + 1 == state.slot` check correctly rejects too-old slots (gloas.rs:254-268)
+- Stale withdrawals after missed payload: existing test `stale_withdrawal_mismatch_after_missed_payload_rejected`
+- Fork choice payload_states: `payload_states` maintained in proto_array, envelope-based deposits processed correctly
+
+**No code changes needed. Will re-check when alpha.4 is released.**
