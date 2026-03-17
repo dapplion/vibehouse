@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1696 (Mar 17) — health check, all stable
+
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new commits since #5005 (Mar 15).
+- CI: run 1695 — 5/6 passed (check+clippy, ef-tests, unit-tests, http_api, network+op_pool), beacon_chain still running. Nightly: slasher flake (run 23137093267) confirmed pre-fix, re-run passed (23164776090).
+- PR #4992 (PTC lookbehind): still OPEN, NOT MERGED, same head d76a278b0a. Active design discussion — potuz questioning whether `get_ptc` wrapper is needed at all vs clients just caching `compute_ptc` directly. ensi321 raised concern about slot range being too restrictive for validator assignment lookbehind. Direction may simplify or change.
+- No semver-compatible cargo updates. cargo audit unchanged (1 rsa).
+- `ptc-lookbehind` branch 1 task-doc commit behind main — not worth rebasing.
+- No code changes needed.
+
 ### run 1693 (Mar 17) — health check, all stable
 
 - Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new commits.

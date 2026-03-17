@@ -110,6 +110,10 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 1696 (Mar 17) — all stable, no code changes
+
+Spec stable — no new consensus-specs commits since #5005 (Mar 15). v1.7.0-alpha.3 still latest release. No new spec-test vectors (still v1.6.0-beta.0). PR #4992 still OPEN, NOT MERGED (same head d76a278b0a). Active design discussion: potuz questioning whether `get_ptc` is needed at all — clients could just cache `compute_ptc` directly; ensi321 raised concern about slot range restriction for validator assignment lookbehind. Direction may simplify. No semver-compatible cargo updates. cargo audit unchanged (1 rsa). CI 5/6 passed (beacon_chain still running). `ptc-lookbehind` branch 1 doc commit behind main — not rebased. No code changes needed.
+
 ### run 1695 (Mar 17) — all stable, ptc-lookbehind rebased
 
 Spec stable — no new consensus-specs commits since #5005 (Mar 15). v1.7.0-alpha.3 still latest release. No new spec-test vectors (still v1.6.0-beta.0). PR #4992 still OPEN, NOT MERGED (same head d76a278b0a). No semver-compatible cargo updates. cargo audit unchanged (1 rsa). CI in progress (check+clippy pass). Nightly failure (Mar 16 09:36) was pre-fsync-fix `override_backend_with_mdbx_file_present` flake — manual re-run passed, fix already on main. Rebased `ptc-lookbehind` branch onto main. 1021/1021 state_processing tests pass. Pushed. No code changes needed.
