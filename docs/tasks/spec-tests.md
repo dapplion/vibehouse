@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1753 (Mar 17) — health check, all stable
+
+- **CI**: all jobs green on HEAD (`9f515c4`). Clippy clean (zero warnings).
+- **Spec**: v1.7.0-alpha.3 still latest release.
+- **New commits since alpha.3**: #5001 (`parent_block_root` added to bid filtering key) — already implemented in vibehouse (`observed_execution_bids.rs` uses `(slot, parent_block_hash, parent_block_root)` tuple). #5002 (wording clarification for payload signature verification) — doc-only, no code change needed.
+- **Open Gloas PRs**: unchanged — #4992 (cached PTCs, 1 approval), #5008 (field name doc fix), #4939, #4960, #4932, #4843, #4840, #4630. All OPEN.
+- **cargo audit**: unchanged (rsa RUSTSEC-2023-0071, no fix available).
+- **Code quality**: full codebase scan — no actionable unwrap/expect in production code, no new TODOs, all #36 remaining items blocked on externals or non-critical.
+- No code changes needed.
+
 ### run 1751 (Mar 17) — health check, all stable
 
 - **CI**: all jobs green on HEAD (`965bec8a6`). Nightly failure on `837cf89` (stale, pre-fix) confirmed — next nightly will run on current HEAD.
