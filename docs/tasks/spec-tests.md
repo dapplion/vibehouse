@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1782 (Mar 17) — health check, all stable
+
+- **CI**: all 7 jobs green on HEAD (`c5662dd`). Nightly failure on stale commit — next nightly will pick up HEAD with fix. Verified `finalized_sync_not_enough_custody_peers_on_start` passes locally on HEAD.
+- **Build**: `cargo check --release` clean (0.4s cached). Zero warnings.
+- **Spec**: v1.7.0-alpha.3 still latest release. 4 commits since alpha.3: #5005 (test fix), #5004 (release notes), #4940 (new Gloas fork choice test fixtures — not yet in released vectors), #5002 (wording). No implementation changes needed.
+- **New PR**: #5008 (field name fix `block_root`→`beacon_block_root` in EnvelopesByRoot docs) — doc-only, no code change needed.
+- **Open Gloas PRs**: #4992 (cached PTCs), #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open/unmerged.
+- **cargo audit**: unchanged (1 vulnerability rsa RUSTSEC-2023-0071, 5 allowed warnings).
+- No code changes needed.
+
 ### run 1781 (Mar 17) — health check, all stable
 
 - **CI**: all 7 jobs green on HEAD (`2f0c028`). Nightly `network-tests (fulu)` failure still on stale commit `837cf89` — next nightly will pick up HEAD with fix.
