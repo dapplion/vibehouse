@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1777 (Mar 17) — health check, all stable
+
+- **CI**: check+clippy+fmt green on HEAD (`6664f2d`). Test jobs still in progress. Nightly failure on stale commit `837cf89` (44 commits behind HEAD) — fix `8f8faa7de` already in HEAD, tonight's nightly should be green.
+- **Build**: `cargo check --release` clean (18s). Zero clippy warnings.
+- **Spec**: v1.7.0-alpha.3 still latest release. No new merged Gloas PRs since alpha.3.
+- **Open Gloas PRs**: #4992 (cached PTCs) now **approved and mergeable** — adds `previous_ptc`/`current_ptc` fields to BeaconState, modifies `process_slots`, changes `get_ptc` to read from state. Will need implementation when merged. Other open PRs (#4939, #4960, #4932, #4840, #4630) unchanged.
+- **cargo audit**: unchanged (1 vulnerability rsa RUSTSEC-2023-0071, 5 allowed warnings).
+- No code changes needed.
+
 ### run 1772 (Mar 17) — health check, all stable
 
 - **CI**: all jobs green on HEAD (`d4a23f7`). spec-test-version-check green. Nightly failure on stale commit `837cf89` (network-tests fulu: `finalized_sync_not_enough_custody_peers_on_start`) — confirmed passes on HEAD, tonight's nightly should be green.
