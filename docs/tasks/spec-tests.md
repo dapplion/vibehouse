@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1740 (Mar 17) — mock EL execution requests (#36)
+
+- Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at #5005 (Mar 15). No new commits since run 1739.
+- CI: latest run green (success).
+- Open Gloas PRs: #4992 (cached PTCs, still OPEN, mergeable_state=clean), #5008, #4962, #4960, #4939, #4932, #4843, #4840, #4630. All OPEN, none merged.
+- Implemented mock EL execution requests (#36): added `From<ExecutionRequests<E>> for JsonExecutionRequests` conversion, configurable `execution_requests` field on mock EL Context, wired into get_payload V4/V5 handlers. Roundtrip test added. This was the last actionable TODO from #36.
+- Remaining #36 items: all blocked on externals (kurtosis assertoor, external builder mock).
+
 ### run 1739 (Mar 17) — health check, all stable
 
 - Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at #5005 (Mar 15). No new commits since run 1738.
