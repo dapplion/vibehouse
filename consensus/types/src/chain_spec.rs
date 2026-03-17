@@ -1391,9 +1391,10 @@ impl ChainSpec {
             // Gloas
             gloas_fork_version: [0x07, 0x00, 0x00, 0x01],
             gloas_fork_epoch: None,
-            // Gloas minimal preset overrides
-            ptc_size: 2,                            // 2^1 (vs mainnet 512)
-            max_builders_per_withdrawals_sweep: 16, // 2^4 (vs mainnet 16384)
+            // Gloas minimal config/preset overrides
+            min_builder_withdrawability_delay: Epoch::new(2), // (vs mainnet 64)
+            ptc_size: 2,                                      // 2^1 (vs mainnet 512)
+            max_builders_per_withdrawals_sweep: 16,           // 2^4 (vs mainnet 16384)
             // Other
             network_id: 2, // vibehouse testnet network id
             deposit_chain_id: 5,
