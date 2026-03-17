@@ -48,14 +48,16 @@ scripts/kurtosis-run.sh --no-build    # Skip Docker build
 Reference:
 - CL Specs: https://github.com/ethereum/consensus-specs/tree/master/specs/gloas
 - ePBS spec: https://eips.ethereum.org/EIPS/eip-7732
-### 3. Spec tracking — post-alpha.3
+### 3. Spec tracking — post-alpha.3 — DONE
 
-[docs/tasks/spec-update-post-alpha3.md](docs/tasks/spec-update-post-alpha3.md) — IN PROGRESS
+[docs/tasks/spec-update-post-alpha3.md](docs/tasks/spec-update-post-alpha3.md) — DONE
 
-Audited 15 functional Gloas spec PRs merged since alpha.3: 14/15 already implemented. Remaining:
-- **Gloas data column sidecar gossip simplification** (#4874) — bid-based validation, remove Fulu header/parent/inclusion checks
-- **Deferred validation scoring** (#4880) — partially done (queueing works, retroactive scoring deferred)
-- **by_root serve range extension** (#4950) — low priority
+Audited 17 Gloas spec PRs merged since alpha.3: all implemented or confirmed not needed. Key items:
+- **#4874** (data column sidecar gossip simplification) — implemented: bid-based validation for Gloas
+- **#4880** (deferred validation scoring) — queueing works; retroactive scoring deferred by spec itself
+- **#4950** (by_root serve range) — already compliant (serve everything in storage)
+- **#4947** (pre-fork subscription) — already implemented (PRE_FORK_SUBSCRIBE_EPOCHS=1)
+- **#5005** (test fixture fix) — test-only, EF runner handles gracefully
 
 Spec tests: [docs/tasks/spec-tests.md](docs/tasks/spec-tests.md) — DONE: 79/79 + 139/139 passing, check_all_files_accessed passes, spec tracked to v1.7.0-alpha.3, automated release check workflow deployed
 

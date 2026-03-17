@@ -3,11 +3,13 @@
 ## Objective
 Track and implement consensus-specs changes merged to master since v1.7.0-alpha.3.
 
-## Status: IN PROGRESS
+## Status: DONE
 
-## Changes Audit (run 1748)
+All Gloas spec PRs merged since alpha.3 have been audited and implemented (or confirmed not needed).
 
-Audited all Gloas spec commits since alpha.3 (15 functional PRs). Most changes are already implemented in vibehouse.
+## Changes Audit (run 1748-1749)
+
+Audited all Gloas spec commits since alpha.3 (17 PRs total). All implemented or confirmed not applicable.
 
 ### Already Aligned (no code changes needed)
 
@@ -27,14 +29,21 @@ Audited all Gloas spec commits since alpha.3 (15 functional PRs). Most changes a
 | #4916 | Refactor builder deposit conditions in process_deposit_request | Already implemented |
 | #5002 | Make wording clearer for payload signature verification | Doc-only, no code change |
 | #4890 | Clarify when builders become active | Doc-only, no code change |
+| #4947 | Pre-fork subscription for proposer_preferences topic | Already implemented (PRE_FORK_SUBSCRIBE_EPOCHS=1, ProposerPreferences in Gloas topics) |
+| #5005 | Fix builder voluntary exit success test (yield missing fixture) | Test-only; our EF test runner already handles missing fixtures with SkippedKnownFailure |
 
-### Needs Implementation
+### Implemented
 
-| PR | Description | Priority | Status |
-|----|-------------|----------|--------|
-| #4874 | Simplify data column sidecar gossip checks in Gloas | HIGH | TODO |
-| #4880 | Deferred validation for data column sidecars, retroactive downscoring | MEDIUM | Partially done (queueing works, scoring deferred per spec note) |
-| #4950 | Extend by_root reqresp serve range to MIN_EPOCHS_FOR_BLOCK_REQUESTS | LOW | TODO |
+| PR | Description | Status |
+|----|-------------|--------|
+| #4874 | Simplify data column sidecar gossip checks in Gloas | DONE (run 1748) |
+
+### No Code Change Needed
+
+| PR | Description | Rationale |
+|----|-------------|-----------|
+| #4880 | Deferred validation scoring | Queueing implemented. Retroactive downscoring explicitly deferred by spec — gossipsub protocol doesn't support it yet |
+| #4950 | Extend by_root serve range to MIN_EPOCHS_FOR_BLOCK_REQUESTS | Already compliant — our by_root handlers serve everything in storage without range restrictions, which is more permissive than the spec minimum |
 
 ### Detail: #4874 — Gloas data column sidecar gossip simplification
 
@@ -85,3 +94,12 @@ For Gloas sidecars (where `bid = block.body.signed_execution_payload_bid.message
   - Added `is_gloas()` method to `DataColumnSidecar`
   - All 201 network tests pass, 414 Gloas beacon_chain tests pass, clippy clean
 - 2 lower priority items remain: deferred validation scoring (#4880), by_root serve range (#4950)
+
+### run 1749 (Mar 17) — final audit, close task
+
+- Re-audited all merged Gloas spec PRs — found 2 additional: #4947 (pre-fork subscription), #5005 (test fixture fix)
+- #4947: Already covered — `PRE_FORK_SUBSCRIBE_EPOCHS=1` subscribes to all Gloas topics (including ProposerPreferences) 1 epoch before fork
+- #5005: Test-only fix — our EF test runner already handles the missing fixture via `SkippedKnownFailure`
+- #4880: Retroactive downscoring explicitly deferred by the spec itself — gossipsub doesn't support it. Queueing path works.
+- #4950: Our by_root handlers serve everything in storage — already more permissive than spec minimum. No restriction needed.
+- **All spec tracking items resolved. Task DONE.**
