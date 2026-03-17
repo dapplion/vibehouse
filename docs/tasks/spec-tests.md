@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1744 (Mar 17) — health check, all stable
+
+- Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at #5005 (Mar 15). No new commits.
+- CI: mock EL execution requests run still in progress — check+clippy+fmt passed, ef-tests passed, network+op_pool passed, beacon_chain/http_api/unit tests running.
+- Nightly: Mar 16 nightly had slasher `override_backend_with_mdbx_file_present` flake — this was BEFORE the fsync fix was deployed. Mar 16 manual re-run passed. Current nightly (queued) is on HEAD with the fix.
+- Open Gloas PRs: #4992 (cached PTCs), #5008 (field name fix), #4962 (sanity tests), #4960 (fork choice test), #4939 (missing envelope request), #4843 (variable PTC deadline), #4932 (sanity/blocks tests), #4840 (EIP-7843), #4630 (EIP-7688). All OPEN, none merged.
+- cargo audit: unchanged — rsa RUSTSEC-2023-0071 (no fix). 5 unmaintained crate warnings.
+- Remaining #36 TODOs: EL error refactor and pool persistence are actionable but non-critical. Rest blocked on externals.
+- No code changes needed.
+
 ### run 1743 (Mar 17) — health check, all stable
 
 - Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at #5005 (Mar 15). No new commits.
