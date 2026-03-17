@@ -29,6 +29,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1748 (Mar 17) — spec audit + gloas data column gossip simplification
+
+- **Spec audit**: audited 15 functional Gloas spec PRs merged to master since alpha.3. 14/15 already implemented in vibehouse. See `docs/tasks/spec-update-post-alpha3.md` for full audit.
+- **Implemented #4874**: Gloas data column sidecar gossip simplification — bid-based validation instead of Fulu header-based checks. Split validation into Fulu and Gloas paths. Added `BlockUnknown` and `SlotMismatch` error variants. All 201 network + 414 Gloas beacon_chain tests pass.
+- Spec: v1.7.0-alpha.3 still latest release. Master has #5001, #5002 as newest.
+- CI: previous run (fulu network test fix) still in progress.
+
 ### run 1747 (Mar 17) — fix nightly fulu network test failure
 
 - **Fixed**: `finalized_sync_not_enough_custody_peers_on_start` test was failing in nightly `network-tests (fulu)`. Root cause: test expected zero network events after adding a single peer, but peer group tracking (#34) changed behavior — block requests now go out immediately even without enough custody column peers. Column requests are deferred until enough peers join. Removed stale `expect_empty_network()` assertion. Test still validates that sync completes successfully after sufficient peers are added.

@@ -73,9 +73,15 @@ For Gloas sidecars (where `bid = block.body.signed_execution_payload_bid.message
 
 ## Progress Log
 
-### run 1748 (Mar 17) — spec audit
+### run 1748 (Mar 17) — spec audit + #4874 implementation
 
 - Audited all 15 functional Gloas spec PRs merged since alpha.3
 - 14/15 already implemented in vibehouse
-- 1 needs implementation: Gloas data column sidecar gossip simplification (#4874)
-- 2 lower priority items: deferred validation scoring (#4880), by_root serve range (#4950)
+- **Implemented #4874**: Gloas data column sidecar gossip simplification
+  - Split `validate_data_column_sidecar_for_gossip` into Fulu and Gloas paths
+  - Gloas path: bid-based validation (block lookup → get commitments from bid → structural + KZG verify)
+  - Removed Fulu-only checks for Gloas: proposer sig, parent block, inclusion proof, future/finalized slot
+  - Added `BlockUnknown` and `SlotMismatch` error variants
+  - Added `is_gloas()` method to `DataColumnSidecar`
+  - All 201 network tests pass, 414 Gloas beacon_chain tests pass, clippy clean
+- 2 lower priority items remain: deferred validation scoring (#4880), by_root serve range (#4950)
