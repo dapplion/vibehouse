@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1730 (Mar 17) — health check, all stable
+
+- Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at 1baa05e.
+- CI: latest run green (success).
+- Recently merged: #5005 (builder voluntary exit test fix, test-only), #5002 (wording clarification, p2p doc only), #5001 (parent_block_root in bid filtering key — already implemented in vibehouse).
+- Open Gloas PRs: #4992 (cached PTCs, mergeable), #4960, #4932, #4843, #4840, #4630. All OPEN, none merged.
+- cargo audit: unchanged — rsa RUSTSEC-2023-0071 (no fix). 5 unmaintained crate warnings (bincode new).
+- Remaining #36 TODOs (7): all blocked on externals (EIP-7892, blst safe API) or minor refactoring.
+- No code changes needed.
+
 ### run 1729 (Mar 17) — health check, all stable
 
 - Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at 1baa05e. No new commits since run 1728.
