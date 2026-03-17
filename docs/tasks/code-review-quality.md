@@ -1674,3 +1674,22 @@ Exhaustive search of 100+ source files across all directories (common/, consensu
 - No open PRs, no open issues requiring action (issue #27 has 0 upvotes, #28/#29 are RFCs).
 
 **Action**: No code changes needed. Monitoring run only.
+
+#### Run 1687 — TODO comment cleanup (issue #31)
+
+**Scope**: Clean up ~55 TODO comments missing proper issue links, as tracked in issue #31.
+
+**Method**: Categorized every TODO in the codebase as STALE (4), INFORMATIONAL (20), or ACTIONABLE (33).
+
+**Changes**:
+1. **Removed 4 stale TODOs** — past design decisions (peer_id matching removal), vague/resolved items (mock EL forks, peerdb unban), already-stable Rust features
+2. **Converted ~20 informational TODOs to regular comments** — design notes, observations, code review notes that didn't represent actionable work (removed `TODO` prefix, kept the comment content)
+3. **Created 5 focused issues (#32-#36)** for the 33 remaining actionable TODOs, grouped by theme:
+   - #32: sync custody column download robustness (5 TODOs)
+   - #33: sync NoPeer graceful handling with timeout (2 TODOs)
+   - #34: sync decouple block and data column requests (2 TODOs)
+   - #35: sync test coverage improvements (4 TODOs)
+   - #36: misc code improvements — boot node, EIP-7892, crypto, EL, tests, store (20 TODOs)
+4. **Updated all TODO references** from `#31` to their specific issue number
+
+**Result**: Zero TODOs reference #31 anymore. All remaining TODOs have focused issue links. Issue #31 closed.
