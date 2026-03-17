@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1789 (Mar 17) — routine devnet verification
+
+Standard 4-node devnet passed. Run ID: 20260317-230450. Finalized epoch 8 in 468s. Gloas fork at epoch 1, chain healthy through epoch 10. Verified after recent envelope-request-from-attestations changes.
+
 ### run 1467 (Mar 16) — routine devnet verification
 
 Standard 4-node devnet passed. Run ID: 20260316-082012. Finalized epoch 8 in 516s. Gloas fork at epoch 1, chain healthy through epoch 11. No issues.
