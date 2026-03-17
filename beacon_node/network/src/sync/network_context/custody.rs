@@ -13,7 +13,7 @@ use tracing::{Span, debug, debug_span, warn};
 use types::{DataColumnSidecar, Hash256, data_column_sidecar::ColumnIndex};
 use types::{DataColumnSidecarList, EthSpec};
 use vibehouse_network::PeerId;
-use vibehouse_network::service::api_types::{CustodyId, DataColumnsByRootRequester};
+use vibehouse_network::service::api_types::CustodyId;
 use vibehouse_tracing::SPAN_OUTGOING_CUSTODY_REQUEST;
 
 use super::{LookupRequestResult, PeerGroup, RpcResponseResult, SyncNetworkContext};
@@ -276,7 +276,7 @@ impl<T: BeaconChainTypes> ActiveCustodyRequest<T> {
         for (peer_id, indices) in columns_to_request_by_peer.into_iter() {
             let request_result = cx
                 .data_column_lookup_request(
-                    DataColumnsByRootRequester::Custody(self.custody_id),
+                    self.custody_id,
                     peer_id,
                     DataColumnsByRootSingleBlockRequest {
                         block_root: self.block_root,

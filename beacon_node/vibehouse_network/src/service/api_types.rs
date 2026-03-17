@@ -49,7 +49,7 @@ pub struct EnvelopesByRootRequestId {
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
 pub struct DataColumnsByRootRequestId {
     pub id: Id,
-    pub requester: DataColumnsByRootRequester,
+    pub requester: CustodyId,
 }
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
@@ -121,13 +121,6 @@ pub struct CustodyBackfillBatchId {
 pub enum RangeRequestId {
     RangeSync { chain_id: Id, batch_id: Epoch },
     BackfillSync { batch_id: Epoch },
-}
-
-// TODO(#36) refactor in a separate PR. We might be able to remove this and replace
-// [`DataColumnsByRootRequestId`] with a [`SingleLookupReqId`].
-#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
-pub enum DataColumnsByRootRequester {
-    Custody(CustodyId),
 }
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
@@ -266,14 +259,6 @@ impl_display!(CustodyId, "{}", requester);
 impl_display!(CustodyBackFillBatchRequestId, "{}/{}", id, batch_id);
 impl_display!(CustodyBackfillBatchId, "{}/{}", epoch, run_id);
 
-impl Display for DataColumnsByRootRequester {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Custody(id) => write!(f, "Custody/{id}"),
-        }
-    }
-}
-
 impl Display for CustodyRequester {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
@@ -306,14 +291,14 @@ mod tests {
     fn display_id_data_columns_by_root_custody() {
         let id = DataColumnsByRootRequestId {
             id: 123,
-            requester: DataColumnsByRootRequester::Custody(CustodyId {
+            requester: CustodyId {
                 requester: CustodyRequester(SingleLookupReqId {
                     req_id: 121,
                     lookup_id: 101,
                 }),
-            }),
+            },
         };
-        assert_eq!(format!("{id}"), "123/Custody/121/Lookup/101");
+        assert_eq!(format!("{id}"), "123/121/Lookup/101");
     }
 
     #[test]

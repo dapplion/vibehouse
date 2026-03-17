@@ -52,7 +52,7 @@ use vibehouse_network::service::api_types::{
     AppRequestId, BlobsByRangeRequestId, BlocksByRangeRequestId, ComponentsByRangeRequestId,
     CustodyBackFillBatchRequestId, CustodyBackfillBatchId, CustodyId, CustodyRequester,
     DataColumnsByRangeRequestId, DataColumnsByRangeRequester, DataColumnsByRootRequestId,
-    DataColumnsByRootRequester, EnvelopesByRootRequestId, Id, SingleLookupReqId, SyncRequestId,
+    EnvelopesByRootRequestId, Id, SingleLookupReqId, SyncRequestId,
 };
 use vibehouse_network::{Client, NetworkGlobals, PeerAction, PeerId, ReportSource};
 use vibehouse_tracing::{SPAN_OUTGOING_BLOCK_BY_ROOT_REQUEST, SPAN_OUTGOING_RANGE_REQUEST};
@@ -1324,7 +1324,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
     /// Request to send a single `data_columns_by_root` request to the network.
     pub fn data_column_lookup_request(
         &mut self,
-        requester: DataColumnsByRootRequester,
+        requester: CustodyId,
         peer_id: PeerId,
         request: DataColumnsByRootSingleBlockRequest,
         expect_max_responses: bool,

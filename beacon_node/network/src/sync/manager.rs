@@ -71,8 +71,8 @@ use vibehouse_network::rpc::RPCError;
 use vibehouse_network::service::api_types::{
     BlobsByRangeRequestId, BlocksByRangeRequestId, ComponentsByRangeRequestId,
     CustodyBackFillBatchRequestId, CustodyBackfillBatchId, CustodyRequester,
-    DataColumnsByRangeRequestId, DataColumnsByRangeRequester, DataColumnsByRootRequestId,
-    DataColumnsByRootRequester, Id, SingleLookupReqId, SyncRequestId,
+    DataColumnsByRangeRequestId, DataColumnsByRangeRequester, DataColumnsByRootRequestId, Id,
+    SingleLookupReqId, SyncRequestId,
 };
 use vibehouse_network::types::{NetworkGlobals, SyncState};
 use vibehouse_network::{PeerAction, PeerId};
@@ -1325,15 +1325,12 @@ impl<T: BeaconChainTypes> SyncManager<T> {
             self.network
                 .on_data_columns_by_root_response(req_id, peer_id, data_column)
         {
-            match req_id.requester {
-                DataColumnsByRootRequester::Custody(custody_id) => {
-                    if let Some(result) = self
-                        .network
-                        .on_custody_by_root_response(custody_id, req_id, peer_id, resp)
-                    {
-                        self.on_custody_by_root_result(custody_id.requester, result);
-                    }
-                }
+            let custody_id = req_id.requester;
+            if let Some(result) = self
+                .network
+                .on_custody_by_root_response(custody_id, req_id, peer_id, resp)
+            {
+                self.on_custody_by_root_result(custody_id.requester, result);
             }
         }
     }

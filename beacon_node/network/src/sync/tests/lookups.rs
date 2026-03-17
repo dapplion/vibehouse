@@ -40,10 +40,7 @@ use vibehouse_network::discovery::CombinedKey;
 use vibehouse_network::{
     NetworkConfig, NetworkGlobals, PeerId,
     rpc::{RPCError, RequestType, RpcErrorResponse},
-    service::api_types::{
-        AppRequestId, DataColumnsByRootRequestId, DataColumnsByRootRequester, Id,
-        SingleLookupReqId, SyncRequestId,
-    },
+    service::api_types::{AppRequestId, Id, SingleLookupReqId, SyncRequestId},
     types::SyncState,
 };
 
@@ -620,14 +617,10 @@ impl TestRig {
         data_columns: Vec<Arc<DataColumnSidecar<E>>>,
         missing_components: bool,
     ) {
-        let lookup_id = if let SyncRequestId::DataColumnsByRoot(DataColumnsByRootRequestId {
-            requester: DataColumnsByRootRequester::Custody(id),
-            ..
-        }) = ids.first().unwrap().0
-        {
-            id.requester.0.lookup_id
+        let lookup_id = if let SyncRequestId::DataColumnsByRoot(req_id) = ids.first().unwrap().0 {
+            req_id.requester.requester.0.lookup_id
         } else {
-            panic!("not a custody requester")
+            panic!("not a DataColumnsByRoot request")
         };
 
         let first_column = data_columns.first().cloned().unwrap();
@@ -2075,14 +2068,10 @@ fn custody_lookup_bad_data_triggers_penalty_and_retry() {
     r.expect_rpc_custody_column_work_event();
 
     // Extract lookup_id from first custody id for the processing response
-    let lookup_id = if let SyncRequestId::DataColumnsByRoot(DataColumnsByRootRequestId {
-        requester: DataColumnsByRootRequester::Custody(id),
-        ..
-    }) = custody_ids[0].0
-    {
-        id.requester.0.lookup_id
+    let lookup_id = if let SyncRequestId::DataColumnsByRoot(req_id) = custody_ids[0].0 {
+        req_id.requester.requester.0.lookup_id
     } else {
-        panic!("not a custody requester")
+        panic!("not a DataColumnsByRoot request")
     };
 
     let first_column = data_columns.first().cloned().unwrap();
