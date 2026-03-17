@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1712 (Mar 17) — health check, all stable
+
+- Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at 1baa05e. No new commits or merges.
+- CI: latest run green (success).
+- Open Gloas PRs: #4992 (PTC lookbehind, OPEN, same head d76a278b0a, 1 APPROVED jtraglia, very active design discussion Mar 16 — potuz/jihoonsong/ensi321 debating whether state caching is needed vs just passing slot to compute_ptc), #5008, #4962, #4960, #4939, #4932, #4843, #4840, #4630. All OPEN, no status changes.
+- cargo audit: unchanged — rsa RUSTSEC-2023-0071 (no fix), RUSTSEC-2025-0141 (bincode unmaintained, via sp1-verifier). 5 unmaintained crate warnings (allowed).
+- Remaining #36 TODOs: all blocked on external changes (EIP-7892, blst safe API) or low-priority refactoring that doesn't unblock other work.
+- No code changes needed.
+
 ### run 1711 (Mar 17) — health check, all stable
 
 - Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at 1baa05e. New merged PRs: #5005 (builder voluntary exit test fix), #5004 (release notes deps section), #4940 (initial gloas fork choice tests — already supported by our handler). No spec changes.
