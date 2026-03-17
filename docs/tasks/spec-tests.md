@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1717 (Mar 17) — health check, all stable
+
+- Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at 1baa05e. No new commits or merges.
+- CI: latest run green (success).
+- Open Gloas PRs: #4992, #5008, #4962, #4960, #4939, #4932, #4843, #4840. All OPEN, no status changes.
+- cargo audit: unchanged — rsa RUSTSEC-2023-0071 (no fix). 5 unmaintained crate warnings (allowed).
+- clippy: clean (no warnings).
+- Remaining #36 TODOs (8 total): all blocked on externals (EIP-7892, blst safe API, PeerDAS) or minor refactoring. No urgent items.
+- No code changes needed.
+
 ### run 1715 (Mar 17) — health check, all stable
 
 - Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at 1baa05e. No new commits or merges.
