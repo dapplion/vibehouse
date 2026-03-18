@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1907 (Mar 18) — maintenance check, all green
+
+CI green (latest push success). Nightlies green (Mar 18 both green). Clippy clean (zero warnings). Spec tracked to v1.7.0-alpha.3 (HEAD still 1baa05e from Mar 15 — no new commits). All 10 tracked Gloas spec PRs still open: #4892, #4898, #4992, #4960, #4932, #4939, #5008, #4962, #4747, #4843 — none merged. #4992 (cached PTCs) now labeled `heze` (next fork), still under active discussion. #4747 (Fast Confirmation Rule) updated Mar 17, major feature but not close to merge. Project in maintenance mode.
+
 ### run 1906 (Mar 18) — maintenance check, all green
 
 CI green. Clippy clean (zero warnings). Spec tracked to v1.7.0-alpha.3 (HEAD still 1baa05e from Mar 15 — no new commits). All 10 tracked Gloas spec PRs still open: #4892, #4898, #4992, #4960, #4932, #4939, #5008, #4962, #4747, #4843 — none merged. Verified our `is_supporting_vote` implementation already matches #4892 (assert message.slot >= block.slot, use == instead of <=). Verified our `get_payload_tiebreaker` already matches #4898 (no PENDING special case at previous slot). Both nightly flakes from Mar 16-17 were already fixed: `finalized_sync_not_enough_custody_peers_on_start` (8f8faa7d removed `expect_empty_network`), `override_backend_with_mdbx_file_present` (rare tmpfs race, existing fsync mitigations thorough). Project in maintenance mode.
