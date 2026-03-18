@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1881 (Mar 18) — maintenance check, all green
+
+CI green (all jobs passing). Clippy clean (zero warnings). Spec tracked to v1.7.0-alpha.3 (latest release, HEAD still 1baa05e from Mar 15 — no new merges). Open Gloas spec PRs: #4892 (remove impossible branch), #4898 (remove pending status tiebreaker), #4992 (cached PTCs — 1 approval jtraglia, extensive discussion, not close to merge), #5008 (field name fix — doc-only, our impl already correct), #4962 (sanity/blocks tests — approved by potuz, test-only). No action needed. Project in maintenance mode.
+
 ### run 1880 (Mar 18) — maintenance check, all green
 
 CI green. Clippy clean (zero warnings, zero compiler warnings). Spec tracked to v1.7.0-alpha.3 (latest release). Open Gloas spec PRs: #4892 (remove impossible branch), #4898 (remove pending status tiebreaker), #4992 (cached PTCs), #5008 (field name fix) — none merged. New PRs monitored: #4843 (variable PTC deadline — interesting but not merged), #4840 (EIP-7843 SLOTNUM opcode — early stage), #4960/#4932 (new test cases). cargo audit unchanged (rsa medium + 5 unmaintained, non-actionable). cargo-machete audit: all flagged deps are false positives (derive macros, feature forwarding). Dead code audit: all `#[allow(dead_code)]` annotations are legitimate (test infra, error enum variants, lifetime management). Project in maintenance mode.
