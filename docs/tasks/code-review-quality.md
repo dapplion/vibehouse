@@ -1766,3 +1766,7 @@ Repeated health checks, all stable:
 ### Run 1866 (2026-03-18)
 
 **Unused dependency cleanup**: ran `cargo machete` to find unused dependencies across workspace. Most reports were false positives (derive macros like `TestRandom` require `rand`, SSZ derive macros need `ethereum_ssz`). Confirmed and removed one genuinely unused dep: `ethereum_hashing` from lcli (not imported anywhere, no feature forwarding). Verified: clippy clean, 4986/4995 tests pass (9 web3signer failures are pre-existing infrastructure-dependent). Also reviewed open spec PRs — #4992 (cached PTCs) updated Mar 17 but still open/unmerged. Committed `a80220b42`.
+
+### Run 1867 (2026-03-18)
+
+**Comprehensive health check**: Spec v1.7.0-alpha.3 still latest — only commit since Mar 15 is #5005 (already audited). All open Gloas PRs (#4992, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4747, #4630, #4558, #5008) remain unmerged. Clippy clean (zero warnings). `cargo audit`: 1 known vuln (rsa RUSTSEC-2023-0071, no fix available), 5 unmaintained warnings — no action possible. CI for `a80220b42` progressing: check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, remaining jobs running. Investigated visibility downgrades for `get_indexed_payload_attestation`, `is_parent_block_full`, `can_builder_cover_bid` — all used across crates (beacon_chain imports from state_processing), cannot be `pub(crate)`. Reviewed `#[allow(clippy::enum_variant_names)]` on `BlockSlashInfo` — appropriate (all variants share "Signature" prefix by design). No code changes needed.
