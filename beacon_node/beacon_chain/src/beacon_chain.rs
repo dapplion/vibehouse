@@ -3000,9 +3000,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         }
 
         // Cache the post-envelope state (same logic as gossip path).
+        // Delete ALL cached states for this block root — the state advance timer
+        // may have advanced a stale pre-envelope state. See process_payload_envelope.
         {
             let mut cache = self.store.state_cache.lock();
-            cache.delete_state(&block_state_root);
+            cache.delete_block_states(&beacon_block_root);
             cache
                 .put_state(block_state_root, beacon_block_root, &state)
                 .map_err(Error::DBError)?;
@@ -3394,9 +3396,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Cache the post-envelope state in memory. See process_payload_envelope for
         // the full explanation — cached under block's state_root to keep the
         // state_roots array and hot DB pruning DAG consistent.
+        // Delete ALL cached states for this block root — the state advance timer
+        // may have advanced a stale pre-envelope state. See process_payload_envelope.
         {
             let mut cache = self.store.state_cache.lock();
-            cache.delete_state(&state_root);
+            cache.delete_block_states(&beacon_block_root);
             cache
                 .put_state(state_root, beacon_block_root, &state)
                 .map_err(Error::DBError)?;
