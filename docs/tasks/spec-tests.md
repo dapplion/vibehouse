@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1811 (Mar 18) — rebased cached-ptc branch, fixed 12 test files
+
+- **CI**: green on HEAD (`e4eee47`). All jobs pass.
+- **Build**: `cargo check` clean (9s). Zero warnings.
+- **Spec**: v1.7.0-alpha.3 still latest release. No new Gloas PRs merged since #5005 (Mar 15).
+- **PR #4992 status**: still open, approved by jtraglia. Active discussion continuing.
+- **cached-ptc branch**: rebased from 514 commits behind main to current HEAD. Fixed 12 test files that were added after the branch was created (missing `previous_ptc`/`current_ptc` fields in BeaconStateGloas constructors). All 1021 state_processing tests pass, full workspace compiles, clippy clean. Branch pushed to origin.
+- **Cargo audit**: 1 known vulnerability (rsa RUSTSEC-2023-0071, no fix available), 5 allowed warnings (unchanged). New warning: bincode unmaintained (RUSTSEC-2025-0141, from sp1-verifier dep).
+
 ### run 1810 (Mar 18) — health check, all stable
 
 - **CI**: green on HEAD (`1beb7ee`). All jobs pass.
