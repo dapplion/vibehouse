@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1849 (Mar 18) — health check, devnet verified, cached-ptc rebased
+
+- CI: all green (push + nightly both pass). Clippy clean, zero warnings.
+- Spec: v1.7.0-alpha.3 still latest. consensus-specs HEAD unchanged at 1baa05e. No new Gloas PRs merged since #5005 (Mar 15).
+- Open Gloas PRs: #4992 (cached PTCs — mergeable_state: clean, still open, discussion ongoing), #5008 (blocked), #4962 (blocked), #4960, #4939, #4932, #4843, #4840, #4630.
+- Devnet: `scripts/kurtosis-run.sh` passed — finalized_epoch=8, chain healthy through Gloas fork (run 20260318-112231).
+- Rebased `cached-ptc` branch onto latest main (picks up fe31b2690 envelope sig fix). 1021/1021 state_processing tests pass. Pushed to origin.
+- Cargo audit: unchanged (rsa RUSTSEC-2023-0071, plus SP1 transitive dep advisories — all no-fix-available).
+
 ### run 1848 (Mar 18) — health check, devnet verified
 
 - CI: all green (push + nightly both pass). Clippy clean, zero warnings.
