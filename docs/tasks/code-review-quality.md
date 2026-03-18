@@ -1762,3 +1762,7 @@ Repeated health checks, all stable:
 ### Run 1861 (2026-03-18)
 
 **Health check**: Spec v1.7.0-alpha.3 still latest — no new merged PRs since #5005 (Mar 15). Tracked open PRs (#4992, #4960, #4843, #4932, #4630, #4840, #4892, #5008) all still unmerged. PR #5008 (field name fix in ExecutionPayloadEnvelopesByRoot) — verified our implementation already uses correct `beacon_block_root` field name. CI in progress for withdrawal dedup commit (d9af9e256): check+clippy, ef-tests, network+op_pool all passed; unit tests, http_api, beacon_chain still running. Local clippy clean. No code changes needed.
+
+### Run 1866 (2026-03-18)
+
+**Unused dependency cleanup**: ran `cargo machete` to find unused dependencies across workspace. Most reports were false positives (derive macros like `TestRandom` require `rand`, SSZ derive macros need `ethereum_ssz`). Confirmed and removed one genuinely unused dep: `ethereum_hashing` from lcli (not imported anywhere, no feature forwarding). Verified: clippy clean, 4986/4995 tests pass (9 web3signer failures are pre-existing infrastructure-dependent). Also reviewed open spec PRs — #4992 (cached PTCs) updated Mar 17 but still open/unmerged. Committed `a80220b42`.
