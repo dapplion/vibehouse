@@ -770,6 +770,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let fork_choice = self.canonical_head.fork_choice_read_lock();
         let Some(proto_block) = fork_choice.get_block(&beacon_block_root) else {
             // Buffer the envelope for later processing after the block arrives.
+            metrics::inc_counter(&metrics::BUFFERED_ENVELOPE_TOTAL);
             self.pending_gossip_envelopes
                 .lock()
                 .insert(beacon_block_root, signed_envelope);

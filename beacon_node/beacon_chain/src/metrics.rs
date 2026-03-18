@@ -318,6 +318,28 @@ pub static PAYLOAD_ENVELOPE_PROCESSING_TIMES: LazyLock<Result<Histogram>> = Lazy
 });
 
 /*
+ * Gloas ePBS Buffered Envelope Counters
+ */
+pub static BUFFERED_ENVELOPE_TOTAL: LazyLock<Result<IntCounter>> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_buffered_envelope_total",
+        "Count of payload envelopes buffered because their block was not yet known.",
+    )
+});
+pub static BUFFERED_ENVELOPE_PROCESSED_TOTAL: LazyLock<Result<IntCounter>> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_buffered_envelope_processed_total",
+        "Count of buffered payload envelopes successfully processed after block import.",
+    )
+});
+pub static BUFFERED_ENVELOPE_FAILED_TOTAL: LazyLock<Result<IntCounter>> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_buffered_envelope_failed_total",
+        "Count of buffered payload envelopes that failed re-verification or processing.",
+    )
+});
+
+/*
  * Gloas ePBS Pool Gauges
  */
 pub static EXECUTION_BID_POOL_SIZE: LazyLock<Result<IntGauge>> = LazyLock::new(|| {

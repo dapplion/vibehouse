@@ -3101,6 +3101,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let verified = match self.verify_payload_envelope_for_gossip(envelope) {
             Ok(v) => v,
             Err(e) => {
+                metrics::inc_counter(&metrics::BUFFERED_ENVELOPE_FAILED_TOTAL);
                 warn!(
                     ?block_root,
                     error = ?e,
@@ -3116,6 +3117,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         match self.process_payload_envelope(&verified).await {
             Ok(el_valid) => {
                 if let Err(e) = self.apply_payload_envelope_to_fork_choice(&verified) {
+                    metrics::inc_counter(&metrics::BUFFERED_ENVELOPE_FAILED_TOTAL);
                     warn!(
                         ?block_root,
                         error = ?e,
@@ -3135,8 +3137,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         "Failed to mark buffered envelope payload as valid in fork choice"
                     );
                 }
+                metrics::inc_counter(&metrics::BUFFERED_ENVELOPE_PROCESSED_TOTAL);
             }
             Err(e) => {
+                metrics::inc_counter(&metrics::BUFFERED_ENVELOPE_FAILED_TOTAL);
                 warn!(
                     ?block_root,
                     error = ?e,
