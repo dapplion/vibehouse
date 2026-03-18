@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1844 (Mar 18) — health check, devnet verified, cached-ptc rebased
+
+- CI: all green (push + nightly). Build clean, zero warnings.
+- Spec: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (Mar 15). All tracked open PRs unchanged: #4992, #4960, #4932, #4843, #4840, #4630, #4892, #4747.
+- Devnet: `scripts/kurtosis-run.sh` passed — finalized_epoch=8, chain healthy through Gloas fork (run 20260318-092940).
+- Rebased `cached-ptc` branch onto latest main. 1021/1021 state_processing tests pass. Pushed to origin.
+- Cargo audit: unchanged (rsa RUSTSEC-2023-0071).
+- PR #4843 impact analysis: ~100+ occurrences of `payload_present` across 44 files would need rename to `payload_timely`. PR has unresolved design concerns (potuz: timeliness check shouldn't depend on store, envelope storage bloats test vectors). Not close to merge.
+
 ### runs 1838-1842 (Mar 18) — health checks, no changes
 
 - CI: all green (push + nightly). Build clean.
