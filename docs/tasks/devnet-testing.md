@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1862 (Mar 18) — devnet verification after withdrawal dedup
+
+Standard 4-node devnet passed. Run ID: 20260318-125511. Finalized epoch 8 in 468s. Gloas fork at epoch 1, chain healthy through epoch 10. Verified latest commit (deduplicate gloas withdrawal computation into shared function). CI: all green (6/6 jobs passing on latest push). Clippy clean (zero warnings). cargo audit: 1 medium severity in transitive dep `rsa` (no fix available), 5 unmaintained warnings in transitive deps — all non-actionable. No new spec merges since last audit. Open Gloas spec PRs monitored: #4892 (2 approvals), #4898 (1 approval), #4992 (1 approval), #5008 (open).
+
 ### run 1846 (Mar 18) — routine devnet verification
 
 Standard 4-node devnet passed. Run ID: 20260318-104308. Finalized epoch 8 in 468s. Gloas fork at epoch 1, chain healthy through epoch 10. CI: all green (push + nightly). Clippy clean. No new spec merges. PR #4992 (cached PTCs) seeing pushback from Grandine on whether it belongs in spec at all.
