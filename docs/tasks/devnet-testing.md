@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1825 (Mar 18) — routine devnet verification
+
+Standard 4-node devnet passed. Run ID: 20260318-063825. Finalized epoch 8. Gloas fork at epoch 1, chain healthy through epoch 9+. Build clean (zero warnings). Spec tracked — no new merged Gloas PRs since last audit. Open spec PRs (#5008, #4992, #4954, #4843) monitored but not yet merged.
+
 ### run 1824 (Mar 18) — routine devnet verification
 
 Standard 4-node devnet passed. Run ID: 20260318-061518. Finalized epoch 8 in 468s. Gloas fork at epoch 1, chain healthy through epoch 10. Docker build cache corruption required `docker builder prune` before successful build. Build clean (zero compiler warnings). Spec tracked — all merged Gloas PRs audited, no new ones since #5002 (Mar 13). Open spec PRs (#5008, #4992, #4954, #4898, #4892) monitored but not yet merged.
