@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1896 (Mar 18) — maintenance check, all green
+
+CI green (all jobs passing, latest nightly green). Clippy clean (zero warnings). Build clean (zero compiler warnings). Spec tracked to v1.7.0-alpha.3 (latest release, last spec commit 1baa05e7 from Mar 15 — no new merges). Open Gloas spec PRs: #4892 (2 approvals, still open with discussion), #4898, #4992 (1 approval), #4960, #4932, #4939 — none merged. EF spec tests: 139/139 pass (fake_crypto, minimal_testing). Workspace tests: 4270/4271 pass (1 transient flake in `advertise_false_custody_group_count` — passes in isolation, port conflict under parallel load). Mar 17 nightly fulu network-tests failure was already fixed in 8f8faa7d (stale `expect_empty_network` assertion). web3signer_tests fail as expected (external service dependency). All remaining TODOs in issue #36 are blocked (EIP-7892, blst upstream, PeerDAS) or non-critical. Project in maintenance mode.
+
 ### run 1884 (Mar 18) — maintenance check, all green
 
 CI green (all jobs passing). Clippy clean (zero warnings). Build clean (zero warnings). Spec tracked to v1.7.0-alpha.3 (latest release). Reviewed 3 post-alpha.3 merged spec PRs: #5001 (parent_block_root in bid filter — already implemented with 3-tuple key), #5002 (wording fix — no code impact), #5005 (test fixture fix — test-only). Reviewed open spec PRs: #4892 (remove impossible branch — 2 approvals, our impl already matches new logic), #4898 (remove pending status tiebreaker — our impl already handles this correctly), #4992 (cached PTCs in state — major change, still open/discussing). cargo-machete audit: all flagged deps are false positives (TestRandom derive macro needs rand, feature forwarding needs bls). Workspace tests pass (4265/4265, 1 transient failure from dirty Cargo.lock resolved). Project in maintenance mode.
