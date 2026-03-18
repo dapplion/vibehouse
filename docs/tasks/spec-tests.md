@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1852 (Mar 18) — health check, all stable
+
+- CI: all green (push + nightly + spec-test-version-check all pass).
+- Spec: v1.7.0-alpha.3 still latest. consensus-specs HEAD unchanged at 1baa05e (Mar 15). No new commits.
+- Spec test vectors: still v1.6.0-beta.0. No Gloas vectors yet.
+- Open Gloas PRs: #4992 (cached PTCs — active discussion, potuz questioning in-protocol caching approach), #5008 (field name fix), #4954 (ms store — blocked), #4898/#4892 (fork choice simplifications — already implemented in vibehouse), #4747 (fast confirmation rule — early/in-progress).
+- Cargo audit: unchanged (rsa RUSTSEC-2023-0071, bincode/ansi_term unmaintained warnings).
+- All priorities complete. No actionable work remaining — project in maintenance mode.
+
 ### run 1851 (Mar 18) — health check, devnet verified
 
 - CI: all green (push + nightly both pass). Clippy clean, zero warnings.
