@@ -1822,3 +1822,20 @@ Repeated health checks, all stable:
 - `beacon_processor_payload_attestation_rejected_total{reason=...}` — covers 2 REJECT cases: `invalid_aggregation_bits`, `invalid_signature`
 
 Previously these paths only logged `warn!` and penalized peers but had no Prometheus counters, making it impossible to dashboard/alert on specific rejection patterns. Equivocation cases already had dedicated counters and remain unchanged. Spec v1.7.0-alpha.3 still latest — no new merges since #5005 (Mar 15). 204/204 network tests pass, clippy clean. Committed `cbb224039`.
+
+### Run 1893 (2026-03-18)
+
+**Fixed stale state cache race condition in envelope processing**: Found a race between the state advance timer and envelope processing that could cause block production to fail with external builder bids.
+
+**Root cause**: When an envelope is processed AFTER the state advance timer has already advanced the pre-envelope state to slot N+1, the cached advanced state retains a stale `latest_block_hash` (from before envelope processing). Block production loads this stale state from cache, causing `process_execution_payload_bid` to reject external builder bids whose `parent_block_hash` matches the post-envelope hash.
+
+**Timeline of the race**:
+1. Block N imported → pre-envelope state cached at `(block_root, slot_N)`
+2. State advance timer runs (3/4 through slot) → loads pre-envelope state, advances to N+1, caches at `(block_root, slot_N+1)` with wrong `latest_block_hash`
+3. Envelope N arrives late → processed, cache updated at `(block_root, slot_N)` with correct hash
+4. Block production calls `get_advanced_hot_state(block_root, slot_N+1)` → cache hit returns STALE advanced state from step 2
+5. `process_execution_payload_bid` fails: `bid.parent_block_hash != state.latest_block_hash`
+
+**Fix**: Changed `cache.delete_state(&block_state_root)` to `cache.delete_block_states(&beacon_block_root)` in `process_payload_envelope`. This removes ALL cached states for the block root (including stale advanced states), not just the base state. The next access re-loads from the fresh post-envelope base state and re-advances.
+
+**Verification**: 422/422 Gloas beacon_chain tests pass, 236/236 store tests pass, 139/139 EF spec tests pass, clippy clean. Committed `54946814c`.
