@@ -201,3 +201,14 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - CI green, clippy clean (zero warnings), all EF tests passing
 - Devnet test passed: finalized_epoch=8, chain healthy through Gloas fork (4 nodes, minimal preset)
 - **No action needed. Will re-check when new PRs merge or alpha.4 is released.**
+
+### run 1905 (Mar 18) — routine health check
+
+- No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
+- Open Gloas PRs unchanged: #4992 (cached PTCs, active discussion), #5008 (field name fix), #4954 (milliseconds), #4898, #4892, #4843, #4840, #4630
+- All 9 fork choice EF test categories pass including on_execution_payload from #4940
+- CI green (ci + nightly), zero clippy warnings, zero doc warnings, zero compiler warnings
+- cargo audit: same known advisory (RUSTSEC-2023-0071 rsa/jsonwebtoken, no fix available), no new issues
+- jsonwebtoken 10.3.0 is latest — no upgrade path for rsa vulnerability
+- All codebase TODOs audited: all blocked (EIP-7892, blst upstream, PeerDAS) or non-critical
+- **No action needed. Codebase healthy, spec current.**
