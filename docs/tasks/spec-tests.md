@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1797 (Mar 18) — health check, all stable
+
+- **CI**: green on HEAD (`3f7f36f`). All jobs pass.
+- **Build**: `cargo check --release` clean (19s). Zero warnings.
+- **EF tests**: 79/79 pass (minimal, real crypto). All fork choice tests including `on_execution_payload` pass.
+- **Spec**: v1.7.0-alpha.3 still latest release. Reviewed post-alpha.3 merged PRs: #5001 (parent_block_root bid filtering — already implemented), #5002 (editorial wording — no code change), #4940 (fork choice tests — already passing).
+- **Open Gloas PRs**: #4992 (cached PTCs), #4960 (fork choice deposit test), #4939 (missing envelope request), #5008 (field name fix), #4843 (variable PTC deadline), #4932 (sanity/blocks tests), #4962 (missed payload withdrawal tests), #4840 (EIP-7843), #4630 (EIP-7688 SSZ) — all still open/unmerged.
+- **cargo audit**: unchanged (1 rsa vulnerability RUSTSEC-2023-0071, 5 allowed warnings).
+- No code changes needed.
+
 ### run 1793 (Mar 17) — health check, all stable
 
 - **CI**: green on HEAD (`f371c04`). All 7 jobs pass. Nightly failure on stale commit `837cf89` (60 behind HEAD) — `finalized_sync_not_enough_custody_peers_on_start` — next nightly will pick up HEAD.
