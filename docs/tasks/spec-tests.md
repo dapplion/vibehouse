@@ -29,13 +29,12 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
-### run 1838 (Mar 18) — health check, no changes
+### runs 1838-1839 (Mar 18) — health checks, no changes
 
-- CI: all green (push + nightly). Build clean (13s).
-- Spec: v1.7.0-alpha.3 still latest. consensus-specs HEAD unchanged at 1baa05e. No new Gloas PRs merged.
-- Open Gloas PRs: #4992 (cached PTCs — approved, active discussion Mar 16-17), #4960, #4939, #4932, #4843, #4840, #4630. PR #4979 (PTC lookbehind) closed without merge.
-- `cached-ptc` branch current (1 doc-only commit behind main).
-- Cargo audit: unchanged (rsa RUSTSEC-2023-0071, 5 allowed warnings).
+- CI: all green (push + nightly). Build clean (9s).
+- Spec: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (Mar 15).
+- Open Gloas PRs: #4992 (cached PTCs — approved), #4960, #4939, #4932, #4843 (approved), #4840, #4630.
+- New tracked PRs: #5008 (field name fix — no code impact), #4954 (fork choice milliseconds — watch for merge), #4898 (remove pending tiebreaker — already implemented), #4892 (remove impossible on_attestation branch — our code doesn't have it).
 - All items in #36 done or blocked on external dependencies.
 
 ### runs 1833-1837 (Mar 18) — health checks, prep branch maintenance
