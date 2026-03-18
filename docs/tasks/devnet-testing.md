@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1908 (Mar 18) — maintenance check, all green
+
+CI green. Nightlies green (Mar 18 both green). Spec tracked to v1.7.0-alpha.3 (HEAD still 1baa05e from Mar 15 — no new commits since). No new consensus-specs releases after alpha.3. All 10 tracked Gloas spec PRs still open: #4892 (2 approvals, closest to merge), #4898, #4992, #4960, #4932, #4939, #5008, #4962, #4747, #4843 — none merged. Verified all 9 fork choice EF test suites pass (including Gloas on_execution_payload and withholding). Project in maintenance mode.
+
 ### run 1907 (Mar 18) — maintenance check, all green
 
 CI green (latest push success). Nightlies green (Mar 18 both green). Clippy clean (zero warnings). Spec tracked to v1.7.0-alpha.3 (HEAD still 1baa05e from Mar 15 — no new commits). All 10 tracked Gloas spec PRs still open: #4892, #4898, #4992, #4960, #4932, #4939, #5008, #4962, #4747, #4843 — none merged. #4992 (cached PTCs) now labeled `heze` (next fork), still under active discussion. #4747 (Fast Confirmation Rule) updated Mar 17, major feature but not close to merge. Project in maintenance mode.
