@@ -105,6 +105,15 @@ For Gloas sidecars (where `bid = block.body.signed_execution_payload_bid.message
 - #4950: Our by_root handlers serve everything in storage — already more permissive than spec minimum. No restriction needed.
 - **All spec tracking items resolved. Task DONE.**
 
+### run 1808 (Mar 18) — re-audit post-alpha.3
+
+- Checked for new spec PRs merged since last audit (Mar 17)
+- Found 1 additional: #5008 (field name fix: `block_root` → `beacon_block_root` in `ExecutionPayloadEnvelopesByRoot` spec text) — open PR, not merged; vibehouse already uses `beacon_block_root`
+- Open Gloas PRs tracked: #4992 (cached PTCs), #4960 (fork choice test deposit), #4939 (envelope request), #5008 (naming fix) — none merged yet
+- Re-verified: all 9 fork choice EF tests pass (including `on_execution_payload` from #4940)
+- Clippy: zero warnings across workspace
+- Nightly CI flakes (network fulu: `finalized_sync_not_enough_custody_peers_on_start`, slasher: `override_backend_with_mdbx_file_present`) — environment-specific, pass consistently locally (5/5 runs)
+
 ### run 1750 (Mar 17) — open PR scan
 
 Scanned open PRs in ethereum/consensus-specs for upcoming changes that could affect vibehouse:
