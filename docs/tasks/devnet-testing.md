@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1897 (Mar 18) — maintenance check, all green
+
+CI green (all jobs passing, latest 2 nightly runs green). Build clean (zero compiler warnings). Spec tracked to v1.7.0-alpha.3 (HEAD still 1baa05e from Mar 15 — no new commits). All 8 tracked Gloas spec PRs still open: #4892, #4898, #4992, #4960, #4932, #4939, #5008, #4962 — none merged. No new Gloas PRs opened. All remaining TODOs in issue #36 are blocked or non-critical. Project in maintenance mode.
+
 ### run 1896 (Mar 18) — maintenance check, all green
 
 CI green (all jobs passing, latest nightly green). Clippy clean (zero warnings). Build clean (zero compiler warnings). Spec tracked to v1.7.0-alpha.3 (latest release, last spec commit 1baa05e7 from Mar 15 — no new merges). Open Gloas spec PRs: #4892 (2 approvals, still open with discussion), #4898, #4992 (1 approval), #4960, #4932, #4939 — none merged. EF spec tests: 139/139 pass (fake_crypto, minimal_testing). Workspace tests: 4270/4271 pass (1 transient flake in `advertise_false_custody_group_count` — passes in isolation, port conflict under parallel load). Mar 17 nightly fulu network-tests failure was already fixed in 8f8faa7d (stale `expect_empty_network` assertion). web3signer_tests fail as expected (external service dependency). All remaining TODOs in issue #36 are blocked (EIP-7892, blst upstream, PeerDAS) or non-critical. Project in maintenance mode.
