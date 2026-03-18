@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1818 (Mar 18) — full health check, 4986/4986 tests pass
+
+- **CI**: all 7 jobs green on HEAD (`ccd8c1b`). Nightly Mar 17 fulu network flake confirmed fixed locally (5/5 passes).
+- **Build**: clippy clean (full workspace). Zero warnings.
+- **Spec**: v1.7.0-alpha.3 still latest release. Post-alpha.3 audit: #5001 (parent_block_root bid key) already implemented, #5002 (wording), #5005 (test fix), #4940 (fork choice tests) — all accounted for.
+- **Tests**: 4986/4986 workspace tests pass (excluding ef_tests, beacon_chain, slasher, network, http_api, web3signer). All 9 fork choice EF tests pass including new Gloas on_block + on_execution_payload fixtures from alpha.3.
+- **Open Gloas PRs**: #4992 (cached PTCs, still under discussion), #4954 (millisecond fork choice, not merged), #5008 (doc fix), #4892, #4898, #4960, #4939, #4932, #4962, #4843, #4840, #4630. None actionable.
+- No code changes needed.
+
 ### run 1817 (Mar 18) — health check, all stable
 
 - **CI**: all 7 jobs green on HEAD (`dc6a50a`).
