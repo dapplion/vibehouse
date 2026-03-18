@@ -1765,3 +1765,15 @@ Exhaustive search of 100+ source files across all directories (common/, consensu
 **Remaining TODOs**: all 8 are in issue #36, all blocked on external dependencies (EIP-7892 ×3, blst safe API, PeerDAS checkpoint sync, EL error refactor, pool persistence, store tests).
 
 **Action**: no code changes needed. Monitoring run only.
+
+### Run 1807 (2026-03-18)
+
+**Status check**: all priorities DONE, CI green (latest push `1683b2ab4`), clippy clean (zero warnings).
+
+**Nightly triage**: March 17 nightly failure was the known `finalized_sync_not_enough_custody_peers_on_start` pre-fix issue. No March 18 nightly yet — expecting green.
+
+**Spec audit**: v1.7.0-alpha.3 still latest release. No new Gloas PRs merged. New open PR #5008 (fix `block_root` → `beacon_block_root` field name in spec doc for `ExecutionPayloadEnvelopesByRoot`) — doc-only, our code already uses correct `beacon_block_root` field. PRs #4979/#4992 (PTC lookbehind/cached PTCs) still open as alternatives. #4939 (envelope request from attestation) still open — already implemented.
+
+**Security audit**: `cargo audit` — same 1 vulnerability (RUSTSEC-2023-0071 rsa via jsonwebtoken, no fix available), 5 allowed warnings (all transitive). No new advisories.
+
+**Action**: no code changes needed. Monitoring run only.
