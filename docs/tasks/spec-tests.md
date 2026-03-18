@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1829 (Mar 18) — health check, all stable
+
+- **CI**: nightly all green. All CI jobs green on HEAD.
+- **Build**: `cargo check` clean (9s). `cargo clippy --workspace --all-targets` zero warnings.
+- **Spec**: v1.7.0-alpha.3 still latest release. No new Gloas PRs merged since #5005 (Mar 15).
+- **Open Gloas PRs**: #4992 (cached PTCs) still open, mergeable=clean, active pushback from potuz on spec-level caching. #4747 (Fast Confirmation Rule) still open, dirty, 118 review comments. #4960, #4932 (test-only), #4840 (EIP-7843), #4630 (EIP-7688) all open, not actionable.
+- **Tests**: 4986/4986 workspace tests pass. Cargo audit unchanged.
+- No code changes needed.
+
 ### run 1828 (Mar 18) — health check, all stable
 
 - **CI**: nightly all green. All CI jobs green on HEAD.
