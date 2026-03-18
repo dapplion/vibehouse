@@ -2774,10 +2774,16 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // 2. State advance timer passes the correct state_root to `per_slot_processing`,
         //    keeping the `state_roots` array entries valid for the hot DB pruning DAG.
         //
-        // Delete the pre-envelope state first since `put_state` skips duplicates.
+        // Delete ALL cached states for this block root (not just the base state).
+        // The state advance timer may have already advanced the pre-envelope state
+        // to slot N+1 and cached it. That advanced state has a stale latest_block_hash
+        // (from before envelope processing). If we only delete the base state, the
+        // stale advanced state would be returned by get_advanced_hot_state during
+        // block production, causing process_execution_payload_bid to reject external
+        // bids whose parent_block_hash matches the post-envelope hash.
         {
             let mut cache = self.store.state_cache.lock();
-            cache.delete_state(&block_state_root);
+            cache.delete_block_states(&beacon_block_root);
             cache
                 .put_state(block_state_root, beacon_block_root, &state)
                 .map_err(Error::DBError)?;
