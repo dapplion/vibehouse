@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1822 (Mar 18) — health check, all stable
+
+- **CI**: nightly all green (25/25 success). All 7 CI jobs green on HEAD.
+- **Build**: `cargo check` clean (9s). `cargo clippy --workspace --all-targets` zero warnings.
+- **Spec**: v1.7.0-alpha.3 still latest release. No new Gloas PRs merged since #5005 (Mar 15).
+- **Open Gloas PRs**: #4992 (cached PTCs) now APPROVED — status change, could merge soon. Adds `previous_ptc`/`current_ptc` to BeaconState, rotates in `process_slots`. #4747 (Fast Confirmation Rule) still REVIEW_REQUIRED.
+- **Tests**: 4986/4986 workspace tests pass. 139/139 EF spec tests pass (fake_crypto, minimal).
+- **Cargo audit**: unchanged — 1 known vulnerability (rsa, no fix), 5 allowed warnings.
+- No code changes needed.
+
 ### run 1821 (Mar 18) — health check, all stable
 
 - **CI**: nightly in progress (25/25 jobs: 23 success, 2 still running http-api electra/fulu). No failures.
