@@ -1806,3 +1806,7 @@ Repeated health checks, all stable:
 ### Run 1887 (2026-03-18)
 
 **Wired up unused PAYLOAD_ENVELOPE_PROCESSING_FAILURES metric**: Found that `PAYLOAD_ENVELOPE_PROCESSING_FAILURES` was defined in metrics.rs but never incremented anywhere — a monitoring blind spot for envelope processing errors. The success counter (`PAYLOAD_ENVELOPE_PROCESSING_SUCCESSES`) was correctly wired at beacon_chain.rs:2793. Fixed by wrapping `process_payload_envelope` in a thin outer function that delegates to `process_payload_envelope_inner` and increments the failure counter on `Err`. Also verified `SELF_BUILD_ENVELOPE_FAILURES` is correctly wired at publish_blocks.rs:610 (the only production caller). Spec v1.7.0-alpha.3 still latest — no new merges since #5005 (Mar 15). All open Gloas PRs unchanged. 10/10 payload envelope tests pass. Committed `a6f3d6f6f`.
+
+### Run 1888 (2026-03-18)
+
+**Builder bid coverage edge case tests**: Added 6 tests for `get_pending_balance_to_withdraw_for_builder` and `can_builder_cover_bid` covering: (1) saturation at u64::MAX when withdrawals+payments overflow, (2) filtering by builder_index (ignores other builders), (3) unknown builder index returns `UnknownBuilder` error, (4) large pending withdrawals reduce available balance correctly (exact boundary + off-by-one), (5) massive pending withdrawals cause `can_builder_cover_bid` to return false even for zero bids. All 8 related tests pass (6 new + 2 existing). Spec v1.7.0-alpha.3 still latest. Committed `7cf89a1a2`.
