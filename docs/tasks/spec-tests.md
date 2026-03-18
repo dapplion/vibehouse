@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1809 (Mar 18) — health check, all stable
+
+- **CI**: green on HEAD (`8e95f15`). All jobs pass.
+- **Build**: `cargo check` clean (9s). `cargo clippy` clean. Zero warnings.
+- **Spec**: v1.7.0-alpha.3 still latest release. No new commits on master since #5005 (Mar 15). No new Gloas PRs merged.
+- **Open Gloas PRs**: #4992 (cached PTCs — approved, updated Mar 17, not yet merged), #4892 (remove impossible branch), #4898 (remove pending tiebreaker), #4960 (fork choice deposit test), #4939 (missing envelope request), #4932 (sanity/blocks tests), #4962 (missed payload withdrawal tests), #4843 (variable PTC deadline), #4840 (EIP-7843), #4630 (EIP-7688 SSZ).
+- **PR #4992 status**: still open, approved by jtraglia. Active discussion continuing. Will implement when merged.
+- No code changes needed.
+
 ### run 1805 (Mar 18) — health check + devnet validation
 
 - **CI**: green on HEAD (`353194b`). All jobs pass.
