@@ -989,6 +989,7 @@ pub fn observe_gossip_data_column<T: BeaconChainTypes>(
 mod test {
     use crate::data_column_verification::{
         GossipDataColumnError, GossipVerifiedDataColumn, validate_data_column_sidecar_for_gossip,
+        verify_data_column_sidecar_with_commitments,
     };
     use crate::observed_data_sidecars::Observe;
     use crate::test_utils::{
@@ -998,8 +999,8 @@ mod test {
     use execution_layer::test_utils::generate_blobs;
     use std::sync::Arc;
     use types::{
-        DataColumnSidecar, DataColumnSidecarFulu, DataColumnSubnetId, EthSpec, ForkName,
-        MainnetEthSpec,
+        DataColumnSidecar, DataColumnSidecarFulu, DataColumnSidecarGloas, DataColumnSubnetId,
+        EthSpec, ForkName, MainnetEthSpec,
     };
 
     type E = MainnetEthSpec;
@@ -1134,5 +1135,160 @@ mod test {
             result.err(),
             Some(GossipDataColumnError::MaxBlobsPerBlockExceeded { .. })
         ));
+    }
+
+    // ── Gloas verify_data_column_sidecar_with_commitments unit tests ──
+
+    mod gloas_sidecar_with_commitments {
+        use super::*;
+        use types::beacon_block_body::KzgCommitments;
+        use types::{Cell, Hash256, KzgCommitment, KzgProof, Slot, VariableList};
+
+        type E = MainnetEthSpec;
+
+        fn make_gloas_sidecar(
+            index: u64,
+            num_cells: usize,
+            num_proofs: usize,
+        ) -> DataColumnSidecar<E> {
+            let column: Vec<Cell<E>> = (0..num_cells).map(|_| Cell::<E>::default()).collect();
+            let proofs: Vec<KzgProof> = (0..num_proofs).map(|_| KzgProof::empty()).collect();
+
+            DataColumnSidecar::Gloas(DataColumnSidecarGloas {
+                index,
+                column: VariableList::new(column).unwrap(),
+                kzg_proofs: VariableList::new(proofs).unwrap(),
+                slot: Slot::new(8),
+                beacon_block_root: Hash256::repeat_byte(0xAA),
+            })
+        }
+
+        fn make_commitments(count: usize) -> KzgCommitments<E> {
+            let commits: Vec<KzgCommitment> = (0..count)
+                .map(|_| KzgCommitment::empty_for_testing())
+                .collect();
+            VariableList::new(commits).unwrap()
+        }
+
+        #[test]
+        fn valid_gloas_sidecar_passes() {
+            let spec = E::default_spec();
+            let sidecar = make_gloas_sidecar(0, 2, 2);
+            let commitments = make_commitments(2);
+            let result = verify_data_column_sidecar_with_commitments(&sidecar, &commitments, &spec);
+            assert!(result.is_ok(), "valid sidecar should pass: {:?}", result);
+        }
+
+        #[test]
+        fn invalid_column_index_rejected() {
+            let spec = E::default_spec();
+            let invalid_index = E::number_of_columns() as u64; // exactly at limit
+            let sidecar = make_gloas_sidecar(invalid_index, 1, 1);
+            let commitments = make_commitments(1);
+            let result = verify_data_column_sidecar_with_commitments(&sidecar, &commitments, &spec);
+            assert!(
+                matches!(result, Err(GossipDataColumnError::InvalidColumnIndex(idx)) if idx == invalid_index),
+                "column index at limit should be rejected: {:?}",
+                result,
+            );
+        }
+
+        #[test]
+        fn empty_column_rejected() {
+            let spec = E::default_spec();
+            let sidecar = make_gloas_sidecar(0, 0, 0);
+            let commitments = make_commitments(0);
+            let result = verify_data_column_sidecar_with_commitments(&sidecar, &commitments, &spec);
+            assert!(
+                matches!(result, Err(GossipDataColumnError::UnexpectedDataColumn)),
+                "empty column should be rejected: {:?}",
+                result,
+            );
+        }
+
+        #[test]
+        fn cells_commitments_length_mismatch_rejected() {
+            let spec = E::default_spec();
+            let sidecar = make_gloas_sidecar(0, 3, 3); // 3 cells, 3 proofs
+            let commitments = make_commitments(2); // but only 2 commitments
+            let result = verify_data_column_sidecar_with_commitments(&sidecar, &commitments, &spec);
+            assert!(
+                matches!(
+                    result,
+                    Err(GossipDataColumnError::InconsistentCommitmentsLength {
+                        cells_len: 3,
+                        commitments_len: 2,
+                    })
+                ),
+                "cells/commitments length mismatch should be rejected: {:?}",
+                result,
+            );
+        }
+
+        #[test]
+        fn cells_proofs_length_mismatch_rejected() {
+            let spec = E::default_spec();
+            let sidecar = make_gloas_sidecar(0, 2, 3); // 2 cells, 3 proofs
+            let commitments = make_commitments(2); // 2 commitments matches cells
+            let result = verify_data_column_sidecar_with_commitments(&sidecar, &commitments, &spec);
+            assert!(
+                matches!(
+                    result,
+                    Err(GossipDataColumnError::InconsistentProofsLength {
+                        cells_len: 2,
+                        proofs_len: 3,
+                    })
+                ),
+                "cells/proofs length mismatch should be rejected: {:?}",
+                result,
+            );
+        }
+
+        #[test]
+        fn exceeding_max_blobs_rejected() {
+            let spec = E::default_spec();
+            let epoch = Slot::new(8).epoch(E::slots_per_epoch());
+            let max_blobs = spec.max_blobs_per_block(epoch) as usize;
+            let over_limit = max_blobs + 1;
+
+            let sidecar = make_gloas_sidecar(0, over_limit, over_limit);
+            let commitments = make_commitments(over_limit);
+            let result = verify_data_column_sidecar_with_commitments(&sidecar, &commitments, &spec);
+            assert!(
+                matches!(
+                    result,
+                    Err(GossipDataColumnError::MaxBlobsPerBlockExceeded { .. })
+                ),
+                "exceeding max blobs should be rejected: {:?}",
+                result,
+            );
+        }
+
+        #[test]
+        fn single_blob_valid() {
+            let spec = E::default_spec();
+            let sidecar = make_gloas_sidecar(0, 1, 1);
+            let commitments = make_commitments(1);
+            let result = verify_data_column_sidecar_with_commitments(&sidecar, &commitments, &spec);
+            assert!(
+                result.is_ok(),
+                "single blob sidecar should pass: {:?}",
+                result,
+            );
+        }
+
+        #[test]
+        fn max_column_index_valid() {
+            let spec = E::default_spec();
+            let max_valid_index = E::number_of_columns() as u64 - 1;
+            let sidecar = make_gloas_sidecar(max_valid_index, 1, 1);
+            let commitments = make_commitments(1);
+            let result = verify_data_column_sidecar_with_commitments(&sidecar, &commitments, &spec);
+            assert!(
+                result.is_ok(),
+                "max valid column index should pass: {:?}",
+                result,
+            );
+        }
     }
 }
