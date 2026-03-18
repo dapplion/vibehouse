@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1864 (Mar 18) — full audit pass, no new work
+
+All 218 EF spec tests pass (79 real crypto + 139 fake crypto). CI green. Clippy clean. Spec tracked to v1.7.0-alpha.3 (latest release, 0 unaudited commits). Cross-verified `process_execution_payload_envelope` implementation against spec — all verification steps and state mutations match. Both recent nightly flakes confirmed resolved: range sync test (`expect_empty_network` removed in peer group tracking changes), slasher test (filesystem race on CI runners, existing mitigations thorough). cargo audit unchanged (rsa medium + 5 unmaintained, all non-actionable). Open Gloas spec PRs monitored: #4892, #4898, #4992, #5008 — none merged. Project in maintenance mode.
+
 ### run 1862 (Mar 18) — devnet verification after withdrawal dedup
 
 Standard 4-node devnet passed. Run ID: 20260318-125511. Finalized epoch 8 in 468s. Gloas fork at epoch 1, chain healthy through epoch 10. Verified latest commit (deduplicate gloas withdrawal computation into shared function). CI: all green (6/6 jobs passing on latest push). Clippy clean (zero warnings). cargo audit: 1 medium severity in transitive dep `rsa` (no fix available), 5 unmaintained warnings in transitive deps — all non-actionable. No new spec merges since last audit. Open Gloas spec PRs monitored: #4892 (2 approvals), #4898 (1 approval), #4992 (1 approval), #5008 (open).
