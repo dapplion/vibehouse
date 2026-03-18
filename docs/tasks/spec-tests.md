@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1816 (Mar 18) — health check, nightly failure already fixed
+
+- **CI**: in progress on HEAD (`7419c0c`). check/clippy/ef-tests/network+op_pool all pass, beacon_chain/http_api/unit tests still running.
+- **Build**: clippy clean (full workspace, 40s). Zero warnings.
+- **Spec**: v1.7.0-alpha.3 still latest release. No new Gloas PRs merged since #5005 (Mar 15). All open PRs unchanged.
+- **Nightly**: Mar 17 nightly failed (`finalized_sync_not_enough_custody_peers_on_start` in fulu network tests). Already fixed by commit `8f8faa7de` (removed `expect_empty_network()` — with peer group tracking, block requests go out immediately even without enough custody peers). Next nightly will pick up the fix.
+- **Cargo audit**: unchanged — 1 known vulnerability (rsa, no fix), 5 allowed warnings.
+- No code changes needed.
+
 ### run 1815 (Mar 18) — health check, all stable
 
 - **CI**: in progress on HEAD (`50b59e2`). check/clippy/ef-tests/network+op_pool all pass, remaining jobs running.
