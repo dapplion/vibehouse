@@ -32,6 +32,7 @@ Audited all Gloas spec commits since alpha.3 (17 PRs total). All implemented or 
 | #4947 | Pre-fork subscription for proposer_preferences topic | Already implemented (PRE_FORK_SUBSCRIBE_EPOCHS=1, ProposerPreferences in Gloas topics) |
 | #5005 | Fix builder voluntary exit success test (yield missing fixture) | Test-only; our EF test runner already handles missing fixtures with SkippedKnownFailure |
 | #4940 | Add initial fork choice tests for Gloas (genesis + on_execution_payload) | Test-only; our EF test runner already supports on_execution_payload steps, all tests pass |
+| #5008 | Fix field name `block_root` → `beacon_block_root` in EnvelopesByRoot spec prose | Doc-only; our code already uses `beacon_block_root` correctly |
 
 ### Implemented
 
