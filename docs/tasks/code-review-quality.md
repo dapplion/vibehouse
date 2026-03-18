@@ -1777,3 +1777,13 @@ Exhaustive search of 100+ source files across all directories (common/, consensu
 **Security audit**: `cargo audit` — same 1 vulnerability (RUSTSEC-2023-0071 rsa via jsonwebtoken, no fix available), 5 allowed warnings (all transitive). No new advisories.
 
 **Action**: no code changes needed. Monitoring run only.
+
+### run 1812 (Mar 18) — Gloas data column validation tests
+
+- Nightly failure (Mar 17) confirmed already fixed in `8f8faa7de` (pushed before nightly completed)
+- No new consensus-specs merges since last check (latest `1baa05e7`, #5005 Mar 15)
+- All tracked open Gloas PRs still open/unmerged
+- Added 8 unit tests for `verify_data_column_sidecar_with_commitments` — the Gloas-specific structural validation function that checks data columns against bid-provided commitments (replacing Fulu's embedded commitments)
+  - Tests: valid sidecar, invalid column index, empty column, cells/commitments mismatch, cells/proofs mismatch, max blobs exceeded, single blob, max valid index
+  - Committed and pushed: `4a4f1120e`
+- Clippy clean, CI green, all tests pass
