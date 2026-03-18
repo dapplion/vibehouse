@@ -5137,7 +5137,6 @@ dependencies = [
  "eth2",
  "eth2_network_config",
  "eth2_wallet",
- "ethereum_hashing",
  "ethereum_ssz",
  "execution_layer",
  "hex",
