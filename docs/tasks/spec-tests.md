@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1821 (Mar 18) — health check, all stable
+
+- **CI**: nightly in progress (25/25 jobs: 23 success, 2 still running http-api electra/fulu). No failures.
+- **Build**: `cargo check` clean (9s). Zero warnings.
+- **Spec**: v1.7.0-alpha.3 still latest release. No new Gloas PRs merged since #5005 (Mar 15).
+- **Open Gloas PRs**: #4747 (Fast Confirmation Rule, still dirty/open, 118 review comments), #4992 (cached PTCs, design discussion ongoing), #5008 (doc fix), others unchanged. None actionable.
+- **Tests**: 4986/4986 workspace tests pass. 139/139 EF spec tests pass (fake_crypto, minimal). web3signer_tests fail (no Java on machine — pre-existing infrastructure issue, not a regression).
+- No code changes needed.
+
 ### run 1820 (Mar 18) — health check, all stable
 
 - **CI**: nightly in progress (23/25 jobs success, 2 still running: http-api fulu/electra, beacon-chain fulu). No failures.
