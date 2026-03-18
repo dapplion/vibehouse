@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1913 (Mar 19) — maintenance check, all green
+
+CI green. Nightlies green (latest 2 both green). Clippy clean. Spec tracked to v1.7.0-alpha.3 (HEAD still 1baa05e from Mar 15 — no new commits). All 10 tracked Gloas spec PRs still open: #4892, #4898, #4992, #4960, #4932, #4939, #5008, #4962, #4747, #4843 — none merged. Reviewed #5008 (field name fix in EnvelopesByRoot spec text) — doc-only, our implementation already uses `beacon_block_root` correctly. No new Gloas PRs since last check. Project in maintenance mode.
+
 ### run 1912 (Mar 19) — devnet verification after stale state cache fix
 
 Ran full devnet test (`scripts/kurtosis-run.sh`) to verify the stale state cache race fix (a17a399e8). Result: finalized epoch 8 at slot 81, smooth chain progression through Gloas fork at epoch 1. No stalls, no errors. Build clean, clippy clean, CI green. No new spec changes since alpha.3.
