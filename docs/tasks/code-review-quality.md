@@ -1758,3 +1758,7 @@ Repeated health checks, all stable:
 ### Run 1860 (2026-03-18)
 
 **Full safety audit of production code**: searched all `unwrap()`, `expect()`, `panic!()`, `unreachable!()` in consensus/ and beacon_node/ — all instances are in test code (`#[cfg(test)]`) or acceptable startup/initialization paths. No runtime panic risks found in production consensus code. Checked open spec PRs — no new merges since #5005 (Mar 15). Notable open PRs still under review: #4992 (cached PTCs), #4954 (time_ms), #4898 (pending tiebreaker), #4892 (impossible branch). CI green. No code changes needed.
+
+### Run 1861 (2026-03-18)
+
+**Health check**: Spec v1.7.0-alpha.3 still latest — no new merged PRs since #5005 (Mar 15). Tracked open PRs (#4992, #4960, #4843, #4932, #4630, #4840, #4892, #5008) all still unmerged. PR #5008 (field name fix in ExecutionPayloadEnvelopesByRoot) — verified our implementation already uses correct `beacon_block_root` field name. CI in progress for withdrawal dedup commit (d9af9e256): check+clippy, ef-tests, network+op_pool all passed; unit tests, http_api, beacon_chain still running. Local clippy clean. No code changes needed.
