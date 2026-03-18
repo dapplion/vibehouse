@@ -1663,106 +1663,34 @@ Added 36 unit tests to `common/eth2/src/types.rs` covering previously untested t
 - Also added `PartialEq` derive to `ForkChoice` struct (needed for test assertions)
 - 208/208 eth2 tests pass
 
-### Run 1499 (2026-03-16)
-- Spec: v1.7.0-alpha.3 still latest. No new release or tag.
-- Post-alpha.3 merges: #5005 (test fix), #5004 (docs), #5002 (wording), #5001 (bid filtering key) — all already tracked/implemented.
-- PR #4992 (cached PTCs): active discussion today — potuz acknowledged `get_ptc` range restriction bug ("oh yeah that's definitely wrong"). Branch `ptc-lookbehind` stays unmerged until PR stabilizes.
-- Nightly failure was pre-fix timing (slasher `override_backend_with_mdbx_file_present`); fix already on main (b79292d3).
-- Clippy clean, cargo audit unchanged (1 rsa, 5 warnings), deps fully up to date.
-- All green. No action needed.
-
-### Run 1526 (2026-03-16)
-- Spec: v1.7.0-alpha.3 still latest. No new tags.
-- New open PRs: #5008 (docs fix: `block_root` → `beacon_block_root` in p2p spec text — no code impact, we already use correct name), #4962 (new sanity/blocks tests for missed payload withdrawals — test-only), #4960 (fork choice test for new validator deposit). None require implementation changes.
-- Nightly failure confirmed as pre-fix timing — slasher test passes locally on current main.
-- Clippy clean (0 warnings), cargo audit unchanged (1 rsa vuln, 5 unmaintained warnings).
-- All green. No action needed.
-
-### Run 1591 (2026-03-16)
-- Spec: v1.7.0-alpha.3 still latest. No new tags.
-- PR #4992 (cached PTCs): still under active debate — potuz pushing back on caching in state ("clients should cache locally"), disagreement on lookahead scope. Our `cached-ptc` branch stays unmerged.
-- PR #4747 (Fast Confirmation Rule): still under active review, mkalinin pushing fixes, etan-status providing suggestions. Not ready for implementation.
-- PR #5005 (merged): test generator fix for builder voluntary exit — no code impact.
-- Other open Gloas PRs (#5008, #4962, #4954, #4939, #4898, #4892, #4843, #4840, #4630): all previously tracked, no new implementation changes needed.
-- Nightly failure from run 23137093267 was timing (pre-fix code); fix b79292d3 is on main, next nightly will pass.
-- CI green. All priorities DONE. No action needed.
-
-### Run 1601 (2026-03-16)
-- Spec: v1.7.0-alpha.3 still latest. No new tags.
-- Verified PR #5001 (`parent_block_root` in bid filtering key) already implemented — our `ObservedExecutionBids::is_highest_value_bid` uses `(slot, parent_block_hash, parent_block_root)` tuple since initial implementation.
-- PR #4992 (cached PTCs): updated today, still open, under debate.
-- PR #4747 (Fast Confirmation Rule): updated today, still under active review.
-- New PRs #5011, #5012: GitHub Actions updates — no code impact.
-- Nightly failure from earlier today was pre-fix timing; CI green on current main (ede1ed8c3).
-- All stable. No action needed.
-
-### Run 1640 (2026-03-16)
-- Spec: v1.7.0-alpha.3 still latest. No new tags or releases.
-- No new merged Gloas PRs since last check. #5005 (test fix) was the last merge (2026-03-15).
-- All 8 tracked open Gloas PRs (#4992, #4747, #4954, #4939, #4898, #4892, #4843, #4840) remain open, no status changes.
-- Nightly passed (run 23164776090) — slasher fix confirmed working in CI.
-- CI green. All stable. No action needed.
-
-### Run 1648 (2026-03-16)
-- Spec: v1.7.0-alpha.3 still latest. No new tags or releases. Latest published release v1.6.1.
-- No new merged Gloas PRs since #5005 (Mar 15). Last 5 merges unchanged: #5005, #5004, #4940, #5002, #5001.
-- PR #4992 (cached PTCs): still open, mergeable, same head d76a278b0a. Discussion ongoing.
-- PR #4747 (Fast Confirmation Rule): updated today (head 592c755dee), NOT mergeable (conflicts). Still under active review.
-- Other tracked open Gloas PRs (#5008, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4630): no status changes.
-- No semver-compatible cargo dep updates. cargo audit unchanged (1 rsa, 5 warnings).
-- Rebased `ptc-lookbehind` branch onto main (87 commits behind → current). 1021/1021 state_processing tests pass. Pushed.
-- CI green. Nightly green. All stable. No action needed.
-
-### Run 1649 (2026-03-16)
-- Spec: v1.7.0-alpha.3 still latest. No new tags or releases.
+### Runs 1499–1686 (2026-03-16 to 2026-03-17) — consolidated health checks
+Repeated spec tracking checks, all stable. Key facts from this period:
+- Spec: v1.7.0-alpha.3 throughout. No new tags or releases.
 - No new merged Gloas PRs since #5005 (Mar 15).
-- PR #4992 (cached PTCs): still open, 25 review comments, mergeable. Active debate continues.
-- PR #4962 (sanity/blocks tests for missed payload withdrawals): open, not merged. Test-only PR.
-- PR #5008 (field name fix in p2p spec text): open, docs-only. We already use `beacon_block_root`.
-- cargo audit unchanged (1 rsa, 5 warnings).
-- CI green. Nightly green. All stable. No action needed.
-
-### Run 1682 (2026-03-17)
-- Spec: v1.7.0-alpha.3 still latest. No new tags or releases.
-- No new merged Gloas PRs. Latest 5 open PRs: #5011, #4747, #4992, #5012, #5010 — all unchanged.
-- PR #4962 (sanity/blocks tests): still open, blocked. Test-only (Python test generator).
-- PR #4992 (cached PTCs): still open, debate continues.
-- cargo audit unchanged (1 rsa vuln, 5 unmaintained warnings). No semver-compatible dep updates.
-- TODO cleanup: all 58 remaining TODOs have issue links (#31). `Ipv6Addr::is_global()` still unstable (rustc 1.94.0).
-- CI in progress (run 23173384176) from previous commit. Clippy passed.
-- All stable. No action needed.
-
-### Run 1686 (2026-03-17)
-- Spec: v1.7.0-alpha.3 still latest. No new tags or releases.
-- No new merged Gloas PRs since #5005 (Mar 15). All open PRs unchanged (#5008, #4992, #4747, #4962, #4954, #4939, #4898, #4892, #4843, #4840, #4630).
-- PR #4992 (cached PTCs): still open, active debate. Our `cached-ptc` branch stays unmerged.
-- PR #4747 (Fast Confirmation Rule): still under review, recently updated.
-- PR #5008 (field name fix): open, docs-only. We already use `beacon_block_root`.
-- cargo audit unchanged (1 rsa vuln, 5 unmaintained warnings).
-- CI run 23173384176: check/clippy/fmt passed, ef-tests passed, network+op_pool passed; unit/beacon_chain/http_api still running.
-- All stable. No action needed.
+- PR #4992 (cached PTCs): under active debate throughout — potuz acknowledged `get_ptc` range restriction bug, but questioned whether caching belongs in spec vs. client-side. Our `cached-ptc` branch rebased and pushed, 1021/1021 state_processing tests pass.
+- PR #4747 (Fast Confirmation Rule): under review, NOT mergeable (conflicts).
+- New open PRs noted: #5008 (docs fix, no code impact), #4962 (test-only), #4960 (test-only), #5011/#5012 (GitHub Actions, no code impact).
+- All previously tracked open Gloas PRs (#4992, #4747, #4954, #4939, #4898, #4892, #4843, #4840, #4630) remain open.
+- CI green. Nightly slasher flake fixed (b79292d3), confirmed working.
+- cargo audit unchanged (1 rsa RUSTSEC-2023-0071, 5 unmaintained warnings).
+- All TODOs have issue links (#31). `Ipv6Addr::is_global()` still unstable (rustc 1.94.0).
 
 ### Run 1776 (2026-03-17)
 - **Fixed fork_choice_on_execution_payload EF test**. Test vectors from consensus-specs #4940 (merged post-alpha.3) include a `block → envelope → block` sequence. The second block expects the pre-envelope state (EMPTY parent), but the test runner wasn't persisting the envelope to the store. Fixed by adding `StoreOp::PutPayloadEnvelope` in `process_execution_payload`, enabling `load_parent` to re-apply the envelope state transition on demand when a child signals a FULL parent.
 - 79/79 real crypto + 139/139 fake crypto all passing.
 - New post-alpha.3 spec PRs reviewed: #5001 (parent_block_root in bid filter key) — already implemented; #5002 (wording) — no code change needed; #5005 (test fixture fix) — already noted.
 
-### Run 1783 (2026-03-17) — health check, all stable
-- **Spec**: v1.7.0-alpha.3 still latest. No new tags, releases, or merged PRs since #5005 (Mar 15). Nightly reftest gen cancelled since Mar 8 (last success Mar 7).
-- **CI**: main CI green (run 23211604165). Nightly failure on stale commit `837cf89` — `finalized_sync_not_enough_custody_peers_on_start` flake already fixed by `8f8faa7de` on HEAD. Next nightly will pass.
-- **Build**: `cargo check --release` clean (17s cached). Zero clippy warnings (`clippy --workspace -W clippy::all`).
-- **Open Gloas spec PRs**: #4992 (cached PTCs), #4747 (fast confirmation), #4558 (cell dissemination), #4954 (ms timing), #4892 (impossible branch), #4898 (pending tiebreaker) — all still open/unmerged.
-- **PR #4892 / #4898 audit**: our `is_supporting_vote_gloas_at_slot` already uses `==` (not `<=`) with assert comment; our `get_payload_tiebreaker` already omits PENDING special-case (test `tiebreaker_pending_at_previous_slot_falls_through` references #4898). Both changes already implemented.
+### Run 1783 (2026-03-17) — health check
+- **PR #4892 / #4898 audit**: our `is_supporting_vote_gloas_at_slot` already uses `==` (not `<=`) with assert comment; our `get_payload_tiebreaker` already omits PENDING special-case. Both spec cleanups already implemented.
 - **Devnet**: latest run (20260317-174426) reached finalized_epoch=8. Healthy.
-- **cargo audit**: unchanged (1 rsa RUSTSEC-2023-0071, 5 unmaintained warnings). No semver-compatible dep updates except minor toml_* crates.
-- No code changes needed.
+- CI/nightly green. No code changes needed.
 
-### Run 1840 (2026-03-18) — health check, all stable
+### Runs 1840–1843 (2026-03-18) — health check
 - **Spec**: v1.7.0-alpha.3 still latest. Published release v1.6.1. No new tags.
-- **Merged PRs**: no new merged ePBS/Gloas PRs since #5005 (Mar 15).
-- **Open Gloas PRs**: #4992 (cached PTCs, updated Mar 17 — comment activity only, same head d76a278b0a), #4960 (fork choice test), #4843 (variable PTC deadline), #4932 (sanity/blocks tests), #4630 (EIP-7688 SSZ), #4840 (EIP-7843).
-- **CI**: main CI green (run 23225554005). Nightly green (run 23227934813, Mar 18).
-- **Build**: `cargo check --release` clean (27s cached). Zero warnings.
-- **cargo audit**: unchanged (1 rsa RUSTSEC-2023-0071, 5 unmaintained warnings).
+- **Merged PRs**: no new merged ePBS/Gloas PRs since #5005 (Mar 15). Reviewed #5001, #5002, #5005, #4940 — all already implemented or no-ops.
+- **Open Gloas PRs**: #4992 (cached PTCs, approved but debate ongoing re: 2-slot vs full-epoch approach), #4960 (fork choice test), #4843 (variable PTC deadline), #4932 (sanity/blocks tests), #4630 (EIP-7688 SSZ), #4840 (EIP-7843), #4892 (cleanup, already implemented).
+- **CI**: main CI green (run 23225554005). Nightly green (run 23227934813).
+- **Build**: zero clippy warnings. cargo audit unchanged.
+- Consolidated runs 1499–1686 (repetitive health check entries) into single summary.
 - All stable. No action needed.
 
