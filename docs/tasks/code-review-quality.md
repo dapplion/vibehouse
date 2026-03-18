@@ -1814,3 +1814,11 @@ Repeated health checks, all stable:
 ### Run 1889 (2026-03-18)
 
 **Buffered envelope processing metrics**: Added 3 new counter metrics for the gossip-before-block timing race path: `BUFFERED_ENVELOPE_TOTAL` (envelope arrived before its block, stored in pending buffer), `BUFFERED_ENVELOPE_PROCESSED_TOTAL` (successfully processed after block import), `BUFFERED_ENVELOPE_FAILED_TOTAL` (failed re-verification or processing after block import). Wired into `gloas_verification.rs` (buffer insertion) and `beacon_chain.rs` (`process_pending_envelope` success/failure paths). This fills an observability gap — previously there was no way to monitor how often the envelope-before-block race condition occurs in production. Spec v1.7.0-alpha.3 still latest — no new merges since #5005 (Mar 15). All open Gloas PRs unchanged. 119/119 envelope-related beacon_chain tests pass, clippy clean, pre-push lint-full passes. Committed `12d1e3b7c`.
+
+### Run 1892 (2026-03-18)
+
+**Per-reason rejection metrics for gossip bids and payload attestations**: Added `IntCounterVec` metrics with "reason" labels for granular monitoring of gossip rejection types:
+- `beacon_processor_execution_bid_rejected_total{reason=...}` — covers 5 REJECT cases: `zero_payment`, `invalid_builder`, `invalid_signature`, `fee_recipient_mismatch`, `gas_limit_mismatch`
+- `beacon_processor_payload_attestation_rejected_total{reason=...}` — covers 2 REJECT cases: `invalid_aggregation_bits`, `invalid_signature`
+
+Previously these paths only logged `warn!` and penalized peers but had no Prometheus counters, making it impossible to dashboard/alert on specific rejection patterns. Equivocation cases already had dedicated counters and remain unchanged. Spec v1.7.0-alpha.3 still latest — no new merges since #5005 (Mar 15). 204/204 network tests pass, clippy clean. Committed `cbb224039`.
