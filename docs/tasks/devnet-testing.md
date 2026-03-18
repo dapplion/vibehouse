@@ -22,6 +22,18 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1914 (Mar 19) — maintenance check, discovered 4 untracked spec PRs
+
+CI green. Nightlies green (latest 2 both green, Mar 17 flake predated 8f8faa7d fix). Spec tracked to v1.7.0-alpha.3 (HEAD still 85ab2d2 — no new commits). All 10 tracked Gloas spec PRs still open: #4892, #4898, #4992, #4960, #4932, #4939, #5008, #4962, #4747, #4843 — none merged.
+
+Discovered 4 untracked open Gloas spec PRs:
+- **#4954** — Update fork choice store to use milliseconds (labels: phase0/bellatrix/gloas/heze, 0 activity, early stage)
+- **#4840** — EIP-7843 SLOTNUM opcode for Gloas (0 activity, very early)
+- **#4630** — EIP-7688 forward-compatible SSZ types (2 reviews, touches SSZ fundamentals)
+- **#4558** — Cell Dissemination via Partial Message (81 reviews, active, but still draft — needs libp2p/specs merge first)
+
+None actionable yet. `cargo audit`: 1 vulnerability (rsa timing side-channel via jsonwebtoken — no upstream fix, not actionable). Code quality: block verification Gloas paths (BidParentRootMismatch, GloasParentPayloadUnknown, parent payload patching) all have thorough test coverage in gloas.rs (21k lines). Project in maintenance mode.
+
 ### run 1913 (Mar 19) — maintenance check, all green
 
 CI green. Nightlies green (latest 2 both green). Clippy clean. Spec tracked to v1.7.0-alpha.3 (HEAD still 1baa05e from Mar 15 — no new commits). All 10 tracked Gloas spec PRs still open: #4892, #4898, #4992, #4960, #4932, #4939, #5008, #4962, #4747, #4843 — none merged. Reviewed #5008 (field name fix in EnvelopesByRoot spec text) — doc-only, our implementation already uses `beacon_block_root` correctly. No new Gloas PRs since last check. Project in maintenance mode.
