@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1847 (Mar 18) — health check, devnet verified
+
+- CI: all green (push + nightly both pass). Clippy clean, zero warnings.
+- Spec: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (Mar 15).
+- Open Gloas PRs: #4992 (cached PTCs — 1 approval, active discussion), #4892 (remove impossible branch — 2 approvals, already aligned in our code), #4939, #4840, #4630, #4558, #4747.
+- Devnet: `scripts/kurtosis-run.sh` passed — finalized_epoch=8, chain healthy through Gloas fork (run 20260318-105638).
+- Cargo audit: unchanged (rsa RUSTSEC-2023-0071, plus SP1 transitive dep advisories — all no-fix-available).
+- Spec test releases: latest v1.6.0-beta.0 (Sep 2025) — no Gloas vectors yet.
+- Verified PR #4892 (remove impossible branch in forkchoice) — our `is_supporting_vote_gloas_at_slot` already matches the new spec (asserts `>=`, checks `==`). No change needed when it merges.
+
 ### run 1846 (Mar 18) — health check, devnet verified
 
 - CI: all green (push + nightly both pass). Clippy clean, zero warnings.
