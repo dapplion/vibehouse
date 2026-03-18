@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1802 (Mar 18) — health check, all stable
+
+- **CI**: green on HEAD (`3b4229f`). All jobs pass.
+- **Build**: `cargo check` clean (9s). Zero warnings.
+- **Spec**: v1.7.0-alpha.3 still latest release. No new Gloas PRs merged since last check.
+- **Open Gloas PRs**: #4992 (cached PTCs — 25 review comments, 8 commits, mergeable/clean, very active), #4960 (fork choice deposit test), #4939 (missing envelope request), #5008 (field name fix — blocked), #4843 (variable PTC deadline), #4932 (sanity/blocks tests), #4962 (missed payload withdrawal tests), #4892 (remove impossible branch), #4898 (remove pending tiebreaker).
+- **PR #4992 check**: latest version splits ptc_lookbehind into `previous_ptc` + `current_ptc` fields, rotated in process_slots. Our implementation not yet done (just have the bug-demo test). Will implement when merged.
+- **PR #4892 check**: our `is_supporting_vote_gloas_at_slot` already uses assert+equality pattern (line 1687-1689), aligned with this PR.
+- **Spec test vectors**: still v1.6.0-beta.0 (no v1.7.0 vectors yet).
+- No code changes needed.
+
 ### run 1801 (Mar 18) — health check, all stable
 
 - **CI**: green on HEAD (`33a61b8`). All jobs pass.
