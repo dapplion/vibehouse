@@ -263,3 +263,14 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
   - Workspace tests: 4914/4914 pass (excluding web3signer JRE infrastructure tests)
 - Clippy clean (zero warnings), CI green
 - No code changes needed
+
+### run 1806 (Mar 18) — spec tracking refresh
+
+- No new consensus-specs merges since last check (latest merged: #5005, Mar 15)
+- All 11 tracked open Gloas PRs still open/unmerged (#4558, #4630, #4747, #4840, #4843, #4892, #4898, #4939, #4954, #4992, #5008)
+- #4992 (cached PTCs in state): still under active debate (potuz, ensi321 discussing slot range restrictions)
+- #4892 and #4898: both mergeable/clean, vibehouse already aligned with both
+- No new consensus-spec-tests releases (latest v1.6.0-beta.0)
+- cargo audit: unchanged (1 unfixable rsa advisory, 5 allowed warnings)
+- Clippy clean, CI green
+- No code changes needed
