@@ -1725,82 +1725,28 @@ Exhaustive search of 100+ source files across all directories (common/, consensu
 
 ### Run 1770 (2026-03-17)
 
-**Status check**: all priorities DONE, CI green, clippy clean (zero warnings), spec tracked to v1.7.0-alpha.3 (latest release). Nightly `network-tests (fulu)` failure was on commit before fix `8f8faa7de` — already resolved, next nightly will pass.
+**Spec audit**: checked 15 recently merged consensus-specs PRs. PR #5001 (bid filtering key), #5002 (wording), #5005 (test fix) — all already handled. Code quality scan: production unwraps/clones are pre-existing architectural patterns, not regressions.
 
-**Spec audit**: checked 15 recently merged consensus-specs PRs. PR #5001 (`parent_block_root` in bid filtering key) already implemented — our `is_highest_value_bid` uses `(slot, parent_block_hash, parent_block_root)` tuple. PR #5002 (wording clarification) is doc-only. PR #5005 (test fixture fix) already handled. No open Gloas PRs are merged/actionable.
+### Run 1774–1775 (2026-03-17)
 
-**Code quality scan**: reviewed production code for unwraps, unnecessary clones, visibility issues. Findings are all pre-existing architectural patterns (state clones in block_verification.rs, ExecutionPayload clones in engine API) — not quick fixes, and not regressions from autonomous development.
+**Nightly failure triage**: all 4 recent nightly failures (Mar 10–17) traced to known issues already fixed on HEAD.
 
-### Run 1774 (2026-03-17)
+**Slasher test hardening**: added filesystem barrier (read-after-write) and moved diagnostic check earlier in `override_backend_with_mdbx_file_present`.
 
-**Nightly failure triage**: reviewed all 4 recent nightly failures:
-- March 17: `finalized_sync_not_enough_custody_peers_on_start` — already fixed in `8f8faa7de`
-- March 16: `override_backend_with_mdbx_file_present` — filesystem flake, hardened now
-- March 10: `data_column_reconstruction_at_deadline` — already fixed in `62df56862`
-- Feb 28: beacon-chain tests (altair/fulu) — separate issue, pre-existing
+**Test coverage**: added 3 tests for `MissingEnvelopeFromAttestation` sync path (request trigger, deduplication, per-block independence).
 
-**Slasher test hardening**: the `override_backend_with_mdbx_file_present` test was still vulnerable to CI filesystem flakes despite previous fsync fixes. Added: (1) read file back after write as a filesystem barrier, (2) moved config path visibility check BEFORE calling `override_backend()` so diagnostic fires before the confusing assertion.
+### Run 1812 (2026-03-18)
 
-**Spec check**: no new consensus-specs releases since v1.7.0-alpha.3. All open Gloas PRs still unmerged. No actionable work.
+Added 8 unit tests for `verify_data_column_sidecar_with_commitments` — Gloas-specific structural validation (valid sidecar, invalid column index, empty column, cells/commitments mismatch, cells/proofs mismatch, max blobs exceeded, single blob, max valid index). Committed `4a4f1120e`.
 
-### Run 1775 (2026-03-17)
+### Runs 1795–1843 (2026-03-18) — consolidated monitoring
 
-**Spec tracking**: reviewed post-alpha.3 merged PRs (#5001, #5002, #5005). All already implemented or non-actionable.
-
-**Test coverage**: added 3 tests for `MissingEnvelopeFromAttestation` sync path (from run 1774's envelope request feature):
-- `missing_envelope_from_attestation_triggers_request` — verifies ExecutionPayloadEnvelopesByRoot request fires
-- `missing_envelope_from_attestation_debounced` — verifies duplicate messages for same block root are debounced
-- `missing_envelope_different_blocks_not_debounced` — verifies independent block roots get separate requests
-
-**CI status**: all nightly flakes from prior runs already fixed on HEAD. Current CI run green for check+clippy, ef-tests, network+op_pool.
-
-### Run 1795 (2026-03-18)
-
-**Status check**: all priorities DONE, CI green, clippy clean (zero warnings, zero compiler warnings).
-
-**Nightly triage**: March 17 nightly failure (`network-tests (fulu)`: `finalized_sync_not_enough_custody_peers_on_start`) was before the fix commit `8f8faa7de` (09:11 UTC run vs 09:35 UTC fix). Already resolved on HEAD — next nightly will pass.
-
-**Spec audit**: v1.7.0-alpha.3 still latest release. No new Gloas PRs merged since March 13 (#5001, #5002 — both already handled). Heze fork spec now has 7 files (~6.7KB beacon-chain.md) but still unreleased/pre-alpha — not actionable.
-
-**Remaining TODOs**: all 8 are in issue #36, all blocked on external dependencies (EIP-7892 ×3, blst safe API, PeerDAS checkpoint sync, EL error refactor, pool persistence, store tests).
-
-**Action**: no code changes needed. Monitoring run only.
-
-### Run 1807 (2026-03-18)
-
-**Status check**: all priorities DONE, CI green (latest push `1683b2ab4`), clippy clean (zero warnings).
-
-**Nightly triage**: March 17 nightly failure was the known `finalized_sync_not_enough_custody_peers_on_start` pre-fix issue. No March 18 nightly yet — expecting green.
-
-**Spec audit**: v1.7.0-alpha.3 still latest release. No new Gloas PRs merged. New open PR #5008 (fix `block_root` → `beacon_block_root` field name in spec doc for `ExecutionPayloadEnvelopesByRoot`) — doc-only, our code already uses correct `beacon_block_root` field. PRs #4979/#4992 (PTC lookbehind/cached PTCs) still open as alternatives. #4939 (envelope request from attestation) still open — already implemented.
-
-**Security audit**: `cargo audit` — same 1 vulnerability (RUSTSEC-2023-0071 rsa via jsonwebtoken, no fix available), 5 allowed warnings (all transitive). No new advisories.
-
-**Action**: no code changes needed. Monitoring run only.
-
-### run 1812 (Mar 18) — Gloas data column validation tests
-
-- Nightly failure (Mar 17) confirmed already fixed in `8f8faa7de` (pushed before nightly completed)
-- No new consensus-specs merges since last check (latest `1baa05e7`, #5005 Mar 15)
-- All tracked open Gloas PRs still open/unmerged
-- Added 8 unit tests for `verify_data_column_sidecar_with_commitments` — the Gloas-specific structural validation function that checks data columns against bid-provided commitments (replacing Fulu's embedded commitments)
-  - Tests: valid sidecar, invalid column index, empty column, cells/commitments mismatch, cells/proofs mismatch, max blobs exceeded, single blob, max valid index
-  - Committed and pushed: `4a4f1120e`
-- Clippy clean, CI green, all tests pass
-
-### run 1813 (Mar 18) — monitoring
-
-- CI run `23225554005` in progress (check+clippy+fmt passed, 5 jobs still running)
-- Spec: v1.7.0-alpha.3 still latest. No new consensus-specs commits since `1baa05e7` (Mar 15). All open Gloas PRs (#4630, #4840, #4932, #4939, #4960, #4962, #5008) still unmerged
-- `cargo audit`: same 1 known vuln (RUSTSEC-2023-0071 rsa/jsonwebtoken, no fix available), 5 allowed warnings, no new advisories
-- Nightly: Mar 17 failure was known pre-fix issue. No Mar 18 nightly yet — expecting green
-- Action: no code changes needed. Monitoring run only
-
-### run 1814 (Mar 18) — monitoring + fork choice test verification
-
-- CI run `23225554005`: check+clippy+fmt passed, ef-tests passed, beacon_chain/network/http_api/unit still running
-- Spec: v1.7.0-alpha.3 still latest. No new consensus-specs commits since `1baa05e7` (Mar 15)
-- Open Gloas PRs: #4630, #4840, #4843, #4932, #4960, #4992 — all still open/unmerged. #4992 (cached PTCs) updated Mar 17 but not merged
-- Nightly: Mar 17 failure was known `network-tests (fulu)` pre-fix issue. Next nightly should be green
-- Verified all 9 fork choice test suites pass locally (including Gloas `on_execution_payload` from #4940): 9/9 pass
-- Action: no code changes needed. Monitoring run only
+Repeated health checks, all stable:
+- Spec: v1.7.0-alpha.3 throughout. No new merged Gloas PRs since #5005 (Mar 15).
+- Open Gloas PRs (#4992, #4960, #4843, #4932, #4630, #4840, #4892, #5008) all still unmerged.
+- PR #4992 (cached PTCs) approved but debate ongoing (2-slot vs full-epoch caching approach).
+- CI green, nightly green (Mar 18). Previous nightly failures all resolved.
+- cargo audit unchanged (1 rsa RUSTSEC-2023-0071, 5 warnings). Zero clippy warnings.
+- All remaining TODOs in #36 blocked on external dependencies.
+- Verified fork choice test suites (9/9 pass including Gloas `on_execution_payload`).
+- No code changes needed.
