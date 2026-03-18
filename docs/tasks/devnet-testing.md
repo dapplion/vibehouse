@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1918 (Mar 19) — dependency updates, maintenance
+
+Updated patch dependencies: alloy-chains 0.2.31→0.2.32, borsh 1.6.0→1.6.1, toml_edit 0.25.4→0.25.5. Build clean, clippy clean, 1085/1085 types tests pass, 69/69 EF SSZ static tests pass. CI green (previous run). Nightlies green (Mar 17 failure was flake fixed by 8f8faa7de). Spec tracked to v1.7.0-alpha.3 — no new merges. #4992 (cached PTCs) most active open PR (1 approval from jtraglia, still under discussion). #5008 (field name fix) is doc-only, our code already uses correct `beacon_block_root`. All other tracked PRs unchanged. cargo audit: same known issues (rsa, unmaintained sp1 transitive deps). Project in maintenance mode.
+
 ### run 1917 (Mar 19) — sp1-verifier version bump, full EF test verification
 
 Updated sp1-verifier workspace dependency specifier from 6.0.1 to 6.0.2 (lockfile already had 6.0.2). Full verification: 139/139 EF tests pass (fake_crypto+minimal), 9/9 fork choice tests pass (real crypto), cargo check clean, clippy clean. No new consensus-specs merges since #5005 (Mar 15). All 14 tracked open Gloas PRs unchanged. cargo audit: 1 error (rsa/jsonwebtoken, no fix), 5 warnings (sp1 transitive deps — ansi_term, bincode, derivative, paste + filesystem false positive on internal crate).
