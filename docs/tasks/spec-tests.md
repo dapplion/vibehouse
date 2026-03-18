@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1890 (Mar 18) — health check, all stable
+
+- CI: all green (6/6 jobs pass). Release build clean, zero warnings.
+- Spec: v1.7.0-alpha.3 still latest. consensus-specs HEAD unchanged at 1baa05e (Mar 15). No new merges.
+- Spec test vectors: still v1.6.0-beta.0 (Fulu). No Gloas vectors published yet.
+- Open Gloas PRs: #4992 (cached PTCs — mergeable_state clean, updated Mar 17, 8 commits incl. PTC lookbehind split), #5008 (field name fix, open), #4962 (blocked), #4960, #4939, #4932, #4843, #4840, #4630. None merged since last check.
+- Reviewed #4992 against our prep branches: `cached-ptc` and `ptc-lookbehind` implementations match spec. One minor gap: `upgrade_to_gloas` should call `compute_ptc` after builder onboarding (currently relies on next slot rotation). Will fix when PR merges.
+- Cargo audit: unchanged (rsa RUSTSEC-2023-0071, unmaintained crate warnings).
+- All priorities complete. Project in maintenance mode.
+
 ### run 1879 (Mar 18) — health check, all stable
 
 - CI: all green (push + nightly + spec-test-version-check all pass).
