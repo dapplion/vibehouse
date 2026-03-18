@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1871 (Mar 18) — maintenance check, all green
+
+All 218 EF spec tests pass (79 real crypto + 139 fake crypto). CI green (all 26 nightly jobs + 5 CI runs passing). Clippy clean (zero warnings). Spec tracked to v1.7.0-alpha.3 (latest release). Audited 5 post-alpha.3 consensus-specs commits: #5005 (test fix, already handled), #5004 (meta), #4940 (new fork choice tests — our runner already supports `head_payload_status`), #5002 (wording), #5001 (parent_block_root in bid filter — already implemented with 3-tuple). Open Gloas spec PRs: #4892, #4898, #4992, #5008 — none merged. cargo audit unchanged. Project in maintenance mode.
+
 ### run 1864 (Mar 18) — full audit pass, no new work
 
 All 218 EF spec tests pass (79 real crypto + 139 fake crypto). CI green. Clippy clean. Spec tracked to v1.7.0-alpha.3 (latest release, 0 unaudited commits). Cross-verified `process_execution_payload_envelope` implementation against spec — all verification steps and state mutations match. Both recent nightly flakes confirmed resolved: range sync test (`expect_empty_network` removed in peer group tracking changes), slasher test (filesystem race on CI runners, existing mitigations thorough). cargo audit unchanged (rsa medium + 5 unmaintained, all non-actionable). Open Gloas spec PRs monitored: #4892, #4898, #4992, #5008 — none merged. Project in maintenance mode.
