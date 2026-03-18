@@ -9057,6 +9057,139 @@ mod tests {
     // ── PTC committee edge cases ─────────────────────────────────
 
     #[test]
+    fn get_pending_balance_saturates_on_overflow() {
+        let (mut state, _spec) = make_gloas_state(4, 32_000_000_000, 64_000_000_000);
+        let gloas = state.as_gloas_mut().unwrap();
+
+        // Add a pending withdrawal near u64::MAX
+        gloas
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: u64::MAX - 1,
+                builder_index: 0,
+            })
+            .unwrap();
+
+        // Add a pending payment that would overflow if added naively
+        *gloas.builder_pending_payments.get_mut(0).unwrap() = BuilderPendingPayment {
+            weight: 0,
+            withdrawal: BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xEE),
+                amount: 5,
+                builder_index: 0,
+            },
+        };
+
+        let total = get_pending_balance_to_withdraw_for_builder::<E>(&state, 0).unwrap();
+        assert_eq!(
+            total,
+            u64::MAX,
+            "saturating_add should cap at u64::MAX instead of overflowing"
+        );
+    }
+
+    #[test]
+    fn get_pending_balance_ignores_other_builders() {
+        let (mut state, _spec) = make_gloas_state(4, 32_000_000_000, 64_000_000_000);
+        let gloas = state.as_gloas_mut().unwrap();
+
+        // Add withdrawals for builder index 0 and a non-existent builder index 99
+        gloas
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 1_000_000_000,
+                builder_index: 0,
+            })
+            .unwrap();
+        gloas
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xEE),
+                amount: 9_000_000_000,
+                builder_index: 99,
+            })
+            .unwrap();
+
+        let total = get_pending_balance_to_withdraw_for_builder::<E>(&state, 0).unwrap();
+        assert_eq!(
+            total, 1_000_000_000,
+            "should only count builder_index=0 withdrawals"
+        );
+    }
+
+    #[test]
+    fn can_builder_cover_bid_oob_index_returns_unknown_builder() {
+        let (state, spec) = make_gloas_state(4, 32_000_000_000, 64_000_000_000);
+
+        let result = can_builder_cover_bid::<E>(&state, 999, 1_000_000_000, &spec);
+        assert!(
+            matches!(result, Err(BeaconStateError::UnknownBuilder(999))),
+            "should return UnknownBuilder for non-existent builder, got {:?}",
+            result,
+        );
+    }
+
+    #[test]
+    fn can_builder_cover_bid_with_large_pending_withdrawals() {
+        let (mut state, spec) = make_gloas_state(4, 32_000_000_000, 128_000_000_000);
+
+        // Add a large pending withdrawal that eats into available balance
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 120_000_000_000,
+                builder_index: 0,
+            })
+            .unwrap();
+
+        // Builder has 128 ETH, min_deposit is 1 ETH (1_000_000_000 Gwei on minimal),
+        // pending withdrawals = 120 ETH.
+        // Available = 128 - (min_deposit + 120) = 128 - 121 = 7 ETH
+        let min_deposit = spec.min_deposit_amount;
+
+        // A bid of 7 ETH should be coverable
+        let available = 128_000_000_000 - min_deposit - 120_000_000_000;
+        assert!(
+            can_builder_cover_bid::<E>(&state, 0, available, &spec).unwrap(),
+            "builder should cover bid equal to remaining available balance"
+        );
+
+        // A bid of available+1 should NOT be coverable
+        assert!(
+            !can_builder_cover_bid::<E>(&state, 0, available + 1, &spec).unwrap(),
+            "builder should not cover bid exceeding available balance"
+        );
+    }
+
+    #[test]
+    fn can_builder_cover_bid_saturating_pending_returns_false() {
+        let (mut state, spec) = make_gloas_state(4, 32_000_000_000, 64_000_000_000);
+
+        // Add a pending withdrawal near u64::MAX — min_balance will saturate to u64::MAX
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: u64::MAX,
+                builder_index: 0,
+            })
+            .unwrap();
+
+        // Builder balance (64 ETH) < u64::MAX, so should return false for any bid
+        assert!(
+            !can_builder_cover_bid::<E>(&state, 0, 0, &spec).unwrap(),
+            "builder with massive pending withdrawals should fail even for zero bid"
+        );
+    }
+
+    #[test]
     fn ptc_committee_no_validators_returns_error() {
         // Build a state with 0 validators — get_ptc_committee should fail with NoActiveValidators
         // because get_beacon_committees_at_slot returns empty committees.
