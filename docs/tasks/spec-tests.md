@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1859 (Mar 18) — health check, all stable
+
+- CI: in progress for latest commit (deduplicate withdrawal function); check+clippy+fmt passed.
+- Spec: v1.7.0-alpha.3 still latest. consensus-specs HEAD unchanged at 1baa05e (Mar 15). No new commits.
+- Spec test vectors: still v1.6.0-beta.0. No Gloas vectors yet.
+- Open Gloas PRs: #4992 (cached PTCs — approved, not merged, updated Mar 17), #4960, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558.
+- Cargo audit: unchanged (rsa RUSTSEC-2023-0071, SP1 transitive dep advisories).
+- All priorities complete. No actionable work remaining — project in maintenance mode.
+
 ### run 1857 (Mar 18) — health check + prep branch rebase
 
 - CI: all green (push + nightly + spec-test-version-check all pass).
