@@ -29,14 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
-### runs 1838-1841 (Mar 18) — health checks, no changes
+### runs 1838-1842 (Mar 18) — health checks, no changes
 
-- CI: all green (push + nightly). Build clean (9s).
+- CI: all green (push + nightly). Build clean.
 - Spec: v1.7.0-alpha.3 still latest. consensus-specs HEAD unchanged at 1baa05e. No new Gloas PRs merged since #5005 (Mar 15).
-- Open Gloas PRs: #4992 (cached PTCs — approved, mergeable_state=clean), #5008, #4962, #4960, #4939, #4932, #4843, #4840, #4630.
+- Open Gloas PRs: #4992 (cached PTCs — approved but active discussion: ensi321/potuz flagged slot restriction in get_ptc as too restrictive), #5008, #4962, #4960, #4939, #4932, #4843, #4840, #4630.
 - Tracked PRs: #5008 (field name fix — no code impact), #4954 (fork choice milliseconds — still open), #4898 (remove pending tiebreaker — already implemented), #4892 (remove impossible on_attestation branch — our code doesn't have it).
 - All items in #36 done or blocked on external dependencies.
 - Spec test releases: latest is v1.6.0-beta.0 (Sep 2025) — no Gloas vectors yet.
+- Cargo audit: unchanged (rsa RUSTSEC-2023-0071, no fix available).
 
 ### runs 1833-1837 (Mar 18) — health checks, prep branch maintenance
 
