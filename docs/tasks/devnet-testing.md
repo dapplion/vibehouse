@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1909 (Mar 18) — maintenance check, all green
+
+CI green. Clippy clean (zero warnings). Spec tracked to v1.7.0-alpha.3 (HEAD still 1baa05e from Mar 15 — no new commits). Checked 2 recent gloas spec path commits: #5001 (parent_block_root in bid filtering key) — already implemented in `observed_execution_bids.rs` (tuple key `(Slot, ExecutionBlockHash, Hash256)` with `is_highest_value_bid`); #5002 (cosmetic wording for self-build payload sig verification) — no code change needed. All 10 tracked Gloas spec PRs still open: #4892, #4898, #4992, #4960, #4932, #4939, #5008, #4962, #4747, #4843 — none merged. Project in maintenance mode.
+
 ### run 1908 (Mar 18) — maintenance check, all green
 
 CI green. Nightlies green (Mar 18 both green). Spec tracked to v1.7.0-alpha.3 (HEAD still 1baa05e from Mar 15 — no new commits since). No new consensus-specs releases after alpha.3. All 10 tracked Gloas spec PRs still open: #4892 (2 approvals, closest to merge), #4898, #4992, #4960, #4932, #4939, #5008, #4962, #4747, #4843 — none merged. Verified all 9 fork choice EF test suites pass (including Gloas on_execution_payload and withholding). Project in maintenance mode.
