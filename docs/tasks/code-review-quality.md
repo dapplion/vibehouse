@@ -1795,3 +1795,12 @@ Exhaustive search of 100+ source files across all directories (common/, consensu
 - `cargo audit`: same 1 known vuln (RUSTSEC-2023-0071 rsa/jsonwebtoken, no fix available), 5 allowed warnings, no new advisories
 - Nightly: Mar 17 failure was known pre-fix issue. No Mar 18 nightly yet — expecting green
 - Action: no code changes needed. Monitoring run only
+
+### run 1814 (Mar 18) — monitoring + fork choice test verification
+
+- CI run `23225554005`: check+clippy+fmt passed, ef-tests passed, beacon_chain/network/http_api/unit still running
+- Spec: v1.7.0-alpha.3 still latest. No new consensus-specs commits since `1baa05e7` (Mar 15)
+- Open Gloas PRs: #4630, #4840, #4843, #4932, #4960, #4992 — all still open/unmerged. #4992 (cached PTCs) updated Mar 17 but not merged
+- Nightly: Mar 17 failure was known `network-tests (fulu)` pre-fix issue. Next nightly should be green
+- Verified all 9 fork choice test suites pass locally (including Gloas `on_execution_payload` from #4940): 9/9 pass
+- Action: no code changes needed. Monitoring run only
