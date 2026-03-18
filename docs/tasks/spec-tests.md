@@ -1730,12 +1730,12 @@ Repeated spec tracking checks, all stable. Key facts from this period:
 - **Devnet**: latest run (20260317-174426) reached finalized_epoch=8. Healthy.
 - CI/nightly green. No code changes needed.
 
-### Runs 1840–1843 (2026-03-18) — health check
-- **Spec**: v1.7.0-alpha.3 still latest. Published release v1.6.1. No new tags.
-- **Merged PRs**: no new merged ePBS/Gloas PRs since #5005 (Mar 15). Reviewed #5001, #5002, #5005, #4940 — all already implemented or no-ops.
-- **Open Gloas PRs**: #4992 (cached PTCs, approved but debate ongoing re: 2-slot vs full-epoch approach), #4960 (fork choice test), #4843 (variable PTC deadline), #4932 (sanity/blocks tests), #4630 (EIP-7688 SSZ), #4840 (EIP-7843), #4892 (cleanup, already implemented).
-- **CI**: main CI green (run 23225554005). Nightly green (run 23227934813).
+### Runs 1840–1850 (2026-03-18) — health checks
+- **Spec**: v1.7.0-alpha.3 still latest. No new tags or merged Gloas PRs since #5005 (Mar 15).
+- **Open Gloas PRs**: #4992 (cached PTCs, now labeled "heze" — may target later fork), #4843 (variable PTC deadline, 11 reviews, active discussion), #4840 (EIP-7843), #4630 (EIP-7688 SSZ), #4954 (milliseconds fork choice, 0 reviews).
+- **CI**: all green. Nightly flake (fulu network test) was already fixed in 8f8faa7de.
 - **Build**: zero clippy warnings. cargo audit unchanged.
-- Consolidated runs 1499–1686 (repetitive health check entries) into single summary.
+- **Devnet**: run 20260318-112231 reached finalized_epoch=8. Healthy.
+- Consolidated runs 1499–1686 and 1840–1843 into summaries.
 - All stable. No action needed.
 
