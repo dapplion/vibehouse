@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1901 (Mar 18) — maintenance check, all green
+
+CI green (latest run success: "fix stale state cache race in sync and self-build envelope paths"). Clippy clean (zero warnings). Spec tracked to v1.7.0-alpha.3 (HEAD still 1baa05e from Mar 15 — no new commits). All 10 tracked Gloas spec PRs still open: #4892, #4898, #4992, #4960, #4932, #4939, #5008, #4962, #4747, #4843 — none merged. #4992 (cached PTCs) still contentious — potuz pushing back on caching in state vs client-side caching. Two additional untracked open Gloas PRs: #4630 (EIP-7688 forward-compatible SSZ) and #4840 (EIP-7843 SLOTNUM opcode) — both early stage, not actionable. Project in maintenance mode.
+
 ### run 1900 (Mar 18) — maintenance check, all green
 
 CI green (latest run success). Clippy clean (zero warnings). Release build clean (zero warnings). Workspace tests: 4991/4999 pass (8 web3signer failures — external service dependency). Spec tracked to v1.7.0-alpha.3 (HEAD still 1baa05e from Mar 15 — no new commits). All Gloas spec PRs still open: #4892, #4898, #4992, #4960, #4932, #4939, #5008, #4962, #4747 (Fast Confirmation Rule), #4843 (Variable PTC deadline) — none merged. Nightly flakes: Mar 17 `finalized_sync_not_enough_custody_peers_on_start` (fulu network-tests) — timing-sensitive, passes on rerun. Mar 16 `slasher-tests` — filesystem race, passes on rerun. Both subsequent nightlies green. Most recent devnet run (20260318-214930) finalized epoch 8 with stale cache fix. Project in maintenance mode.
