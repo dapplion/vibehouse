@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1880 (Mar 18) — maintenance check, all green
+
+CI green. Clippy clean (zero warnings, zero compiler warnings). Spec tracked to v1.7.0-alpha.3 (latest release). Open Gloas spec PRs: #4892 (remove impossible branch), #4898 (remove pending status tiebreaker), #4992 (cached PTCs), #5008 (field name fix) — none merged. New PRs monitored: #4843 (variable PTC deadline — interesting but not merged), #4840 (EIP-7843 SLOTNUM opcode — early stage), #4960/#4932 (new test cases). cargo audit unchanged (rsa medium + 5 unmaintained, non-actionable). cargo-machete audit: all flagged deps are false positives (derive macros, feature forwarding). Dead code audit: all `#[allow(dead_code)]` annotations are legitimate (test infra, error enum variants, lifetime management). Project in maintenance mode.
+
 ### run 1871 (Mar 18) — maintenance check, all green
 
 All 218 EF spec tests pass (79 real crypto + 139 fake crypto). CI green (all 26 nightly jobs + 5 CI runs passing). Clippy clean (zero warnings). Spec tracked to v1.7.0-alpha.3 (latest release). Audited 5 post-alpha.3 consensus-specs commits: #5005 (test fix, already handled), #5004 (meta), #4940 (new fork choice tests — our runner already supports `head_payload_status`), #5002 (wording), #5001 (parent_block_root in bid filter — already implemented with 3-tuple). Open Gloas spec PRs: #4892, #4898, #4992, #5008 — none merged. cargo audit unchanged. Project in maintenance mode.
