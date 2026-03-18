@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1815 (Mar 18) — health check, all stable
+
+- **CI**: in progress on HEAD (`50b59e2`). check/clippy/ef-tests/network+op_pool all pass, remaining jobs running.
+- **Build**: `cargo check` clean (19s). Zero warnings.
+- **Spec**: v1.7.0-alpha.3 still latest release. No new Gloas PRs merged since #5005 (Mar 15).
+- **PR #4992 status**: still open. Active discussion (Mar 17) — Grandine team questioning whether cached PTCs belong in spec vs implementation. Our cached-ptc branch is ready with latest two-field split (previous_ptc/current_ptc matching head commit d76a278b from Mar 12).
+- **Open Gloas PRs**: #4992 (cached PTCs), #4892 (remove impossible branch), #4898 (remove pending tiebreaker), #4960 (fork choice deposit test), #4939 (envelope request), #4932 (sanity/blocks tests), #4962 (missed payload withdrawal tests), #4843 (variable PTC deadline), #4840 (EIP-7843), #4630 (EIP-7688 SSZ).
+- **Cargo audit**: unchanged — 1 known vulnerability (rsa, no fix), 5 allowed warnings.
+- **Coverage review**: all Gloas-specific modules (gloas_verification, envelope_processing, gloas.rs, fork choice, observed_bids, bid_pool, gossip_methods, data_column_verification) have comprehensive tests. No gaps found.
+- No code changes needed.
+
 ### run 1811 (Mar 18) — rebased cached-ptc branch, fixed 12 test files
 
 - **CI**: green on HEAD (`e4eee47`). All jobs pass.
