@@ -1839,3 +1839,7 @@ Previously these paths only logged `warn!` and penalized peers but had no Promet
 **Fix**: Changed `cache.delete_state(&block_state_root)` to `cache.delete_block_states(&beacon_block_root)` in `process_payload_envelope`. This removes ALL cached states for the block root (including stale advanced states), not just the base state. The next access re-loads from the fresh post-envelope base state and re-advances.
 
 **Verification**: 422/422 Gloas beacon_chain tests pass, 236/236 store tests pass, 139/139 EF spec tests pass, clippy clean. Committed `54946814c`.
+
+### Run 1894 (2026-03-18)
+
+**Fixed same stale state cache race in sync and self-build envelope paths**: Run 1893 fixed the gossip path but the sync path (`process_sync_envelope`, line 3005) and self-build path (`process_self_build_envelope`, line 3399) had the same bug — both used `delete_state` (removes only the base state) instead of `delete_block_states` (removes all cached states for the block root, including stale advanced states). Changed both to `delete_block_states` to match the gossip path fix. 125/125 envelope tests pass, 5/5 EF spec tests pass, clippy clean. Committed `a17a399e8`.
