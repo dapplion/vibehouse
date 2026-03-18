@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1827 (Mar 18) — status check (no devnet run)
+
+No code changes to test. Verified: CI green (all jobs passing), clippy clean, no new spec merges. Both recent nightly flakes (range test, slasher test) confirmed fixed in current HEAD. PR #4992 (cached PTCs) studied and documented — ready to implement when merged.
+
 ### run 1825 (Mar 18) — routine devnet verification
 
 Standard 4-node devnet passed. Run ID: 20260318-063825. Finalized epoch 8. Gloas fork at epoch 1, chain healthy through epoch 9+. Build clean (zero warnings). Spec tracked — no new merged Gloas PRs since last audit. Open spec PRs (#5008, #4992, #4954, #4843) monitored but not yet merged.

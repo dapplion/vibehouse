@@ -142,11 +142,16 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - Response processing: verify envelope → process state transition → update fork choice
 - All 201 network tests, 61 Gloas beacon_chain tests, 9 EF fork choice test categories pass
 
-### runs 1794-1826 (Mar 17-18) — spec tracking maintenance
+### runs 1794-1827 (Mar 17-18) — spec tracking maintenance
 
 - No new consensus-specs merges since #5005 (Mar 15)
 - All 11+ tracked open Gloas PRs still open/unmerged
 - #4992 (cached PTCs in state) now APPROVED — will implement when merged
+  - Adds `previous_ptc`/`current_ptc` to BeaconState, rotates every slot in `process_slots`
+  - `get_ptc(state, slot)` reads from cache instead of computing; `compute_ptc(state)` helper added
+  - Fork upgrade initializes `current_ptc = compute_ptc(state)`, `previous_ptc = zeros`
+- #5008 (field name fix: `block_root` → `beacon_block_root` in EnvelopesByRoot) — doc-only, our code already correct
 - Repeatedly verified: CI green, clippy clean, all EF tests pass (139/139 + 79/79), workspace tests 4914/4914 pass
+- Nightly flakes from Mar 16-17 already fixed: range test (#8f8faa7), slasher test (#2848be8)
 - `cargo audit`: 1 unfixable advisory (RUSTSEC-2023-0071 in `rsa` via `jsonwebtoken`)
 - **Will re-check when alpha.4 is released or new PRs merge.**
