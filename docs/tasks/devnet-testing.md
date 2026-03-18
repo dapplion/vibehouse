@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1903 (Mar 18) — maintenance check, all green
+
+CI green (latest push success). Nightlies: Mar 18 both green; Mar 17 known flake (`finalized_sync_not_enough_custody_peers_on_start` — timing-sensitive, passes on rerun). Clippy clean (zero warnings). Spec tracked to v1.7.0-alpha.3 (HEAD still 1baa05e from Mar 15 — no new commits). All 10 tracked Gloas spec PRs still open: #4892, #4898, #4992, #4960, #4932, #4939, #5008, #4962, #4747, #4843 — none merged. Project in maintenance mode.
+
 ### run 1902 (Mar 18) — maintenance check, all green
 
 CI green (latest run success). Clippy clean (zero warnings). Spec tracked to v1.7.0-alpha.3 (HEAD still 1baa05e from Mar 15 — no new commits). All 10 tracked Gloas spec PRs still open: #4892, #4898, #4992, #4960, #4932, #4939, #5008, #4962, #4747, #4843 — none merged. No changes since run 1901. Project in maintenance mode.
