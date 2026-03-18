@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1917 (Mar 19) — sp1-verifier version bump, full EF test verification
+
+Updated sp1-verifier workspace dependency specifier from 6.0.1 to 6.0.2 (lockfile already had 6.0.2). Full verification: 139/139 EF tests pass (fake_crypto+minimal), 9/9 fork choice tests pass (real crypto), cargo check clean, clippy clean. No new consensus-specs merges since #5005 (Mar 15). All 14 tracked open Gloas PRs unchanged. cargo audit: 1 error (rsa/jsonwebtoken, no fix), 5 warnings (sp1 transitive deps — ansi_term, bincode, derivative, paste + filesystem false positive on internal crate).
+
 ### run 1916 (Mar 19) — maintenance check, all green
 
 CI green. Nightlies green (latest 2 both green, Mar 17 failure was known flake). Clippy clean (zero warnings). Spec tracked to v1.7.0-alpha.3 (HEAD still 1baa05e from Mar 15 — no new commits). All 14 tracked Gloas spec PRs still open: #4892, #4898, #4992, #4960, #4932, #4939, #5008, #4962, #4747, #4843, #4954, #4840, #4630, #4558 — none merged. #4992 (cached PTCs) still active (23 reviews, 5 comments). Project in maintenance mode.
