@@ -387,3 +387,13 @@ Ran `--sync` test to verify the 5 commits pushed in this session:
 5. Clippy fix
 
 **Result**: Both supernode and fullnode synced through Gloas fork boundary in 25s. Finalized to epoch 5. Both reported correct Gloas fork version (0x80000038).
+
+### run 1845 (Mar 18) — fix envelope signature race at fork boundary
+
+**Problem**: Devnet stalled at slot 8 (Gloas fork boundary). Envelope gossip verification used `canonical_head.cached_head()` state to compute signing domain. A 2ms race between block import and cached_head update caused verification to use stale Fulu-fork state while VC signed with Gloas-fork domain → all envelopes rejected.
+
+**Root cause**: `execution_payload_envelope_signature_set` computed fork from `state.fork()`, but gossip verifier's state came from cached_head which lagged behind fork choice updates.
+
+**Fix**: Added explicit `fork: &Fork` parameter to `execution_payload_envelope_signature_set`. Gossip/HTTP callers pass `spec.fork_at_epoch(envelope_epoch)` (always correct); state transition callers pass `state.fork()` (correct in their context).
+
+**Tests**: 88 envelope processing, 18 signature set, 422 beacon_chain (Gloas), 204 network — all pass. Clippy clean. Devnet finalized to epoch 8 with clean fork transition.
