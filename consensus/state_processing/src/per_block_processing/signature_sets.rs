@@ -745,11 +745,17 @@ where
 /// For self-build envelopes (builder_index == BUILDER_INDEX_SELF_BUILD), this checks
 /// against the proposer's validator public key per the spec.
 /// Uses the `DOMAIN_BEACON_BUILDER` domain in both cases.
+///
+/// The `fork` parameter is explicit (rather than derived from `state.fork()`) because
+/// gossip verification may run with a stale canonical-head state that hasn't yet been
+/// updated to the current fork. Callers in state transitions should pass `state.fork()`;
+/// gossip verifiers should pass `spec.fork_at_epoch(envelope_epoch)`.
 pub fn execution_payload_envelope_signature_set<'a, E, F>(
     state: &'a BeaconState<E>,
     get_builder_pubkey: F,
     signed_envelope: &'a types::SignedExecutionPayloadEnvelope<E>,
     proposer_index: u64,
+    fork: &Fork,
     spec: &'a ChainSpec,
 ) -> Result<SignatureSet<'a>>
 where
@@ -777,7 +783,7 @@ where
     let domain = spec.get_domain(
         epoch,
         Domain::BeaconBuilder,
-        &state.fork(),
+        fork,
         state.genesis_validators_root(),
     );
 
@@ -1233,6 +1239,7 @@ mod tests {
             |_| None,
             &signed_envelope,
             state.latest_block_header().proposer_index,
+            &state.fork(),
             &spec,
         ));
         assert_eq!(err, Error::ValidatorUnknown(0));
@@ -1274,6 +1281,7 @@ mod tests {
             },
             &signed_envelope,
             state.latest_block_header().proposer_index,
+            &state.fork(),
             &spec,
         )
         .expect("should succeed");
@@ -1317,6 +1325,7 @@ mod tests {
             },
             &signed_envelope,
             state.latest_block_header().proposer_index,
+            &state.fork(),
             &spec,
         )
         .expect("should succeed constructing set");
@@ -1358,6 +1367,7 @@ mod tests {
             },
             &signed_envelope,
             state.latest_block_header().proposer_index,
+            &state.fork(),
             &spec,
         )
         .expect("should succeed constructing set");
@@ -1642,6 +1652,7 @@ mod tests {
             },
             &signed_envelope,
             state.latest_block_header().proposer_index,
+            &state.fork(),
             &spec,
         )
         .expect("should succeed constructing set");

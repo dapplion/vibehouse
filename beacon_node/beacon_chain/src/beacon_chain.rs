@@ -2887,11 +2887,16 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     .and_then(|builder| builder.pubkey.decompress().ok().map(Cow::Owned))
             };
 
+            let envelope_epoch = signed_envelope
+                .message
+                .slot
+                .epoch(T::EthSpec::slots_per_epoch());
             let signature_set = execution_payload_envelope_signature_set(
                 &state,
                 get_builder_pubkey,
                 &signed_envelope,
                 block.message().proposer_index(),
+                &self.spec.fork_at_epoch(envelope_epoch),
                 &self.spec,
             )
             .map_err(|_| Error::EnvelopeError("Invalid envelope signature".to_string()))?;
