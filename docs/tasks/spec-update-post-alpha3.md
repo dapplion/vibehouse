@@ -142,10 +142,11 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - Response processing: verify envelope → process state transition → update fork choice
 - All 201 network tests, 61 Gloas beacon_chain tests, 9 EF fork choice test categories pass
 
-### runs 1794-1817 (Mar 17-18) — spec tracking maintenance
+### runs 1794-1826 (Mar 17-18) — spec tracking maintenance
 
 - No new consensus-specs merges since #5005 (Mar 15)
 - All 11+ tracked open Gloas PRs still open/unmerged
-- Repeatedly verified: CI green, clippy clean, all EF tests pass (139/139 + 79/79), devnet healthy (finalized_epoch=8)
+- #4992 (cached PTCs in state) now APPROVED — will implement when merged
+- Repeatedly verified: CI green, clippy clean, all EF tests pass (139/139 + 79/79), workspace tests 4914/4914 pass
 - `cargo audit`: 1 unfixable advisory (RUSTSEC-2023-0071 in `rsa` via `jsonwebtoken`)
 - **Will re-check when alpha.4 is released or new PRs merge.**
