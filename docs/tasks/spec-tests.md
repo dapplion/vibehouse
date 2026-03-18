@@ -1755,3 +1755,12 @@ Added 36 unit tests to `common/eth2/src/types.rs` covering previously untested t
 - **cargo audit**: unchanged (1 rsa RUSTSEC-2023-0071, 5 unmaintained warnings). No semver-compatible dep updates except minor toml_* crates.
 - No code changes needed.
 
+### Run 1840 (2026-03-18) — health check, all stable
+- **Spec**: v1.7.0-alpha.3 still latest. Published release v1.6.1. No new tags.
+- **Merged PRs**: no new merged ePBS/Gloas PRs since #5005 (Mar 15).
+- **Open Gloas PRs**: #4992 (cached PTCs, updated Mar 17 — comment activity only, same head d76a278b0a), #4960 (fork choice test), #4843 (variable PTC deadline), #4932 (sanity/blocks tests), #4630 (EIP-7688 SSZ), #4840 (EIP-7843).
+- **CI**: main CI green (run 23225554005). Nightly green (run 23227934813, Mar 18).
+- **Build**: `cargo check --release` clean (27s cached). Zero warnings.
+- **cargo audit**: unchanged (1 rsa RUSTSEC-2023-0071, 5 unmaintained warnings).
+- All stable. No action needed.
+
