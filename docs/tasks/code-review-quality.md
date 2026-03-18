@@ -1750,3 +1750,7 @@ Repeated health checks, all stable:
 - All remaining TODOs in #36 blocked on external dependencies.
 - Verified fork choice test suites (9/9 pass including Gloas `on_execution_payload`).
 - No code changes needed.
+
+### Run 1858 (2026-03-18)
+
+**Withdrawal code deduplication**: `process_withdrawals_gloas` and `get_expected_withdrawals_gloas` had ~200 lines of identical withdrawal computation logic (4 phases: builder pending, partial validator, builder sweep, validator sweep). Extracted shared logic into `compute_withdrawals_gloas` returning a `WithdrawalResult` struct. The mutable version applies state mutations using the result; the read-only version just returns withdrawals. Eliminates the risk of one function being updated without the other, which would be a consensus divergence bug. All 1021 state_processing tests pass, all EF spec tests pass (operations_withdrawals, operations_execution_payload_*, sanity_*). Committed `d9af9e256`.
