@@ -160,6 +160,23 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 
 - No new Gloas spec commits since Mar 13 (#5002)
 - #4992 (cached PTCs in state) still open, updated Mar 17 — will implement when merged
+
+### run 1885 (Mar 18) — deep spec audit + full verification
+
+- Deep audit of fork choice implementation against latest consensus-specs master
+  - `process_execution_payload_bid`: all validation steps match spec exactly (self-build, builder active, balance check, sig verify, blob limit, slot, parent_block_hash, parent_block_root, prev_randao, pending payments, bid caching) ✓
+  - `is_supporting_vote_gloas`: PENDING/EMPTY/FULL logic matches spec; `message.slot == block.slot → false` correct (validated by `validate_on_attestation` ensuring `slot >= block_slot`) ✓
+  - `get_gloas_weight`: returns 0 for non-PENDING previous-slot nodes ✓
+  - `should_extend_payload`: checks both `ptc_weight > threshold` AND `ptc_blob_data_available_weight > threshold` ✓
+  - `get_payload_tiebreaker`: EMPTY=1, FULL=2 (if should_extend) or 0, non-previous-slot=ordinal ✓
+  - `validate_on_attestation`: index in [0,1], same-slot must be 0, index-1 requires payload_revealed ✓
+  - `on_execution_payload`: marks payload_revealed + envelope_received + payload_data_available ✓
+  - Bid pool: filters by parent_block_root, highest bid tracking uses (slot, parent_block_hash, parent_block_root) ✓
+  - `PayloadAttestationData`: has both `payload_present` and `blob_data_available` fields ✓
+- EF spec tests: 139/139 pass (fake_crypto+minimal), 9/9 fork choice tests pass (real crypto)
+- Fork choice unit tests: 324/324 pass
+- No new merged Gloas PRs since last check
+- Open Gloas PRs unchanged: #4992, #4898, #4892, #4843, #4840, #4747, #4630, #4558, #5008, #4939, #4954
 - All other tracked open PRs still unmerged
 - CI green (all workflows passing), `cargo check` clean (no warnings)
 - Pinned to v1.7.0-alpha.3 (latest release)
