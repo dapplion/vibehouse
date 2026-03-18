@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1915 (Mar 19) — maintenance check, all green
+
+CI green. Nightlies green (latest 2 both green). Clippy clean (zero warnings). Spec tracked to v1.7.0-alpha.3 (HEAD still 1baa05e from Mar 15 — no new commits). All 14 tracked Gloas spec PRs still open: #4892, #4898, #4992, #4960, #4932, #4939, #5008, #4962, #4747, #4843, #4954, #4840, #4630, #4558 — none merged. `cargo audit`: 1 known vulnerability (rsa timing side-channel via jsonwebtoken — no upstream fix). All TODOs in codebase reference issue #36 and are either blocked (EIP-7892, blst, PeerDAS) or non-critical. Project in maintenance mode.
+
 ### run 1914 (Mar 19) — maintenance check, discovered 4 untracked spec PRs
 
 CI green. Nightlies green (latest 2 both green, Mar 17 flake predated 8f8faa7d fix). Spec tracked to v1.7.0-alpha.3 (HEAD still 85ab2d2 — no new commits). All 10 tracked Gloas spec PRs still open: #4892, #4898, #4992, #4960, #4932, #4939, #5008, #4962, #4747, #4843 — none merged.
