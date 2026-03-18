@@ -105,54 +105,32 @@ For Gloas sidecars (where `bid = block.body.signed_execution_payload_bid.message
 - #4950: Our by_root handlers serve everything in storage — already more permissive than spec minimum. No restriction needed.
 - **All spec tracking items resolved. Task DONE.**
 
-### run 1808 (Mar 18) — re-audit post-alpha.3
-
-- Checked for new spec PRs merged since last audit (Mar 17)
-- Found 1 additional: #5008 (field name fix: `block_root` → `beacon_block_root` in `ExecutionPayloadEnvelopesByRoot` spec text) — open PR, not merged; vibehouse already uses `beacon_block_root`
-- Open Gloas PRs tracked: #4992 (cached PTCs), #4960 (fork choice test deposit), #4939 (envelope request), #5008 (naming fix) — none merged yet
-- Re-verified: all 9 fork choice EF tests pass (including `on_execution_payload` from #4940)
-- Clippy: zero warnings across workspace
-- Nightly CI flakes (network fulu: `finalized_sync_not_enough_custody_peers_on_start`, slasher: `override_backend_with_mdbx_file_present`) — environment-specific, pass consistently locally (5/5 runs)
-
 ### run 1750 (Mar 17) — open PR scan
 
 Scanned open PRs in ethereum/consensus-specs for upcoming changes that could affect vibehouse:
 
 **Fork choice (vibehouse already aligned with proposed changes):**
-- #4892: Remove impossible branch in `is_supporting_vote` — vibehouse already uses `==` check (proto_array_fork_choice.rs:1687)
-- #4898: Remove PENDING from tiebreaker condition — vibehouse's `get_payload_tiebreaker` already omits PENDING check
+- #4892: Remove impossible branch in `is_supporting_vote` — vibehouse already uses `==` check
+- #4898: Remove PENDING from tiebreaker condition — vibehouse already omits PENDING check
 
 **Open design questions (no action yet):**
-- #4899: Should proposer boost be counted in `is_parent_strong`? — unresolved, tracking only
+- #4899: Should proposer boost be counted in `is_parent_strong`? — unresolved
 - #4843: Variable PTC deadline — could change PTC timing assumptions
-- #4992: Cached PTCs in state — new BeaconState field, tagged for both gloas and heze
+- #4992: Cached PTCs in state — new BeaconState field, under active debate (design not settled)
+- #4954: Store.time → Store.time_ms — limited impact (fork choice test handler only)
+- #4747: Fast Confirmation Rule — large scope, still under review
+- #4630: EIP-7688 forward compatible SSZ — design phase
+- #4558: Cell Dissemination via Partial Message — early stage
+- #5014: EIP-8025 p2p protocol (ExecutionProofStatus/ExecutionProofsByRange RPCs) — early stage
 
 **New EIPs being bundled into Gloas:**
 - #4840: EIP-7843 (SLOTNUM opcode) — EL-side, no CL impact expected
-
-### run 1796 (Mar 18) — spec audit, CI review
-
-- Re-scanned consensus-specs PRs merged since Mar 15: only #5005 (test-only, already tracked)
-- #5001 (parent_block_root bid filtering): confirmed already implemented — our `observed_execution_bids.rs` uses `(slot, parent_block_hash, parent_block_root)` tuple
-- #4940 (Gloas fork choice tests): confirmed all test fixtures present and passing — `fork_choice_on_execution_payload` passes, all 9 fork choice test suites pass
-- No new open PRs close to merging that require code changes
-- CI: latest push run green (all 7 jobs). Nightly flake in `network-tests (fulu)` — `finalized_sync_not_enough_custody_peers_on_start` — likely stale CI build artifact; passes 10/10 locally and in full suite
-- Clippy: clean across beacon_chain, network, state_processing, types, fork_choice
-- **No code changes needed. Spec fully tracked.**
-
-**Attestation validation change (not merged yet):**
-- #4939: Request missing payload envelopes when index-1 attestations indicate payload present — DONE: vibehouse now requests envelopes via ExecutionPayloadEnvelopesByRoot when index-1 attestation arrives but envelope not seen (run 1773)
-- #5008: Fix field name block_root → beacon_block_root in ExecutionPayloadEnvelopesByRoot spec text — doc-only, vibehouse already uses correct field name
 
 **New test PRs (not merged yet):**
 - #4960: Fork choice test with new validator deposit via envelope + reorg
 - #4932: Sanity/blocks tests with payload attestation coverage
 - #4962: Missed payload + withdrawal interaction tests
-
-Verified vibehouse handles the edge cases from all three test PRs:
-- Payload attestation slot validation: `data.slot + 1 == state.slot` check correctly rejects too-old slots (gloas.rs:254-268)
-- Stale withdrawals after missed payload: existing test `stale_withdrawal_mismatch_after_missed_payload_rejected`
-- Fork choice payload_states: `payload_states` maintained in proto_array, envelope-based deposits processed correctly
+- Verified vibehouse handles edge cases from all three test PRs
 
 ### run 1773 (Mar 17) — implement envelope request from index-1 attestations
 
@@ -164,122 +142,10 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - Response processing: verify envelope → process state transition → update fork choice
 - All 201 network tests, 61 Gloas beacon_chain tests, 9 EF fork choice test categories pass
 
-**Will re-check when alpha.4 is released.**
+### runs 1794-1817 (Mar 17-18) — spec tracking maintenance
 
-### run 1751 (Mar 17) — spec tracking refresh
-
-- Verified newly merged PR #4940 (initial Gloas fork choice tests): test runner already supports `on_execution_payload` steps, all 9 fork choice tests pass including new Gloas tests
-- Added tracking for open PR #4939 (attestation-triggered envelope requests) — new REJECT/IGNORE rules for index-1 attestations, guidance to use ExecutionPayloadEnvelopesByRoot
-- Added tracking for open PR #5008 (doc fix: block_root → beacon_block_root) — vibehouse already uses correct field name
-- Confirmed all remaining open spec PRs from run 1750 scan are still open/unmerged
-
-### run 1752 (Mar 17) — spec tracking refresh
-
-- No new consensus-specs commits since last check (latest 1baa05e711, #5005 — already tracked)
-- No new spec test releases (latest v1.6.0-beta.0 on consensus-spec-tests)
-- Clippy clean, CI green
-- New open Gloas PRs tracked:
-  - #4954: Update fork choice store to use milliseconds — converts `Store.time` → `Store.time_ms` and `Store.genesis_time` → `Store.genesis_time_ms`. Vibehouse uses `SystemTimeSlotClock` not raw `Store.time`, so impact would be limited to fork choice spec test handler (which reads `time` from test fixtures). Not merged.
-  - #4747: Fast Confirmation Rule — major new feature adding `confirmed_root` to Store, replaces `safe` block with confirmed chain. Large scope, still under review. Not merged.
-  - #4630: EIP-7688 forward compatible SSZ (StableContainer/Profile types) — architectural SSZ change. Not merged, design phase.
-  - #4558: Cell Dissemination via Partial Message Specification — new P2P layer for data availability. Not merged, early stage.
-- All previously tracked open PRs (#4843, #4840, #4892, #4898, #4899, #4939, #4992, #5008) still open/unmerged
-- No code changes needed. Will re-check next run.
-
-### run 1757 (Mar 17) — spec tracking refresh + nightly investigation
-
-- No new consensus-specs commits since last check (latest 1baa05e711, #5005)
-- All 11 tracked open Gloas PRs still open/unmerged (#4558, #4630, #4747, #4840, #4843, #4892, #4898, #4939, #4954, #4992, #5008)
-- No new spec test releases (latest v1.5.0 on consensus-spec-tests)
-- Investigated nightly-tests failure (Mar 17): `finalized_sync_not_enough_custody_peers_on_start` in Fulu network tests — already fixed in commit 8f8faa7de earlier today
-- Mar 16 nightly failure was known flaky slasher test (`override_backend_with_mdbx_file_present`) — CI environment timing issue
-- Clippy clean, CI green, devnet healthy (finalized_epoch=8)
-- EF spec tests all pass: 139/139 (fake_crypto) + 79/79 (real crypto)
-- No code changes needed. Will re-check next run.
-
-### run 1759 (Mar 17) — spec tracking refresh + full test suite validation
-
-- No new consensus-specs commits since last check
-- All tracked open Gloas PRs still open/unmerged
-- Full test suite validation:
-  - EF spec tests: 139/139 (fake_crypto) + 79/79 (real crypto), including new on_execution_payload fork choice tests from #4940
-  - beacon_chain: 991/991 pass (FORK_NAME=gloas)
-  - network: 201/201 pass (FORK_NAME=gloas)
-  - operation_pool: 72/72 pass (FORK_NAME=gloas)
-  - workspace (excl heavy crates): 4914/4914 pass (8 web3signer failures are JRE infrastructure, not code)
-- Clippy clean, CI green
-- No code changes needed
-
-### run 1760 (Mar 17) — spec tracking refresh
-
-- No new consensus-specs merges since last check (latest merged Gloas PR: #5002, Mar 13)
-- Latest spec test release still v1.7.0-alpha.3 — vibehouse already pinned
-- All 11 tracked open Gloas PRs still open/unmerged
-- Two approved PRs close to merge (#4892 remove impossible branch in is_supporting_vote, #4898 remove pending from tiebreaker) — vibehouse already aligned with both
-- #4992 (cached PTCs in state) has one approval, still in discussion — will need implementation when merged
-- #4954 (Store.time → Store.time_ms) awaiting review — limited impact (fork choice test handler only)
-- Nightly failure (Mar 17) was already fixed in 8f8faa7de (pre-fix commit ran); verified test passes locally
-- Clippy clean, CI green
-- No code changes needed
-
-### run 1761 (Mar 17) — spec tracking refresh
-
-- No new consensus-specs merges since last check (latest merged: #5005, Mar 15)
-- All 11 tracked open Gloas PRs still open/unmerged
-- #4992 (cached PTCs in state) has active discussion (updated today) — potuz flagged `get_ptc` as "too restrictive" on slot range, design still evolving. Not ready to implement.
-- Nightly failure (Mar 17 09:11 UTC) confirmed as timing: fix 8f8faa7de pushed at 09:35 UTC, after nightly started. Test passes locally.
-- Clippy clean, CI green
-- Checked heze fork spec: only EIP-7805 (FOCIL/inclusion lists) — small scope, early stage
-- No code changes needed
-
-### run 1762 (Mar 17) — spec tracking + devnet health check
-
-- No new consensus-specs merges since last check (latest merged: #5005, Mar 15)
-- All tracked open Gloas PRs still open/unmerged
-- #4992 (cached PTCs in state): pushback from Grandine (sauliusgrigaitis) questioning if cache belongs in state; potuz discussing tradeoffs. Design not settled.
-- New PR #5014 (EIP-8025 p2p protocol): adds ExecutionProofStatus and ExecutionProofsByRange RPCs for ZK proof sync. Not merged, early stage.
-- Clippy clean, CI green, nightly Fulu failure confirmed as pre-fix timing
-- Devnet health check: finalized_epoch=8 (slot 80, epoch 10), no stalls, Gloas fork transition clean
-- No code changes needed
-
-### run 1767 (Mar 17) — spec tracking refresh
-
-- No new consensus-specs merges since last check (latest merged: #5005, Mar 15)
-- All tracked open Gloas PRs still open/unmerged
-- Verified #5001 (parent_block_root in bid filtering key) already implemented — 3-tuple `(Slot, ExecutionBlockHash, Hash256)` in `observed_execution_bids.rs:48`
-- Verified #4940 (initial Gloas fork choice tests) — our EF test runner already handles `on_execution_payload` steps and `head_payload_status` checks
-- Verified #5002 (payload signature verification wording) — doc-only, no functional change
-- Clippy clean, CI green
-- Nightly Fulu failure (Mar 17) confirmed as timing: `finalized_sync_not_enough_custody_peers_on_start` fixed in 8f8faa7de before nightly completed
-- `cargo audit`: 1 medium advisory (RUSTSEC-2023-0071 in `rsa` via `jsonwebtoken`) — no fix available upstream
-- No code changes needed
-
-### run 1771 (Mar 17) — spec tracking refresh + nightly fix verification
-
-- No new consensus-specs merges since last check (latest merged: #5005, Mar 15)
-- All 11 tracked open Gloas PRs still open/unmerged (#4558, #4630, #4747, #4840, #4843, #4892, #4898, #4939, #4954, #4992, #5008)
-- No new consensus-spec-tests releases (latest v1.6.0-beta.0)
-- Nightly fix verified locally: `finalized_sync_not_enough_custody_peers_on_start` passes (3.6s)
-- Clippy clean, CI green, `cargo audit` unchanged (1 unfixable rsa advisory)
-- No code changes needed
-
-### run 1794 (Mar 18) — spec tracking refresh + full test validation
-
-- No new consensus-specs merges since last check (latest merged: #5005, Mar 15)
-- Re-verified all 4 post-alpha.3 merged PRs (#5001, #5002, #4940, #5005) — all already implemented or handled
-- Full test suite validation:
-  - EF spec tests: 139/139 (fake_crypto,minimal_testing) + 9/9 fork choice (real crypto)
-  - Workspace tests: 4914/4914 pass (excluding web3signer JRE infrastructure tests)
-- Clippy clean (zero warnings), CI green
-- No code changes needed
-
-### run 1806 (Mar 18) — spec tracking refresh
-
-- No new consensus-specs merges since last check (latest merged: #5005, Mar 15)
-- All 11 tracked open Gloas PRs still open/unmerged (#4558, #4630, #4747, #4840, #4843, #4892, #4898, #4939, #4954, #4992, #5008)
-- #4992 (cached PTCs in state): still under active debate (potuz, ensi321 discussing slot range restrictions)
-- #4892 and #4898: both mergeable/clean, vibehouse already aligned with both
-- No new consensus-spec-tests releases (latest v1.6.0-beta.0)
-- cargo audit: unchanged (1 unfixable rsa advisory, 5 allowed warnings)
-- Clippy clean, CI green
-- No code changes needed
+- No new consensus-specs merges since #5005 (Mar 15)
+- All 11+ tracked open Gloas PRs still open/unmerged
+- Repeatedly verified: CI green, clippy clean, all EF tests pass (139/139 + 79/79), devnet healthy (finalized_epoch=8)
+- `cargo audit`: 1 unfixable advisory (RUSTSEC-2023-0071 in `rsa` via `jsonwebtoken`)
+- **Will re-check when alpha.4 is released or new PRs merge.**
