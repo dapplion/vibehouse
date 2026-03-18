@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1819 (Mar 18) — health check, nightly triggered, all stable
+
+- **CI**: all 7 jobs green on HEAD (`1d2f61e`). Triggered manual nightly to verify slasher + network-tests fixes (both were in commits after last nightly ran).
+- **Build**: `cargo check` clean (9s). Zero warnings.
+- **Spec**: v1.7.0-alpha.3 still latest release. No new Gloas PRs merged since #5005 (Mar 15).
+- **New PR #4747** (Fast Confirmation Rule): tagged `gloas`, updated Mar 17. Adds `confirmed_root` to Store, new `on_slot_after_attestations_applied` handler. Still open, not actionable yet.
+- **PR #4992** (cached PTCs): no new commits since Mar 12. Active discussion (Grandine questioning spec vs implementation). Our cached-ptc branch up to date.
+- **Tests**: 4986/4986 workspace tests pass. 139/139 EF spec tests pass (fake_crypto, minimal).
+- **Cargo audit**: unchanged — 1 known vulnerability (rsa, no fix), 5 allowed warnings, 1 bincode unmaintained.
+- **Stale branches**: gloas-dev, gloas-fork-choice, gloas-signatures, gloas/data-column-sidecar-superstruct all 2700+ commits behind (work squash-merged). ptc-lookbehind superseded by cached-ptc. Not deleting without explicit permission.
+- No code changes needed.
+
 ### run 1818 (Mar 18) — full health check, 4986/4986 tests pass
 
 - **CI**: all 7 jobs green on HEAD (`ccd8c1b`). Nightly Mar 17 fulu network flake confirmed fixed locally (5/5 passes).
