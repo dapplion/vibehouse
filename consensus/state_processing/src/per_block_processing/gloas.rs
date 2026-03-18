@@ -490,20 +490,24 @@ pub fn is_parent_block_full<E: EthSpec>(
     Ok(state_gloas.latest_execution_payload_bid.block_hash == state_gloas.latest_block_hash)
 }
 
-/// [Modified in Gloas:EIP7732] Process withdrawals without execution payload.
-///
-/// In Gloas, withdrawals are computed by the CL and stored in `payload_expected_withdrawals`
-/// for the EL to include. The function computes expected withdrawals from builder pending
-/// withdrawals, partial validator withdrawals, builder sweep, and validator sweep.
-pub fn process_withdrawals_gloas<E: EthSpec>(
-    state: &mut BeaconState<E>,
-    spec: &ChainSpec,
-) -> Result<(), BlockProcessingError> {
-    // Return early if the parent block is empty (payload not delivered)
-    if !is_parent_block_full::<E>(state)? {
-        return Ok(());
-    }
+/// Result of computing Gloas withdrawals. Contains the withdrawal list and metadata
+/// needed to update state after processing.
+struct WithdrawalResult {
+    withdrawals: Vec<Withdrawal>,
+    processed_builder_withdrawals_count: usize,
+    processed_partial_withdrawals_count: usize,
+    processed_builders_sweep_count: usize,
+}
 
+/// Shared withdrawal computation for Gloas ePBS.
+///
+/// Computes the withdrawal list from builder pending withdrawals, partial validator
+/// withdrawals, builder sweep, and validator sweep. Used by both the state-mutating
+/// `process_withdrawals_gloas` and the read-only `get_expected_withdrawals_gloas`.
+fn compute_withdrawals_gloas<E: EthSpec>(
+    state: &BeaconState<E>,
+    spec: &ChainSpec,
+) -> Result<WithdrawalResult, BlockProcessingError> {
     let epoch = state.current_epoch();
     let fork_name = state.fork_name_unchecked();
     let max_withdrawals = E::max_withdrawals_per_payload();
@@ -687,8 +691,33 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
         }
     }
 
+    Ok(WithdrawalResult {
+        withdrawals,
+        processed_builder_withdrawals_count,
+        processed_partial_withdrawals_count,
+        processed_builders_sweep_count,
+    })
+}
+
+/// [Modified in Gloas:EIP7732] Process withdrawals without execution payload.
+///
+/// In Gloas, withdrawals are computed by the CL and stored in `payload_expected_withdrawals`
+/// for the EL to include. The function computes expected withdrawals from builder pending
+/// withdrawals, partial validator withdrawals, builder sweep, and validator sweep.
+pub fn process_withdrawals_gloas<E: EthSpec>(
+    state: &mut BeaconState<E>,
+    spec: &ChainSpec,
+) -> Result<(), BlockProcessingError> {
+    // Return early if the parent block is empty (payload not delivered)
+    if !is_parent_block_full::<E>(state)? {
+        return Ok(());
+    }
+
+    let result = compute_withdrawals_gloas(state, spec)?;
+    let max_withdrawals = E::max_withdrawals_per_payload();
+
     // Apply withdrawals: decrease balances
-    for withdrawal in &withdrawals {
+    for withdrawal in &result.withdrawals {
         if (withdrawal.validator_index & BUILDER_INDEX_FLAG) != 0 {
             // Builder withdrawal
             let builder_index = (withdrawal.validator_index & !BUILDER_INDEX_FLAG) as usize;
@@ -709,13 +738,13 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
     }
 
     // Update next_withdrawal_index
-    if let Some(latest_withdrawal) = withdrawals.last() {
+    if let Some(latest_withdrawal) = result.withdrawals.last() {
         *state.next_withdrawal_index_mut()? = latest_withdrawal.index.safe_add(1)?;
     }
 
     // Capture withdrawal metadata before moving into List
-    let withdrawals_len = withdrawals.len();
-    let last_validator_index = withdrawals.last().map(|w| w.validator_index);
+    let withdrawals_len = result.withdrawals.len();
+    let last_validator_index = result.withdrawals.last().map(|w| w.validator_index);
 
     // Store payload_expected_withdrawals (consume withdrawals by value, no clone)
     {
@@ -723,23 +752,23 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
             .as_gloas_mut()
             .map_err(BlockProcessingError::BeaconStateError)?;
         state_gloas.payload_expected_withdrawals =
-            List::new(withdrawals).map_err(BlockProcessingError::MilhouseError)?;
+            List::new(result.withdrawals).map_err(BlockProcessingError::MilhouseError)?;
     }
 
     // Update builder_pending_withdrawals (remove processed via in-place pop_front)
-    if processed_builder_withdrawals_count > 0 {
+    if result.processed_builder_withdrawals_count > 0 {
         state
             .as_gloas_mut()
             .map_err(BlockProcessingError::BeaconStateError)?
             .builder_pending_withdrawals
-            .pop_front(processed_builder_withdrawals_count)?;
+            .pop_front(result.processed_builder_withdrawals_count)?;
     }
 
     // Update pending_partial_withdrawals (remove processed)
-    if processed_partial_withdrawals_count > 0 {
+    if result.processed_partial_withdrawals_count > 0 {
         state
             .pending_partial_withdrawals_mut()?
-            .pop_front(processed_partial_withdrawals_count)?;
+            .pop_front(result.processed_partial_withdrawals_count)?;
     }
 
     // Update next_withdrawal_builder_index
@@ -751,7 +780,7 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
         if builders_count > 0 {
             let next_index = state_gloas
                 .next_withdrawal_builder_index
-                .saturating_add(processed_builders_sweep_count as u64);
+                .saturating_add(result.processed_builders_sweep_count as u64);
             state_gloas.next_withdrawal_builder_index =
                 next_index.safe_rem(builders_count as u64)?;
         }
@@ -783,9 +812,9 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
 
 /// Compute expected withdrawals for a Gloas block without mutating state.
 ///
-/// This mirrors the withdrawal computation in `process_withdrawals_gloas` but is read-only,
-/// suitable for providing withdrawal lists to the EL via payload attributes.
-/// Returns an empty list if the parent block's payload was not delivered.
+/// Uses the same withdrawal computation as `process_withdrawals_gloas` (via
+/// `compute_withdrawals_gloas`) to ensure consistency. Returns an empty list
+/// if the parent block's payload was not delivered.
 pub fn get_expected_withdrawals_gloas<E: EthSpec>(
     state: &BeaconState<E>,
     spec: &ChainSpec,
@@ -795,177 +824,8 @@ pub fn get_expected_withdrawals_gloas<E: EthSpec>(
         return Ok(vec![]);
     }
 
-    let epoch = state.current_epoch();
-    let fork_name = state.fork_name_unchecked();
-    let max_withdrawals = E::max_withdrawals_per_payload();
-    let reserved_limit = max_withdrawals.saturating_sub(1);
-    let mut withdrawal_index = state.next_withdrawal_index()?;
-    let mut withdrawals = Vec::<Withdrawal>::with_capacity(max_withdrawals);
-
-    // 1. Builder pending withdrawals
-    {
-        let state_gloas = state
-            .as_gloas()
-            .map_err(BlockProcessingError::BeaconStateError)?;
-        let builders_count = state_gloas.builders.len() as u64;
-        for withdrawal in state_gloas.builder_pending_withdrawals.iter() {
-            if withdrawals.len() >= reserved_limit {
-                break;
-            }
-            let builder_index = withdrawal.builder_index;
-            if builder_index >= builders_count {
-                return Err(BlockProcessingError::WithdrawalBuilderIndexInvalid {
-                    builder_index,
-                    builders_count,
-                });
-            }
-            withdrawals.push(Withdrawal {
-                index: withdrawal_index,
-                validator_index: builder_index | BUILDER_INDEX_FLAG,
-                address: withdrawal.fee_recipient,
-                amount: withdrawal.amount,
-            });
-            withdrawal_index.safe_add_assign(1)?;
-        }
-    }
-
-    // 2. Pending partial withdrawals (validator)
-    {
-        let partials_limit = std::cmp::min(
-            withdrawals
-                .len()
-                .saturating_add(spec.max_pending_partials_per_withdrawals_sweep as usize),
-            reserved_limit,
-        );
-        if let Ok(pending_partial_withdrawals) = state.pending_partial_withdrawals() {
-            for withdrawal_req in pending_partial_withdrawals {
-                let is_withdrawable = withdrawal_req.withdrawable_epoch <= epoch;
-                let has_reached_limit = withdrawals.len() >= partials_limit;
-                if !is_withdrawable || has_reached_limit {
-                    break;
-                }
-
-                let validator = state.get_validator(withdrawal_req.validator_index as usize)?;
-                let has_sufficient_effective_balance =
-                    validator.effective_balance >= spec.min_activation_balance;
-                let total_withdrawn: u64 = withdrawals
-                    .iter()
-                    .filter(|w| w.validator_index == withdrawal_req.validator_index)
-                    .map(|w| w.amount)
-                    .try_fold(0u64, |acc, amt| acc.safe_add(amt))?;
-                let balance = state
-                    .get_balance(withdrawal_req.validator_index as usize)?
-                    .saturating_sub(total_withdrawn);
-                let has_excess_balance = balance > spec.min_activation_balance;
-
-                if validator.exit_epoch == spec.far_future_epoch
-                    && has_sufficient_effective_balance
-                    && has_excess_balance
-                {
-                    let withdrawable_balance = std::cmp::min(
-                        balance.saturating_sub(spec.min_activation_balance),
-                        withdrawal_req.amount,
-                    );
-                    withdrawals.push(Withdrawal {
-                        index: withdrawal_index,
-                        validator_index: withdrawal_req.validator_index,
-                        address: validator
-                            .get_execution_withdrawal_address(spec)
-                            .ok_or(BeaconStateError::NonExecutionAddressWithdrawalCredential)?,
-                        amount: withdrawable_balance,
-                    });
-                    withdrawal_index.safe_add_assign(1)?;
-                }
-            }
-        }
-    }
-
-    // 3. Builder sweep
-    {
-        let state_gloas = state
-            .as_gloas()
-            .map_err(BlockProcessingError::BeaconStateError)?;
-        let builders_count = state_gloas.builders.len();
-        if builders_count > 0 {
-            let builders_limit = std::cmp::min(
-                builders_count,
-                spec.max_builders_per_withdrawals_sweep as usize,
-            );
-            let mut builder_index = state_gloas.next_withdrawal_builder_index;
-            if builder_index >= builders_count as u64 {
-                return Err(BlockProcessingError::WithdrawalBuilderIndexInvalid {
-                    builder_index,
-                    builders_count: builders_count as u64,
-                });
-            }
-            for _ in 0..builders_limit {
-                if withdrawals.len() >= reserved_limit {
-                    break;
-                }
-                if let Some(builder) = state_gloas.builders.get(builder_index as usize)
-                    && builder.withdrawable_epoch <= epoch
-                    && builder.balance > 0
-                {
-                    withdrawals.push(Withdrawal {
-                        index: withdrawal_index,
-                        validator_index: builder_index | BUILDER_INDEX_FLAG,
-                        address: builder.execution_address,
-                        amount: builder.balance,
-                    });
-                    withdrawal_index.safe_add_assign(1)?;
-                }
-                builder_index = builder_index.safe_add(1)?.safe_rem(builders_count as u64)?;
-            }
-        }
-    }
-
-    // 4. Validator sweep
-    {
-        let mut validator_index = state.next_withdrawal_validator_index()?;
-        let validators_len = state.validators().len() as u64;
-        let bound = std::cmp::min(validators_len, spec.max_validators_per_withdrawals_sweep);
-        for _ in 0..bound {
-            if withdrawals.len() >= max_withdrawals {
-                break;
-            }
-
-            let validator = state.get_validator(validator_index as usize)?;
-            let partially_withdrawn_balance: u64 = withdrawals
-                .iter()
-                .filter(|w| w.validator_index == validator_index)
-                .map(|w| w.amount)
-                .try_fold(0u64, |acc, amt| acc.safe_add(amt))?;
-            let balance = state
-                .get_balance(validator_index as usize)?
-                .saturating_sub(partially_withdrawn_balance);
-            if validator.is_fully_withdrawable_validator(balance, epoch, spec, fork_name) {
-                withdrawals.push(Withdrawal {
-                    index: withdrawal_index,
-                    validator_index,
-                    address: validator
-                        .get_execution_withdrawal_address(spec)
-                        .ok_or(BlockProcessingError::WithdrawalCredentialsInvalid)?,
-                    amount: balance,
-                });
-                withdrawal_index.safe_add_assign(1)?;
-            } else if validator.is_partially_withdrawable_validator(balance, spec, fork_name) {
-                withdrawals.push(Withdrawal {
-                    index: withdrawal_index,
-                    validator_index,
-                    address: validator
-                        .get_execution_withdrawal_address(spec)
-                        .ok_or(BlockProcessingError::WithdrawalCredentialsInvalid)?,
-                    amount: balance
-                        .saturating_sub(validator.get_max_effective_balance(spec, fork_name)),
-                });
-                withdrawal_index.safe_add_assign(1)?;
-            }
-
-            validator_index = validator_index.safe_add(1)?.safe_rem(validators_len)?;
-        }
-    }
-
-    Ok(withdrawals)
+    let result = compute_withdrawals_gloas(state, spec)?;
+    Ok(result.withdrawals)
 }
 
 /// Compute the total pending balance to withdraw for a builder.
