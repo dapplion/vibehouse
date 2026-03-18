@@ -3417,6 +3417,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     PeerAction::LowToleranceError,
                     "execution_bid_zero_payment",
                 );
+                metrics::inc_counter_vec(
+                    &metrics::BEACON_PROCESSOR_EXECUTION_BID_REJECTED_TOTAL,
+                    &["zero_payment"],
+                );
                 return;
             }
             Err(ExecutionBidError::SlotNotCurrentOrNext { .. }) => {
@@ -3445,6 +3449,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     PeerAction::LowToleranceError,
                     "execution_bid_invalid_builder",
                 );
+                metrics::inc_counter_vec(
+                    &metrics::BEACON_PROCESSOR_EXECUTION_BID_REJECTED_TOTAL,
+                    &["invalid_builder"],
+                );
                 return;
             }
             // Spec: [REJECT] valid signature
@@ -3459,6 +3467,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     peer_id,
                     PeerAction::LowToleranceError,
                     "execution_bid_bad_signature",
+                );
+                metrics::inc_counter_vec(
+                    &metrics::BEACON_PROCESSOR_EXECUTION_BID_REJECTED_TOTAL,
+                    &["invalid_signature"],
                 );
                 return;
             }
@@ -3527,6 +3539,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     PeerAction::LowToleranceError,
                     "execution_bid_fee_recipient_mismatch",
                 );
+                metrics::inc_counter_vec(
+                    &metrics::BEACON_PROCESSOR_EXECUTION_BID_REJECTED_TOTAL,
+                    &["fee_recipient_mismatch"],
+                );
                 return;
             }
             // Spec: [REJECT] bid.gas_limit matches proposer preferences
@@ -3541,6 +3557,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     peer_id,
                     PeerAction::LowToleranceError,
                     "execution_bid_gas_limit_mismatch",
+                );
+                metrics::inc_counter_vec(
+                    &metrics::BEACON_PROCESSOR_EXECUTION_BID_REJECTED_TOTAL,
+                    &["gas_limit_mismatch"],
                 );
                 return;
             }
@@ -3963,6 +3983,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     PeerAction::LowToleranceError,
                     "payload_attestation_invalid_bits",
                 );
+                metrics::inc_counter_vec(
+                    &metrics::BEACON_PROCESSOR_PAYLOAD_ATTESTATION_REJECTED_TOTAL,
+                    &["invalid_aggregation_bits"],
+                );
                 return;
             }
             // Spec: [REJECT] valid aggregate BLS signature
@@ -3978,6 +4002,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     peer_id,
                     PeerAction::LowToleranceError,
                     "payload_attestation_bad_signature",
+                );
+                metrics::inc_counter_vec(
+                    &metrics::BEACON_PROCESSOR_PAYLOAD_ATTESTATION_REJECTED_TOTAL,
+                    &["invalid_signature"],
                 );
                 return;
             }

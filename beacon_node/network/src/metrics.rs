@@ -226,6 +226,14 @@ pub static BEACON_PROCESSOR_EXECUTION_BID_EQUIVOCATING_TOTAL: LazyLock<Result<In
             "Total number of equivocating execution bids rejected.",
         )
     });
+pub static BEACON_PROCESSOR_EXECUTION_BID_REJECTED_TOTAL: LazyLock<Result<IntCounterVec>> =
+    LazyLock::new(|| {
+        try_create_int_counter_vec(
+            "beacon_processor_execution_bid_rejected_total",
+            "Total number of execution bids rejected by reason.",
+            &["reason"],
+        )
+    });
 
 // Gossip payload attestations (gloas ePBS).
 pub static BEACON_PROCESSOR_PAYLOAD_ATTESTATION_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
@@ -247,6 +255,14 @@ pub static BEACON_PROCESSOR_PAYLOAD_ATTESTATION_EQUIVOCATING_TOTAL: LazyLock<Res
         try_create_int_counter(
             "beacon_processor_payload_attestation_equivocating_total",
             "Total number of equivocating payload attestations rejected.",
+        )
+    });
+pub static BEACON_PROCESSOR_PAYLOAD_ATTESTATION_REJECTED_TOTAL: LazyLock<Result<IntCounterVec>> =
+    LazyLock::new(|| {
+        try_create_int_counter_vec(
+            "beacon_processor_payload_attestation_rejected_total",
+            "Total number of payload attestations rejected by reason.",
+            &["reason"],
         )
     });
 
