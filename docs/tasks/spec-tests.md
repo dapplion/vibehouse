@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1833 (Mar 18) — health check, no changes
+
+- CI: all green (push + nightly). Clippy clean (0 warnings).
+- Spec: v1.7.0-alpha.3 still latest. No new Gloas PRs merged.
+- Post-alpha.3 merged PRs audited: #5001 (bid filter key with parent_block_root) — already implemented; #5002 (wording fix) — non-impacting; #5005 (test fixture fix) — non-impacting.
+- New open PR: #5008 (field name fix block_root→beacon_block_root in spec text) — we already use correct name.
+- Open Gloas PRs: #4992 (cached PTCs — still under design debate), #5008, #4962, #4960, #4939, #4932, #4843, #4840, #4630.
+- Cargo audit: unchanged (rsa RUSTSEC-2023-0071, bincode/ansi_term/derivative/filesystem/paste unmaintained).
+- All TODOs in codebase tracked in #36 (blocked/non-critical).
+
 ### run 1832 (Mar 18) — health check, no changes
 
 - CI: all green (push + nightly). Clippy clean.
