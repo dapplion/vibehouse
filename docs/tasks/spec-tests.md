@@ -29,14 +29,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
-### runs 1833-1835 (Mar 18) — health checks, no changes
+### runs 1833-1836 (Mar 18) — health checks, no changes
 
-- CI: all green (push + nightly). Clippy clean (0 warnings).
+- CI: all green (push + nightly). Nightly: all 26 jobs pass across all forks (phase0→fulu).
 - Spec: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since Mar 15 (#5005).
 - Post-alpha.3 merged PRs audited: #5001 (bid filter key with parent_block_root) — already implemented; #5002 (wording fix) — non-impacting; #5005 (test fixture fix) — non-impacting.
-- Open Gloas PRs: #4992 (cached PTCs), #5008, #4962, #4960, #4939, #4932, #4843, #4840, #4630.
-- Cargo audit: unchanged (rsa RUSTSEC-2023-0071, bincode/ansi_term/derivative/filesystem/paste unmaintained).
-- All TODOs in codebase tracked in #36 (blocked/non-critical).
+- Open Gloas PRs: #4992 (cached PTCs), #5008 (field name fix — our code correct), #4962, #4960, #4939 (blocked), #4932, #4843, #4840, #4630.
+- Cargo audit: unchanged (rsa RUSTSEC-2023-0071, bincode/ansi_term/derivative/filesystem/paste unmaintained). `paste` is transitive via alloy-primitives.
 - All TODOs in codebase tracked in #36 (blocked/non-critical).
 
 ### run 1832 (Mar 18) — health check, no changes
