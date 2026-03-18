@@ -1835,9 +1835,12 @@ Repeated spec tracking checks, all stable. Key facts from this period:
 - Consolidated runs 1499–1686 and 1840–1843 into summaries.
 - All stable. No action needed.
 
-### Run 1860 (2026-03-18) — health check
-- **Spec**: v1.7.0-alpha.3 still latest. Scanned open spec PRs: no new merges since #5005.
-- **Open PRs**: #5008 (field name fix, doc-only), #4992 (cached PTCs, still debated), #4954 (time_ms), #4898 (pending tiebreaker), #4892 (impossible branch). None merged yet.
-- **CI**: withdrawal dedup commit (d9af9e256) passing — check+clippy+fmt ✓, EF tests ✓, remaining jobs in progress.
-- **Code safety**: audited all unwrap/expect/panic/unreachable in production code — all clean.
+### Runs 1860–1872 (2026-03-18) — health checks + devnet verification
+- **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since #5005 (Mar 15). New open PR #5014 (EIP-8025 P2P protocol for ZK proofs) — not merged, no action needed.
+- **Open Gloas PRs**: #4992 (cached PTCs, MERGEABLE, 23 reviews), #4843 (variable PTC deadline, 11 reviews), #4840 (EIP-7843), #4630 (EIP-7688 SSZ), #4954 (milliseconds). All unmerged.
+- **CI**: all green. Zero clippy warnings. Zero build warnings.
+- **Devnet**: run 20260318-153750 reached finalized_epoch=8. Healthy.
+- **Sync test**: run 20260318-154729 — both supernode and fullnode synced through Gloas fork boundary in 25s. finalized_epoch=5 on both.
+- **Code audit**: reviewed all Gloas hot paths for performance improvements — `state.validators().len()` is O(1) (just a vec length), no actionable optimizations found.
+- Prep branches `cached-ptc` and `ptc-lookbehind` remain ready on origin.
 
