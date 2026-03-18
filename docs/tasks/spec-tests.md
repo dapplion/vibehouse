@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1817 (Mar 18) — health check, all stable
+
+- **CI**: all 7 jobs green on HEAD (`dc6a50a`).
+- **Build**: `cargo check` clean (9s). Zero warnings.
+- **Spec**: v1.7.0-alpha.3 still latest release. No new Gloas PRs merged since #5005 (Mar 15).
+- **New PR #5008**: doc fix for `block_root` → `beacon_block_root` field name in `ExecutionPayloadEnvelopesByRoot` spec text. No code impact — we already use `beacon_block_root` correctly.
+- **PR #4992** (cached PTCs): still open, active design discussion (potuz, ensi321). Not ready for implementation.
+- **Nightly**: Mar 17 failure (`network-tests (fulu)`) already fixed by `8f8faa7de` in HEAD. Next nightly should pass.
+- **Open Gloas PRs**: #5008 (doc fix), #4992 (cached PTCs), #4892 (remove impossible branch), #4898 (remove pending tiebreaker), #4960 (fork choice deposit test), #4939 (envelope request), #4932 (sanity/blocks tests), #4962 (missed payload withdrawal tests), #4843 (variable PTC deadline), #4840 (EIP-7843), #4630 (EIP-7688 SSZ).
+- No code changes needed.
+
 ### run 1816 (Mar 18) — health check, nightly failure already fixed
 
 - **CI**: in progress on HEAD (`7419c0c`). check/clippy/ef-tests/network+op_pool all pass, beacon_chain/http_api/unit tests still running.
