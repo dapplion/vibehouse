@@ -1754,3 +1754,7 @@ Repeated health checks, all stable:
 ### Run 1858 (2026-03-18)
 
 **Withdrawal code deduplication**: `process_withdrawals_gloas` and `get_expected_withdrawals_gloas` had ~200 lines of identical withdrawal computation logic (4 phases: builder pending, partial validator, builder sweep, validator sweep). Extracted shared logic into `compute_withdrawals_gloas` returning a `WithdrawalResult` struct. The mutable version applies state mutations using the result; the read-only version just returns withdrawals. Eliminates the risk of one function being updated without the other, which would be a consensus divergence bug. All 1021 state_processing tests pass, all EF spec tests pass (operations_withdrawals, operations_execution_payload_*, sanity_*). Committed `d9af9e256`.
+
+### Run 1860 (2026-03-18)
+
+**Full safety audit of production code**: searched all `unwrap()`, `expect()`, `panic!()`, `unreachable!()` in consensus/ and beacon_node/ — all instances are in test code (`#[cfg(test)]`) or acceptable startup/initialization paths. No runtime panic risks found in production consensus code. Checked open spec PRs — no new merges since #5005 (Mar 15). Notable open PRs still under review: #4992 (cached PTCs), #4954 (time_ms), #4898 (pending tiebreaker), #4892 (impossible branch). CI green. No code changes needed.

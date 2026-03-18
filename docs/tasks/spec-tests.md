@@ -1814,3 +1814,9 @@ Repeated spec tracking checks, all stable. Key facts from this period:
 - Consolidated runs 1499–1686 and 1840–1843 into summaries.
 - All stable. No action needed.
 
+### Run 1860 (2026-03-18) — health check
+- **Spec**: v1.7.0-alpha.3 still latest. Scanned open spec PRs: no new merges since #5005.
+- **Open PRs**: #5008 (field name fix, doc-only), #4992 (cached PTCs, still debated), #4954 (time_ms), #4898 (pending tiebreaker), #4892 (impossible branch). None merged yet.
+- **CI**: withdrawal dedup commit (d9af9e256) passing — check+clippy+fmt ✓, EF tests ✓, remaining jobs in progress.
+- **Code safety**: audited all unwrap/expect/panic/unreachable in production code — all clean.
+
