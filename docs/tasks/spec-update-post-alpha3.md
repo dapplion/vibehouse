@@ -181,3 +181,13 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - CI green (all workflows passing), `cargo check` clean (no warnings)
 - Pinned to v1.7.0-alpha.3 (latest release)
 - Scanned heze fork specs for awareness: introduces FOCIL (EIP-7805, fork-choice enforced inclusion lists) — 16-member inclusion list committee, new `InclusionList` type, fork choice integration. Early stage, no action needed yet.
+
+### run 1886 (Mar 18) — routine check
+
+- No new Gloas spec commits since Mar 15 (#5005), no new release since alpha.3
+- #4992 (cached PTCs in state) still open, under active discussion (potuz, jihoonsong, ensi321)
+- Open Gloas PRs unchanged: #4992, #5008, #4962, #4960, #4939, #4932, #4843, #4840, #4630
+- CI green: all workflows passing (ci, nightly, spec-test-version-check)
+- Nightly flakes (Mar 16 slasher, Mar 17 range sync) both already fixed; Mar 18 nightlies green
+- `cargo check` clean, `cargo audit`: same known advisory (RUSTSEC-2023-0071 rsa/jsonwebtoken), no new issues
+- **No action needed. Will re-check when new PRs merge or alpha.4 is released.**
