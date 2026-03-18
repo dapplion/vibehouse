@@ -191,3 +191,12 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - Nightly flakes (Mar 16 slasher, Mar 17 range sync) both already fixed; Mar 18 nightlies green
 - `cargo check` clean, `cargo audit`: same known advisory (RUSTSEC-2023-0071 rsa/jsonwebtoken), no new issues
 - **No action needed. Will re-check when new PRs merge or alpha.4 is released.**
+
+### run 1899 (Mar 18) — routine spec check + devnet verification
+
+- No new Gloas spec commits since Mar 15 (#5005), no new spec-test release since alpha.3
+- Open Gloas PRs unchanged: #4992, #5008, #4962, #4960, #4939, #4932, #4843, #4840, #4630, #4898, #4892, #4954
+- #4940 (initial fork choice tests) merged Mar 13 — adds `test_on_execution_payload` test + `head_payload_status` check format. Our EF test runner already supports `head_payload_status` checks. Ready for next spec-test release.
+- CI green, clippy clean (zero warnings), all EF tests passing
+- Devnet test passed: finalized_epoch=8, chain healthy through Gloas fork (4 nodes, minimal preset)
+- **No action needed. Will re-check when new PRs merge or alpha.4 is released.**
