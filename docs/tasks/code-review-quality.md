@@ -1871,3 +1871,11 @@ Previously these paths only logged `warn!` and penalized peers but had no Promet
 ### Run 1926 (2026-03-19)
 
 **Comprehensive health check — all clear**: Zero clippy warnings (full workspace + all targets). Spec v1.7.0-alpha.3 still latest — no new consensus-specs merges since #5005 (Mar 15). Open Gloas spec PRs: #4992 (cached PTCs) still `MERGEABLE`/`CLEAN` — most impactful pending change (adds `previous_ptc`/`current_ptc` to BeaconState, modifies `process_slots`, changes `get_ptc` to read from state). #4747 (fast confirmation) updated Mar 18, still open. #4960/#4932 (new test vectors) still open. No new EF test fixture releases (latest: v1.6.0-beta.0). `cargo audit`: unchanged (rsa RUSTSEC-2023-0071 no fix, 4 unmaintained transitive warnings). CI for `e7e1552ac`: 4/6 green (check ✅, ef-tests ✅, http_api ✅, network+op_pool ✅), beacon_chain + unit tests in progress. Nightly tests: last 2 runs passed (Mar 18). All 11 remaining TODOs tracked in #36 (5 blocked, 2 non-critical). No code changes needed.
+
+### Run 1933 (2026-03-19)
+
+**Rebased cached-ptc prep branch + comprehensive audit**: Rebased `cached-ptc` branch onto main (clean rebase, no conflicts). Verified: zero clippy warnings, 1026/1026 state_processing tests pass. EF spec tests expectedly fail (SSZ layout changed by new `previous_ptc`/`current_ptc` BeaconState fields — need new fixtures when spec PR #4992 merges). Pushed rebased branch to origin.
+
+Spec v1.7.0-alpha.3 still latest — no new consensus-specs merges since #5005 (Mar 15). Checked near-merge PRs: #4892 (2 approvals, remove impossible branch) — already implemented in our code. #4898 (1 approval, remove pending tiebreaker) — already implemented. #5008 (field name fix) — already correct. All open Gloas PRs unchanged.
+
+Full codebase audit: all `pub fn` in gloas.rs confirmed cross-crate (beacon_chain, store, http_api, ef_tests) — no visibility downgrades possible. Block production path reviewed (`produce_block_on_state`, `build_self_build_envelope`) — error handling is thorough. Remaining EL error enum TODOs (#36) reviewed — both are cosmetic refactors with significant churn, not worth the blast radius. Nightly flakes (Mar 16 slasher, Mar 17 network) both one-off and resolved. CI all green. No code changes needed.
