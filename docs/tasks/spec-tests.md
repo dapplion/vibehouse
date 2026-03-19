@@ -29,7 +29,7 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
-### run 1931 (Mar 19) — health check, spec audit, all stable
+### run 1931 (Mar 19) — spec audit, redundant closure cleanup
 
 - CI: in-progress for latest commit (copied()/dereference cleanup). Previous run green.
 - Spec: v1.7.0-alpha.3 still latest. consensus-specs HEAD unchanged at 1baa05e (Mar 15). No new merges.
@@ -37,6 +37,7 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 - Post-alpha.3 audit: confirmed #5001 (parent_block_root bid key), #4940 (fork choice tests), #5002 (doc wording) all already implemented. #5008 (field name fix) still open/unmerged.
 - Open Gloas PRs: #4992 (cached PTCs — APPROVED, not merged, updated Mar 17), #5014 (EIP-8025 p2p), #5008, #4962, #4960, #4939, #4932, #4843, #4840, #4630. None merged since last check.
 - Prep branches (`cached-ptc`, `ptc-lookbehind`) ready, waiting for #4992 merge.
+- Code quality: replaced redundant closures with method references across 49 files (e.g., `|x| x.into()` → `Into::into`, `|x| x.to_string()` → `ToString::to_string`). 4991/5000 tests pass (9 web3signer infra failures).
 - Clippy: zero warnings. No TODOs/FIXMEs/unwrap() in consensus code.
 - All priorities complete. Project in maintenance mode.
 
