@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1919 (Mar 19) — dead code cleanup
+
+Removed 6 unused functions/items across 5 files: `expect_no_work_event` (sync test helper), `get_enr`/`build_linear` (libp2p test helpers), `update_branch` (EE integration build util), `reset_mocks` (validator test rig), `with_config_and_spec`+`chain_config` field (CLI exec tests). Also removed 2 unused imports (`EnrExt`, `Multiaddr`). Full lint-full pass, CI triggered. No new spec changes since #5002 (Mar 13). All 11 open Gloas spec PRs unchanged (none close to merging). Project in maintenance mode.
+
 ### run 1918 (Mar 19) — dependency updates, maintenance
 
 Updated patch dependencies: alloy-chains 0.2.31→0.2.32, borsh 1.6.0→1.6.1, toml_edit 0.25.4→0.25.5. Build clean, clippy clean, 1085/1085 types tests pass, 69/69 EF SSZ static tests pass. CI green (previous run). Nightlies green (Mar 17 failure was flake fixed by 8f8faa7de). Spec tracked to v1.7.0-alpha.3 — no new merges. #4992 (cached PTCs) most active open PR (1 approval from jtraglia, still under discussion). #5008 (field name fix) is doc-only, our code already uses correct `beacon_block_root`. All other tracked PRs unchanged. cargo audit: same known issues (rsa, unmaintained sp1 transitive deps). Project in maintenance mode.
