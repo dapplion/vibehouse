@@ -1966,3 +1966,18 @@ Spec v1.7.0-alpha.3 still latest — no new consensus-specs merges. Open Gloas P
 - **Dependency audit**: `cargo machete --with-metadata` found no genuinely unused deps (all flagged items are proc-macro re-exports, TestRandom derives, or dev-deps).
 - **Branch cleanup**: Deleted 7 stale remote branches (gloas-p2p-gossip-validation, phase4-validation-wiring, gloas-dev, gloas-fork-choice, gloas-signatures, gloas/data-column-sidecar-superstruct, ptc-lookbehind). Only `main` and `cached-ptc` remain. Deleted local `ptc-lookbehind` branch.
 - **Code quality**: Zero clippy warnings, zero build warnings, cargo doc clean. All TODOs tracked in #36 (blocked/deferred). No code changes needed.
+
+### Run 1942 (2026-03-19)
+
+**Replaced empty string literals with `String::new()`/`unwrap_or_default()` across 8 files**: Systematic audit of `String::from("")`, `"".to_string()`, `"".into()`, and `unwrap_or_else(|| String::from(""))` patterns in production code:
+
+1. **`system_health/src/lib.rs`** (4 instances) — `unwrap_or_else(|| String::from(""))` and `unwrap_or_else(|| "".into())` → `unwrap_or_default()` for system_name, kernel_version, os_version, host_name
+2. **`vibehouse_network/src/discovery/mod.rs`** — `String::from("")` → `String::new()` for empty enr_dir fallback
+3. **`vibehouse_network/src/service/mod.rs`** — `"".into()` → `String::new()` for private identify config
+4. **`validator_manager/src/create_validators.rs`** — `"".to_string()` → `String::new()` for wallet builder
+5. **`eth2_keystore/src/keystore.rs`** — `"".to_string()` → `String::new()` for keystore description
+6. **`eth2_keystore/src/json_keystore/kdf_module.rs`** — `"".into()` → `String::new()` for EmptyString impl
+7. **`validator_dir/src/builder.rs`** — `"".into()` → `String::new()` for keystore builder
+8. **`validator_dir/src/insecure_keys.rs`** — `"".into()` → `String::new()` for insecure keystore builder
+
+Spec v1.7.0-alpha.3 still latest — no new consensus-specs merges since #5005 (Mar 15). Open Gloas PRs unchanged. 176/176 tests pass across affected crates, zero clippy warnings, lint-full passes. Committed `0ea8cb710`.
