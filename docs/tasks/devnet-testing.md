@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1928 (Mar 19) — maintenance check, all green
+
+CI green. Nightlies green (latest 2 both green). Clippy clean (zero warnings). Spec tracked to v1.7.0-alpha.3 (HEAD still 1baa05e from Mar 15 — no new commits). All 14 tracked Gloas spec PRs still open — none merged. cargo audit: same known issues (rsa, unmaintained transitive deps). cargo-machete false positives investigated (rand, ethereum_ssz all needed by derive macros). No remaining actionable code improvements — all TODOs reference #36 and are blocked or non-critical. Project in maintenance mode.
+
 ### run 1919 (Mar 19) — dead code cleanup
 
 Removed 6 unused functions/items across 5 files: `expect_no_work_event` (sync test helper), `get_enr`/`build_linear` (libp2p test helpers), `update_branch` (EE integration build util), `reset_mocks` (validator test rig), `with_config_and_spec`+`chain_config` field (CLI exec tests). Also removed 2 unused imports (`EnrExt`, `Multiaddr`). Full lint-full pass, CI triggered. No new spec changes since #5002 (Mar 13). All 11 open Gloas spec PRs unchanged (none close to merging). Project in maintenance mode.
