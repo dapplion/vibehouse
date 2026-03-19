@@ -87,18 +87,16 @@ pub trait SlotClock: Send + Sync + Sized + Clone {
     /// Returns the number of intervals the current slot is divided into.
     /// Pre-Gloas: 3. Gloas: 4.
     fn current_intervals_per_slot(&self) -> u64 {
-        self.now()
-            .map(|slot| {
-                if self
-                    .gloas_fork_slot()
-                    .is_some_and(|fork_slot| slot >= fork_slot)
-                {
-                    INTERVALS_PER_SLOT_GLOAS
-                } else {
-                    INTERVALS_PER_SLOT
-                }
-            })
-            .unwrap_or(INTERVALS_PER_SLOT)
+        self.now().map_or(INTERVALS_PER_SLOT, |slot| {
+            if self
+                .gloas_fork_slot()
+                .is_some_and(|fork_slot| slot >= fork_slot)
+            {
+                INTERVALS_PER_SLOT_GLOAS
+            } else {
+                INTERVALS_PER_SLOT
+            }
+        })
     }
 
     /// Returns the delay between the start of the slot and when unaggregated attestations should be

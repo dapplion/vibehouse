@@ -280,9 +280,7 @@ pub fn cli_run(matches: &ArgMatches, validator_dir: PathBuf) -> Result<(), Strin
         let suggested_fee_recipient = None;
         let validator_def = ValidatorDefinition::new_keystore_with_password(
             &dest_keystore,
-            password_opt
-                .map(PasswordStorage::ValidatorDefinitions)
-                .unwrap_or(PasswordStorage::None),
+            password_opt.map_or(PasswordStorage::None, PasswordStorage::ValidatorDefinitions),
             graffiti,
             suggested_fee_recipient,
             None,

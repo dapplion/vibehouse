@@ -148,9 +148,7 @@ pub fn process_execution_payload_envelope<E: EthSpec>(
 
     // Cache latest block header state root
     if state.latest_block_header().state_root == Hash256::default() {
-        let previous_state_root = parent_state_root
-            .map(Ok)
-            .unwrap_or_else(|| state.canonical_root())?;
+        let previous_state_root = parent_state_root.map_or_else(|| state.canonical_root(), Ok)?;
         state.latest_block_header_mut().state_root = previous_state_root;
     }
 

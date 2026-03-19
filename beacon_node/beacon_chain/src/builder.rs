@@ -284,8 +284,10 @@ where
             store
                 .get_item::<PersistedOperationPool<E>>(&OP_POOL_DB_KEY)
                 .map_err(|e| format!("DB error whilst reading persisted op pool: {:?}", e))?
-                .map(PersistedOperationPool::into_operation_pool)
-                .unwrap_or_else(OperationPool::new),
+                .map_or_else(
+                    OperationPool::new,
+                    PersistedOperationPool::into_operation_pool,
+                ),
         );
 
         let pubkey_cache = ValidatorPubkeyCache::load_from_store(store)
@@ -903,9 +905,12 @@ where
             ));
         }
 
-        let validator_pubkey_cache = self
-            .validator_pubkey_cache
-            .map(|mut validator_pubkey_cache| {
+        let validator_pubkey_cache = self.validator_pubkey_cache.map_or_else(
+            || {
+                ValidatorPubkeyCache::new(&head_snapshot.beacon_state, store.clone())
+                    .map_err(|e| format!("Unable to init validator pubkey cache: {:?}", e))
+            },
+            |mut validator_pubkey_cache| {
                 // If any validators weren't persisted to disk on previous runs, this will use the head state to
                 // "top-up" the in-memory validator cache and its on-disk representation with any missing validators.
                 let pubkey_store_ops = validator_pubkey_cache
@@ -922,11 +927,8 @@ where
                         .map_err(|e| format!("Unable to write pubkeys to disk {:?}", e))?;
                 }
                 Ok(validator_pubkey_cache)
-            })
-            .unwrap_or_else(|| {
-                ValidatorPubkeyCache::new(&head_snapshot.beacon_state, store.clone())
-                    .map_err(|e| format!("Unable to init validator pubkey cache: {:?}", e))
-            })?;
+            },
+        )?;
 
         let migrator_config = self.store_migrator_config.unwrap_or_default();
         let store_migrator = BackgroundMigrator::new(store.clone(), migrator_config);

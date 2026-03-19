@@ -319,8 +319,7 @@ impl InitializedValidator {
 
                 let request_timeout = web3_signer
                     .request_timeout_ms
-                    .map(Duration::from_millis)
-                    .unwrap_or(DEFAULT_REMOTE_SIGNER_REQUEST_TIMEOUT);
+                    .map_or(DEFAULT_REMOTE_SIGNER_REQUEST_TIMEOUT, Duration::from_millis);
 
                 // Check if a client has already been initialized for this remote signer url.
                 let http_client = if let Some(client_map) = web3_signer_client_map {

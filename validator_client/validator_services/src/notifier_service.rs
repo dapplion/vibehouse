@@ -58,8 +58,7 @@ pub async fn notify<S: ValidatorStore, T: SlotClock + 'static>(
     if num_synced > 0 {
         let primary = candidate_info
             .first()
-            .map(|candidate| candidate.endpoint.as_str())
-            .unwrap_or("None");
+            .map_or("None", |candidate| candidate.endpoint.as_str());
         info!(
             primary,
             total = num_total,

@@ -697,8 +697,7 @@ where
                             // chunks left after this one
                             let max_remaining_chunks = substream_entry
                                 .max_remaining_chunks
-                                .map(|count| count.saturating_sub(1))
-                                .unwrap_or_else(|| 0);
+                                .map_or_else(|| 0, |count| count.saturating_sub(1));
                             if max_remaining_chunks == 0 {
                                 // this is the last expected message, close the stream as all expected chunks have been received
                                 substream_entry.state = OutboundSubstreamState::Closing(substream);

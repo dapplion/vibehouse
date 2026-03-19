@@ -64,17 +64,17 @@ pub fn parse_path_with_default_in_home_dir(
     name: &'static str,
     default: PathBuf,
 ) -> Result<PathBuf, String> {
-    matches
-        .get_one::<String>(name)
-        .map(|dir| {
-            dir.parse::<PathBuf>()
-                .map_err(|e| format!("Unable to parse {}: {}", name, e))
-        })
-        .unwrap_or_else(|| {
+    matches.get_one::<String>(name).map_or_else(
+        || {
             dirs::home_dir()
                 .map(|home| home.join(default))
                 .ok_or_else(|| format!("Unable to locate home directory. Try specifying {}", name))
-        })
+        },
+        |dir| {
+            dir.parse::<PathBuf>()
+                .map_err(|e| format!("Unable to parse {}: {}", name, e))
+        },
+    )
 }
 
 /// Returns the value of `name` or an error if it is not in `matches` or does not parse

@@ -1024,10 +1024,9 @@ mod test {
             let block = generator.latest_block().unwrap();
             assert_eq!(block.block_number(), i);
 
-            let expected_parent = i
-                .checked_sub(1)
-                .map(|i| generator.block_by_number(i).unwrap().block_hash())
-                .unwrap_or_else(ExecutionBlockHash::zero);
+            let expected_parent = i.checked_sub(1).map_or_else(ExecutionBlockHash::zero, |i| {
+                generator.block_by_number(i).unwrap().block_hash()
+            });
             assert_eq!(block.parent_hash(), expected_parent);
 
             assert_eq!(

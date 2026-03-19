@@ -855,7 +855,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
                         // We batch requests to the same peer, so count existance in the
                         // `columns_to_request_by_peer` as a single 1 request.
                         active_request_count_by_peer.get(peer).copied().unwrap_or(0)
-                            + columns_to_request_by_peer.get(peer).map(|_| 1).unwrap_or(0),
+                            + columns_to_request_by_peer.get(peer).map_or(0, |_| 1),
                         // Random factor to break ties, otherwise the PeerID breaks ties
                         rand::random::<u32>(),
                         peer,

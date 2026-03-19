@@ -401,8 +401,7 @@ async fn download_genesis_state(
         // the beacon-API.
         let url = parse_state_download_url(url)?;
         let redacted_url = SensitiveUrl::new(url.clone())
-            .map(|url| url.to_string())
-            .unwrap_or_else(|_| "<REDACTED>".to_string());
+            .map_or_else(|_| "<REDACTED>".to_string(), |url| url.to_string());
 
         info!(
             server = &redacted_url,

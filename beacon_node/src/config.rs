@@ -749,8 +749,7 @@ pub fn get_config<E: EthSpec>(
     } else {
         client_config.chain.re_org_head_threshold = Some(
             clap_utils::parse_optional(cli_args, "proposer-reorg-threshold")?
-                .map(ReOrgThreshold)
-                .unwrap_or(DEFAULT_RE_ORG_HEAD_THRESHOLD),
+                .map_or(DEFAULT_RE_ORG_HEAD_THRESHOLD, ReOrgThreshold),
         );
         client_config.chain.re_org_max_epochs_since_finalization =
             clap_utils::parse_optional(cli_args, "proposer-reorg-epochs-since-finalization")?
@@ -760,8 +759,7 @@ pub fn get_config<E: EthSpec>(
 
         client_config.chain.re_org_parent_threshold = Some(
             clap_utils::parse_optional(cli_args, "proposer-reorg-parent-threshold")?
-                .map(ReOrgThreshold)
-                .unwrap_or(DEFAULT_RE_ORG_PARENT_THRESHOLD),
+                .map_or(DEFAULT_RE_ORG_PARENT_THRESHOLD, ReOrgThreshold),
         );
 
         if let Some(disallowed_offsets_str) =
@@ -780,13 +778,14 @@ pub fn get_config<E: EthSpec>(
         }
     }
 
-    client_config.chain.prepare_payload_lookahead =
-        clap_utils::parse_optional(cli_args, "prepare-payload-lookahead")?
-            .map(Duration::from_millis)
-            .unwrap_or_else(|| {
-                Duration::from_secs(spec.seconds_per_slot)
-                    / DEFAULT_PREPARE_PAYLOAD_LOOKAHEAD_FACTOR
-            });
+    client_config.chain.prepare_payload_lookahead = clap_utils::parse_optional(
+        cli_args,
+        "prepare-payload-lookahead",
+    )?
+    .map_or_else(
+        || Duration::from_secs(spec.seconds_per_slot) / DEFAULT_PREPARE_PAYLOAD_LOOKAHEAD_FACTOR,
+        Duration::from_millis,
+    );
 
     client_config.chain.always_prepare_payload = cli_args.get_flag("always-prepare-payload");
 

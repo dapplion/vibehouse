@@ -395,8 +395,7 @@ impl<T: Item<()>, E: EthSpec> AutoPruningEpochContainer<T, E> {
     pub fn index_seen_at_epoch(&self, index: usize, epoch: Epoch) -> bool {
         self.items
             .get(&epoch)
-            .map(|item| item.get(index).is_some())
-            .unwrap_or(false)
+            .is_some_and(|item| item.get(index).is_some())
     }
 }
 

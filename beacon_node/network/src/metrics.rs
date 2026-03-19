@@ -819,8 +819,7 @@ pub fn update_gossip_metrics<E: EthSpec>(
                             .peers
                             .read()
                             .peer_info(peer_id)
-                            .map(|peer_info| peer_info.client().kind.into())
-                            .unwrap_or_else(|| "Unknown");
+                            .map_or_else(|| "Unknown", |peer_info| peer_info.client().kind.into());
                         if let Some(v) =
                             get_int_gauge(&BEACON_BLOCK_MESH_PEERS_PER_CLIENT, &[client])
                         {
@@ -834,8 +833,7 @@ pub fn update_gossip_metrics<E: EthSpec>(
                             .peers
                             .read()
                             .peer_info(peer_id)
-                            .map(|peer_info| peer_info.client().kind.into())
-                            .unwrap_or_else(|| "Unknown");
+                            .map_or_else(|| "Unknown", |peer_info| peer_info.client().kind.into());
                         if let Some(v) = get_int_gauge(
                             &BEACON_AGGREGATE_AND_PROOF_MESH_PEERS_PER_CLIENT,
                             &[client],

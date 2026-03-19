@@ -55,8 +55,7 @@ impl Case for BlsAggregateVerify {
 
         let signature_valid = AggregateSignature::deserialize(&signature_bytes)
             .ok()
-            .map(|signature| signature.aggregate_verify(&messages, &pubkey_refs[..]))
-            .unwrap_or(false);
+            .is_some_and(|signature| signature.aggregate_verify(&messages, &pubkey_refs[..]));
 
         compare_result::<bool, ()>(&Ok(signature_valid), &Some(self.output))
     }

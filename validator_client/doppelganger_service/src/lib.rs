@@ -285,24 +285,23 @@ impl DoppelgangerService {
 
     /// Returns the current status of the `validator` in the doppelganger protection process.
     pub fn validator_status(&self, validator: PublicKeyBytes) -> DoppelgangerStatus {
-        self.doppelganger_states
-            .read()
-            .get(&validator)
-            .map(|v| {
-                if v.requires_further_checks() {
-                    DoppelgangerStatus::SigningDisabled(validator)
-                } else {
-                    DoppelgangerStatus::SigningEnabled(validator)
-                }
-            })
-            .unwrap_or_else(|| {
+        self.doppelganger_states.read().get(&validator).map_or_else(
+            || {
                 crit!(
                     msg = "preventing validator from performing duties",
                     pubkey = ?validator,
                     "Validator unknown to doppelganger service"
                 );
                 DoppelgangerStatus::UnknownToDoppelganger(validator)
-            })
+            },
+            |v| {
+                if v.requires_further_checks() {
+                    DoppelgangerStatus::SigningDisabled(validator)
+                } else {
+                    DoppelgangerStatus::SigningEnabled(validator)
+                }
+            },
+        )
     }
 
     /// Register a new validator with the doppelganger service.

@@ -405,9 +405,7 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
         debug!(
             ?peers,
             ?block_root,
-            awaiting_parent = awaiting_parent
-                .map(|root| root.to_string())
-                .unwrap_or("none".to_owned()),
+            awaiting_parent = awaiting_parent.map_or("none".to_owned(), |root| root.to_string()),
             id = lookup.id,
             "Created block lookup"
         );

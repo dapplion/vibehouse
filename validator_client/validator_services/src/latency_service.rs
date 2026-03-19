@@ -18,17 +18,15 @@ pub fn start_latency_service<T: SlotClock + 'static>(
 ) {
     let future = async move {
         loop {
-            let sleep_time = slot_clock
-                .duration_to_next_slot()
-                .map(|next_slot| {
+            let sleep_time = slot_clock.duration_to_next_slot().map_or_else(
+                || slot_clock.slot_duration(),
+                |next_slot| {
                     // This is 11/12ths through the next slot. On mainnet this
                     // will happen in the 11th second of each slot, one second
                     // before the next slot.
                     next_slot + (next_slot / SLOT_DELAY_DENOMINATOR) * SLOT_DELAY_MULTIPLIER
-                })
-                // If we can't read the slot clock, just wait one slot. Running
-                // the measurement at a non-exact time is not a big issue.
-                .unwrap_or_else(|| slot_clock.slot_duration());
+                },
+            );
 
             // Sleep until it's time to perform the measurement.
             sleep(sleep_time).await;

@@ -1053,8 +1053,7 @@ impl TestRig {
         for slot in 0..depth {
             let parent = blocks
                 .last()
-                .map(AsBlock::canonical_root)
-                .unwrap_or_else(Hash256::random);
+                .map_or_else(Hash256::random, AsBlock::canonical_root);
             let mut block = self.rand_block();
             *block.message_mut().parent_root_mut() = parent;
             *block.message_mut().slot_mut() = slot.into();

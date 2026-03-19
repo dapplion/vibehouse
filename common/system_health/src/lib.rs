@@ -114,17 +114,13 @@ fn observe_system_health(
 
             // If we have other file systems, compare these to the data_dir of Vibehouse and
             // prioritize these.
-            if data_dir
-                .to_str()
-                .map(|path| {
-                    if let Some(mount_str) = disk.mount_point().to_str() {
-                        path.contains(mount_str)
-                    } else {
-                        false
-                    }
-                })
-                .unwrap_or(false)
-            {
+            if data_dir.to_str().is_some_and(|path| {
+                if let Some(mount_str) = disk.mount_point().to_str() {
+                    path.contains(mount_str)
+                } else {
+                    false
+                }
+            }) {
                 other_matching_fs = Some(disk);
                 break; // Don't bother finding other competing fs.
             }
@@ -259,14 +255,16 @@ pub fn observe_system_health_bn<E: EthSpec>(
     let (network_name, network_bytes_total_received, network_bytes_total_transmit) = networks
         .iter()
         .max_by_key(|(_name, network)| network.total_received())
-        .map(|(name, network)| {
-            (
-                name.clone(),
-                network.total_received(),
-                network.total_transmitted(),
-            )
-        })
-        .unwrap_or_else(|| (String::from("None"), 0, 0));
+        .map_or_else(
+            || (String::from("None"), 0, 0),
+            |(name, network)| {
+                (
+                    name.clone(),
+                    network.total_received(),
+                    network.total_transmitted(),
+                )
+            },
+        );
 
     // Determine if the NAT is open or not.
     let nat_open = observe_nat().is_anything_open();

@@ -146,9 +146,8 @@ impl Config {
     ) -> Result<Config, String> {
         let mut config = Config::default();
 
-        let default_root_dir = dirs::home_dir()
-            .map(|home| home.join(DEFAULT_ROOT_DIR))
-            .unwrap_or_else(|| PathBuf::from("."));
+        let default_root_dir =
+            dirs::home_dir().map_or_else(|| PathBuf::from("."), |home| home.join(DEFAULT_ROOT_DIR));
 
         let (mut validator_dir, mut secrets_dir) = (None, None);
         if cli_args.get_one::<String>("datadir").is_some() {

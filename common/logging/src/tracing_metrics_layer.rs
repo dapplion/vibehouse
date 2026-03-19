@@ -54,8 +54,7 @@ impl<S: tracing_core::Subscriber> tracing_subscriber::layer::Layer<S> for Metric
         let full_target = meta.module_path().unwrap_or_else(|| meta.target());
         let target = full_target
             .split_once("::")
-            .map(|(name, _rest)| name)
-            .unwrap_or(full_target);
+            .map_or(full_target, |(name, _rest)| name);
         let target = &[target];
         match *meta.level() {
             tracing_core::Level::INFO => metrics::inc_counter_vec(&DEP_INFOS_TOTAL, target),

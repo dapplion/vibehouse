@@ -193,9 +193,9 @@ pub fn fork_name_from_env() -> Option<ForkName> {
 /// If the `fork_from_env` feature is enabled, read the fork to use from the FORK_NAME environment
 /// variable. Otherwise use the default spec.
 pub fn test_spec<E: EthSpec>() -> ChainSpec {
-    let mut spec = fork_name_from_env()
-        .map(|fork| fork.make_genesis_spec(E::default_spec()))
-        .unwrap_or_else(E::default_spec);
+    let mut spec = fork_name_from_env().map_or_else(E::default_spec, |fork| {
+        fork.make_genesis_spec(E::default_spec())
+    });
 
     // Set target aggregators to a high value by default.
     spec.target_aggregators_per_committee = DEFAULT_TARGET_AGGREGATORS;

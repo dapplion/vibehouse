@@ -459,9 +459,7 @@ async fn bellatrix_readiness_logging<T: BeaconChainTypes>(
             } => {
                 info!(
                     terminal_total_difficulty = %ttd,
-                    current_difficulty = current_difficulty
-                        .map(|d| d.to_string())
-                        .unwrap_or_else(|| "??".into()),
+                    current_difficulty = current_difficulty.map_or_else(|| "??".into(), |d| d.to_string()),
                     "Ready for Bellatrix"
                 );
             }

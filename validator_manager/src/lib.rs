@@ -60,8 +60,7 @@ pub fn run<E: EthSpec>(matches: &ArgMatches, env: Environment<E>) -> Result<(), 
     let context = env.core_context();
     let spec = context.eth2_config.spec;
     let dump_config = clap_utils::parse_optional(matches, DUMP_CONFIGS_FLAG)?
-        .map(DumpConfig::Enabled)
-        .unwrap_or_else(|| DumpConfig::Disabled);
+        .map_or_else(|| DumpConfig::Disabled, DumpConfig::Enabled);
 
     context
         .executor

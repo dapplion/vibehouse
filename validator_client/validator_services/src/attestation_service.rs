@@ -186,8 +186,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> AttestationService<S, 
         let epoch = self
             .slot_clock
             .now()
-            .map(|slot| slot.epoch(S::E::slots_per_epoch()))
-            .unwrap_or(Epoch::new(0));
+            .map_or(Epoch::new(0), |slot| slot.epoch(S::E::slots_per_epoch()));
         Duration::from_millis(self.chain_spec.get_attestation_due_ms(epoch))
     }
 
@@ -196,8 +195,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> AttestationService<S, 
         let epoch = self
             .slot_clock
             .now()
-            .map(|slot| slot.epoch(S::E::slots_per_epoch()))
-            .unwrap_or(Epoch::new(0));
+            .map_or(Epoch::new(0), |slot| slot.epoch(S::E::slots_per_epoch()));
         Duration::from_millis(self.chain_spec.get_aggregate_due_ms(epoch))
     }
 

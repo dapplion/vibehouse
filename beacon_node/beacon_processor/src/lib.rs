@@ -1054,8 +1054,7 @@ impl<E: EthSpec> BeaconProcessor<E> {
                 if let Some(work_journal_tx) = &work_journal_tx {
                     let id = work_event
                         .as_ref()
-                        .map(|event| event.work.str_id())
-                        .unwrap_or(WORKER_FREED);
+                        .map_or(WORKER_FREED, |event| event.work.str_id());
 
                     // We don't care if this message was successfully sent, we only use the journal
                     // during testing. We also ignore reprocess messages to ensure our test cases can pass.

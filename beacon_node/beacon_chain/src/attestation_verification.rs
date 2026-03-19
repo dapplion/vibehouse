@@ -1626,13 +1626,15 @@ where
 
         Ok(committee_cache
             .get_beacon_committees_at_slot(attestation.data().slot)
-            .map(|committees| map_fn((committees, committees_per_slot)))
-            .unwrap_or_else(|_| {
-                Err(Error::NoCommitteeForSlotAndIndex {
-                    slot: attestation.data().slot,
-                    index: attestation.committee_index().unwrap_or(0),
-                })
-            }))
+            .map_or_else(
+                |_| {
+                    Err(Error::NoCommitteeForSlotAndIndex {
+                        slot: attestation.data().slot,
+                        index: attestation.committee_index().unwrap_or(0),
+                    })
+                },
+                |committees| map_fn((committees, committees_per_slot)),
+            ))
     })?
 }
 

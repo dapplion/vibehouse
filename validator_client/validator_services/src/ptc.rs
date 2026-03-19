@@ -46,16 +46,12 @@ impl PtcDutiesMap {
         epoch: Epoch,
         signing_pubkeys: &std::collections::HashSet<PublicKeyBytes>,
     ) -> usize {
-        self.duties
-            .read()
-            .get(&epoch)
-            .map(|duties| {
-                duties
-                    .iter()
-                    .filter(|d| signing_pubkeys.contains(&d.pubkey))
-                    .count()
-            })
-            .unwrap_or(0)
+        self.duties.read().get(&epoch).map_or(0, |duties| {
+            duties
+                .iter()
+                .filter(|d| signing_pubkeys.contains(&d.pubkey))
+                .count()
+        })
     }
 
     /// Check if duties are known for the given epoch.

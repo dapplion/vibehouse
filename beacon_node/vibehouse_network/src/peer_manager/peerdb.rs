@@ -695,8 +695,7 @@ impl<E: EthSpec> PeerDB<E> {
 
             let min_ttl_secs = min_ttl
                 .checked_duration_since(Instant::now())
-                .map(|duration| duration.as_secs())
-                .unwrap_or_else(|| 0);
+                .map_or_else(|| 0, |duration| duration.as_secs());
             debug!(%peer_id, future_min_ttl_secs = min_ttl_secs, "Updating the time a peer is required for");
         }
     }
@@ -734,8 +733,7 @@ impl<E: EthSpec> PeerDB<E> {
                 }
                 let min_ttl_secs = min_ttl
                     .checked_duration_since(Instant::now())
-                    .map(|duration| duration.as_secs())
-                    .unwrap_or_else(|| 0);
+                    .map_or_else(|| 0, |duration| duration.as_secs());
                 trace!(%peer_id, min_ttl_secs, "Updating minimum duration a peer is required for");
             });
     }

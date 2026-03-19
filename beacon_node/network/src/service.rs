@@ -306,8 +306,7 @@ impl<T: BeaconChainTypes> NetworkService<T> {
         let invalid_block_storage = config
             .invalid_block_storage
             .clone()
-            .map(InvalidBlockStorage::Enabled)
-            .unwrap_or(InvalidBlockStorage::Disabled);
+            .map_or(InvalidBlockStorage::Disabled, InvalidBlockStorage::Enabled);
 
         // launch derived network services
 

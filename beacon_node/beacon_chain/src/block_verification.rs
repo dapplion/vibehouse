@@ -657,8 +657,7 @@ pub fn signature_verify_chain_segment<T: BeaconChainTypes>(
 
     let highest_slot = chain_segment
         .last()
-        .map(|(_, block)| block.slot())
-        .unwrap_or_else(|| slot);
+        .map_or_else(|| slot, |(_, block)| block.slot());
 
     let state = cheap_state_advance_to_obtain_committees::<_, BlockError>(
         &mut parent.pre_state,

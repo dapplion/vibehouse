@@ -289,9 +289,7 @@ pub struct MonitoredValidator {
 impl MonitoredValidator {
     fn new(pubkey: PublicKeyBytes, index: Option<u64>) -> Self {
         Self {
-            id: index
-                .map(|i| i.to_string())
-                .unwrap_or_else(|| pubkey.to_string()),
+            id: index.map_or_else(|| pubkey.to_string(), |i| i.to_string()),
             index,
             summaries: <_>::default(),
             metrics: <_>::default(),

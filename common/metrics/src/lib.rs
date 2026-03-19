@@ -210,11 +210,13 @@ pub fn set_int_gauge(int_gauge_vec: &Result<IntGaugeVec>, name: &[&str], value: 
     if let Ok(int_gauge_vec) = int_gauge_vec {
         int_gauge_vec
             .get_metric_with_label_values(name)
-            .map(|v| {
-                v.set(value);
-                true
-            })
-            .unwrap_or_else(|_| false)
+            .map_or_else(
+                |_| false,
+                |v| {
+                    v.set(value);
+                    true
+                },
+            )
     } else {
         false
     }

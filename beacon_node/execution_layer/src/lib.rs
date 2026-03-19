@@ -1989,9 +1989,7 @@ impl<E: EthSpec> ExecutionLayer<E> {
                         ?block_root,
                         parent_hash = ?block
                             .message()
-                            .execution_payload()
-                            .map(|payload| payload.parent_hash().to_string())
-                            .unwrap_or_else(|_| "unknown".to_string()),
+                            .execution_payload().map_or_else(|_| "unknown".to_string(), |payload| payload.parent_hash().to_string()),
                         "Builder failed to reveal payload"
                     );
                 }
@@ -2236,10 +2234,7 @@ fn verify_builder_bid<E: EthSpec>(
             payload: payload_withdrawals_root,
             expected: expected_withdrawals_root,
         }))
-    } else if expected_gas_limit
-        .map(|gas_limit| header.gas_limit() != gas_limit)
-        .unwrap_or(false)
-    {
+    } else if expected_gas_limit.is_some_and(|gas_limit| header.gas_limit() != gas_limit) {
         Err(Box::new(InvalidBuilderPayload::GasLimitMismatch {
             payload: header.gas_limit(),
             expected: expected_gas_limit.unwrap_or(0),

@@ -745,8 +745,7 @@ impl<E: EthSpec> PeerManager<E> {
                 // we have no meta-data for this peer, update
                 let cgc = meta_data
                     .custody_group_count()
-                    .map(|&count| count.to_string())
-                    .unwrap_or_else(|_| "unknown".to_string());
+                    .map_or_else(|_| "unknown".to_string(), |&count| count.to_string());
                 debug!(
                     %peer_id,
                     new_seq_no = meta_data.seq_number(),
@@ -1148,10 +1147,7 @@ impl<E: EthSpec> PeerManager<E> {
             .iter()
             .filter(|subnet| sampling_subnets.contains(subnet))
             .any(|subnet| {
-                let count = custody_subnet_to_peers
-                    .get(subnet)
-                    .map(Vec::len)
-                    .unwrap_or(0);
+                let count = custody_subnet_to_peers.get(subnet).map_or(0, Vec::len);
                 count <= MIN_SAMPLING_COLUMN_SUBNET_PEERS as usize
             });
 

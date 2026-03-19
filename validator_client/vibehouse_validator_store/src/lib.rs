@@ -229,11 +229,10 @@ impl<T: SlotClock + 'static, E: EthSpec> VibehouseValidatorStore<T, E> {
         pubkeys
             .into_iter()
             .map(|pubkey| {
-                self.doppelganger_service
-                    .as_ref()
-                    .map(|doppelganger_service| doppelganger_service.validator_status(pubkey))
-                    // Allow signing on all pubkeys if doppelganger protection is disabled.
-                    .unwrap_or_else(|| DoppelgangerStatus::SigningEnabled(pubkey))
+                self.doppelganger_service.as_ref().map_or_else(
+                    || DoppelgangerStatus::SigningEnabled(pubkey),
+                    |doppelganger_service| doppelganger_service.validator_status(pubkey),
+                )
             })
             .collect()
     }
@@ -599,11 +598,10 @@ impl<T: SlotClock + 'static, E: EthSpec> ValidatorStore for VibehouseValidatorSt
         pubkeys
             .into_iter()
             .map(|pubkey| {
-                self.doppelganger_service
-                    .as_ref()
-                    .map(|doppelganger_service| doppelganger_service.validator_status(pubkey))
-                    // Allow signing on all pubkeys if doppelganger protection is disabled.
-                    .unwrap_or_else(|| DoppelgangerStatus::SigningEnabled(pubkey))
+                self.doppelganger_service.as_ref().map_or_else(
+                    || DoppelgangerStatus::SigningEnabled(pubkey),
+                    |doppelganger_service| doppelganger_service.validator_status(pubkey),
+                )
             })
             .filter_map(filter_func)
             .collect()

@@ -52,8 +52,7 @@ impl Case for BlsEthFastAggregateVerify {
         let signature_ok = hex::decode(&self.input.signature[2..])
             .ok()
             .and_then(|bytes: Vec<u8>| AggregateSignature::deserialize(&bytes).ok())
-            .map(|signature| signature.eth_fast_aggregate_verify(message, &pubkey_refs))
-            .unwrap_or(false);
+            .is_some_and(|signature| signature.eth_fast_aggregate_verify(message, &pubkey_refs));
 
         compare_result::<bool, ()>(&Ok(signature_ok), &Some(self.output))
     }

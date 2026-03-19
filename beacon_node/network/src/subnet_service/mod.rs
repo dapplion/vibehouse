@@ -366,13 +366,12 @@ impl<T: BeaconChainTypes> SubnetService<T> {
         }
         self.aggregate_validators_on_subnet
             .as_ref()
-            .map(|tracked_vals| {
+            .is_none_or(|tracked_vals| {
                 tracked_vals.contains_key(&ExactSubnet {
                     subnet,
                     slot: attestation_data.slot,
                 })
             })
-            .unwrap_or(true)
     }
 
     /* Internal private functions */

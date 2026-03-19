@@ -1278,13 +1278,15 @@ async fn get_beacon_state_committees<T: BeaconChainTypes>(
                             possibly_built_cache
                         };
 
-                        let slots = query.slot.map(|slot| vec![slot]).unwrap_or_else(|| {
-                            epoch.slot_iter(T::EthSpec::slots_per_epoch()).collect()
-                        });
+                        let slots = query.slot.map_or_else(
+                            || epoch.slot_iter(T::EthSpec::slots_per_epoch()).collect(),
+                            |slot| vec![slot],
+                        );
 
-                        let indices = query.index.map(|index| vec![index]).unwrap_or_else(|| {
-                            (0..committee_cache.committees_per_slot()).collect()
-                        });
+                        let indices = query.index.map_or_else(
+                            || (0..committee_cache.committees_per_slot()).collect(),
+                            |index| vec![index],
+                        );
 
                         let mut response = Vec::with_capacity(slots.len() * indices.len());
 

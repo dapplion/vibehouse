@@ -362,8 +362,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
             while {
                 blob_iter
                     .peek()
-                    .map(|sidecar| sidecar.slot() == block.slot())
-                    .unwrap_or(false)
+                    .is_some_and(|sidecar| sidecar.slot() == block.slot())
             } {
                 blob_list.push(blob_iter.next().ok_or_else(|| {
                     CouplingError::BlobPeerFailure("Missing next blob".to_string())

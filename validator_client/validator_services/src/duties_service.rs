@@ -782,12 +782,14 @@ async fn poll_validator_indices<S: ValidatorStore, T: SlotClock + 'static>(
             let fee_recipient = duties_service
                 .validator_store
                 .get_fee_recipient(&pubkey)
-                .map(|fr| fr.to_string())
-                .unwrap_or_else(|| {
-                    "Fee recipient for validator not set in validator_definitions.yml \
+                .map_or_else(
+                    || {
+                        "Fee recipient for validator not set in validator_definitions.yml \
                     or provided with the `--suggested-fee-recipient` flag"
-                        .to_string()
-                });
+                            .to_string()
+                    },
+                    |fr| fr.to_string(),
+                );
             match download_result {
                 Ok(Some(response)) => {
                     info!(
@@ -1730,8 +1732,7 @@ async fn broadcast_proposer_preferences<S: ValidatorStore + 'static, T: SlotCloc
         let gas_limit = duties_service
             .validator_store
             .proposal_data(&duty.pubkey)
-            .map(|pd| pd.gas_limit)
-            .unwrap_or(30_000_000);
+            .map_or(30_000_000, |pd| pd.gas_limit);
 
         let preferences = types::ProposerPreferences {
             proposal_slot: duty.slot.as_u64(),
