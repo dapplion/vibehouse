@@ -334,7 +334,7 @@ mod test {
             slot,
             ts2,
             peer_info2.id.clone(),
-            peer_info2.client.clone(),
+            peer_info2.client,
         );
 
         assert_eq!(

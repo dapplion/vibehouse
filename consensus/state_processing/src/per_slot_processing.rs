@@ -497,7 +497,7 @@ mod gloas_per_slot_tests {
         // --- FULL PATH ---
         // Simulate the Full case: envelope processing fills header.state_root with
         // the post-block state root BEFORE mutating the state.
-        let mut state_full = empty_state.clone();
+        let mut state_full = empty_state;
 
         // Compute the post-block state root (same state, header.state_root = 0x00).
         // This is what envelope processing computes via state.canonical_root() or
@@ -558,7 +558,7 @@ mod gloas_per_slot_tests {
             .collect();
 
         // Simulate envelope mutations on a clone
-        let mut state_full = state.clone();
+        let mut state_full = state;
         *state_full.latest_block_hash_mut().unwrap() =
             ExecutionBlockHash::from_root(Hash256::repeat_byte(0xCC));
 

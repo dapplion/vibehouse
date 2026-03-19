@@ -300,7 +300,7 @@ mod tests {
     #[test]
     fn json_metric_clone() {
         let metric = JsonMetric::new("a", "b", JsonType::Integer);
-        let cloned = metric.clone();
+        let cloned = metric;
         assert_eq!(cloned.vibehouse_metric_name, "a");
         assert_eq!(cloned.json_output_key, "b");
     }

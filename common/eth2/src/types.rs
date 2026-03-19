@@ -2630,7 +2630,7 @@ mod tests {
         assert_eq!(a, b);
         let c = PtcDutyData {
             ptc_committee_index: 8,
-            ..a.clone()
+            ..a
         };
         assert_ne!(a, c);
     }

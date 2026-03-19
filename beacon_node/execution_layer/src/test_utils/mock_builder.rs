@@ -372,7 +372,7 @@ impl<E: EthSpec> MockBuilder<E> {
             ..Default::default()
         };
 
-        let el = ExecutionLayer::from_config(config, executor.clone()).unwrap();
+        let el = ExecutionLayer::from_config(config, executor).unwrap();
 
         let max_bid = false;
 
@@ -623,7 +623,7 @@ impl<E: EthSpec> MockBuilder<E> {
                             .map_err(|_| "incorrect payload variant".to_string())?
                             .into(),
                         blob_kzg_commitments: maybe_blobs_bundle
-                            .map(|b| b.commitments.clone())
+                            .map(|b| b.commitments)
                             .unwrap_or_default(),
                         value: self.get_bid_value(value),
                         pubkey: self.builder_sk.public_key().compress(),
@@ -635,7 +635,7 @@ impl<E: EthSpec> MockBuilder<E> {
                             .map_err(|_| "incorrect payload variant".to_string())?
                             .into(),
                         blob_kzg_commitments: maybe_blobs_bundle
-                            .map(|b| b.commitments.clone())
+                            .map(|b| b.commitments)
                             .unwrap_or_default(),
                         value: self.get_bid_value(value),
                         pubkey: self.builder_sk.public_key().compress(),
@@ -647,7 +647,7 @@ impl<E: EthSpec> MockBuilder<E> {
                             .map_err(|_| "incorrect payload variant".to_string())?
                             .into(),
                         blob_kzg_commitments: maybe_blobs_bundle
-                            .map(|b| b.commitments.clone())
+                            .map(|b| b.commitments)
                             .unwrap_or_default(),
                         value: self.get_bid_value(value),
                         pubkey: self.builder_sk.public_key().compress(),
@@ -659,7 +659,7 @@ impl<E: EthSpec> MockBuilder<E> {
                             .map_err(|_| "incorrect payload variant".to_string())?
                             .into(),
                         blob_kzg_commitments: maybe_blobs_bundle
-                            .map(|b| b.commitments.clone())
+                            .map(|b| b.commitments)
                             .unwrap_or_default(),
                         value: self.get_bid_value(value),
                         pubkey: self.builder_sk.public_key().compress(),

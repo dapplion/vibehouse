@@ -754,7 +754,7 @@ mod tests {
         let mut info = RangeBlockComponentsRequest::<E>::new(
             blocks_req_id,
             None,
-            Some((columns_req_id.clone(), expects_custody_columns.clone())),
+            Some((columns_req_id.clone(), expects_custody_columns)),
             None,
             Span::none(),
         );
@@ -930,7 +930,7 @@ mod tests {
         let mut info = RangeBlockComponentsRequest::<E>::new(
             blocks_req_id,
             None,
-            Some((columns_req_id.clone(), expected_custody_columns.clone())),
+            Some((columns_req_id.clone(), expected_custody_columns)),
             None,
             Span::none(),
         );
@@ -1024,7 +1024,7 @@ mod tests {
         let mut info = RangeBlockComponentsRequest::<E>::new(
             blocks_req_id,
             None,
-            Some((columns_req_id.clone(), expected_custody_columns.clone())),
+            Some((columns_req_id.clone(), expected_custody_columns)),
             None,
             Span::none(),
         );

@@ -2364,11 +2364,8 @@ mod tests {
 
         let protocol = ProtocolId::new(SupportedProtocol::BlocksByRangeV2, Encoding::SSZSnappy);
 
-        let mut codec = SSZSnappyOutboundCodec::<Spec>::new(
-            protocol.clone(),
-            max_packet_size,
-            fork_ctx.clone(),
-        );
+        let mut codec =
+            SSZSnappyOutboundCodec::<Spec>::new(protocol, max_packet_size, fork_ctx.clone());
 
         let mut payload = BytesMut::new();
         payload.extend_from_slice(&[0u8]);

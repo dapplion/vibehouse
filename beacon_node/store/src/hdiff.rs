@@ -992,7 +992,7 @@ mod tests {
         ys.push(rand_validator(&mut rng));
         let diff = ValidatorsDiff::compute(&xs, &ys, config).unwrap();
 
-        let mut xs_out = xs.clone();
+        let mut xs_out = xs;
         diff.apply(&mut xs_out, config).unwrap();
         assert_eq!(xs_out, ys);
     }

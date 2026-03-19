@@ -69,7 +69,7 @@ impl<E: EthSpec> AttesterSlashingStatus<E> {
                     }
                     // A slashing involving an electra attestation type must return an `AttesterSlashingElectra` type
                     (_, _) => Some(AttesterSlashing::Electra(AttesterSlashingElectra {
-                        attestation_1: existing.clone().to_electra(),
+                        attestation_1: existing.to_electra(),
                         attestation_2: new_attestation.clone().to_electra(),
                     })),
                 }
@@ -84,7 +84,7 @@ impl<E: EthSpec> AttesterSlashingStatus<E> {
                 // A slashing involving an electra attestation type must return an `AttesterSlashingElectra` type
                 (_, _) => Some(AttesterSlashing::Electra(AttesterSlashingElectra {
                     attestation_1: new_attestation.clone().to_electra(),
-                    attestation_2: existing.clone().to_electra(),
+                    attestation_2: existing.to_electra(),
                 })),
             },
         }

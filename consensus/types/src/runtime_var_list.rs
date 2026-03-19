@@ -339,7 +339,7 @@ mod test {
     fn length() {
         // Too long.
         let vec = vec![42; 5];
-        let err = RuntimeVariableList::<u64>::new(vec.clone(), 4).unwrap_err();
+        let err = RuntimeVariableList::<u64>::new(vec, 4).unwrap_err();
         assert_eq!(err, Error::OutOfBounds { i: 5, len: 4 });
 
         let vec = vec![42; 3];

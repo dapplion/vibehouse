@@ -423,7 +423,7 @@ pub async fn handle_rpc<E: EthSpec>(
                                 ))?
                                 .into(),
                             should_override_builder: false,
-                            execution_requests: json_execution_requests.clone(),
+                            execution_requests: json_execution_requests,
                         })
                         .unwrap()
                     }
@@ -441,7 +441,7 @@ pub async fn handle_rpc<E: EthSpec>(
                                 ))?
                                 .into(),
                             should_override_builder: false,
-                            execution_requests: json_execution_requests.clone(),
+                            execution_requests: json_execution_requests,
                         })
                         .unwrap()
                     }

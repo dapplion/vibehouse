@@ -334,7 +334,7 @@ mod tests {
         let proposers: Vec<usize> = (100..100 + slots_per_epoch).collect();
 
         cache
-            .insert(epoch, root, proposers.clone(), default_fork())
+            .insert(epoch, root, proposers, default_fork())
             .unwrap();
 
         for i in 0..slots_per_epoch {

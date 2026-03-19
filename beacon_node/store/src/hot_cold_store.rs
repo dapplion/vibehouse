@@ -3528,7 +3528,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         let new_anchor = AnchorInfo {
             state_upper_limit: STATE_UPPER_LIMIT_NO_RETAIN,
             state_lower_limit: Slot::new(0),
-            ..old_anchor.clone()
+            ..old_anchor
         };
 
         // Commit the anchor change immediately: if the cold database ops fail they can always be

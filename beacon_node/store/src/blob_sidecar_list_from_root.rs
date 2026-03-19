@@ -87,7 +87,7 @@ mod tests {
     #[test]
     fn blobs_variant_returns_some() {
         let list = BlobSidecarList::<E>::empty(6);
-        let result = BlobSidecarListFromRoot::<E>::Blobs(list.clone());
+        let result = BlobSidecarListFromRoot::<E>::Blobs(list);
         assert!(result.blobs().is_some());
     }
 
@@ -109,12 +109,12 @@ mod tests {
     #[test]
     fn clone_preserves_variant() {
         let no_blobs = BlobSidecarListFromRoot::<E>::NoBlobs;
-        let cloned = no_blobs.clone();
+        let cloned = no_blobs;
         assert_eq!(cloned.len(), 0);
         assert!(cloned.blobs().is_none());
 
         let no_root = BlobSidecarListFromRoot::<E>::NoRoot;
-        let cloned = no_root.clone();
+        let cloned = no_root;
         assert_eq!(cloned.len(), 0);
         assert!(cloned.blobs().is_none());
     }

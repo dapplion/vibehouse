@@ -1126,7 +1126,7 @@ mod test {
                 capacity_non_zero,
                 test_store,
                 custody_context,
-                spec.clone(),
+                spec,
                 0, // no execution proofs required in tests
             )
             .expect("should create cache"),
@@ -1323,7 +1323,7 @@ mod test {
         }
 
         // now check the last block
-        let last_block = pushed_diet_blocks.pop_back().expect("should exist").clone();
+        let last_block = pushed_diet_blocks.pop_back().expect("should exist");
         // the state should still be in the cache
         assert!(
             state_cache
@@ -1333,7 +1333,7 @@ mod test {
             "last block state should still be in cache"
         );
         // get the diet block via direct conversion (testing only)
-        let diet_block = last_block.clone();
+        let diet_block = last_block;
         // recover the pending block from the cache
         let recovered_pending_block = cache
             .state_lru_cache()
@@ -1582,7 +1582,7 @@ mod pending_components_tests {
         ));
 
         // Insert first proof
-        cache.merge_execution_proofs(vec![(subnet_0, proof_a.clone())]);
+        cache.merge_execution_proofs(vec![(subnet_0, proof_a)]);
         assert_eq!(cache.verified_execution_proofs.len(), 1);
         assert_eq!(
             cache.verified_execution_proofs[&subnet_0].proof_data,

@@ -578,8 +578,8 @@ where
         let validator_monitor_config = self.validator_monitor_config.unwrap_or_default();
 
         let chain_config = self.chain_config.unwrap_or_default();
-        let mut builder = BeaconChainBuilder::new(self.eth_spec_instance, kzg.clone())
-            .custom_spec(spec.clone())
+        let mut builder = BeaconChainBuilder::new(self.eth_spec_instance, kzg)
+            .custom_spec(spec)
             .store(self.store.expect("cannot build without store"))
             .store_migrator_config(
                 MigratorConfig::default()

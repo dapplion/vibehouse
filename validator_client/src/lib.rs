@@ -500,7 +500,7 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
 
         // If we have proposer nodes, add them to the block service builder.
         if proposer_nodes_num > 0 {
-            block_service_builder = block_service_builder.proposer_nodes(proposer_nodes.clone());
+            block_service_builder = block_service_builder.proposer_nodes(proposer_nodes);
         }
 
         let block_service = block_service_builder.build()?;
@@ -537,7 +537,7 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
             duties_service.clone(),
             validator_store.clone(),
             slot_clock.clone(),
-            beacon_nodes.clone(),
+            beacon_nodes,
             context.executor.clone(),
         );
 

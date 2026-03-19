@@ -1540,7 +1540,7 @@ mod tests {
         assert!(!result, "different hashes mean parent block is empty");
 
         // Now make them match
-        let mut state2 = state.clone();
+        let mut state2 = state;
         let state_gloas = state2.as_gloas_mut().unwrap();
         state_gloas.latest_execution_payload_bid.block_hash = state_gloas.latest_block_hash;
         let result = is_parent_block_full::<E>(&state2).unwrap();

@@ -219,7 +219,7 @@ impl<T: BeaconChainTypes> SingleBlockLookup<T> {
                 match cx.chain.get_block_process_status(&self.block_root) {
                     BlockProcessStatus::Unknown => None,
                     BlockProcessStatus::NotValidated(block, _)
-                    | BlockProcessStatus::ExecutionValidated(block) => Some(block.clone()),
+                    | BlockProcessStatus::ExecutionValidated(block) => Some(block),
                 }
             }) {
                 let expected_blobs = block.num_expected_blobs();

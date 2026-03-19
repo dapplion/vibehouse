@@ -612,8 +612,8 @@ fn mock_beacon_adapter(fork_name: ForkName) -> MockFetchBlobsBeaconAdapter<T> {
     let kzg = get_kzg(&spec);
 
     let mut mock_adapter = MockFetchBlobsBeaconAdapter::default();
-    mock_adapter.expect_spec().return_const(spec.clone());
-    mock_adapter.expect_kzg().return_const(kzg.clone());
+    mock_adapter.expect_spec().return_const(spec);
+    mock_adapter.expect_kzg().return_const(kzg);
     mock_adapter
         .expect_executor()
         .return_const(test_runtime.task_executor.clone());

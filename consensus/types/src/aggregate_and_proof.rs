@@ -179,7 +179,7 @@ mod tests {
     fn from_attestation_base_variant() {
         let att = Attestation::Base(make_base_attestation());
         let proof = SelectionProof::from(Signature::empty());
-        let agg = AggregateAndProof::from_attestation(7, att.clone(), proof);
+        let agg = AggregateAndProof::from_attestation(7, att, proof);
         assert!(matches!(agg, AggregateAndProof::Base(_)));
         assert_eq!(agg.aggregator_index(), 7);
     }

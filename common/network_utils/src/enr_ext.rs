@@ -323,10 +323,7 @@ pub fn peer_id_to_node_id(peer_id: &PeerId) -> Result<discv5::enr::NodeId, Strin
 
     match public_key.key_type() {
         KeyType::Secp256k1 => {
-            let pk = public_key
-                .clone()
-                .try_into_secp256k1()
-                .expect("right key type");
+            let pk = public_key.try_into_secp256k1().expect("right key type");
             let uncompressed_key_bytes = &pk.to_bytes_uncompressed()[1..];
             let mut output = [0_u8; 32];
             let mut hasher = Keccak::v256();
@@ -335,10 +332,7 @@ pub fn peer_id_to_node_id(peer_id: &PeerId) -> Result<discv5::enr::NodeId, Strin
             Ok(discv5::enr::NodeId::parse(&output).expect("Must be correct length"))
         }
         KeyType::Ed25519 => {
-            let pk = public_key
-                .clone()
-                .try_into_ed25519()
-                .expect("right key type");
+            let pk = public_key.try_into_ed25519().expect("right key type");
             let uncompressed_key_bytes = pk.to_bytes();
             let mut output = [0_u8; 32];
             let mut hasher = Keccak::v256();

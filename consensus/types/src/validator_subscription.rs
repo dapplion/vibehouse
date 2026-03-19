@@ -58,7 +58,7 @@ mod tests {
         let sub1 = make_sub(1, 0, false);
         let sub2 = make_sub(2, 0, false);
         let sub3 = make_sub(1, 1, false);
-        let mut subs = [sub2.clone(), sub3.clone(), sub1.clone()];
+        let mut subs = [sub2, sub3, sub1];
         subs.sort();
         // Ord derives field order: attestation_committee_index first, then slot
         assert_eq!(subs[0].attestation_committee_index, 0);

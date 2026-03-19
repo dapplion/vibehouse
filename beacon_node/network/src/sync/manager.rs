@@ -323,13 +323,13 @@ impl<T: BeaconChainTypes> SyncManager<T> {
             input_channel: sync_recv,
             network: SyncNetworkContext::new(
                 network_send,
-                beacon_processor.clone(),
+                beacon_processor,
                 beacon_chain.clone(),
-                fork_context.clone(),
+                fork_context,
             ),
             range_sync: RangeSync::new(beacon_chain.clone()),
             backfill_sync: BackFillSync::new(beacon_chain.clone(), network_globals.clone()),
-            custody_backfill_sync: CustodyBackFillSync::new(beacon_chain.clone(), network_globals),
+            custody_backfill_sync: CustodyBackFillSync::new(beacon_chain, network_globals),
             block_lookups: BlockLookups::new(),
             notified_unknown_roots: LRUTimeCache::new(Duration::from_secs(
                 NOTIFIED_UNKNOWN_ROOT_EXPIRY_SECONDS,

@@ -384,14 +384,14 @@ impl<T: BeaconChainTypes> LightClientServerCache<T> {
         &self,
         optimistic_update: LightClientOptimisticUpdate<T::EthSpec>,
     ) {
-        *self.latest_broadcasted_optimistic_update.write() = Some(optimistic_update.clone());
+        *self.latest_broadcasted_optimistic_update.write() = Some(optimistic_update);
     }
 
     pub fn set_latest_broadcasted_finality_update(
         &self,
         finality_update: LightClientFinalityUpdate<T::EthSpec>,
     ) {
-        *self.latest_broadcasted_finality_update.write() = Some(finality_update.clone());
+        *self.latest_broadcasted_finality_update.write() = Some(finality_update);
     }
 
     /// Checks if we've already broadcasted the latest optimistic update.

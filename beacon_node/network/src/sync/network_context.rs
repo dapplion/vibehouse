@@ -2081,7 +2081,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
             let request = entry.get_mut();
             data_columns.and_then(|(data_columns, _)| {
                 request
-                    .add_custody_columns(req_id, data_columns.clone())
+                    .add_custody_columns(req_id, data_columns)
                     .map_err(|e| {
                         RpcResponseError::BlockComponentCouplingError(CouplingError::InternalError(
                             e,

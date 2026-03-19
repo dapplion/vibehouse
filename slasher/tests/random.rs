@@ -36,7 +36,7 @@ fn make_db() -> (TempDir, SlasherDB<E>) {
     let tempdir = tempdir().unwrap();
     let initial_config = Arc::new(Config::new(tempdir.path().into()));
     let spec = chain_spec();
-    let db = SlasherDB::open(initial_config.clone(), spec).unwrap();
+    let db = SlasherDB::open(initial_config, spec).unwrap();
     (tempdir, db)
 }
 

@@ -649,7 +649,7 @@ mod tests {
         let fork_context = gloas_fork_context();
         let mut rng = rand::rng();
         let bid = SignedExecutionPayloadBid::<E>::random_for_test(&mut rng);
-        let msg = PubsubMessage::<E>::ExecutionBid(Box::new(bid.clone()));
+        let msg = PubsubMessage::<E>::ExecutionBid(Box::new(bid));
 
         let encoded = msg.encode(GossipEncoding::SSZSnappy);
         let topic = gloas_topic(&fork_context, GossipKind::ExecutionBid);
@@ -686,7 +686,7 @@ mod tests {
         let fork_context = gloas_fork_context();
         let mut rng = rand::rng();
         let envelope = SignedExecutionPayloadEnvelope::<E>::random_for_test(&mut rng);
-        let msg = PubsubMessage::<E>::ExecutionPayload(Box::new(envelope.clone()));
+        let msg = PubsubMessage::<E>::ExecutionPayload(Box::new(envelope));
 
         let encoded = msg.encode(GossipEncoding::SSZSnappy);
         let topic = gloas_topic(&fork_context, GossipKind::ExecutionPayload);
@@ -723,7 +723,7 @@ mod tests {
         let fork_context = gloas_fork_context();
         let mut rng = rand::rng();
         let message = PayloadAttestationMessage::random_for_test(&mut rng);
-        let msg = PubsubMessage::<E>::PayloadAttestation(Box::new(message.clone()));
+        let msg = PubsubMessage::<E>::PayloadAttestation(Box::new(message));
 
         let encoded = msg.encode(GossipEncoding::SSZSnappy);
         let topic = gloas_topic(&fork_context, GossipKind::PayloadAttestation);
@@ -760,7 +760,7 @@ mod tests {
         let fork_context = gloas_fork_context();
         let mut rng = rand::rng();
         let prefs = SignedProposerPreferences::random_for_test(&mut rng);
-        let msg = PubsubMessage::<E>::ProposerPreferences(Box::new(prefs.clone()));
+        let msg = PubsubMessage::<E>::ProposerPreferences(Box::new(prefs));
 
         let encoded = msg.encode(GossipEncoding::SSZSnappy);
         let topic = gloas_topic(&fork_context, GossipKind::ProposerPreferences);

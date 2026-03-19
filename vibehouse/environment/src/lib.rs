@@ -225,7 +225,7 @@ impl<E: EthSpec> EnvironmentBuilder<E> {
             }
             Some(path) => {
                 let log_filename = PathBuf::from(format!("{}.log", filename_prefix));
-                let mut appender = LogRollerBuilder::new(path.clone(), log_filename)
+                let mut appender = LogRollerBuilder::new(path, log_filename)
                     .rotation(Rotation::SizeBased(RotationSize::MB(config.max_log_size)))
                     .max_keep_files(config.max_log_number.try_into().unwrap_or_else(|e| {
                         eprintln!("Failed to convert max_log_number to u64: {}", e);

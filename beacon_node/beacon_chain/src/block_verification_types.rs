@@ -786,7 +786,7 @@ mod tests {
         let block = make_block();
         let mut rpc = RpcBlock::new_without_blobs(None, block);
         let envelope = Arc::new(SignedExecutionPayloadEnvelope::<E>::empty());
-        rpc.set_envelope(envelope.clone());
+        rpc.set_envelope(envelope);
         assert!(rpc.envelope().is_some());
     }
 

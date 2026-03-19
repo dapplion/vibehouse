@@ -284,7 +284,7 @@ impl<E: EthSpec> StateCache<E> {
             metrics::inc_counter_vec(&metrics::STORE_BEACON_HDIFF_BUFFER_CACHE_HIT, HOT_METRIC);
             let timer =
                 metrics::start_timer_vec(&metrics::BEACON_HDIFF_BUFFER_CLONE_TIME, HOT_METRIC);
-            let result = Some(buffer.clone());
+            let result = Some(buffer);
             drop(timer);
             return result;
         }

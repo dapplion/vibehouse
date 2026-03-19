@@ -140,7 +140,7 @@ pub fn load_private_key(config: &NetworkConfig) -> Keypair {
 
                         // Migrate binary key to hex format
                         let hex_key = hex::encode(secret_key.to_bytes());
-                        if let Err(e) = File::create(network_key_f.clone())
+                        if let Err(e) = File::create(network_key_f)
                             .and_then(|mut f| f.write_all(hex_key.as_bytes()))
                         {
                             debug!("Failed to migrate key to hex format: {}", e);

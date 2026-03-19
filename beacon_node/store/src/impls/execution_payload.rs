@@ -169,7 +169,7 @@ mod tests {
     #[test]
     fn fork_agnostic_roundtrip_bellatrix() {
         let inner = ExecutionPayloadBellatrix::<E>::default();
-        let payload = ExecutionPayload::<E>::Bellatrix(inner.clone());
+        let payload = ExecutionPayload::<E>::Bellatrix(inner);
         let bytes = payload.as_store_bytes();
         let decoded = ExecutionPayload::<E>::from_store_bytes(&bytes).unwrap();
         // Note: fork-agnostic decode tries newest fork first, so Bellatrix

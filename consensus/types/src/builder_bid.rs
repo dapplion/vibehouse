@@ -406,7 +406,7 @@ mod tests {
     #[test]
     fn ssz_fork_dispatch_gloas() {
         let inner = make_gloas_bid();
-        let wrapped = BuilderBid::<E>::Gloas(inner.clone());
+        let wrapped = BuilderBid::<E>::Gloas(inner);
         let bytes = wrapped.as_ssz_bytes();
         let decoded = BuilderBid::<E>::from_ssz_bytes_by_fork(&bytes, ForkName::Gloas)
             .expect("decode as Gloas");
@@ -416,7 +416,7 @@ mod tests {
     #[test]
     fn ssz_fork_dispatch_fulu() {
         let inner = make_fulu_bid();
-        let wrapped = BuilderBid::<E>::Fulu(inner.clone());
+        let wrapped = BuilderBid::<E>::Fulu(inner);
         let bytes = wrapped.as_ssz_bytes();
         let decoded = BuilderBid::<E>::from_ssz_bytes_by_fork(&bytes, ForkName::Fulu)
             .expect("decode as Fulu");
@@ -426,7 +426,7 @@ mod tests {
     #[test]
     fn ssz_fork_dispatch_bellatrix() {
         let inner = make_bellatrix_bid();
-        let wrapped = BuilderBid::<E>::Bellatrix(inner.clone());
+        let wrapped = BuilderBid::<E>::Bellatrix(inner);
         let bytes = wrapped.as_ssz_bytes();
         let decoded = BuilderBid::<E>::from_ssz_bytes_by_fork(&bytes, ForkName::Bellatrix)
             .expect("decode as Bellatrix");
@@ -559,7 +559,7 @@ mod tests {
             0x89, 0xab, 0xcd, 0xef,
         ])
         .expect("valid secret key");
-        let kp1 = Keypair::from_components(sk1.public_key(), sk1.clone());
+        let kp1 = Keypair::from_components(sk1.public_key(), sk1);
 
         let spec = ChainSpec::mainnet();
         let domain = spec.get_builder_domain();

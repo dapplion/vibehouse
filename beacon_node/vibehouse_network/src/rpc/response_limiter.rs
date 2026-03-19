@@ -102,7 +102,7 @@ impl<E: EthSpec> ResponseLimiter<E> {
         response: RpcResponse<E>,
         protocol: Protocol,
     ) -> Result<(), Duration> {
-        match limiter.allows(&peer_id, &(response.clone(), protocol)) {
+        match limiter.allows(&peer_id, &(response, protocol)) {
             Ok(()) => Ok(()),
             Err(e) => match e {
                 RateLimitedErr::TooLarge => {

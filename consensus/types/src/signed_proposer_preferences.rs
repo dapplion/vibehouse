@@ -104,7 +104,7 @@ mod tests {
         use std::collections::HashSet;
         let signed = make_signed_prefs(42, 7);
         let mut set = HashSet::new();
-        set.insert(signed.clone());
+        set.insert(signed);
         assert!(set.contains(&make_signed_prefs(42, 7)));
         assert!(!set.contains(&make_signed_prefs(43, 7)));
     }

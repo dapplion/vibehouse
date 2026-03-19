@@ -753,7 +753,10 @@ impl TestRig {
             self.network_rx_queue.remove(index);
             Ok(transformed)
         } else {
-            Err(format!("current network messages {:?}", self.network_rx_queue).to_string())
+            Err(format!(
+                "current network messages {:?}",
+                self.network_rx_queue
+            ))
         }
     }
 
@@ -776,8 +779,7 @@ impl TestRig {
             Err(format!(
                 "current processor messages {:?}",
                 self.beacon_processor_rx_queue
-            )
-            .to_string())
+            ))
         }
     }
 
@@ -1573,7 +1575,7 @@ fn test_child_lookup_not_created_for_ignored_chain_parent_after_processing() {
     let tip_root = trigger_block.canonical_root();
 
     // Trigger the initial unknown parent block for the tip.
-    rig.trigger_unknown_parent_block(peer_id, trigger_block.clone());
+    rig.trigger_unknown_parent_block(peer_id, trigger_block);
 
     // Simulate the lookup chain building up via `ParentUnknown` errors.
     for block in blocks.into_iter().rev() {
@@ -1598,7 +1600,7 @@ fn test_child_lookup_not_created_for_ignored_chain_parent_after_processing() {
     let trigger_block_child_root = trigger_block_child.canonical_root();
     rig.trigger_unknown_block_from_attestation(trigger_block_child_root, peer_id);
     let id = rig.expect_block_lookup_request(trigger_block_child_root);
-    rig.single_lookup_block_response(id, peer_id, Some(trigger_block_child.clone()));
+    rig.single_lookup_block_response(id, peer_id, Some(trigger_block_child));
     rig.single_lookup_block_response(id, peer_id, None);
     rig.expect_block_process(ResponseType::Block);
     rig.single_block_component_processed(
@@ -1750,7 +1752,7 @@ fn test_parent_lookup_ignored_response() {
     let peer_id = rig.new_connected_peer();
 
     // Trigger the request
-    rig.trigger_unknown_parent_block(peer_id, block.clone().into());
+    rig.trigger_unknown_parent_block(peer_id, block.into());
     let id = rig.expect_block_parent_request(parent_root);
     // Note: single block lookup for current `block` does not trigger any request because it does
     // not have blobs, and the block is already cached
@@ -2241,7 +2243,7 @@ mod deneb_only {
 
         fn parent_block_response(mut self) -> Self {
             self.rig.expect_empty_network();
-            let block = self.parent_block.pop_front().unwrap().clone();
+            let block = self.parent_block.pop_front().unwrap();
             let _ = self.unknown_parent_block.insert(block.clone());
             self.rig.parent_lookup_block_response(
                 self.parent_block_req_id.expect("parent request id"),
@@ -2255,7 +2257,7 @@ mod deneb_only {
 
         fn parent_block_response_expect_blobs(mut self) -> Self {
             self.rig.expect_empty_network();
-            let block = self.parent_block.pop_front().unwrap().clone();
+            let block = self.parent_block.pop_front().unwrap();
             let _ = self.unknown_parent_block.insert(block.clone());
             self.rig.parent_lookup_block_response(
                 self.parent_block_req_id.expect("parent request id"),

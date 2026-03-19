@@ -356,7 +356,7 @@ impl<E: EthSpec> AttestationMap<E> {
             checkpoint,
             data,
             indexed,
-        } = SplitAttestation::new(attestation.clone(), attesting_indices);
+        } = SplitAttestation::new(attestation, attesting_indices);
 
         let attestation_map = self.checkpoint_map.entry(checkpoint).or_default();
         let attestations = attestation_map.attestations.entry(data).or_default();

@@ -320,7 +320,7 @@ mod tests {
     fn insert_ignored_when_no_timeout() {
         let mut cache = GossipCache::builder().build();
         let topic = make_topic(GossipKind::BeaconBlock);
-        cache.insert(topic.clone(), vec![1, 2, 3]);
+        cache.insert(topic, vec![1, 2, 3]);
         // No timeout for beacon_block → message should be dropped
         assert!(cache.topic_msgs.is_empty());
         assert!(cache.expirations.is_empty());
@@ -373,7 +373,7 @@ mod tests {
 
         cache.insert(topic.clone(), data.clone());
         // Re-inserting same data for same topic should reset the timer, not add duplicate
-        cache.insert(topic.clone(), data.clone());
+        cache.insert(topic.clone(), data);
 
         assert_eq!(cache.retrieve(&topic).unwrap().count(), 1);
     }
@@ -386,19 +386,19 @@ mod tests {
 
         // ePBS types should not be cached
         let bid_topic = make_topic(GossipKind::ExecutionBid);
-        cache.insert(bid_topic.clone(), vec![1]);
+        cache.insert(bid_topic, vec![1]);
         assert!(cache.topic_msgs.is_empty());
 
         let payload_topic = make_topic(GossipKind::ExecutionPayload);
-        cache.insert(payload_topic.clone(), vec![2]);
+        cache.insert(payload_topic, vec![2]);
         assert!(cache.topic_msgs.is_empty());
 
         let pa_topic = make_topic(GossipKind::PayloadAttestation);
-        cache.insert(pa_topic.clone(), vec![3]);
+        cache.insert(pa_topic, vec![3]);
         assert!(cache.topic_msgs.is_empty());
 
         let pref_topic = make_topic(GossipKind::ProposerPreferences);
-        cache.insert(pref_topic.clone(), vec![4]);
+        cache.insert(pref_topic, vec![4]);
         assert!(cache.topic_msgs.is_empty());
     }
 

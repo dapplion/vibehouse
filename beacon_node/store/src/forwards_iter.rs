@@ -162,7 +162,6 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> Iterator
             .next()?
             .and_then(|(slot_bytes, root_bytes)| {
                 let slot = slot_bytes
-                    .clone()
                     .try_into()
                     .map(u64::from_be_bytes)
                     .map(Slot::new)

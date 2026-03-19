@@ -1346,7 +1346,7 @@ mod tests {
         assert_eq!(payload, back, "Gloas payload should survive JSON roundtrip");
 
         // Also test the enum-level conversion
-        let ep = ExecutionPayload::Gloas(payload.clone());
+        let ep = ExecutionPayload::Gloas(payload);
         let json_ep: super::JsonExecutionPayload<MainnetEthSpec> = ep.clone().into();
         let back_ep: ExecutionPayload<MainnetEthSpec> = json_ep.into();
         assert_eq!(
@@ -1469,7 +1469,7 @@ mod tests {
         let block_value = Uint256::from(100u128);
 
         let response = GetPayloadResponse::Gloas(GetPayloadResponseGloas {
-            execution_payload: payload.clone(),
+            execution_payload: payload,
             block_value,
             blobs_bundle: BlobsBundle::default(),
             should_override_builder: false,

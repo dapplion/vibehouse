@@ -590,7 +590,7 @@ fn run<E: EthSpec>(
         libp2p_discv5_layer,
     ) = tracing_common::construct_logger(
         LoggerConfig {
-            path: log_path.clone(),
+            path: log_path,
             debug_level: tracing_common::parse_level(debug_level),
             logfile_debug_level: tracing_common::parse_level(logfile_debug_level),
             log_format: log_format.map(String::from),

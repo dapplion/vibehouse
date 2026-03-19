@@ -307,8 +307,8 @@ pub fn migrate_db<E: EthSpec>(
             from = db_initial_version;
             Ok(())
         },
-        client_config.store.clone(),
-        spec.clone(),
+        client_config.store,
+        spec,
     )?;
 
     info!(

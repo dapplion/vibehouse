@@ -247,7 +247,7 @@ mod tests {
     #[test]
     fn ssz_roundtrip_via_fork_dispatch_gloas() {
         let inner = make_gloas_payload();
-        let wrapped = ExecutionPayload::<E>::Gloas(inner.clone());
+        let wrapped = ExecutionPayload::<E>::Gloas(inner);
         let bytes = wrapped.as_ssz_bytes();
         let decoded = ExecutionPayload::<E>::from_ssz_bytes_by_fork(&bytes, ForkName::Gloas)
             .expect("SSZ decode should succeed");

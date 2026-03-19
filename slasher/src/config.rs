@@ -482,10 +482,7 @@ mod tests {
         let b = a.clone();
         assert_eq!(a, b);
 
-        let c = DiskConfig {
-            chunk_size: 8,
-            ..a.clone()
-        };
+        let c = DiskConfig { chunk_size: 8, ..a };
         assert_ne!(a, c);
     }
 

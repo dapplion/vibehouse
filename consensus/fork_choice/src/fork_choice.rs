@@ -3010,8 +3010,7 @@ mod tests {
             // First batch: push blob_data_available over quorum
             let indices1: Vec<u64> = (0..=quorum_threshold).collect();
             let att1 = make_payload_attestation(1, block_root, false, true);
-            let indexed1 =
-                make_indexed_payload_attestation(1, block_root, false, true, indices1.clone());
+            let indexed1 = make_indexed_payload_attestation(1, block_root, false, true, indices1);
             fc.on_payload_attestation(&att1, &indexed1, Slot::new(1), &spec)
                 .unwrap();
 

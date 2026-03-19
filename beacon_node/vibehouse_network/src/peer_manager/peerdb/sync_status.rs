@@ -251,7 +251,7 @@ mod tests {
         assert!(status.update(SyncStatus::Synced { info: info.clone() }));
         assert!(status.is_synced());
 
-        assert!(status.update(SyncStatus::Advanced { info: info.clone() }));
+        assert!(status.update(SyncStatus::Advanced { info }));
         assert!(status.is_advanced());
 
         assert!(status.update(SyncStatus::IrrelevantPeer));

@@ -151,7 +151,7 @@ mod tests {
     #[test]
     fn response_includes_version_no_debug() {
         let v = ResponseIncludesVersion::No;
-        assert_eq!(v.clone(), ResponseIncludesVersion::No);
+        assert_eq!(v, ResponseIncludesVersion::No);
     }
 
     #[test]

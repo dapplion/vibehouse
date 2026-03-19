@@ -73,7 +73,7 @@ fn all_benches(c: &mut Criterion) {
 
     g.bench_with_input(
         BenchmarkId::new("decode/beacon_state", validator_count),
-        &(state_bytes.clone(), spec.clone()),
+        &(state_bytes, spec.clone()),
         |b, (bytes, spec)| {
             b.iter_batched_ref(
                 || (bytes.clone(), spec.clone()),

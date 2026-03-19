@@ -269,7 +269,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         {
             let new_blob_info = BlobInfo {
                 oldest_blob_slot: Some(oldest_blob_slot),
-                ..blob_info.clone()
+                ..blob_info
             };
             anchor_and_blob_batch.push(
                 self.store

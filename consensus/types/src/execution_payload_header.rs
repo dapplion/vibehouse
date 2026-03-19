@@ -743,7 +743,7 @@ mod tests {
     #[test]
     fn ssz_roundtrip_via_enum() {
         let inner = make_fulu_header().upgrade_to_gloas();
-        let wrapped = ExecutionPayloadHeader::<E>::Gloas(inner.clone());
+        let wrapped = ExecutionPayloadHeader::<E>::Gloas(inner);
         let bytes = wrapped.as_ssz_bytes();
         let decoded = ExecutionPayloadHeader::<E>::from_ssz_bytes(&bytes, ForkName::Gloas)
             .expect("SSZ decode should succeed");

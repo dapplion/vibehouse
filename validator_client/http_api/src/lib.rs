@@ -451,7 +451,7 @@ async fn get_vibehouse_health<T: 'static + SlotClock + Clone, E: EthSpec>(
     blocking_json(move || {
         eth2::vibehouse::Health::observe()
             .map(GenericResponse::from)
-            .map_err(|e| ApiError::BadRequest(e.clone()))
+            .map_err(ApiError::BadRequest)
     })
     .await
 }
@@ -1021,7 +1021,7 @@ async fn post_vibehouse_beacon_update<T: 'static + SlotClock + Clone, E: EthSpec
         .beacon_nodes
         .update_candidates_list(beacons, use_long_timeouts)
         .await
-        .map_err(|e| ApiError::BadRequest(e.clone()))?;
+        .map_err(ApiError::BadRequest)?;
 
     let response = UpdateCandidatesResponse {
         new_beacon_nodes_list: beacons

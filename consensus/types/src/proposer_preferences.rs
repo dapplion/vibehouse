@@ -141,7 +141,7 @@ mod tests {
         use std::collections::HashSet;
         let prefs = make_prefs(42, 7, 30_000_000);
         let mut set = HashSet::new();
-        set.insert(prefs.clone());
+        set.insert(prefs);
         assert!(set.contains(&make_prefs(42, 7, 30_000_000)));
         assert!(!set.contains(&make_prefs(42, 7, 60_000_000)));
     }

@@ -333,7 +333,7 @@ fn build_log_text(
             width = FIXED_MESSAGE_WIDTH + extra_color_len
         )
     } else {
-        message_content.clone()
+        message_content
     };
 
     // Avoid adding duplicate fields; prefer event fields when duplicates exist.
@@ -360,7 +360,7 @@ fn build_log_text(
     let full_message = if !formatted_fields.is_empty() {
         format!("{}  {}", padded_message, formatted_fields)
     } else {
-        padded_message.clone()
+        padded_message
     };
 
     let message = if !location.is_empty() {

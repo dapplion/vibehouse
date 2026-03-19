@@ -179,7 +179,7 @@ where
 
         let execution_layer = if let Some(config) = config.execution_layer.clone() {
             let context = runtime_context.service_context("exec".into());
-            let execution_layer = ExecutionLayer::from_config(config, context.executor.clone())
+            let execution_layer = ExecutionLayer::from_config(config, context.executor)
                 .map_err(|e| format!("unable to start execution layer endpoints: {:?}", e))?;
             Some(execution_layer)
         } else {
@@ -703,7 +703,7 @@ where
                 let beacon_processor_context = runtime_context.service_context("bproc".into());
                 BeaconProcessor {
                     network_globals: network_globals.clone(),
-                    executor: beacon_processor_context.executor.clone(),
+                    executor: beacon_processor_context.executor,
                     current_workers: 0,
                     config: beacon_processor_config,
                 }
