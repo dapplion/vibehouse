@@ -2043,3 +2043,21 @@ Files: execution_layer (3), network (12), store (2), vibehouse_network (6), cryp
    - `self.addr.clone().into()` → `self.addr.into()` in 3 socket address methods (`Ipv4Addr`/`Ipv6Addr` are `Copy`)
 
 Spec v1.7.0-alpha.3 still latest — no new consensus-specs merges since #5005 (Mar 15). 1085/1085 types tests pass, 68/68 network_utils tests pass, 37/37 peer_info tests pass, zero clippy warnings. Committed `4c9ae7c7e`.
+
+### Run 1947 (2026-03-19)
+
+**Replaced implicit clones with explicit `.clone()` across 11 files** (`clippy::implicit_clone`): Fixed 22 instances where `.to_string()` was called on an already-owned `String` or `.to_vec()` on an already-owned `Vec`, hiding the fact that a clone is happening:
+
+1. **`block_sidecar_coupling.rs`** (3) — `.to_vec()` → `.clone()` on `Vec<Arc<...>>` fields
+2. **`config.rs` (beacon_node)** (3) — `.to_string()` → `.clone()` on `String` from CLI args
+3. **`config.rs` (validator_client)** (3) — same pattern
+4. **`discovery/mod.rs`** (2) — `.to_string()` → `.clone()` on `String` in tracing
+5. **`peer_manager/mod.rs`** (1) — removed redundant `.to_string()` on `String` (just use `&client`)
+6. **`peer_manager/network_behaviour.rs`** (3) — `.to_string()` → `.clone()` on error `String`
+7. **`boot_node/src/lib.rs`** (1) — `.to_string().to_lowercase()` → `.to_lowercase()` (String derefs to str)
+8. **`directory/src/lib.rs`** (1) — `.to_string()` → `.clone()`
+9. **`tracing_logging_layer.rs`** (1) — `.to_string()` → `.clone()`
+10. **`api_secret.rs`** (1) — `.to_string().as_bytes()` → `.as_bytes()` (String derefs to str)
+11. **`validator_client/http_api/src/lib.rs`** (2) — `.to_string()` → `.clone()`
+
+Spec v1.7.0-alpha.3 still latest — no new consensus-specs merges since #5005 (Mar 15). Zero clippy warnings (default + `implicit_clone`), lint-full passes. Committed `dc19c1923`.
