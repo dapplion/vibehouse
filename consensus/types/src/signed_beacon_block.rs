@@ -688,11 +688,14 @@ impl<E: EthSpec> SignedBeaconBlock<E, BlindedPayload<E>> {
             (SignedBeaconBlock::Gloas(block), _) => SignedBeaconBlock::Gloas(block.into()),
             // avoid wildcard matching forks so that compiler will
             // direct us here when a new fork has been added
-            (SignedBeaconBlock::Bellatrix(_), _)
-            | (SignedBeaconBlock::Capella(_), _)
-            | (SignedBeaconBlock::Deneb(_), _)
-            | (SignedBeaconBlock::Electra(_), _)
-            | (SignedBeaconBlock::Fulu(_), _) => return None,
+            (
+                SignedBeaconBlock::Bellatrix(_)
+                | SignedBeaconBlock::Capella(_)
+                | SignedBeaconBlock::Deneb(_)
+                | SignedBeaconBlock::Electra(_)
+                | SignedBeaconBlock::Fulu(_),
+                _,
+            ) => return None,
         };
         Some(full_block)
     }

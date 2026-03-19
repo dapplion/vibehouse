@@ -6807,10 +6807,8 @@ mod tests {
         if let Err(err) = result {
             match &err {
                 BlockProcessingError::PayloadAttestationInvalid(
-                    PayloadAttestationInvalid::InvalidPubkey,
-                )
-                | BlockProcessingError::PayloadAttestationInvalid(
-                    PayloadAttestationInvalid::BadSignature,
+                    PayloadAttestationInvalid::InvalidPubkey
+                    | PayloadAttestationInvalid::BadSignature,
                 ) => {
                     // Expected: either decompression failure or signature mismatch
                 }

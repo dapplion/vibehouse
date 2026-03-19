@@ -902,8 +902,10 @@ impl<S: SlotClock> ReprocessQueue<S> {
                     // The message was sent successfully.
                     Ok(()) => (),
                     // The message was not sent, recover it from the returned `Err`.
-                    Err(mpsc::error::TrySendError::Full(ReadyWork::BackfillSync(batch)))
-                    | Err(mpsc::error::TrySendError::Closed(ReadyWork::BackfillSync(batch))) => {
+                    Err(
+                        mpsc::error::TrySendError::Full(ReadyWork::BackfillSync(batch))
+                        | mpsc::error::TrySendError::Closed(ReadyWork::BackfillSync(batch)),
+                    ) => {
                         error!(
                             info = "sending work back to queue",
                             "Failed to send scheduled backfill work"

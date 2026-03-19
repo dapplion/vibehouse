@@ -192,7 +192,7 @@ fn client_from_agent_version(agent_version: &str) -> (ClientKind, String, String
             }
             (kind, version, os_version)
         }
-        Some("js-libp2p") | Some("lodestar") => {
+        Some("js-libp2p" | "lodestar") => {
             let kind = ClientKind::Lodestar;
             if let Some(agent_version) = agent_split.next() {
                 version = agent_version.into();

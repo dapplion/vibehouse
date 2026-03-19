@@ -1044,9 +1044,9 @@ impl TestRig {
     ) -> (SignedBeaconBlock<E>, Vec<BlobSidecar<E>>) {
         let (mut block, mut blobs) = self.rand_block_and_blobs(num_blobs);
         *block.message_mut().parent_root_mut() = parent_root;
-        blobs.iter_mut().for_each(|blob| {
+        for blob in blobs.iter_mut() {
             blob.signed_block_header = block.signed_block_header();
-        });
+        }
         (block, blobs)
     }
 

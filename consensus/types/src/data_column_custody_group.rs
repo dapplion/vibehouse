@@ -25,7 +25,7 @@ pub fn get_custody_groups(
     spec: &ChainSpec,
 ) -> Result<HashSet<CustodyIndex>, DataColumnCustodyGroupError> {
     if custody_group_count == spec.number_of_custody_groups {
-        Ok(HashSet::from_iter(0..spec.number_of_custody_groups))
+        Ok((0..spec.number_of_custody_groups).collect())
     } else {
         get_custody_groups_ordered(raw_node_id, custody_group_count, spec)
             .map(|custody_groups| custody_groups.into_iter().collect())

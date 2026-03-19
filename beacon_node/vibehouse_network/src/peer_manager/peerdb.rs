@@ -134,8 +134,7 @@ impl<E: EthSpec> PeerDB<E> {
     pub fn is_connected_or_dialing(&self, peer_id: &PeerId) -> bool {
         matches!(
             self.connection_status(peer_id),
-            Some(PeerConnectionStatus::Connected { .. })
-                | Some(PeerConnectionStatus::Dialing { .. })
+            Some(PeerConnectionStatus::Connected { .. } | PeerConnectionStatus::Dialing { .. })
         )
     }
 
@@ -143,8 +142,9 @@ impl<E: EthSpec> PeerDB<E> {
     pub fn is_connected_or_disconnecting(&self, peer_id: &PeerId) -> bool {
         matches!(
             self.connection_status(peer_id),
-            Some(PeerConnectionStatus::Connected { .. })
-                | Some(PeerConnectionStatus::Disconnecting { .. })
+            Some(
+                PeerConnectionStatus::Connected { .. } | PeerConnectionStatus::Disconnecting { .. }
+            )
         )
     }
 
@@ -153,9 +153,7 @@ impl<E: EthSpec> PeerDB<E> {
     pub fn should_dial(&self, peer_id: &PeerId) -> bool {
         matches!(
             self.connection_status(peer_id),
-            Some(PeerConnectionStatus::Disconnected { .. })
-                | Some(PeerConnectionStatus::Unknown)
-                | None
+            Some(PeerConnectionStatus::Disconnected { .. } | PeerConnectionStatus::Unknown) | None
         ) && !self.score_state_banned_or_disconnected(peer_id)
     }
 

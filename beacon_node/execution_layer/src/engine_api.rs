@@ -69,7 +69,7 @@ impl From<reqwest::Error> for Error {
     fn from(e: reqwest::Error) -> Self {
         if matches!(
             e.status(),
-            Some(StatusCode::UNAUTHORIZED) | Some(StatusCode::FORBIDDEN)
+            Some(StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN)
         ) {
             Error::Auth(auth::Error::InvalidToken)
         } else {

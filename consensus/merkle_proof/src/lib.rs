@@ -118,11 +118,11 @@ impl MerkleTree {
                 let right: &mut MerkleTree = &mut *right;
                 match (&*left, &*right) {
                     // Tree is full
-                    (Leaf(_), Leaf(_)) | (Finalized(_), Leaf(_)) => {
+                    (Leaf(_) | Finalized(_), Leaf(_)) => {
                         return Err(MerkleTreeError::MerkleTreeFull);
                     }
                     // There is a right node so insert in right node
-                    (Node(_, _, _), Node(_, _, _)) | (Finalized(_), Node(_, _, _)) => {
+                    (Node(_, _, _) | Finalized(_), Node(_, _, _)) => {
                         right.push_leaf(elem, depth - 1)?;
                     }
                     // Both branches are zero, insert in left one
@@ -130,7 +130,7 @@ impl MerkleTree {
                         *left = MerkleTree::create(&[elem], depth - 1);
                     }
                     // Leaf on left branch and zero on right branch, insert on right side
-                    (Leaf(_), Zero(_)) | (Finalized(_), Zero(_)) => {
+                    (Leaf(_) | Finalized(_), Zero(_)) => {
                         *right = MerkleTree::create(&[elem], depth - 1);
                     }
                     // Try inserting on the left node -> if it fails because it is full, insert in right side.

@@ -52,10 +52,10 @@ pub fn sync_committee_duties<T: BeaconChainTypes>(
                 execution_optimistic,
             ));
         }
-        Err(BeaconChainError::SyncDutiesError(BeaconStateError::SyncCommitteeNotKnown {
-            ..
-        }))
-        | Err(BeaconChainError::SyncDutiesError(BeaconStateError::IncorrectStateVariant)) => (),
+        Err(BeaconChainError::SyncDutiesError(
+            BeaconStateError::SyncCommitteeNotKnown { .. }
+            | BeaconStateError::IncorrectStateVariant,
+        )) => (),
         Err(e) => return Err(ApiError::unhandled_error(e)),
     }
 
@@ -392,8 +392,10 @@ pub fn process_signed_contribution_and_proofs<T: BeaconChainTypes>(
             //
             // There's no actual error for the user or the network since the
             // aggregate has been successfully published by some other node.
-            Err(SyncVerificationError::SyncContributionSupersetKnown(_))
-            | Err(SyncVerificationError::AggregatorAlreadyKnown(_)) => continue,
+            Err(
+                SyncVerificationError::SyncContributionSupersetKnown(_)
+                | SyncVerificationError::AggregatorAlreadyKnown(_),
+            ) => {}
             Err(e) => {
                 error!(
                     error = ?e,

@@ -1457,8 +1457,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             self.with_head(
                 |head| match head.beacon_state.get_built_sync_committee(epoch, spec) {
                     Ok(committee) => Ok(Some(committee.clone())),
-                    Err(BeaconStateError::SyncCommitteeNotKnown { .. })
-                    | Err(BeaconStateError::IncorrectStateVariant) => Ok(None),
+                    Err(
+                        BeaconStateError::SyncCommitteeNotKnown { .. }
+                        | BeaconStateError::IncorrectStateVariant,
+                    ) => Ok(None),
                     Err(e) => Err(Error::from(e)),
                 },
             )?;
@@ -4230,23 +4232,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 //
                 // Note that `check_block_relevancy` is incapable of returning
                 // `DuplicateImportStatusUnknown` so we don't need to handle that case here.
-                Err(BlockError::DuplicateFullyImported(_))
-                // If the block is the genesis block, simply ignore this block.
-                | Err(BlockError::GenesisBlock)
-                // If the block is is for a finalized slot, simply ignore this block.
-                //
-                // The block is either:
-                //
-                // 1. In the canonical finalized chain.
-                // 2. In some non-canonical chain at a slot that has been finalized already.
-                //
-                // In the case of (1), there's no need to re-import and later blocks in this
-                // segement might be useful.
-                //
-                // In the case of (2), skipping the block is valid since we should never import it.
-                // However, we will potentially get a `ParentUnknown` on a later block. The sync
-                // protocol will need to ensure this is handled gracefully.
-                | Err(BlockError::WouldRevertFinalizedSlot { .. }) => continue,
+                Err(
+                    BlockError::DuplicateFullyImported(_)
+                    | BlockError::GenesisBlock
+                    | BlockError::WouldRevertFinalizedSlot { .. },
+                ) => {}
                 // The block has a known parent that does not descend from the finalized block.
                 // There is no need to process this block or any children.
                 Err(BlockError::NotFinalizedDescendant { block_parent_root }) => {
@@ -4480,7 +4470,6 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                                 "Failed to process envelope for duplicate block (may already be FULL)"
                             );
                         }
-                        continue;
                     }
                     Err(error) => {
                         return ChainSegmentResult::Failed {

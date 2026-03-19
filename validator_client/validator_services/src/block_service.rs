@@ -303,7 +303,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> BlockService<S, T> {
 
                     match result {
                         Ok(_) => {}
-                        Err(BlockError::Recoverable(e)) | Err(BlockError::Irrecoverable(e)) => {
+                        Err(BlockError::Recoverable(e) | BlockError::Irrecoverable(e)) => {
                             error!(
                                 error = ?e,
                                 block_slot = ?slot,

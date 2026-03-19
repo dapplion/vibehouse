@@ -84,9 +84,9 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 // less than the sum of the individual rewards due to the fact that integer division
                 // does not distribute over addition.
                 let mut rewards = cover.fresh_validators_rewards;
-                rewards
-                    .values_mut()
-                    .for_each(|reward| *reward /= PROPOSER_REWARD_DENOMINATOR);
+                for reward in rewards.values_mut() {
+                    *reward /= PROPOSER_REWARD_DENOMINATOR;
+                }
                 rewards
             })
             .collect();

@@ -1030,10 +1030,10 @@ impl<E: EthSpec> BeaconProcessor<E> {
                             Err(event) => (Some(event), created_timestamp),
                         }
                     }
-                    Some(InboundEvent::WorkEvent((event, created_timestamp)))
-                    | Some(InboundEvent::ReprocessingWork((event, created_timestamp))) => {
-                        (Some(event), created_timestamp)
-                    }
+                    Some(
+                        InboundEvent::WorkEvent((event, created_timestamp))
+                        | InboundEvent::ReprocessingWork((event, created_timestamp)),
+                    ) => (Some(event), created_timestamp),
                     None => {
                         debug!(msg = "stream ended", "Gossip processor stopped");
                         break;

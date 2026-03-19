@@ -97,7 +97,7 @@ pub fn get_beacon_state_validator_balances<T: BeaconChainTypes>(
                     // if optional_ids (the request data body) is [], returns a `None`, so that later when calling .is_none_or() will return True
                     // Hence, all validators will pass through .filter(), and balances of all validators are returned, in accordance to the spec
                     Some([]) | None => None,
-                    Some(ids) => Some(HashSet::from_iter(ids.iter())),
+                    Some(ids) => Some(ids.iter().collect()),
                 };
 
                 Ok((
@@ -143,7 +143,7 @@ pub fn get_beacon_state_validator_identities<T: BeaconChainTypes>(
                 let ids_filter_set: Option<HashSet<&ValidatorId>> = match optional_ids {
                     // Same logic as validator_balances endpoint above
                     Some([]) | None => None,
-                    Some(ids) => Some(HashSet::from_iter(ids.iter())),
+                    Some(ids) => Some(ids.iter().collect()),
                 };
 
                 Ok((

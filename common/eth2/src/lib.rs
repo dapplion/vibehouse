@@ -3052,7 +3052,7 @@ impl BeaconNodeHttpClient {
                 Err(err) => return Err(Error::SseClient(err.into())),
                 // This should never happen as we are guaranteed to get the
                 // Open event before any message starts coming through.
-                Ok(Event::Message(_)) => continue,
+                Ok(Event::Message(_)) => {}
             }
         }
         Ok(Box::pin(es.filter_map(|event| async move {

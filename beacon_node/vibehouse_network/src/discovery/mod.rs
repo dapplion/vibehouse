@@ -879,9 +879,9 @@ impl<E: EthSpec> Discovery<E> {
                             ?subnets_searched_for,
                             "Grouped subnet discovery query yielded no results."
                         );
-                        queries.iter().for_each(|query| {
+                        for query in queries.iter() {
                             self.add_subnet_query(query.subnet, query.min_ttl, query.retries + 1);
-                        });
+                        }
                     }
                     Ok(r) => {
                         debug!(
@@ -898,7 +898,7 @@ impl<E: EthSpec> Discovery<E> {
                         }
 
                         // Map each subnet query's min_ttl to the set of ENR's returned for that subnet.
-                        queries.iter().for_each(|query| {
+                        for query in queries.iter() {
                             let query_str = match query.subnet {
                                 Subnet::Attestation(_) => "attestation",
                                 Subnet::SyncCommittee(_) => "sync_committee",
@@ -919,45 +919,39 @@ impl<E: EthSpec> Discovery<E> {
                             let subnet_predicate =
                                 subnet_predicate::<E>(vec![query.subnet], self.spec.clone());
 
-                            r.clone()
-                                .into_iter()
-                                .filter(|enr| subnet_predicate(enr))
-                                .for_each(|enr| {
-                                    if let Some(v) = metrics::get_int_counter(
-                                        &metrics::SUBNET_PEERS_FOUND,
-                                        &[query_str],
-                                    ) {
-                                        v.inc();
-                                    }
-                                    let other_min_ttl = mapped_results.get_mut(&enr);
+                            for enr in r.clone().into_iter().filter(|enr| subnet_predicate(enr)) {
+                                if let Some(v) = metrics::get_int_counter(
+                                    &metrics::SUBNET_PEERS_FOUND,
+                                    &[query_str],
+                                ) {
+                                    v.inc();
+                                }
+                                let other_min_ttl = mapped_results.get_mut(&enr);
 
-                                    // map peer IDs to the min_ttl furthest in the future
-                                    match (query.min_ttl, other_min_ttl) {
-                                        // update the mapping if the min_ttl is greater
-                                        (
-                                            Some(min_ttl_instant),
-                                            Some(Some(other_min_ttl_instant)),
-                                        ) => {
-                                            if min_ttl_instant
-                                                .saturating_duration_since(*other_min_ttl_instant)
-                                                > DURATION_DIFFERENCE
-                                            {
-                                                *other_min_ttl_instant = min_ttl_instant;
-                                            }
+                                // map peer IDs to the min_ttl furthest in the future
+                                match (query.min_ttl, other_min_ttl) {
+                                    // update the mapping if the min_ttl is greater
+                                    (Some(min_ttl_instant), Some(Some(other_min_ttl_instant))) => {
+                                        if min_ttl_instant
+                                            .saturating_duration_since(*other_min_ttl_instant)
+                                            > DURATION_DIFFERENCE
+                                        {
+                                            *other_min_ttl_instant = min_ttl_instant;
                                         }
-                                        // update the mapping if we have a specified min_ttl
-                                        (Some(min_ttl), Some(None)) => {
-                                            mapped_results.insert(enr, Some(min_ttl));
-                                        }
-                                        // first seen min_ttl for this enr
-                                        (min_ttl, None) => {
-                                            mapped_results.insert(enr, min_ttl);
-                                        }
-                                        // Don't replace the existing specific min_ttl, or no-op for duplicate
-                                        (None, Some(Some(_))) | (None, Some(None)) => {}
                                     }
-                                });
-                        });
+                                    // update the mapping if we have a specified min_ttl
+                                    (Some(min_ttl), Some(None)) => {
+                                        mapped_results.insert(enr, Some(min_ttl));
+                                    }
+                                    // first seen min_ttl for this enr
+                                    (min_ttl, None) => {
+                                        mapped_results.insert(enr, min_ttl);
+                                    }
+                                    // Don't replace the existing specific min_ttl, or no-op for duplicate
+                                    (None, Some(Some(_) | None)) => {}
+                                }
+                            }
+                        }
 
                         if mapped_results.is_empty() {
                             return None;

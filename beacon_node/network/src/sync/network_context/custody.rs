@@ -75,11 +75,10 @@ impl<T: BeaconChainTypes> ActiveCustodyRequest<T> {
         Self {
             block_root,
             custody_id,
-            column_requests: HashMap::from_iter(
-                column_indices
-                    .iter()
-                    .map(|index| (*index, ColumnRequest::new())),
-            ),
+            column_requests: column_indices
+                .iter()
+                .map(|index| (*index, ColumnRequest::new()))
+                .collect(),
             active_batch_columns_requests: <_>::default(),
             peer_attempts: HashMap::new(),
             lookup_peers,
@@ -127,9 +126,8 @@ impl<T: BeaconChainTypes> ActiveCustodyRequest<T> {
                 // Map columns by index as an optimization to not loop the returned list on each
                 // requested index. The worse case is 128 loops over a 128 item vec + mutation to
                 // drop the consumed columns.
-                let mut data_columns = HashMap::<ColumnIndex, _>::from_iter(
-                    data_columns.into_iter().map(|d| (d.index(), d)),
-                );
+                let mut data_columns: HashMap<ColumnIndex, _> =
+                    data_columns.into_iter().map(|d| (d.index(), d)).collect();
                 // Accumulate columns that the peer does not have to issue a single log per request
                 let mut missing_column_indexes = vec![];
 

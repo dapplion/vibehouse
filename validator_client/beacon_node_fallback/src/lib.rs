@@ -421,7 +421,7 @@ impl<T: SlotClock> BeaconNodeFallback<T> {
         for candidate in self.candidates.read().await.iter() {
             match candidate.health().await {
                 Ok(_) | Err(CandidateError::Uninitialized) => n += 1,
-                Err(_) => continue,
+                Err(_) => {}
             }
         }
         n

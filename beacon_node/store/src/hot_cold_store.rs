@@ -1954,7 +1954,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         }) = self.load_hot_state_summary(state_root)?
         {
             let mut state = match self.hot_storage_strategy(slot)? {
-                strat @ StorageStrategy::Snapshot | strat @ StorageStrategy::DiffFrom(_) => {
+                strat @ (StorageStrategy::Snapshot | StorageStrategy::DiffFrom(_)) => {
                     let buffer_timer = metrics::start_timer_vec(
                         &metrics::BEACON_HDIFF_BUFFER_LOAD_TIME,
                         HOT_METRIC,

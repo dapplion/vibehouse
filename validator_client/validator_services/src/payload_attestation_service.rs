@@ -190,7 +190,6 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> PayloadAttestationServ
                 } else {
                     error!("Failed to read slot clock");
                     sleep(slot_duration).await;
-                    continue;
                 }
             }
         };

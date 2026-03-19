@@ -665,7 +665,6 @@ pub fn start_update_service<S: ValidatorStore + 'static, T: SlotClock + 'static>
                     // Just sleep for one slot if we are unable to read the system clock, this gives
                     // us an opportunity for the clock to eventually come good.
                     sleep(duties_service.slot_clock.slot_duration()).await;
-                    continue;
                 }
             }
         },
@@ -688,7 +687,6 @@ pub fn start_update_service<S: ValidatorStore + 'static, T: SlotClock + 'static>
                     sleep(duration).await;
                 } else {
                     sleep(duties_service.slot_clock.slot_duration()).await;
-                    continue;
                 }
             }
         },
@@ -711,7 +709,6 @@ pub fn start_update_service<S: ValidatorStore + 'static, T: SlotClock + 'static>
                     sleep(duration).await;
                 } else {
                     sleep(duties_service.slot_clock.slot_duration()).await;
-                    continue;
                 }
             }
         },

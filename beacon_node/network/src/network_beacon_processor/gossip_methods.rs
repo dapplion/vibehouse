@@ -1401,8 +1401,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
                 return None;
             }
-            Err(e @ BlockError::WouldRevertFinalizedSlot { .. })
-            | Err(e @ BlockError::NotFinalizedDescendant { .. }) => {
+            Err(
+                e @ (BlockError::WouldRevertFinalizedSlot { .. }
+                | BlockError::NotFinalizedDescendant { .. }),
+            ) => {
                 debug!(
                     error = %e,
                     "Could not verify block for gossip. Ignoring the block"
@@ -1424,23 +1426,25 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
                 return None;
             }
-            Err(e @ BlockError::StateRootMismatch { .. })
-            | Err(e @ BlockError::IncorrectBlockProposer { .. })
-            | Err(e @ BlockError::BlockSlotLimitReached)
-            | Err(e @ BlockError::NonLinearSlots)
-            | Err(e @ BlockError::UnknownValidator(_))
-            | Err(e @ BlockError::PerBlockProcessingError(_))
-            | Err(e @ BlockError::NonLinearParentRoots)
-            | Err(e @ BlockError::BlockIsNotLaterThanParent { .. })
-            | Err(e @ BlockError::InvalidSignature(_))
-            | Err(e @ BlockError::WeakSubjectivityConflict)
-            | Err(e @ BlockError::InconsistentFork(_))
-            | Err(e @ BlockError::ExecutionPayloadError(_))
-            | Err(e @ BlockError::ParentExecutionPayloadInvalid { .. })
-            | Err(e @ BlockError::KnownInvalidExecutionPayload(_))
-            | Err(e @ BlockError::GenesisBlock)
-            | Err(e @ BlockError::InvalidBlobCount { .. })
-            | Err(e @ BlockError::BidParentRootMismatch { .. }) => {
+            Err(
+                e @ (BlockError::StateRootMismatch { .. }
+                | BlockError::IncorrectBlockProposer { .. }
+                | BlockError::BlockSlotLimitReached
+                | BlockError::NonLinearSlots
+                | BlockError::UnknownValidator(_)
+                | BlockError::PerBlockProcessingError(_)
+                | BlockError::NonLinearParentRoots
+                | BlockError::BlockIsNotLaterThanParent { .. }
+                | BlockError::InvalidSignature(_)
+                | BlockError::WeakSubjectivityConflict
+                | BlockError::InconsistentFork(_)
+                | BlockError::ExecutionPayloadError(_)
+                | BlockError::ParentExecutionPayloadInvalid { .. }
+                | BlockError::KnownInvalidExecutionPayload(_)
+                | BlockError::GenesisBlock
+                | BlockError::InvalidBlobCount { .. }
+                | BlockError::BidParentRootMismatch { .. }),
+            ) => {
                 warn!(error = %e, "Could not verify block for gossip. Rejecting the block");
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
                 self.gossip_penalize_peer(
@@ -1458,7 +1462,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 return None;
             }
             // BlobNotRequired is unreachable. Only constructed in `process_gossip_blob`
-            Err(e @ BlockError::InternalError(_)) | Err(e @ BlockError::BlobNotRequired(_)) => {
+            Err(e @ (BlockError::InternalError(_) | BlockError::BlobNotRequired(_))) => {
                 error!(error = %e, "Internal block gossip validation error");
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
                 return None;
@@ -3436,8 +3440,8 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             }
             // Spec: [REJECT] bid.builder_index is a valid/active builder index
             Err(
-                e @ ExecutionBidError::UnknownBuilder { .. }
-                | e @ ExecutionBidError::InactiveBuilder { .. },
+                e @ (ExecutionBidError::UnknownBuilder { .. }
+                | ExecutionBidError::InactiveBuilder { .. }),
             ) => {
                 warn!(
                     builder_index,
@@ -3669,10 +3673,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 return;
             }
             Err(
-                e @ PayloadEnvelopeError::SlotMismatch { .. }
-                | e @ PayloadEnvelopeError::BuilderIndexMismatch { .. }
-                | e @ PayloadEnvelopeError::BlockHashMismatch { .. }
-                | e @ PayloadEnvelopeError::NotGloasBlock { .. },
+                e @ (PayloadEnvelopeError::SlotMismatch { .. }
+                | PayloadEnvelopeError::BuilderIndexMismatch { .. }
+                | PayloadEnvelopeError::BlockHashMismatch { .. }
+                | PayloadEnvelopeError::NotGloasBlock { .. }),
             ) => {
                 metrics::inc_counter(&metrics::BEACON_PROCESSOR_PAYLOAD_ENVELOPE_REJECTED_TOTAL);
                 warn!(
@@ -3969,8 +3973,8 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             }
             // Reject: empty or malformed aggregation bits
             Err(
-                e @ PayloadAttestationError::EmptyAggregationBits
-                | e @ PayloadAttestationError::InvalidAggregationBits,
+                e @ (PayloadAttestationError::EmptyAggregationBits
+                | PayloadAttestationError::InvalidAggregationBits),
             ) => {
                 warn!(
                     %slot,

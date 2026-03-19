@@ -3746,8 +3746,8 @@ async fn post_validator_aggregate_and_proofs<T: BeaconChainTypes>(
 
                         verified_aggregates.push((index, verified_aggregate));
                     }
-                    Err(AttnError::AttestationSupersetKnown(_))
-                    | Err(AttnError::AggregatorAlreadyKnown(_)) => continue,
+                    Err(AttnError::AttestationSupersetKnown(_) |
+AttnError::AggregatorAlreadyKnown(_)) => {}
                     Err(e) => {
                         error!(
                             error = ?e,

@@ -242,7 +242,7 @@ impl<E: EthSpec> LightClientUpdate<E> {
             .map_err(|_| Error::InconsistentFork)?
         {
             ForkName::Base => return Err(Error::AltairForkNotActive),
-            fork_name @ ForkName::Altair | fork_name @ ForkName::Bellatrix => {
+            fork_name @ (ForkName::Altair | ForkName::Bellatrix) => {
                 let attested_header =
                     LightClientHeaderAltair::block_to_light_client_header(attested_block)?;
 

@@ -2757,14 +2757,17 @@ impl<E: EthSpec> BeaconState<E> {
                     |_, self_field, base_field| { self_field.rebase_on(base_field) }
                 );
             }
-            (Self::Base(_), _)
-            | (Self::Altair(_), _)
-            | (Self::Bellatrix(_), _)
-            | (Self::Capella(_), _)
-            | (Self::Deneb(_), _)
-            | (Self::Electra(_), _)
-            | (Self::Fulu(_), _)
-            | (Self::Gloas(_), _) => (),
+            (
+                Self::Base(_)
+                | Self::Altair(_)
+                | Self::Bellatrix(_)
+                | Self::Capella(_)
+                | Self::Deneb(_)
+                | Self::Electra(_)
+                | Self::Fulu(_)
+                | Self::Gloas(_),
+                _,
+            ) => (),
         }
 
         // Use sync committees from `base` if they are equal.

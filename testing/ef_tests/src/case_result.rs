@@ -66,9 +66,9 @@ where
                 .filter(Comparison::not_equal)
                 .collect();
 
-            mismatching_fields
-                .iter_mut()
-                .for_each(|f| f.retain_children(FieldComparison::not_equal));
+            for f in mismatching_fields.iter_mut() {
+                f.retain_children(FieldComparison::not_equal);
+            }
 
             if !mismatching_fields.is_empty() {
                 Err(Error::NotEqual(format!(

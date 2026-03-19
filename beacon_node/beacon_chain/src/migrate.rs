@@ -594,32 +594,31 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
         // `new_finalized_state_root` is the *state at the slot of the finalized epoch*,
         // rather than the state of the latest finalized block. These two values will only
         // differ when the first slot of the finalized epoch is a skip slot.
-        let finalized_and_descendant_state_roots_of_finalized_checkpoint =
-            HashSet::<Hash256>::from_iter(
-                std::iter::once(new_finalized_state_root).chain(
+        let finalized_and_descendant_state_roots_of_finalized_checkpoint: HashSet<Hash256> =
+            std::iter::once(new_finalized_state_root)
+                .chain(
                     state_summaries_dag
                         .descendants_of(&new_finalized_state_root)
                         .map_err(|e| PruningError::SummariesDagError("descendants of", e))?,
-                ),
-            );
+                )
+                .collect();
 
         // Collect all `latest_block_roots` of the
         // finalized_and_descendant_state_roots_of_finalized_checkpoint set. Includes the finalized
         // block as `new_finalized_state_root` always has a latest block root equal to the finalized
         // block.
-        let finalized_and_descendant_block_roots_of_finalized_checkpoint =
-            HashSet::<Hash256>::from_iter(
-                state_summaries_dag
-                    .blocks_of_states(
-                        finalized_and_descendant_state_roots_of_finalized_checkpoint.iter(),
-                    )
-                    // should never error, we just constructed
-                    // finalized_and_descendant_state_roots_of_finalized_checkpoint from the
-                    // state_summaries_dag
-                    .map_err(|e| PruningError::SummariesDagError("blocks of descendant", e))?
-                    .into_iter()
-                    .map(|(block_root, _)| block_root),
-            );
+        let finalized_and_descendant_block_roots_of_finalized_checkpoint: HashSet<Hash256> =
+            state_summaries_dag
+                .blocks_of_states(
+                    finalized_and_descendant_state_roots_of_finalized_checkpoint.iter(),
+                )
+                // should never error, we just constructed
+                // finalized_and_descendant_state_roots_of_finalized_checkpoint from the
+                // state_summaries_dag
+                .map_err(|e| PruningError::SummariesDagError("blocks of descendant", e))?
+                .into_iter()
+                .map(|(block_root, _)| block_root)
+                .collect();
 
         // Note: ancestors_of includes the finalized state root
         let newly_finalized_state_summaries = state_summaries_dag
@@ -876,11 +875,9 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
         // E.g. if `current_split_slot` = (Epoch A slot 0) and `finalized_state.slot()` = (Epoch C slot 31)
         // and (Epoch D slot 0) is a skipped slot, we will have pruned a `sync_committee_branch`
         // for a checkpoint block root.
-        non_checkpoint_block_roots
-            .into_iter()
-            .for_each(|block_root| {
-                hot_db_ops.push(StoreOp::DeleteSyncCommitteeBranch(*block_root));
-            });
+        for block_root in non_checkpoint_block_roots {
+            hot_db_ops.push(StoreOp::DeleteSyncCommitteeBranch(*block_root));
+        }
     }
 
     /// Compact the database if it has been more than `COMPACTION_PERIOD_SECONDS` since it

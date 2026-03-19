@@ -435,7 +435,6 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
                 // If there are duplicated indices, its likely a peer sending us the same index multiple times.
                 // However we can still proceed even if there are extra columns, just log an error.
                 tracing::debug!(?block_root, ?index, "Repeated column for block_root");
-                continue;
             }
         }
 

@@ -25,7 +25,6 @@ pub fn spawn_notifier<S: ValidatorStore + 'static, T: SlotClock + 'static>(
                 error!("Failed to read slot clock");
                 // If we can't read the slot clock, just wait another slot.
                 sleep(slot_duration).await;
-                continue;
             }
         }
     };

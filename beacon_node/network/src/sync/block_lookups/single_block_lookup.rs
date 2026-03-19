@@ -102,7 +102,7 @@ impl<T: BeaconChainTypes> SingleBlockLookup<T> {
             id,
             block_request_state: BlockRequestState::new(requested_block_root),
             component_requests: ComponentRequests::WaitingForBlock,
-            peers: Arc::new(RwLock::new(HashSet::from_iter(peers.iter().copied()))),
+            peers: Arc::new(RwLock::new(peers.iter().copied().collect())),
             block_root: requested_block_root,
             awaiting_parent,
             created: Instant::now(),

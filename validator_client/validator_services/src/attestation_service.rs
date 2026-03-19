@@ -172,7 +172,6 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> AttestationService<S, 
                     error!("Failed to read slot clock");
                     // If we can't read the slot clock, just wait another slot.
                     sleep(slot_duration).await;
-                    continue;
                 }
             }
         };
@@ -239,20 +238,18 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> AttestationService<S, 
         //
         // - Create and publish an `Attestation` for all required validators.
         // - Create and publish `SignedAggregateAndProof` for all aggregating validators.
-        duties_by_committee_index
-            .into_iter()
-            .for_each(|(committee_index, validator_duties)| {
-                // Spawn a separate task for each attestation.
-                self.inner.executor.spawn_ignoring_error(
-                    self.clone().publish_attestations_and_aggregates(
-                        slot,
-                        committee_index,
-                        validator_duties,
-                        aggregate_production_instant,
-                    ),
-                    "attestation publish",
-                );
-            });
+        for (committee_index, validator_duties) in duties_by_committee_index {
+            // Spawn a separate task for each attestation.
+            self.inner.executor.spawn_ignoring_error(
+                self.clone().publish_attestations_and_aggregates(
+                    slot,
+                    committee_index,
+                    validator_duties,
+                    aggregate_production_instant,
+                ),
+                "attestation publish",
+            );
+        }
 
         // Schedule pruning of the slashing protection database once all unaggregated
         // attestations have (hopefully) been signed, i.e. at the same time as aggregate

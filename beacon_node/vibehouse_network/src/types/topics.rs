@@ -153,7 +153,7 @@ pub fn is_fork_non_core_topic(topic: &GossipTopic, _fork_name: ForkName) -> bool
 
 pub fn all_topics_at_fork<E: EthSpec>(fork: ForkName, spec: &ChainSpec) -> Vec<GossipKind> {
     // Compute the worst case of all forks
-    let sampling_subnets = HashSet::from_iter(spec.all_data_column_sidecar_subnets());
+    let sampling_subnets = spec.all_data_column_sidecar_subnets().collect();
     let opts = TopicConfig {
         enable_light_client_server: true,
         subscribe_all_subnets: true,
