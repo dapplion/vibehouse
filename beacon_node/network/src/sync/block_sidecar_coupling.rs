@@ -731,14 +731,9 @@ mod tests {
     fn rpc_block_with_custody_columns_batched() {
         let spec = test_spec::<E>();
         let batched_column_requests = [vec![1_u64, 2], vec![3, 4]];
-        let expects_custody_columns = batched_column_requests
-            .iter()
-            .flatten()
-            .copied()
-            .collect::<Vec<_>>();
-        let custody_column_request_ids =
-            (0..batched_column_requests.len() as u32).collect::<Vec<_>>();
-        let num_of_data_column_requests = custody_column_request_ids.len();
+        let expects_custody_columns: Vec<_> =
+            batched_column_requests.iter().flatten().copied().collect();
+        let num_of_data_column_requests = batched_column_requests.len();
 
         let components_id = components_id();
         let blocks_req_id = blocks_id(components_id);

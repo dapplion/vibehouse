@@ -1582,6 +1582,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::needless_collect)] // collect required to avoid borrowing pdb during mutation
     fn test_disconnected_are_bounded() {
         let mut pdb = get_db();
 
@@ -1600,6 +1601,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::needless_collect)] // collect required to avoid borrowing pdb during mutation
     fn test_banned_are_bounded() {
         let mut pdb = get_db();
 

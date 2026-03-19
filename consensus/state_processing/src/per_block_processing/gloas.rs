@@ -2306,12 +2306,10 @@ mod tests {
         // Active builders should NOT be swept
         let expected = get_expected_withdrawals_gloas::<E>(&state, &spec).unwrap();
 
-        let builder_sweep: Vec<_> = expected
-            .iter()
-            .filter(|w| w.validator_index & BUILDER_INDEX_FLAG != 0)
-            .collect();
         assert!(
-            builder_sweep.is_empty(),
+            !expected
+                .iter()
+                .any(|w| w.validator_index & BUILDER_INDEX_FLAG != 0),
             "active builder should not be swept"
         );
     }
@@ -2405,23 +2403,21 @@ mod tests {
         );
 
         // Builder pending withdrawal (phase 1)
-        let builder_pending: Vec<_> = expected
-            .iter()
-            .filter(|w| w.validator_index & BUILDER_INDEX_FLAG != 0 && w.amount == 1_000_000_000)
-            .collect();
         assert_eq!(
-            builder_pending.len(),
+            expected
+                .iter()
+                .filter(|w| w.validator_index & BUILDER_INDEX_FLAG != 0 && w.amount == 1_000_000_000)
+                .count(),
             1,
             "should have builder pending withdrawal"
         );
 
         // Builder sweep (phase 3)
-        let builder_sweep: Vec<_> = expected
-            .iter()
-            .filter(|w| w.validator_index & BUILDER_INDEX_FLAG != 0 && w.amount == 5_000_000_000)
-            .collect();
         assert_eq!(
-            builder_sweep.len(),
+            expected
+                .iter()
+                .filter(|w| w.validator_index & BUILDER_INDEX_FLAG != 0 && w.amount == 5_000_000_000)
+                .count(),
             1,
             "should have builder sweep withdrawal"
         );
@@ -5891,12 +5887,15 @@ mod tests {
         assert_eq!(expected[0].amount, 500);
 
         // Next should include builder sweep entries
-        let builder_sweep: Vec<_> = expected
-            .iter()
-            .skip(1)
-            .filter(|w| (w.validator_index & BUILDER_INDEX_FLAG) != 0)
-            .collect();
-        assert_eq!(builder_sweep.len(), 2, "2 exited builders should be swept");
+        assert_eq!(
+            expected
+                .iter()
+                .skip(1)
+                .filter(|w| (w.validator_index & BUILDER_INDEX_FLAG) != 0)
+                .count(),
+            2,
+            "2 exited builders should be swept"
+        );
     }
 
     // ── initiate_builder_exit lifecycle interaction tests ────────────────
@@ -8877,9 +8876,8 @@ mod tests {
         let expected = get_expected_withdrawals_gloas::<E>(&state, &spec).unwrap();
 
         // Validator 0 should NOT appear
-        let v0_withdrawals: Vec<_> = expected.iter().filter(|w| w.validator_index == 0).collect();
         assert!(
-            v0_withdrawals.is_empty(),
+            !expected.iter().any(|w| w.validator_index == 0),
             "read-only path should also skip BLS-credential validator"
         );
     }

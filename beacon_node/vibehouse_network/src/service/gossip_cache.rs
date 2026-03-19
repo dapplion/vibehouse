@@ -374,8 +374,7 @@ mod tests {
         // Re-inserting same data for same topic should reset the timer, not add duplicate
         cache.insert(topic.clone(), data.clone());
 
-        let msgs: Vec<Vec<u8>> = cache.retrieve(&topic).unwrap().collect();
-        assert_eq!(msgs.len(), 1);
+        assert_eq!(cache.retrieve(&topic).unwrap().count(), 1);
     }
 
     #[test]

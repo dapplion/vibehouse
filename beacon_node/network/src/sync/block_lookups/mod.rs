@@ -872,6 +872,7 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
     ///
     /// Instead there's no negative for keeping lookups with no peers around for some time. If we
     /// regularly prune them, it should not be a memory concern.
+    #[allow(clippy::needless_collect)] // collect required to avoid borrowing self during mutation
     fn drop_lookups_without_peers(&mut self) {
         for (lookup_id, block_root) in self
             .single_block_lookups

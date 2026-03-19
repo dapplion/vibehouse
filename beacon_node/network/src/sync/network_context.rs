@@ -1719,6 +1719,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
     /// Attempt to make progress on all custody_by_root requests. Some request may be stale waiting
     /// for custody peers. Returns a Vec of results as zero or more requests may fail in this
     /// attempt.
+    #[allow(clippy::needless_collect)] // collect required to re-borrow self in the loop
     pub fn continue_custody_by_root_requests(
         &mut self,
     ) -> Vec<(CustodyRequester, CustodyByRootResult<T::EthSpec>)> {

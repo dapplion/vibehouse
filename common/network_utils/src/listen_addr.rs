@@ -239,7 +239,6 @@ mod tests {
     #[test]
     fn libp2p_addresses_dual_stack_produces_four_addrs() {
         let la = ListenAddress::DualStack(v4_addr(), v6_addr());
-        let addrs: Vec<_> = la.libp2p_addresses().collect();
-        assert_eq!(addrs.len(), 4);
+        assert_eq!(la.libp2p_addresses().count(), 4);
     }
 }

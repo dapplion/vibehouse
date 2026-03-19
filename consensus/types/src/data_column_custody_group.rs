@@ -166,10 +166,12 @@ mod test {
             E::number_of_columns() / (spec.number_of_custody_groups as usize);
 
         for custody_group in 0..spec.number_of_custody_groups {
-            let columns = compute_columns_for_custody_group::<E>(custody_group, &spec)
-                .unwrap()
-                .collect::<Vec<_>>();
-            assert_eq!(columns.len(), columns_per_custody_group);
+            assert_eq!(
+                compute_columns_for_custody_group::<E>(custody_group, &spec)
+                    .unwrap()
+                    .count(),
+                columns_per_custody_group
+            );
         }
     }
 
@@ -183,10 +185,12 @@ mod test {
             spec.data_column_sidecar_subnet_count / spec.number_of_custody_groups;
 
         for custody_group in 0..spec.number_of_custody_groups {
-            let subnets = compute_subnets_from_custody_group::<E>(custody_group, &spec)
-                .unwrap()
-                .collect::<Vec<_>>();
-            assert_eq!(subnets.len(), subnets_per_custody_group as usize);
+            assert_eq!(
+                compute_subnets_from_custody_group::<E>(custody_group, &spec)
+                    .unwrap()
+                    .count(),
+                subnets_per_custody_group as usize
+            );
         }
     }
 }

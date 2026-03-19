@@ -447,8 +447,7 @@ mod test {
     #[test]
     fn keys_empty_cache() {
         let mut cache: LRUTimeCache<&str> = LRUTimeCache::new(Duration::from_secs(10));
-        let keys: Vec<_> = cache.keys().collect();
-        assert!(keys.is_empty());
+        assert_eq!(cache.keys().count(), 0);
     }
 
     // ── shrink_to_fit tests ───────────────────────────────────

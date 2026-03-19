@@ -3197,13 +3197,11 @@ mod tests {
         peer_manager.heartbeat();
 
         // Should now have DiscoverSubnetPeers events since PeerDAS is enabled
-        let discovery_events: Vec<_> = peer_manager
-            .events
-            .iter()
-            .filter(|event| matches!(event, PeerManagerEvent::DiscoverSubnetPeers(_)))
-            .collect();
         assert!(
-            !discovery_events.is_empty(),
+            peer_manager
+                .events
+                .iter()
+                .any(|event| matches!(event, PeerManagerEvent::DiscoverSubnetPeers(_))),
             "Should generate discovery events when PeerDAS is enabled, but found no discovery events"
         );
     }

@@ -80,6 +80,7 @@ impl<E: EthSpec> KeyValueStore<E> for MemoryStore<E> {
         Ok(())
     }
 
+    #[allow(clippy::needless_collect)] // collect required to drop the read lock guard
     fn iter_column_from<K: Key>(&self, column: DBColumn, from: &[u8]) -> ColumnIter<'_, K> {
         // We use this awkward pattern because we can't lock the `self.db` field *and* maintain a
         // reference to the lock guard across calls to `.next()`. This would be require a
@@ -109,6 +110,7 @@ impl<E: EthSpec> KeyValueStore<E> for MemoryStore<E> {
         Ok(())
     }
 
+    #[allow(clippy::needless_collect)] // collect required to drop the read lock guard
     fn iter_column_keys_from<K: Key>(&self, column: DBColumn, from: &[u8]) -> ColumnKeyIter<'_, K> {
         // We use this awkward pattern because we can't lock the `self.db` field *and* maintain a
         // reference to the lock guard across calls to `.next()`. This would be require a

@@ -906,8 +906,7 @@ mod tests {
         let addr6: Multiaddr = "/ip6/::1/tcp/9001".parse().unwrap();
         peer.connect_ingoing(addr4);
         peer.connect_outgoing(addr6);
-        let ips: Vec<IpAddr> = peer.seen_ip_addresses().collect();
-        assert_eq!(ips.len(), 2);
+        assert_eq!(peer.seen_ip_addresses().count(), 2);
     }
 
     #[test]
