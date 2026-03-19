@@ -844,15 +844,12 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
                 BatchState::AwaitingProcessing(..) => {
                     return self.process_batch(network, self.processing_target);
                 }
-                BatchState::Downloading(..) => {
-                    // Batch is not ready, nothing to process
+                BatchState::Downloading(..) | BatchState::AwaitingValidation(..) => {
+                    // Batch is not ready or already validated, nothing to process
                 }
                 // Batches can be in `AwaitingDownload` state if there weren't good data column subnet
                 // peers to send the request to.
                 BatchState::AwaitingDownload => return Ok(ProcessResult::Successful),
-                BatchState::AwaitingValidation(..) => {
-                    // The batch is validated
-                }
                 BatchState::Poisoned => unreachable!("Poisoned batch"),
                 BatchState::Failed | BatchState::Processing(_) => {
                     // these are all inconsistent states:
@@ -899,11 +896,12 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
         for (id, batch) in removed_batches.into_iter() {
             self.validated_batches = self.validated_batches.saturating_add(1);
             match batch.state() {
-                BatchState::Downloading(..) | BatchState::AwaitingValidation(..) => {}
+                BatchState::Downloading(..)
+                | BatchState::AwaitingValidation(..)
+                | BatchState::AwaitingProcessing(..) => {}
                 BatchState::Failed | BatchState::Poisoned | BatchState::AwaitingDownload => {
                     crit!("Batch indicates inconsistent data columns while advancing custody sync");
                 }
-                BatchState::AwaitingProcessing(..) => {}
                 BatchState::Processing(_) => {
                     debug!(batch = %id, %batch, "Advancing custody sync while processing a batch");
                     if let Some(processing_id) = self.current_processing_batch

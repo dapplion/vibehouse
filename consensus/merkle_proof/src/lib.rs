@@ -161,9 +161,7 @@ impl MerkleTree {
     /// Retrieve the root hash of this Merkle tree.
     pub fn hash(&self) -> H256 {
         match *self {
-            MerkleTree::Finalized(h) => h,
-            MerkleTree::Leaf(h) => h,
-            MerkleTree::Node(h, _, _) => h,
+            MerkleTree::Finalized(h) | MerkleTree::Leaf(h) | MerkleTree::Node(h, _, _) => h,
             MerkleTree::Zero(depth) => H256::from_slice(&ZERO_HASHES[depth]),
         }
     }

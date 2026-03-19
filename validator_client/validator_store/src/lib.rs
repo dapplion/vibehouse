@@ -245,8 +245,8 @@ impl DoppelgangerStatus {
     pub fn only_safe(self) -> Option<PublicKeyBytes> {
         match self {
             DoppelgangerStatus::SigningEnabled(pubkey) => Some(pubkey),
-            DoppelgangerStatus::SigningDisabled(_) => None,
-            DoppelgangerStatus::UnknownToDoppelganger(_) => None,
+            DoppelgangerStatus::SigningDisabled(_)
+            | DoppelgangerStatus::UnknownToDoppelganger(_) => None,
         }
     }
 
@@ -256,8 +256,8 @@ impl DoppelgangerStatus {
     /// If the validator is unknown to doppelganger then `None` will be returned.
     pub fn ignored(self) -> Option<PublicKeyBytes> {
         match self {
-            DoppelgangerStatus::SigningEnabled(pubkey) => Some(pubkey),
-            DoppelgangerStatus::SigningDisabled(pubkey) => Some(pubkey),
+            DoppelgangerStatus::SigningEnabled(pubkey)
+            | DoppelgangerStatus::SigningDisabled(pubkey) => Some(pubkey),
             DoppelgangerStatus::UnknownToDoppelganger(_) => None,
         }
     }
@@ -266,8 +266,8 @@ impl DoppelgangerStatus {
     pub fn only_unsafe(self) -> Option<PublicKeyBytes> {
         match self {
             DoppelgangerStatus::SigningEnabled(_) => None,
-            DoppelgangerStatus::SigningDisabled(pubkey) => Some(pubkey),
-            DoppelgangerStatus::UnknownToDoppelganger(pubkey) => Some(pubkey),
+            DoppelgangerStatus::SigningDisabled(pubkey)
+            | DoppelgangerStatus::UnknownToDoppelganger(pubkey) => Some(pubkey),
         }
     }
 }

@@ -26,8 +26,9 @@ pub enum GraffitiOrigin {
 impl GraffitiOrigin {
     pub fn graffiti(&self) -> Graffiti {
         match self {
-            GraffitiOrigin::UserSpecified(graffiti) => *graffiti,
-            GraffitiOrigin::Calculated(graffiti) => *graffiti,
+            GraffitiOrigin::UserSpecified(graffiti) | GraffitiOrigin::Calculated(graffiti) => {
+                *graffiti
+            }
         }
     }
 }

@@ -688,9 +688,9 @@ impl<T: BeaconChainTypes> Stream for SubnetService<T> {
 impl PartialEq for SubnetServiceMessage {
     fn eq(&self, other: &SubnetServiceMessage) -> bool {
         match (self, other) {
-            (SubnetServiceMessage::Subscribe(a), SubnetServiceMessage::Subscribe(b)) => a == b,
-            (SubnetServiceMessage::Unsubscribe(a), SubnetServiceMessage::Unsubscribe(b)) => a == b,
-            (SubnetServiceMessage::EnrAdd(a), SubnetServiceMessage::EnrAdd(b)) => a == b,
+            (SubnetServiceMessage::Subscribe(a), SubnetServiceMessage::Subscribe(b))
+            | (SubnetServiceMessage::Unsubscribe(a), SubnetServiceMessage::Unsubscribe(b))
+            | (SubnetServiceMessage::EnrAdd(a), SubnetServiceMessage::EnrAdd(b)) => a == b,
             (SubnetServiceMessage::DiscoverPeers(a), SubnetServiceMessage::DiscoverPeers(b)) => {
                 if a.len() != b.len() {
                     return false;

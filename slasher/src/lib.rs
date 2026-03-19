@@ -58,8 +58,7 @@ impl<E: EthSpec> AttesterSlashingStatus<E> {
 
         // The surrounding attestation must be in `attestation_1` to be valid.
         match self {
-            NotSlashable => None,
-            AlreadyDoubleVoted => None,
+            NotSlashable | AlreadyDoubleVoted => None,
             DoubleVote(existing) | SurroundedByExisting(existing) => {
                 match (&*existing, new_attestation) {
                     (IndexedAttestation::Base(existing_att), IndexedAttestation::Base(new)) => {

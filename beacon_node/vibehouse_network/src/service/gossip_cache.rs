@@ -187,11 +187,12 @@ impl GossipCache {
             GossipKind::BlsToExecutionChange => self.bls_to_execution_change,
             GossipKind::LightClientFinalityUpdate => self.light_client_finality_update,
             GossipKind::LightClientOptimisticUpdate => self.light_client_optimistic_update,
-            GossipKind::ExecutionBid => None, // gloas ePBS: bids are time-sensitive, no caching
-            GossipKind::ExecutionPayload => None, // gloas ePBS: payloads are time-sensitive, no caching
-            GossipKind::PayloadAttestation => None, // gloas ePBS: attestations are time-sensitive, no caching
-            GossipKind::ProposerPreferences => None, // gloas ePBS: preferences are time-sensitive, no caching
-            GossipKind::ExecutionProof(_) => None,   // proofs are time-sensitive, no caching
+            // gloas ePBS: bids, payloads, attestations, preferences, proofs are time-sensitive, no caching
+            GossipKind::ExecutionBid
+            | GossipKind::ExecutionPayload
+            | GossipKind::PayloadAttestation
+            | GossipKind::ProposerPreferences
+            | GossipKind::ExecutionProof(_) => None,
         };
         let Some(expire_timeout) = expire_timeout else {
             return;

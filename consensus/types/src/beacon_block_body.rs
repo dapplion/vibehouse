@@ -162,13 +162,12 @@ impl<E: EthSpec, Payload: AbstractExecPayload<E>> BeaconBlockBody<E, Payload> {
 impl<'a, E: EthSpec, Payload: AbstractExecPayload<E>> BeaconBlockBodyRef<'a, E, Payload> {
     pub fn execution_payload(&self) -> Result<Payload::Ref<'a>, Error> {
         match self {
-            Self::Base(_) | Self::Altair(_) => Err(Error::IncorrectStateVariant),
             Self::Bellatrix(body) => Ok(Payload::Ref::from(&body.execution_payload)),
             Self::Capella(body) => Ok(Payload::Ref::from(&body.execution_payload)),
             Self::Deneb(body) => Ok(Payload::Ref::from(&body.execution_payload)),
             Self::Electra(body) => Ok(Payload::Ref::from(&body.execution_payload)),
             Self::Fulu(body) => Ok(Payload::Ref::from(&body.execution_payload)),
-            Self::Gloas(_) => Err(Error::IncorrectStateVariant),
+            Self::Base(_) | Self::Altair(_) | Self::Gloas(_) => Err(Error::IncorrectStateVariant),
         }
     }
 

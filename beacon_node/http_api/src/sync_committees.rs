@@ -383,7 +383,6 @@ pub fn process_signed_contribution_and_proofs<T: BeaconChainTypes>(
             }
             // If we already know the contribution, don't broadcast it or attempt to
             // further verify it. Return success.
-            Err(SyncVerificationError::SyncContributionSupersetKnown(_)) => continue,
             // If we've already seen this aggregator produce an aggregate, just
             // skip this one.
             //
@@ -393,7 +392,8 @@ pub fn process_signed_contribution_and_proofs<T: BeaconChainTypes>(
             //
             // There's no actual error for the user or the network since the
             // aggregate has been successfully published by some other node.
-            Err(SyncVerificationError::AggregatorAlreadyKnown(_)) => continue,
+            Err(SyncVerificationError::SyncContributionSupersetKnown(_))
+            | Err(SyncVerificationError::AggregatorAlreadyKnown(_)) => continue,
             Err(e) => {
                 error!(
                     error = ?e,

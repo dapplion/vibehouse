@@ -439,11 +439,9 @@ impl ProtoArray {
             let parent_index = match node.execution_status {
                 // We have reached a node that we already know is valid. No need to iterate further
                 // since we assume an ancestors have already been set to valid.
-                ExecutionStatus::Valid(_) => return Ok(()),
-                // We have reached an irrelevant node, this node is prior to a terminal execution
-                // block. There's no need to iterate further, it's impossible for this block to have
-                // any relevant ancestors.
-                ExecutionStatus::Irrelevant(_) => return Ok(()),
+                // We have reached a node that is already valid or irrelevant (prior to a
+                // terminal execution block). No need to iterate further.
+                ExecutionStatus::Valid(_) | ExecutionStatus::Irrelevant(_) => return Ok(()),
                 // The block has an unknown status, set it to valid since any ancestor of a valid
                 // payload can be considered valid.
                 ExecutionStatus::Optimistic(payload_block_hash) => {

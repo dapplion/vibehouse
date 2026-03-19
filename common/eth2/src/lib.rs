@@ -129,16 +129,17 @@ impl Error {
             Error::ServerMessage(msg) => StatusCode::try_from(msg.code).ok(),
             Error::ServerIndexedMessage(msg) => StatusCode::try_from(msg.code).ok(),
             Error::StatusCode(status) => Some(*status),
-            Error::InvalidUrl(_) => None,
-            Error::InvalidSecret(_) => None,
-            Error::InvalidSignatureHeader => None,
-            Error::MissingSignatureHeader => None,
-            Error::InvalidJson(_) => None,
-            Error::InvalidSsz(_) => None,
-            Error::InvalidServerSentEvent(_) => None,
-            Error::InvalidHeaders(_) => None,
-            Error::TokenReadError(..) => None,
-            Error::NoServerPubkey | Error::NoToken => None,
+            Error::InvalidUrl(_)
+            | Error::InvalidSecret(_)
+            | Error::InvalidSignatureHeader
+            | Error::MissingSignatureHeader
+            | Error::InvalidJson(_)
+            | Error::InvalidSsz(_)
+            | Error::InvalidServerSentEvent(_)
+            | Error::InvalidHeaders(_)
+            | Error::TokenReadError(..)
+            | Error::NoServerPubkey
+            | Error::NoToken => None,
         }
     }
 }

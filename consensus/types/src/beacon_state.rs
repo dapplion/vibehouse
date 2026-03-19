@@ -1184,7 +1184,6 @@ impl<E: EthSpec> BeaconState<E> {
         &self,
     ) -> Result<ExecutionPayloadHeaderRef<'_, E>, Error> {
         match self {
-            BeaconState::Base(_) | BeaconState::Altair(_) => Err(Error::IncorrectStateVariant),
             BeaconState::Bellatrix(state) => Ok(ExecutionPayloadHeaderRef::Bellatrix(
                 &state.latest_execution_payload_header,
             )),
@@ -1201,7 +1200,9 @@ impl<E: EthSpec> BeaconState<E> {
                 &state.latest_execution_payload_header,
             )),
             // Gloas replaces latest_execution_payload_header with latest_execution_payload_bid
-            BeaconState::Gloas(_) => Err(Error::IncorrectStateVariant),
+            BeaconState::Base(_) | BeaconState::Altair(_) | BeaconState::Gloas(_) => {
+                Err(Error::IncorrectStateVariant)
+            }
         }
     }
 
@@ -1209,7 +1210,6 @@ impl<E: EthSpec> BeaconState<E> {
         &mut self,
     ) -> Result<ExecutionPayloadHeaderRefMut<'_, E>, Error> {
         match self {
-            BeaconState::Base(_) | BeaconState::Altair(_) => Err(Error::IncorrectStateVariant),
             BeaconState::Bellatrix(state) => Ok(ExecutionPayloadHeaderRefMut::Bellatrix(
                 &mut state.latest_execution_payload_header,
             )),
@@ -1226,7 +1226,9 @@ impl<E: EthSpec> BeaconState<E> {
                 &mut state.latest_execution_payload_header,
             )),
             // Gloas replaces latest_execution_payload_header with latest_execution_payload_bid
-            BeaconState::Gloas(_) => Err(Error::IncorrectStateVariant),
+            BeaconState::Base(_) | BeaconState::Altair(_) | BeaconState::Gloas(_) => {
+                Err(Error::IncorrectStateVariant)
+            }
         }
     }
 
@@ -2706,7 +2708,6 @@ impl<E: EthSpec> BeaconState<E> {
                     |_, self_field, base_field| { self_field.rebase_on(base_field) }
                 );
             }
-            (Self::Base(_), _) => (),
             (Self::Altair(self_inner), Self::Altair(base_inner)) => {
                 bimap_beacon_state_altair_tree_list_fields!(
                     self_inner,
@@ -2714,7 +2715,6 @@ impl<E: EthSpec> BeaconState<E> {
                     |_, self_field, base_field| { self_field.rebase_on(base_field) }
                 );
             }
-            (Self::Altair(_), _) => (),
             (Self::Bellatrix(self_inner), Self::Bellatrix(base_inner)) => {
                 bimap_beacon_state_bellatrix_tree_list_fields!(
                     self_inner,
@@ -2722,7 +2722,6 @@ impl<E: EthSpec> BeaconState<E> {
                     |_, self_field, base_field| { self_field.rebase_on(base_field) }
                 );
             }
-            (Self::Bellatrix(_), _) => (),
             (Self::Capella(self_inner), Self::Capella(base_inner)) => {
                 bimap_beacon_state_capella_tree_list_fields!(
                     self_inner,
@@ -2730,7 +2729,6 @@ impl<E: EthSpec> BeaconState<E> {
                     |_, self_field, base_field| { self_field.rebase_on(base_field) }
                 );
             }
-            (Self::Capella(_), _) => (),
             (Self::Deneb(self_inner), Self::Deneb(base_inner)) => {
                 bimap_beacon_state_deneb_tree_list_fields!(
                     self_inner,
@@ -2738,7 +2736,6 @@ impl<E: EthSpec> BeaconState<E> {
                     |_, self_field, base_field| { self_field.rebase_on(base_field) }
                 );
             }
-            (Self::Deneb(_), _) => (),
             (Self::Electra(self_inner), Self::Electra(base_inner)) => {
                 bimap_beacon_state_electra_tree_list_fields!(
                     self_inner,
@@ -2746,7 +2743,6 @@ impl<E: EthSpec> BeaconState<E> {
                     |_, self_field, base_field| { self_field.rebase_on(base_field) }
                 );
             }
-            (Self::Electra(_), _) => (),
             (Self::Fulu(self_inner), Self::Fulu(base_inner)) => {
                 bimap_beacon_state_fulu_tree_list_fields!(
                     self_inner,
@@ -2754,7 +2750,6 @@ impl<E: EthSpec> BeaconState<E> {
                     |_, self_field, base_field| { self_field.rebase_on(base_field) }
                 );
             }
-            (Self::Fulu(_), _) => (),
             (Self::Gloas(self_inner), Self::Gloas(base_inner)) => {
                 bimap_beacon_state_gloas_tree_list_fields!(
                     self_inner,
@@ -2762,7 +2757,14 @@ impl<E: EthSpec> BeaconState<E> {
                     |_, self_field, base_field| { self_field.rebase_on(base_field) }
                 );
             }
-            (Self::Gloas(_), _) => (),
+            (Self::Base(_), _)
+            | (Self::Altair(_), _)
+            | (Self::Bellatrix(_), _)
+            | (Self::Capella(_), _)
+            | (Self::Deneb(_), _)
+            | (Self::Electra(_), _)
+            | (Self::Fulu(_), _)
+            | (Self::Gloas(_), _) => (),
         }
 
         // Use sync committees from `base` if they are equal.

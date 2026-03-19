@@ -486,7 +486,9 @@ impl<E: EthSpec> MockBuilder<E> {
         block: SignedBlindedBeaconBlock<E>,
     ) -> Result<FullPayloadContents<E>, String> {
         let root = match &block {
-            SignedBlindedBeaconBlock::Base(_) | types::SignedBeaconBlock::Altair(_) => {
+            SignedBlindedBeaconBlock::Base(_)
+            | types::SignedBeaconBlock::Altair(_)
+            | SignedBlindedBeaconBlock::Gloas(_) => {
                 return Err("invalid fork".to_string());
             }
             SignedBlindedBeaconBlock::Bellatrix(block) => {
@@ -503,11 +505,6 @@ impl<E: EthSpec> MockBuilder<E> {
             }
             SignedBlindedBeaconBlock::Fulu(block) => {
                 block.message.body.execution_payload.tree_hash_root()
-            }
-            SignedBlindedBeaconBlock::Gloas(_) => {
-                // Gloas (ePBS): no traditional blinded block unblinding — builders reveal
-                // payloads via execution payload envelopes, not via this endpoint.
-                return Err("invalid fork".to_string());
             }
         };
         let block_hash = block

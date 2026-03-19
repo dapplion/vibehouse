@@ -238,10 +238,10 @@ impl<'a, E: EthSpec> TryFrom<ExecutionPayloadRef<'a, E>> for NewPayloadRequest<'
             ExecutionPayloadRef::Capella(payload) => Ok(Self::Capella(NewPayloadRequestCapella {
                 execution_payload: payload,
             })),
-            ExecutionPayloadRef::Deneb(_) => Err(Self::Error::IncorrectStateVariant),
-            ExecutionPayloadRef::Electra(_) => Err(Self::Error::IncorrectStateVariant),
-            ExecutionPayloadRef::Fulu(_) => Err(Self::Error::IncorrectStateVariant),
-            ExecutionPayloadRef::Gloas(_) => Err(Self::Error::IncorrectStateVariant),
+            ExecutionPayloadRef::Deneb(_)
+            | ExecutionPayloadRef::Electra(_)
+            | ExecutionPayloadRef::Fulu(_)
+            | ExecutionPayloadRef::Gloas(_) => Err(Self::Error::IncorrectStateVariant),
         }
     }
 }

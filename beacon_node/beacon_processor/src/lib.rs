@@ -1484,13 +1484,14 @@ impl<E: EthSpec> BeaconProcessor<E> {
                         WorkType::GossipAttestation => attestation_queue.len(),
                         WorkType::GossipAttestationToConvert => attestation_to_convert_queue.len(),
                         WorkType::UnknownBlockAttestation => unknown_block_attestation_queue.len(),
-                        WorkType::GossipAttestationBatch => 0, // No queue
+                        WorkType::GossipAttestationBatch
+                        | WorkType::GossipAggregateBatch
+                        | WorkType::Reprocess => 0, // No queue
                         WorkType::GossipAggregate => aggregate_queue.len(),
                         WorkType::UnknownBlockAggregate => unknown_block_aggregate_queue.len(),
                         WorkType::UnknownLightClientOptimisticUpdate => {
                             unknown_light_client_update_queue.len()
                         }
-                        WorkType::GossipAggregateBatch => 0, // No queue
                         WorkType::GossipBlock => gossip_block_queue.len(),
                         WorkType::GossipBlobSidecar => gossip_blob_queue.len(),
                         WorkType::GossipDataColumnSidecar => gossip_data_column_queue.len(),
@@ -1544,7 +1545,6 @@ impl<E: EthSpec> BeaconProcessor<E> {
                         WorkType::LightClientUpdatesByRangeRequest => lc_update_range_queue.len(),
                         WorkType::ApiRequestP0 => api_request_p0_queue.len(),
                         WorkType::ApiRequestP1 => api_request_p1_queue.len(),
-                        WorkType::Reprocess => 0,
                     };
                     metrics::observe_vec(
                         &metrics::BEACON_PROCESSOR_QUEUE_LENGTH,
@@ -1666,51 +1666,14 @@ impl<E: EthSpec> BeaconProcessor<E> {
             }),
             Work::UnknownBlockAttestation { process_fn }
             | Work::UnknownBlockAggregate { process_fn }
-            | Work::UnknownLightClientOptimisticUpdate { process_fn, .. } => {
-                task_spawner.spawn_blocking(process_fn);
-            }
-            Work::DelayedImportBlock {
-                beacon_block_slot: _,
-                beacon_block_root: _,
-                process_fn,
-            } => task_spawner.spawn_async(process_fn),
-            Work::RpcBlock { process_fn }
-            | Work::RpcBlobs { process_fn }
-            | Work::RpcCustodyColumn(process_fn)
-            | Work::ColumnReconstruction(process_fn) => task_spawner.spawn_async(process_fn),
-            Work::IgnoredRpcBlock { process_fn } => task_spawner.spawn_blocking(process_fn),
-            Work::GossipBlock(work)
-            | Work::GossipBlobSidecar(work)
-            | Work::GossipDataColumnSidecar(work) => task_spawner.spawn_async(async move {
-                work.await;
-            }),
-            Work::BlobsByRangeRequest(process_fn)
+            | Work::UnknownLightClientOptimisticUpdate { process_fn, .. }
+            | Work::IgnoredRpcBlock { process_fn }
+            | Work::BlobsByRangeRequest(process_fn)
             | Work::BlobsByRootsRequest(process_fn)
             | Work::ExecutionPayloadEnvelopesByRootRequest(process_fn)
             | Work::DataColumnsByRootsRequest(process_fn)
-            | Work::DataColumnsByRangeRequest(process_fn) => {
-                task_spawner.spawn_blocking(process_fn);
-            }
-            Work::BlocksByRangeRequest(work) | Work::BlocksByRootsRequest(work) => {
-                task_spawner.spawn_async(work);
-            }
-            Work::ChainSegmentBackfill(process_fn) => {
-                if self.config.enable_backfill_rate_limiting {
-                    task_spawner.spawn_blocking_with_rayon(RayonPoolType::LowPriority, process_fn);
-                } else {
-                    // use the global rayon thread pool if backfill rate limiting is disabled.
-                    task_spawner.spawn_blocking(process_fn);
-                }
-            }
-            Work::ApiRequestP0(process_fn) | Work::ApiRequestP1(process_fn) => match process_fn {
-                BlockingOrAsync::Blocking(process_fn) => task_spawner.spawn_blocking(process_fn),
-                BlockingOrAsync::Async(process_fn) => task_spawner.spawn_async(process_fn),
-            },
-            Work::GossipExecutionPayload(process_fn)
-            | Work::RpcPayloadEnvelope(process_fn)
-            | Work::GossipPayloadAttestation(process_fn)
-            | Work::GossipExecutionProof(process_fn) => task_spawner.spawn_async(process_fn),
-            Work::GossipVoluntaryExit(process_fn)
+            | Work::DataColumnsByRangeRequest(process_fn)
+            | Work::GossipVoluntaryExit(process_fn)
             | Work::GossipProposerSlashing(process_fn)
             | Work::GossipAttesterSlashing(process_fn)
             | Work::GossipSyncSignature(process_fn)
@@ -1727,6 +1690,39 @@ impl<E: EthSpec> BeaconProcessor<E> {
             | Work::LightClientUpdatesByRangeRequest(process_fn) => {
                 task_spawner.spawn_blocking(process_fn);
             }
+            Work::DelayedImportBlock {
+                beacon_block_slot: _,
+                beacon_block_root: _,
+                process_fn,
+            } => task_spawner.spawn_async(process_fn),
+            Work::RpcBlock { process_fn }
+            | Work::RpcBlobs { process_fn }
+            | Work::RpcCustodyColumn(process_fn)
+            | Work::ColumnReconstruction(process_fn)
+            | Work::GossipExecutionPayload(process_fn)
+            | Work::RpcPayloadEnvelope(process_fn)
+            | Work::GossipPayloadAttestation(process_fn)
+            | Work::GossipExecutionProof(process_fn) => task_spawner.spawn_async(process_fn),
+            Work::GossipBlock(work)
+            | Work::GossipBlobSidecar(work)
+            | Work::GossipDataColumnSidecar(work) => task_spawner.spawn_async(async move {
+                work.await;
+            }),
+            Work::BlocksByRangeRequest(work) | Work::BlocksByRootsRequest(work) => {
+                task_spawner.spawn_async(work);
+            }
+            Work::ChainSegmentBackfill(process_fn) => {
+                if self.config.enable_backfill_rate_limiting {
+                    task_spawner.spawn_blocking_with_rayon(RayonPoolType::LowPriority, process_fn);
+                } else {
+                    // use the global rayon thread pool if backfill rate limiting is disabled.
+                    task_spawner.spawn_blocking(process_fn);
+                }
+            }
+            Work::ApiRequestP0(process_fn) | Work::ApiRequestP1(process_fn) => match process_fn {
+                BlockingOrAsync::Blocking(process_fn) => task_spawner.spawn_blocking(process_fn),
+                BlockingOrAsync::Async(process_fn) => task_spawner.spawn_async(process_fn),
+            },
             Work::Reprocess(_) => {}
         };
     }

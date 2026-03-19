@@ -1537,7 +1537,6 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                     }
                     true
                 }
-                StoreOp::PutBlock(_, _) | StoreOp::DeleteBlock(_) => false,
                 _ => false,
             });
 
@@ -1611,33 +1610,22 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                         guard.put_block(block_root, (*block).clone());
                     }
 
-                    StoreOp::PutBlobs(_, _) => (),
-
-                    StoreOp::PutDataColumns(_, _) => (),
-
-                    StoreOp::PutState(_, _) => (),
-
-                    StoreOp::PutStateSummary(_, _) => (),
-
                     StoreOp::DeleteBlock(block_root) => {
                         guard.delete_block(&block_root);
                     }
 
-                    StoreOp::DeleteState(_, _) => (),
-
-                    StoreOp::DeleteBlobs(_) => (),
-
-                    StoreOp::DeleteDataColumns(_, _) => (),
-
-                    StoreOp::DeleteExecutionPayload(_) => (),
-
-                    StoreOp::PutPayloadEnvelope(_, _) => (),
-
-                    StoreOp::DeletePayloadEnvelope(_) => (),
-
-                    StoreOp::DeleteSyncCommitteeBranch(_) => (),
-
-                    StoreOp::KeyValueOp(_) => (),
+                    StoreOp::PutBlobs(_, _)
+                    | StoreOp::PutDataColumns(_, _)
+                    | StoreOp::PutState(_, _)
+                    | StoreOp::PutStateSummary(_, _)
+                    | StoreOp::DeleteState(_, _)
+                    | StoreOp::DeleteBlobs(_)
+                    | StoreOp::DeleteDataColumns(_, _)
+                    | StoreOp::DeleteExecutionPayload(_)
+                    | StoreOp::PutPayloadEnvelope(_, _)
+                    | StoreOp::DeletePayloadEnvelope(_)
+                    | StoreOp::DeleteSyncCommitteeBranch(_)
+                    | StoreOp::KeyValueOp(_) => (),
                 }
             }
 

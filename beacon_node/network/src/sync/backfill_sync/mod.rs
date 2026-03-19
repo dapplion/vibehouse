@@ -802,12 +802,11 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
                         }
                     }
                 }
-                BatchState::Downloading(..) => {}
+                BatchState::Downloading(..) | BatchState::AwaitingProcessing(..) => {}
                 BatchState::AwaitingDownload => return,
                 BatchState::Failed | BatchState::Poisoned => {
                     crit!("batch indicates inconsistent chain state while advancing chain");
                 }
-                BatchState::AwaitingProcessing(..) => {}
                 BatchState::Processing(_) => {
                     debug!(batch = %id, %batch, "Advancing chain while processing a batch");
                     if let Some(processing_id) = self.current_processing_batch

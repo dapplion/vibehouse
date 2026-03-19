@@ -445,28 +445,27 @@ impl ExecutionPayloadError {
         // always forced to consider here whether or not to penalize a peer when
         // we add a new error condition.
         match self {
-            // The peer has nothing to do with this error, do not penalize them.
-            ExecutionPayloadError::NoExecutionConnection => false,
-            // The peer has nothing to do with this error, do not penalize them.
-            ExecutionPayloadError::RequestFailed(_) => false,
-            // An honest optimistic node may propagate blocks which are rejected by an EE, do not
-            // penalize them.
-            ExecutionPayloadError::RejectedByExecutionEngine { .. } => false,
             // This is a trivial gossip validation condition, there is no reason for an honest peer
             // to propagate a block with an invalid payload time stamp.
             ExecutionPayloadError::InvalidPayloadTimestamp { .. } => true,
+            // The peer has nothing to do with this error, do not penalize them.
+            ExecutionPayloadError::NoExecutionConnection
+            | ExecutionPayloadError::RequestFailed(_)
+            // An honest optimistic node may propagate blocks which are rejected by an EE, do not
+            // penalize them.
+            | ExecutionPayloadError::RejectedByExecutionEngine { .. }
             // An honest optimistic node may propagate blocks with an invalid terminal PoW block, we
             // should not penalized them.
-            ExecutionPayloadError::InvalidTerminalPoWBlock { .. } => false,
+            | ExecutionPayloadError::InvalidTerminalPoWBlock { .. }
             // This condition is checked *after* gossip propagation, therefore penalizing gossip
             // peers for this block would be unfair. There may be an argument to penalize RPC
             // blocks, since even an optimistic node shouldn't verify this block. We will remove the
             // penalties for all block imports to keep things simple.
-            ExecutionPayloadError::InvalidActivationEpoch { .. } => false,
+            | ExecutionPayloadError::InvalidActivationEpoch { .. }
             // As per `Self::InvalidActivationEpoch`.
-            ExecutionPayloadError::InvalidTerminalBlockHash { .. } => false,
+            | ExecutionPayloadError::InvalidTerminalBlockHash { .. }
             // Do not penalize the peer since it's not their fault that *we're* optimistic.
-            ExecutionPayloadError::UnverifiedNonOptimisticCandidate => false,
+            | ExecutionPayloadError::UnverifiedNonOptimisticCandidate => false,
         }
     }
 }
@@ -1717,10 +1716,9 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
                 indexed_attestation,
                 AttestationFromBlock::True,
             ) {
-                Ok(()) => Ok(()),
                 // Ignore invalid attestations whilst importing attestations from a block. The
                 // block might be very old and therefore the attestations useless to fork choice.
-                Err(ForkChoiceError::InvalidAttestation(_)) => Ok(()),
+                Ok(()) | Err(ForkChoiceError::InvalidAttestation(_)) => Ok(()),
                 Err(e) => Err(BlockError::BeaconChainError(Box::new(e.into()))),
             }?;
         }

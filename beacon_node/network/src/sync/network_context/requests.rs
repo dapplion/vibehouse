@@ -144,11 +144,10 @@ impl<K: Copy + Eq + Hash + std::fmt::Display, T: ActiveRequestItems> ActiveReque
                     // `rpc/handler.rs`. Handling this case adds complexity for no gain. Even if an
                     // attacker could abuse this, there's no gain in sending garbage chunks that
                     // will be ignored anyway.
-                    State::CompletedEarly => None,
-                    // Ignore items after errors. We may want to penalize repeated invalid chunks
-                    // for the same response. But that's an optimization to ban peers sending
-                    // invalid data faster that we choose to not adopt for now.
-                    State::Errored => None,
+                    // Ignore items after completion or errors. We may want to penalize repeated
+                    // invalid chunks for the same response. But that's an optimization to ban
+                    // peers sending invalid data faster that we choose to not adopt for now.
+                    State::CompletedEarly | State::Errored => None,
                 }
             }
             RpcEvent::StreamTermination => {
@@ -172,10 +171,8 @@ impl<K: Copy + Eq + Hash + std::fmt::Display, T: ActiveRequestItems> ActiveReque
                             )))
                         }
                     }
-                    // Items already returned, ignore stream termination
-                    State::CompletedEarly => None,
-                    // Returned an error earlier, ignore stream termination
-                    State::Errored => None,
+                    // Items already returned or error earlier, ignore stream termination
+                    State::CompletedEarly | State::Errored => None,
                 }
             }
             RpcEvent::RPCError(e) => {
@@ -189,9 +186,8 @@ impl<K: Copy + Eq + Hash + std::fmt::Display, T: ActiveRequestItems> ActiveReque
                     // Received error after completing the request, ignore the error. This is okay
                     // because the network has already registered a downscore event if necessary for
                     // this message.
-                    State::CompletedEarly => None,
-                    // Received a network error after a validity error. Okay to ignore, see above
-                    State::Errored => None,
+                    // Received error after completing or after a validity error. Okay to ignore.
+                    State::CompletedEarly | State::Errored => None,
                 }
             }
         };

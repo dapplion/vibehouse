@@ -4230,9 +4230,9 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 //
                 // Note that `check_block_relevancy` is incapable of returning
                 // `DuplicateImportStatusUnknown` so we don't need to handle that case here.
-                Err(BlockError::DuplicateFullyImported(_)) => continue,
+                Err(BlockError::DuplicateFullyImported(_))
                 // If the block is the genesis block, simply ignore this block.
-                Err(BlockError::GenesisBlock) => continue,
+                | Err(BlockError::GenesisBlock)
                 // If the block is is for a finalized slot, simply ignore this block.
                 //
                 // The block is either:
@@ -4246,7 +4246,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 // In the case of (2), skipping the block is valid since we should never import it.
                 // However, we will potentially get a `ParentUnknown` on a later block. The sync
                 // protocol will need to ensure this is handled gracefully.
-                Err(BlockError::WouldRevertFinalizedSlot { .. }) => continue,
+                | Err(BlockError::WouldRevertFinalizedSlot { .. }) => continue,
                 // The block has a known parent that does not descend from the finalized block.
                 // There is no need to process this block or any children.
                 Err(BlockError::NotFinalizedDescendant { block_parent_root }) => {

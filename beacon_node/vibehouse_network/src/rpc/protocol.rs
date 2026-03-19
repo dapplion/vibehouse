@@ -277,20 +277,20 @@ pub enum Protocol {
 impl Protocol {
     pub(crate) fn terminator(self) -> Option<ResponseTermination> {
         match self {
-            Protocol::Status => None,
-            Protocol::Goodbye => None,
+            Protocol::Status
+            | Protocol::Goodbye
+            | Protocol::Ping
+            | Protocol::MetaData
+            | Protocol::LightClientBootstrap
+            | Protocol::LightClientOptimisticUpdate
+            | Protocol::LightClientFinalityUpdate
+            | Protocol::LightClientUpdatesByRange => None,
             Protocol::BlocksByRange => Some(ResponseTermination::BlocksByRange),
             Protocol::BlocksByRoot => Some(ResponseTermination::BlocksByRoot),
             Protocol::BlobsByRange => Some(ResponseTermination::BlobsByRange),
             Protocol::BlobsByRoot => Some(ResponseTermination::BlobsByRoot),
             Protocol::DataColumnsByRoot => Some(ResponseTermination::DataColumnsByRoot),
             Protocol::DataColumnsByRange => Some(ResponseTermination::DataColumnsByRange),
-            Protocol::Ping => None,
-            Protocol::MetaData => None,
-            Protocol::LightClientBootstrap => None,
-            Protocol::LightClientOptimisticUpdate => None,
-            Protocol::LightClientFinalityUpdate => None,
-            Protocol::LightClientUpdatesByRange => None,
             Protocol::ExecutionPayloadEnvelopesByRoot => {
                 Some(ResponseTermination::ExecutionPayloadEnvelopesByRoot)
             }
@@ -332,46 +332,47 @@ pub enum SupportedProtocol {
 impl SupportedProtocol {
     pub fn version_string(&self) -> &'static str {
         match self {
-            SupportedProtocol::StatusV1 => "1",
-            SupportedProtocol::StatusV2 => "2",
-            SupportedProtocol::GoodbyeV1 => "1",
-            SupportedProtocol::BlocksByRangeV1 => "1",
-            SupportedProtocol::BlocksByRangeV2 => "2",
-            SupportedProtocol::BlocksByRootV1 => "1",
-            SupportedProtocol::BlocksByRootV2 => "2",
-            SupportedProtocol::BlobsByRangeV1 => "1",
-            SupportedProtocol::BlobsByRootV1 => "1",
-            SupportedProtocol::DataColumnsByRootV1 => "1",
-            SupportedProtocol::DataColumnsByRangeV1 => "1",
-            SupportedProtocol::PingV1 => "1",
-            SupportedProtocol::MetaDataV1 => "1",
-            SupportedProtocol::MetaDataV2 => "2",
+            SupportedProtocol::StatusV1
+            | SupportedProtocol::GoodbyeV1
+            | SupportedProtocol::BlocksByRangeV1
+            | SupportedProtocol::BlocksByRootV1
+            | SupportedProtocol::BlobsByRangeV1
+            | SupportedProtocol::BlobsByRootV1
+            | SupportedProtocol::DataColumnsByRootV1
+            | SupportedProtocol::DataColumnsByRangeV1
+            | SupportedProtocol::PingV1
+            | SupportedProtocol::MetaDataV1
+            | SupportedProtocol::LightClientBootstrapV1
+            | SupportedProtocol::LightClientOptimisticUpdateV1
+            | SupportedProtocol::LightClientFinalityUpdateV1
+            | SupportedProtocol::LightClientUpdatesByRangeV1
+            | SupportedProtocol::ExecutionPayloadEnvelopesByRootV1 => "1",
+            SupportedProtocol::StatusV2
+            | SupportedProtocol::BlocksByRangeV2
+            | SupportedProtocol::BlocksByRootV2
+            | SupportedProtocol::MetaDataV2 => "2",
             SupportedProtocol::MetaDataV3 => "3",
-            SupportedProtocol::LightClientBootstrapV1 => "1",
-            SupportedProtocol::LightClientOptimisticUpdateV1 => "1",
-            SupportedProtocol::LightClientFinalityUpdateV1 => "1",
-            SupportedProtocol::LightClientUpdatesByRangeV1 => "1",
-            SupportedProtocol::ExecutionPayloadEnvelopesByRootV1 => "1",
         }
     }
 
     pub fn protocol(&self) -> Protocol {
         match self {
-            SupportedProtocol::StatusV1 => Protocol::Status,
-            SupportedProtocol::StatusV2 => Protocol::Status,
+            SupportedProtocol::StatusV1 | SupportedProtocol::StatusV2 => Protocol::Status,
             SupportedProtocol::GoodbyeV1 => Protocol::Goodbye,
-            SupportedProtocol::BlocksByRangeV1 => Protocol::BlocksByRange,
-            SupportedProtocol::BlocksByRangeV2 => Protocol::BlocksByRange,
-            SupportedProtocol::BlocksByRootV1 => Protocol::BlocksByRoot,
-            SupportedProtocol::BlocksByRootV2 => Protocol::BlocksByRoot,
+            SupportedProtocol::BlocksByRangeV1 | SupportedProtocol::BlocksByRangeV2 => {
+                Protocol::BlocksByRange
+            }
+            SupportedProtocol::BlocksByRootV1 | SupportedProtocol::BlocksByRootV2 => {
+                Protocol::BlocksByRoot
+            }
             SupportedProtocol::BlobsByRangeV1 => Protocol::BlobsByRange,
             SupportedProtocol::BlobsByRootV1 => Protocol::BlobsByRoot,
             SupportedProtocol::DataColumnsByRootV1 => Protocol::DataColumnsByRoot,
             SupportedProtocol::DataColumnsByRangeV1 => Protocol::DataColumnsByRange,
             SupportedProtocol::PingV1 => Protocol::Ping,
-            SupportedProtocol::MetaDataV1 => Protocol::MetaData,
-            SupportedProtocol::MetaDataV2 => Protocol::MetaData,
-            SupportedProtocol::MetaDataV3 => Protocol::MetaData,
+            SupportedProtocol::MetaDataV1
+            | SupportedProtocol::MetaDataV2
+            | SupportedProtocol::MetaDataV3 => Protocol::MetaData,
             SupportedProtocol::LightClientBootstrapV1 => Protocol::LightClientBootstrap,
             SupportedProtocol::LightClientOptimisticUpdateV1 => {
                 Protocol::LightClientOptimisticUpdate
@@ -547,13 +548,13 @@ impl ProtocolId {
                 <LightClientBootstrapRequest as Encode>::ssz_fixed_len(),
                 <LightClientBootstrapRequest as Encode>::ssz_fixed_len(),
             ),
-            Protocol::LightClientOptimisticUpdate => RpcLimits::new(0, 0),
-            Protocol::LightClientFinalityUpdate => RpcLimits::new(0, 0),
+            Protocol::LightClientOptimisticUpdate
+            | Protocol::LightClientFinalityUpdate
+            | Protocol::MetaData => RpcLimits::new(0, 0), // Metadata requests are empty
             Protocol::LightClientUpdatesByRange => RpcLimits::new(
                 LightClientUpdatesByRangeRequest::ssz_min_len(),
                 LightClientUpdatesByRangeRequest::ssz_max_len(),
             ),
-            Protocol::MetaData => RpcLimits::new(0, 0), // Metadata requests are empty
             Protocol::ExecutionPayloadEnvelopesByRoot => {
                 RpcLimits::new(0, spec.max_execution_payload_envelopes_by_root_request)
             }
@@ -568,14 +569,11 @@ impl ProtocolId {
                 <StatusMessageV2 as Encode>::ssz_fixed_len(),
             ),
             Protocol::Goodbye => RpcLimits::new(0, 0), // Goodbye request has no response
-            Protocol::BlocksByRange => rpc_block_limits_by_fork(fork_context.current_fork_name()),
-            Protocol::BlocksByRoot => rpc_block_limits_by_fork(fork_context.current_fork_name()),
-            Protocol::BlobsByRange => rpc_blob_limits::<E>(),
-            Protocol::BlobsByRoot => rpc_blob_limits::<E>(),
-            Protocol::DataColumnsByRoot => {
-                rpc_data_column_limits::<E>(fork_context.current_fork_epoch(), &fork_context.spec)
+            Protocol::BlocksByRange | Protocol::BlocksByRoot => {
+                rpc_block_limits_by_fork(fork_context.current_fork_name())
             }
-            Protocol::DataColumnsByRange => {
+            Protocol::BlobsByRange | Protocol::BlobsByRoot => rpc_blob_limits::<E>(),
+            Protocol::DataColumnsByRoot | Protocol::DataColumnsByRange => {
                 rpc_data_column_limits::<E>(fork_context.current_fork_epoch(), &fork_context.spec)
             }
             Protocol::Ping => RpcLimits::new(
@@ -769,7 +767,12 @@ impl<E: EthSpec> RequestType<E> {
     /// Maximum number of responses expected for this request.
     pub fn max_responses(&self, digest_epoch: Epoch, spec: &ChainSpec) -> u64 {
         match self {
-            RequestType::Status(_) => 1,
+            RequestType::Status(_)
+            | RequestType::Ping(_)
+            | RequestType::MetaData(_)
+            | RequestType::LightClientBootstrap(_)
+            | RequestType::LightClientOptimisticUpdate
+            | RequestType::LightClientFinalityUpdate => 1,
             RequestType::Goodbye(_) => 0,
             RequestType::BlocksByRange(req) => *req.count(),
             RequestType::BlocksByRoot(req) => req.block_roots().len() as u64,
@@ -777,11 +780,6 @@ impl<E: EthSpec> RequestType<E> {
             RequestType::BlobsByRoot(req) => req.blob_ids.len() as u64,
             RequestType::DataColumnsByRoot(req) => req.max_requested() as u64,
             RequestType::DataColumnsByRange(req) => req.max_requested::<E>(),
-            RequestType::Ping(_) => 1,
-            RequestType::MetaData(_) => 1,
-            RequestType::LightClientBootstrap(_) => 1,
-            RequestType::LightClientOptimisticUpdate => 1,
-            RequestType::LightClientFinalityUpdate => 1,
             RequestType::LightClientUpdatesByRange(req) => req.count,
             RequestType::ExecutionPayloadEnvelopesByRoot(req) => req.block_roots.len() as u64,
         }
@@ -844,14 +842,14 @@ impl<E: EthSpec> RequestType<E> {
             RequestType::ExecutionPayloadEnvelopesByRoot(_) => {
                 ResponseTermination::ExecutionPayloadEnvelopesByRoot
             }
-            RequestType::Status(_) => unreachable!(),
-            RequestType::Goodbye(_) => unreachable!(),
-            RequestType::Ping(_) => unreachable!(),
-            RequestType::MetaData(_) => unreachable!(),
-            RequestType::LightClientBootstrap(_) => unreachable!(),
-            RequestType::LightClientFinalityUpdate => unreachable!(),
-            RequestType::LightClientOptimisticUpdate => unreachable!(),
-            RequestType::LightClientUpdatesByRange(_) => unreachable!(),
+            RequestType::Status(_)
+            | RequestType::Goodbye(_)
+            | RequestType::Ping(_)
+            | RequestType::MetaData(_)
+            | RequestType::LightClientBootstrap(_)
+            | RequestType::LightClientFinalityUpdate
+            | RequestType::LightClientOptimisticUpdate
+            | RequestType::LightClientUpdatesByRange(_) => unreachable!(),
         }
     }
 
@@ -924,21 +922,21 @@ impl<E: EthSpec> RequestType<E> {
 
     pub fn expect_exactly_one_response(&self) -> bool {
         match self {
-            RequestType::Status(_) => true,
-            RequestType::Goodbye(_) => false,
-            RequestType::BlocksByRange(_) => false,
-            RequestType::BlocksByRoot(_) => false,
-            RequestType::BlobsByRange(_) => false,
-            RequestType::BlobsByRoot(_) => false,
-            RequestType::DataColumnsByRoot(_) => false,
-            RequestType::DataColumnsByRange(_) => false,
-            RequestType::Ping(_) => true,
-            RequestType::MetaData(_) => true,
-            RequestType::LightClientBootstrap(_) => true,
-            RequestType::LightClientOptimisticUpdate => true,
-            RequestType::LightClientFinalityUpdate => true,
-            RequestType::LightClientUpdatesByRange(_) => true,
-            RequestType::ExecutionPayloadEnvelopesByRoot(_) => false,
+            RequestType::Status(_)
+            | RequestType::Ping(_)
+            | RequestType::MetaData(_)
+            | RequestType::LightClientBootstrap(_)
+            | RequestType::LightClientOptimisticUpdate
+            | RequestType::LightClientFinalityUpdate
+            | RequestType::LightClientUpdatesByRange(_) => true,
+            RequestType::Goodbye(_)
+            | RequestType::BlocksByRange(_)
+            | RequestType::BlocksByRoot(_)
+            | RequestType::BlobsByRange(_)
+            | RequestType::BlobsByRoot(_)
+            | RequestType::DataColumnsByRoot(_)
+            | RequestType::DataColumnsByRange(_)
+            | RequestType::ExecutionPayloadEnvelopesByRoot(_) => false,
         }
     }
 }
@@ -1016,20 +1014,8 @@ impl std::fmt::Display for RPCError {
 
 impl std::error::Error for RPCError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match *self {
-            // NOTE: this does have a source
-            RPCError::SSZDecodeError(_) => None,
-            RPCError::IoError(_) => None,
-            RPCError::StreamTimeout => None,
-            RPCError::UnsupportedProtocol => None,
-            RPCError::IncompleteStream => None,
-            RPCError::InvalidData(_) => None,
-            RPCError::InternalError(_) => None,
-            RPCError::ErrorResponse(_, _) => None,
-            RPCError::NegotiationTimeout => None,
-            RPCError::HandlerRejected => None,
-            RPCError::Disconnected => None,
-        }
+        // NOTE: SSZDecodeError does have a source but it's not exposed here
+        None
     }
 }
 

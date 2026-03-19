@@ -34,11 +34,11 @@ impl Error {
 
     pub fn message(&self) -> &str {
         match self {
-            Error::NotEqual(m) => m.as_str(),
-            Error::DidntFail(m) => m.as_str(),
-            Error::FailedToParseTest(m) => m.as_str(),
-            Error::InvalidBLSInput(m) => m.as_str(),
-            Error::InternalError(m) => m.as_str(),
+            Error::NotEqual(m)
+            | Error::DidntFail(m)
+            | Error::FailedToParseTest(m)
+            | Error::InvalidBLSInput(m)
+            | Error::InternalError(m) => m.as_str(),
             _ => self.name(),
         }
     }

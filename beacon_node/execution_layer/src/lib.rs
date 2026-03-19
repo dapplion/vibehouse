@@ -316,20 +316,19 @@ impl<E: EthSpec, Payload: AbstractExecPayload<E>> BlockProposalContents<E, Paylo
 
     pub fn payload(&self) -> &Payload {
         match self {
-            Self::Payload { payload, .. } => payload,
-            Self::PayloadAndBlobs { payload, .. } => payload,
+            Self::Payload { payload, .. } | Self::PayloadAndBlobs { payload, .. } => payload,
         }
     }
     pub fn to_payload(self) -> Payload {
         match self {
-            Self::Payload { payload, .. } => payload,
-            Self::PayloadAndBlobs { payload, .. } => payload,
+            Self::Payload { payload, .. } | Self::PayloadAndBlobs { payload, .. } => payload,
         }
     }
     pub fn block_value(&self) -> &Uint256 {
         match self {
-            Self::Payload { block_value, .. } => block_value,
-            Self::PayloadAndBlobs { block_value, .. } => block_value,
+            Self::Payload { block_value, .. } | Self::PayloadAndBlobs { block_value, .. } => {
+                block_value
+            }
         }
     }
 }

@@ -163,8 +163,7 @@ impl<E: EthSpec> PeerDB<E> {
     pub fn is_synced(&self, peer_id: &PeerId) -> bool {
         match self.peers.get(peer_id).map(PeerInfo::sync_status) {
             Some(SyncStatus::Synced { .. }) => true,
-            Some(_) => false,
-            None => false,
+            Some(_) | None => false,
         }
     }
 
@@ -258,10 +257,7 @@ impl<E: EthSpec> PeerDB<E> {
             .filter(move |(_, info)| {
                 info.is_connected()
                     && match info.sync_status() {
-                        SyncStatus::Synced { info } => {
-                            info.has_slot(epoch.end_slot(E::slots_per_epoch()))
-                        }
-                        SyncStatus::Advanced { info } => {
+                        SyncStatus::Synced { info } | SyncStatus::Advanced { info } => {
                             info.has_slot(epoch.end_slot(E::slots_per_epoch()))
                         }
                         SyncStatus::IrrelevantPeer
@@ -973,8 +969,8 @@ impl<E: EthSpec> PeerDB<E> {
                 info.clear_subnets();
 
                 match old_state {
-                    PeerConnectionStatus::Banned { .. } => {}
-                    PeerConnectionStatus::Disconnected { .. } => {}
+                    PeerConnectionStatus::Banned { .. }
+                    | PeerConnectionStatus::Disconnected { .. } => {}
                     PeerConnectionStatus::Disconnecting { to_ban } if to_ban => {
                         // Update the status.
                         info.set_connection_status(PeerConnectionStatus::Banned {
@@ -1270,12 +1266,9 @@ impl<E: EthSpec> PeerDB<E> {
                 ScoreTransitionResult::Unbanned
             }
             // Explicitly ignore states that haven't transitioned.
-            (ScoreState::Healthy, ScoreState::Healthy) => ScoreTransitionResult::NoAction,
-            (ScoreState::ForcedDisconnect, ScoreState::ForcedDisconnect) => {
-                ScoreTransitionResult::NoAction
-            }
-
-            (ScoreState::Banned, ScoreState::Banned) => ScoreTransitionResult::NoAction,
+            (ScoreState::Healthy, ScoreState::Healthy)
+            | (ScoreState::ForcedDisconnect, ScoreState::ForcedDisconnect)
+            | (ScoreState::Banned, ScoreState::Banned) => ScoreTransitionResult::NoAction,
         }
     }
 }

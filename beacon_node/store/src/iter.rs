@@ -228,8 +228,7 @@ impl<'a, E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> RootsIterator<'a, E,
                     Ok(None)
                 }
             }
-            (Err(e), _) => Err(e.into()),
-            (Ok(_), Err(e)) => Err(e.into()),
+            (Err(e), _) | (Ok(_), Err(e)) => Err(e.into()),
         }
     }
 }

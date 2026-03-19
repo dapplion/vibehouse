@@ -143,8 +143,9 @@ pub fn per_block_processing<E: EthSpec, Payload: AbstractExecPayload<E>>(
             VerifySignatures::False
         }
         BlockSignatureStrategy::VerifyIndividual => VerifySignatures::True,
-        BlockSignatureStrategy::NoVerification => VerifySignatures::False,
-        BlockSignatureStrategy::VerifyRandao => VerifySignatures::False,
+        BlockSignatureStrategy::NoVerification | BlockSignatureStrategy::VerifyRandao => {
+            VerifySignatures::False
+        }
     };
 
     let is_gloas = state.fork_name_unchecked().gloas_enabled();

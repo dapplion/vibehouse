@@ -866,9 +866,8 @@ impl<E: EthSpec> AvailableBlock<E> {
 
     pub fn has_blobs(&self) -> bool {
         match self.blob_data {
-            AvailableBlockData::NoData => false,
             AvailableBlockData::Blobs(..) => true,
-            AvailableBlockData::DataColumns(_) => false,
+            AvailableBlockData::NoData | AvailableBlockData::DataColumns(_) => false,
         }
     }
 

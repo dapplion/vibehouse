@@ -185,14 +185,13 @@ impl<T: BeaconChainTypes> SingleBlockLookup<T> {
                 // If components are waiting for the block request to complete, here we should
                 // check if the`block_request_state.state.is_awaiting_event(). However we already
                 // checked that above, so `WaitingForBlock => false` is equivalent.
-                ComponentRequests::WaitingForBlock => false,
+                ComponentRequests::WaitingForBlock | ComponentRequests::NotNeeded { .. } => false,
                 ComponentRequests::ActiveBlobRequest(request, _) => {
                     request.state.is_awaiting_event()
                 }
                 ComponentRequests::ActiveCustodyRequest(request) => {
                     request.state.is_awaiting_event()
                 }
-                ComponentRequests::NotNeeded { .. } => false,
             }
     }
 
@@ -254,14 +253,15 @@ impl<T: BeaconChainTypes> SingleBlockLookup<T> {
         }
 
         match &self.component_requests {
-            ComponentRequests::WaitingForBlock => {} // do nothing
+            ComponentRequests::WaitingForBlock | ComponentRequests::NotNeeded { .. } => {
+                // do nothing
+            }
             ComponentRequests::ActiveBlobRequest(_, expected_blobs) => {
                 self.continue_request::<BlobRequestState<T::EthSpec>>(cx, *expected_blobs)?;
             }
             ComponentRequests::ActiveCustodyRequest(_) => {
                 self.continue_request::<CustodyRequestState<T::EthSpec>>(cx, 0)?;
             }
-            ComponentRequests::NotNeeded { .. } => {} // do nothing
         }
 
         // If all components of this lookup are already processed, there will be no future events
@@ -487,25 +487,21 @@ impl<T: Clone> SingleLookupRequestState<T> {
         match self.state {
             // No event will progress this request specifically, but the request may be put on hold
             // due to some external event
-            State::AwaitingDownload { .. } => false,
+            State::AwaitingDownload { .. }
+            | State::AwaitingProcess { .. }
+            | State::Processed { .. } => false,
             // Network will emit a download success / error event
-            State::Downloading { .. } => true,
-            // Not awaiting any external event
-            State::AwaitingProcess { .. } => false,
             // Beacon processor will emit a processing result event
-            State::Processing { .. } => true,
-            // Request complete, no future event left
-            State::Processed { .. } => false,
+            State::Downloading { .. } | State::Processing { .. } => true,
         }
     }
 
     pub fn peek_downloaded_data(&self) -> Option<&T> {
         match &self.state {
-            State::AwaitingDownload { .. } => None,
-            State::Downloading { .. } => None,
-            State::AwaitingProcess(result) => Some(&result.value),
-            State::Processing(result) => Some(&result.value),
-            State::Processed { .. } => None,
+            State::AwaitingDownload { .. }
+            | State::Downloading { .. }
+            | State::Processed { .. } => None,
+            State::AwaitingProcess(result) | State::Processing(result) => Some(&result.value),
         }
     }
 

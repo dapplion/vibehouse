@@ -793,8 +793,7 @@ impl StorageStrategy {
     /// Returns the slot that storage_strategy points to.
     pub fn diff_base_slot(&self) -> Option<Slot> {
         match self {
-            Self::ReplayFrom(from) => Some(*from),
-            Self::DiffFrom(from) => Some(*from),
+            Self::ReplayFrom(from) | Self::DiffFrom(from) => Some(*from),
             Self::Snapshot => None,
         }
     }

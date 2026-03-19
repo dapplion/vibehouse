@@ -81,24 +81,26 @@ impl SyncState {
     /// Returns a boolean indicating the node is currently performing a long-range sync.
     pub fn is_syncing(&self) -> bool {
         match self {
-            SyncState::SyncingFinalized { .. } => true,
-            SyncState::SyncingHead { .. } => true,
-            SyncState::SyncTransition => true,
+            SyncState::SyncingFinalized { .. }
+            | SyncState::SyncingHead { .. }
+            | SyncState::SyncTransition => true,
             // Both backfill and custody backfill don't effect any logic, we consider this state, not syncing.
-            SyncState::BackFillSyncing { .. } | SyncState::CustodyBackFillSyncing { .. } => false,
-            SyncState::Synced => false,
-            SyncState::Stalled => false,
+            SyncState::BackFillSyncing { .. }
+            | SyncState::CustodyBackFillSyncing { .. }
+            | SyncState::Synced
+            | SyncState::Stalled => false,
         }
     }
 
     pub fn is_syncing_finalized(&self) -> bool {
         match self {
             SyncState::SyncingFinalized { .. } => true,
-            SyncState::SyncingHead { .. } => false,
-            SyncState::SyncTransition => false,
-            SyncState::BackFillSyncing { .. } | SyncState::CustodyBackFillSyncing { .. } => false,
-            SyncState::Synced => false,
-            SyncState::Stalled => false,
+            SyncState::SyncingHead { .. }
+            | SyncState::SyncTransition
+            | SyncState::BackFillSyncing { .. }
+            | SyncState::CustodyBackFillSyncing { .. }
+            | SyncState::Synced
+            | SyncState::Stalled => false,
         }
     }
 

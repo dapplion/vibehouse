@@ -557,9 +557,8 @@ impl<E: EthSpec> Discovery<E> {
                     .map_err(|e| format!("{:?}", e))?;
             }
             // Data column subnets are computed from node ID. No subnet bitfield in the ENR.
-            Subnet::DataColumn(_) => return Ok(()),
             // Execution proof subnets have no ENR advertisement.
-            Subnet::ExecutionProof(_) => return Ok(()),
+            Subnet::DataColumn(_) | Subnet::ExecutionProof(_) => return Ok(()),
         }
 
         // replace the global version
@@ -954,8 +953,8 @@ impl<E: EthSpec> Discovery<E> {
                                         (min_ttl, None) => {
                                             mapped_results.insert(enr, min_ttl);
                                         }
-                                        (None, Some(Some(_))) => {} // Don't replace the existing specific min_ttl
-                                        (None, Some(None)) => {} // No-op because this is a duplicate
+                                        // Don't replace the existing specific min_ttl, or no-op for duplicate
+                                        (None, Some(Some(_))) | (None, Some(None)) => {}
                                     }
                                 });
                         });

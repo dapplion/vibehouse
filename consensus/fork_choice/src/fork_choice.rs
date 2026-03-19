@@ -242,9 +242,8 @@ impl PayloadVerificationStatus {
     /// Returns `true` if the payload was optimistically imported.
     pub fn is_optimistic(&self) -> bool {
         match self {
-            PayloadVerificationStatus::Verified => false,
             PayloadVerificationStatus::Optimistic => true,
-            PayloadVerificationStatus::Irrelevant => false,
+            PayloadVerificationStatus::Verified | PayloadVerificationStatus::Irrelevant => false,
         }
     }
 }
@@ -539,8 +538,7 @@ where
                 .map(|(root, _)| root)),
             // Root is older than queried slot, thus a skip slot. Return most recent root prior
             // to slot.
-            Ordering::Less => Ok(Some(block_root)),
-            Ordering::Equal => Ok(Some(block_root)),
+            Ordering::Less | Ordering::Equal => Ok(Some(block_root)),
         }
     }
 

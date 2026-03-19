@@ -24,8 +24,7 @@ pub enum ShutdownReason {
 impl ShutdownReason {
     pub fn message(&self) -> &'static str {
         match self {
-            ShutdownReason::Success(msg) => msg,
-            ShutdownReason::Failure(msg) => msg,
+            ShutdownReason::Success(msg) | ShutdownReason::Failure(msg) => msg,
         }
     }
 }

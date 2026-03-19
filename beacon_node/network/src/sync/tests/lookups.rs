@@ -2139,8 +2139,8 @@ mod deneb_only {
         fn num_parents(&self) -> usize {
             match self {
                 RequestTrigger::AttestationUnknownBlock => 0,
-                RequestTrigger::GossipUnknownParentBlock(num_parents) => *num_parents,
-                RequestTrigger::GossipUnknownParentBlob(num_parents) => *num_parents,
+                RequestTrigger::GossipUnknownParentBlock(num_parents)
+                | RequestTrigger::GossipUnknownParentBlob(num_parents) => *num_parents,
             }
         }
     }

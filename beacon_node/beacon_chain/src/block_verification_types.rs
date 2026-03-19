@@ -50,32 +50,30 @@ impl<E: EthSpec> RpcBlock<E> {
 
     pub fn as_block(&self) -> &SignedBeaconBlock<E> {
         match &self.block {
-            RpcBlockInner::Block(block) => block,
-            RpcBlockInner::BlockAndBlobs(block, _) => block,
-            RpcBlockInner::BlockAndCustodyColumns(block, _) => block,
+            RpcBlockInner::Block(block)
+            | RpcBlockInner::BlockAndBlobs(block, _)
+            | RpcBlockInner::BlockAndCustodyColumns(block, _) => block,
         }
     }
 
     pub fn block_cloned(&self) -> Arc<SignedBeaconBlock<E>> {
         match &self.block {
-            RpcBlockInner::Block(block) => block.clone(),
-            RpcBlockInner::BlockAndBlobs(block, _) => block.clone(),
-            RpcBlockInner::BlockAndCustodyColumns(block, _) => block.clone(),
+            RpcBlockInner::Block(block)
+            | RpcBlockInner::BlockAndBlobs(block, _)
+            | RpcBlockInner::BlockAndCustodyColumns(block, _) => block.clone(),
         }
     }
 
     pub fn blobs(&self) -> Option<&BlobSidecarList<E>> {
         match &self.block {
-            RpcBlockInner::Block(_) => None,
+            RpcBlockInner::Block(_) | RpcBlockInner::BlockAndCustodyColumns(_, _) => None,
             RpcBlockInner::BlockAndBlobs(_, blobs) => Some(blobs),
-            RpcBlockInner::BlockAndCustodyColumns(_, _) => None,
         }
     }
 
     pub fn custody_columns(&self) -> Option<&CustodyDataColumnList<E>> {
         match &self.block {
-            RpcBlockInner::Block(_) => None,
-            RpcBlockInner::BlockAndBlobs(_, _) => None,
+            RpcBlockInner::Block(_) | RpcBlockInner::BlockAndBlobs(_, _) => None,
             RpcBlockInner::BlockAndCustodyColumns(_, data_columns) => Some(data_columns),
         }
     }
@@ -523,16 +521,16 @@ impl<E: EthSpec> AsBlock<E> for RpcBlock<E> {
     }
     fn as_block(&self) -> &SignedBeaconBlock<E> {
         match &self.block {
-            RpcBlockInner::Block(block) => block,
-            RpcBlockInner::BlockAndBlobs(block, _) => block,
-            RpcBlockInner::BlockAndCustodyColumns(block, _) => block,
+            RpcBlockInner::Block(block)
+            | RpcBlockInner::BlockAndBlobs(block, _)
+            | RpcBlockInner::BlockAndCustodyColumns(block, _) => block,
         }
     }
     fn block_cloned(&self) -> Arc<SignedBeaconBlock<E>> {
         match &self.block {
-            RpcBlockInner::Block(block) => block.clone(),
-            RpcBlockInner::BlockAndBlobs(block, _) => block.clone(),
-            RpcBlockInner::BlockAndCustodyColumns(block, _) => block.clone(),
+            RpcBlockInner::Block(block)
+            | RpcBlockInner::BlockAndBlobs(block, _)
+            | RpcBlockInner::BlockAndCustodyColumns(block, _) => block.clone(),
         }
     }
     fn canonical_root(&self) -> Hash256 {

@@ -616,15 +616,7 @@ fn methods_required_for_fork(
                 missing_methods.push(ENGINE_NEW_PAYLOAD_V4);
             }
         }
-        ForkName::Fulu => {
-            if !capabilities.get_payload_v5 {
-                missing_methods.push(ENGINE_GET_PAYLOAD_V5);
-            }
-            if !capabilities.new_payload_v4 {
-                missing_methods.push(ENGINE_NEW_PAYLOAD_V4);
-            }
-        }
-        ForkName::Gloas => {
+        ForkName::Fulu | ForkName::Gloas => {
             if !capabilities.get_payload_v5 {
                 missing_methods.push(ENGINE_GET_PAYLOAD_V5);
             }

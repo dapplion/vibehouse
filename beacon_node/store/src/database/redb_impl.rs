@@ -208,8 +208,7 @@ impl<E: EthSpec> Redb<E> {
         let mut open_db = self.db.write();
         let mut_db = open_db.borrow_mut();
         match mut_db.compact() {
-            Ok(_) => Ok(()),
-            Err(redb::CompactionError::TransactionInProgress) => Ok(()),
+            Ok(_) | Err(redb::CompactionError::TransactionInProgress) => Ok(()),
             Err(e) => Err(e.into()),
         }
     }

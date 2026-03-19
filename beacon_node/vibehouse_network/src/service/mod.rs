@@ -1719,9 +1719,9 @@ impl<E: EthSpec> Network<E> {
                 // send peer info to the peer manager.
                 self.peer_manager_mut().identify(&peer_id, &info);
             }
-            identify::Event::Sent { .. } => {}
-            identify::Event::Error { .. } => {}
-            identify::Event::Pushed { .. } => {}
+            identify::Event::Sent { .. }
+            | identify::Event::Error { .. }
+            | identify::Event::Pushed { .. } => {}
         }
         None
     }
@@ -1882,8 +1882,7 @@ impl<E: EthSpec> Network<E> {
                 #[allow(unreachable_patterns)]
                 BehaviourEvent::ConnectionLimits(le) => libp2p::core::util::unreachable(le),
             },
-            SwarmEvent::ConnectionEstablished { .. } => None,
-            SwarmEvent::ConnectionClosed { .. } => None,
+            SwarmEvent::ConnectionEstablished { .. } | SwarmEvent::ConnectionClosed { .. } => None,
             SwarmEvent::IncomingConnection {
                 local_addr,
                 send_back_addr,

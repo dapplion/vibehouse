@@ -323,8 +323,9 @@ impl<T: BeaconChainTypes> ActiveCustodyRequest<T> {
                         },
                     );
                 }
-                LookupRequestResult::NoRequestNeeded(_) => unreachable!(),
-                LookupRequestResult::Pending(_) => unreachable!(),
+                LookupRequestResult::NoRequestNeeded(_) | LookupRequestResult::Pending(_) => {
+                    unreachable!()
+                }
             }
         }
 

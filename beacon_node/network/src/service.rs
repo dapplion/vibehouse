@@ -480,7 +480,7 @@ impl<T: BeaconChainTypes> NetworkService<T> {
         shutdown_sender: &mut Sender<ShutdownReason>,
     ) {
         match ev {
-            NetworkEvent::PeerConnectedOutgoing(peer_id) => {
+            NetworkEvent::PeerConnectedOutgoing(peer_id) | NetworkEvent::StatusPeer(peer_id) => {
                 self.send_to_router(RouterMessage::StatusPeer(peer_id));
             }
             NetworkEvent::PeerConnectedIncoming(_) => {
@@ -524,9 +524,6 @@ impl<T: BeaconChainTypes> NetworkService<T> {
                     app_request_id,
                     error,
                 });
-            }
-            NetworkEvent::StatusPeer(peer_id) => {
-                self.send_to_router(RouterMessage::StatusPeer(peer_id));
             }
             NetworkEvent::PubsubMessage {
                 id,
