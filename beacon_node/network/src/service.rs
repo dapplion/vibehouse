@@ -730,7 +730,7 @@ impl<T: BeaconChainTypes> NetworkService<T> {
 
                 if !subscribed_topics.is_empty() {
                     info!(
-                        topics = ?subscribed_topics.into_iter().map(|topic| format!("{}", topic)).collect::<Vec<_>>(),
+                        topics = ?subscribed_topics.into_iter().map(|topic| topic.to_string()).collect::<Vec<_>>(),
                         "Subscribed to topics"
                     );
                 }

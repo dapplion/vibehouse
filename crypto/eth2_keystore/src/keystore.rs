@@ -270,22 +270,22 @@ impl Keystore {
 
     /// Encodes `self` as a JSON object.
     pub fn to_json_string(&self) -> Result<String, Error> {
-        serde_json::to_string(self).map_err(|e| Error::UnableToSerialize(format!("{}", e)))
+        serde_json::to_string(self).map_err(|e| Error::UnableToSerialize(e.to_string()))
     }
 
     /// Returns `self` from an encoded JSON object.
     pub fn from_json_str(json_string: &str) -> Result<Self, Error> {
-        serde_json::from_str(json_string).map_err(|e| Error::InvalidJson(format!("{}", e)))
+        serde_json::from_str(json_string).map_err(|e| Error::InvalidJson(e.to_string()))
     }
 
     /// Encodes self as a JSON object to the given `writer`.
     pub fn to_json_writer<W: Write>(&self, writer: W) -> Result<(), Error> {
-        serde_json::to_writer(writer, self).map_err(|e| Error::WriteError(format!("{}", e)))
+        serde_json::to_writer(writer, self).map_err(|e| Error::WriteError(e.to_string()))
     }
 
     /// Instantiates `self` from a JSON `reader`.
     pub fn from_json_reader<R: Read>(reader: R) -> Result<Self, Error> {
-        serde_json::from_reader(reader).map_err(|e| Error::ReadError(format!("{}", e)))
+        serde_json::from_reader(reader).map_err(|e| Error::ReadError(e.to_string()))
     }
 
     /// Instantiates `self` by reading a JSON file at `path`.
@@ -295,7 +295,7 @@ impl Keystore {
             .write(false)
             .create(false)
             .open(path)
-            .map_err(|e| Error::ReadError(format!("{}", e)))
+            .map_err(|e| Error::ReadError(e.to_string()))
             .and_then(Self::from_json_reader)
     }
 }

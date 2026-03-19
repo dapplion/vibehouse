@@ -125,7 +125,9 @@ pub static EXECUTION_LAYER_INFO: LazyLock<Result<IntGaugeVec>> = LazyLock::new(|
 });
 
 pub fn reset_execution_layer_info_gauge() {
-    let _ = EXECUTION_LAYER_INFO.as_ref().map(|gauge| gauge.reset());
+    if let Ok(gauge) = EXECUTION_LAYER_INFO.as_ref() {
+        gauge.reset();
+    }
 }
 
 pub fn expose_execution_layer_info(els: &Vec<crate::ClientVersionV1>) {

@@ -93,5 +93,5 @@ fn wallet_json_backup_path<P: AsRef<Path>>(wallet_dir: P, uuid: &Uuid) -> PathBu
 }
 
 fn wallet_json_path<P: AsRef<Path>>(wallet_dir: P, uuid: &Uuid) -> PathBuf {
-    wallet_dir.as_ref().join(format!("{}", uuid))
+    wallet_dir.as_ref().join(uuid.to_string())
 }

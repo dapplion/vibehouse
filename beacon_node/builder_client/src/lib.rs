@@ -304,17 +304,17 @@ impl BuilderHttpClient {
         headers.insert(
             CONSENSUS_VERSION_HEADER,
             HeaderValue::from_str(&blinded_block.fork_name_unchecked().to_string())
-                .map_err(|e| Error::InvalidHeaders(format!("{}", e)))?,
+                .map_err(|e| Error::InvalidHeaders(e.to_string()))?,
         );
         headers.insert(
             CONTENT_TYPE_HEADER,
             HeaderValue::from_str(SSZ_CONTENT_TYPE_HEADER)
-                .map_err(|e| Error::InvalidHeaders(format!("{}", e)))?,
+                .map_err(|e| Error::InvalidHeaders(e.to_string()))?,
         );
         headers.insert(
             ACCEPT,
             HeaderValue::from_str(PREFERENCE_ACCEPT_VALUE)
-                .map_err(|e| Error::InvalidHeaders(format!("{}", e)))?,
+                .map_err(|e| Error::InvalidHeaders(e.to_string()))?,
         );
 
         let result = self
@@ -352,17 +352,17 @@ impl BuilderHttpClient {
         headers.insert(
             CONSENSUS_VERSION_HEADER,
             HeaderValue::from_str(&blinded_block.fork_name_unchecked().to_string())
-                .map_err(|e| Error::InvalidHeaders(format!("{}", e)))?,
+                .map_err(|e| Error::InvalidHeaders(e.to_string()))?,
         );
         headers.insert(
             CONTENT_TYPE_HEADER,
             HeaderValue::from_str(SSZ_CONTENT_TYPE_HEADER)
-                .map_err(|e| Error::InvalidHeaders(format!("{}", e)))?,
+                .map_err(|e| Error::InvalidHeaders(e.to_string()))?,
         );
         headers.insert(
             ACCEPT,
             HeaderValue::from_str(PREFERENCE_ACCEPT_VALUE)
-                .map_err(|e| Error::InvalidHeaders(format!("{}", e)))?,
+                .map_err(|e| Error::InvalidHeaders(e.to_string()))?,
         );
 
         let result = self
@@ -400,17 +400,17 @@ impl BuilderHttpClient {
         headers.insert(
             CONSENSUS_VERSION_HEADER,
             HeaderValue::from_str(&blinded_block.fork_name_unchecked().to_string())
-                .map_err(|e| Error::InvalidHeaders(format!("{}", e)))?,
+                .map_err(|e| Error::InvalidHeaders(e.to_string()))?,
         );
         headers.insert(
             CONTENT_TYPE_HEADER,
             HeaderValue::from_str(JSON_CONTENT_TYPE_HEADER)
-                .map_err(|e| Error::InvalidHeaders(format!("{}", e)))?,
+                .map_err(|e| Error::InvalidHeaders(e.to_string()))?,
         );
         headers.insert(
             ACCEPT,
             HeaderValue::from_str(JSON_ACCEPT_VALUE)
-                .map_err(|e| Error::InvalidHeaders(format!("{}", e)))?,
+                .map_err(|e| Error::InvalidHeaders(e.to_string()))?,
         );
 
         Ok(self
@@ -443,17 +443,17 @@ impl BuilderHttpClient {
         headers.insert(
             CONSENSUS_VERSION_HEADER,
             HeaderValue::from_str(&blinded_block.fork_name_unchecked().to_string())
-                .map_err(|e| Error::InvalidHeaders(format!("{}", e)))?,
+                .map_err(|e| Error::InvalidHeaders(e.to_string()))?,
         );
         headers.insert(
             CONTENT_TYPE_HEADER,
             HeaderValue::from_str(JSON_CONTENT_TYPE_HEADER)
-                .map_err(|e| Error::InvalidHeaders(format!("{}", e)))?,
+                .map_err(|e| Error::InvalidHeaders(e.to_string()))?,
         );
         headers.insert(
             ACCEPT,
             HeaderValue::from_str(JSON_ACCEPT_VALUE)
-                .map_err(|e| Error::InvalidHeaders(format!("{}", e)))?,
+                .map_err(|e| Error::InvalidHeaders(e.to_string()))?,
         );
 
         let result = self
@@ -497,14 +497,14 @@ impl BuilderHttpClient {
             headers.insert(
                 ACCEPT,
                 HeaderValue::from_str(JSON_CONTENT_TYPE_HEADER)
-                    .map_err(|e| Error::InvalidHeaders(format!("{}", e)))?,
+                    .map_err(|e| Error::InvalidHeaders(e.to_string()))?,
             );
         } else {
             // Indicate preference for ssz response in the accept header
             headers.insert(
                 ACCEPT,
                 HeaderValue::from_str(PREFERENCE_ACCEPT_VALUE)
-                    .map_err(|e| Error::InvalidHeaders(format!("{}", e)))?,
+                    .map_err(|e| Error::InvalidHeaders(e.to_string()))?,
             );
         }
 

@@ -44,7 +44,7 @@ impl LockedWallet {
     /// - There is file-system or parsing error.
     /// - The lock-file already exists.
     pub(crate) fn open<P: AsRef<Path>>(base_dir: P, uuid: &Uuid) -> Result<Self, Error> {
-        let wallet_dir = base_dir.as_ref().join(format!("{}", uuid));
+        let wallet_dir = base_dir.as_ref().join(uuid.to_string());
 
         if !wallet_dir.exists() {
             return Err(Error::MissingWalletDir(wallet_dir));

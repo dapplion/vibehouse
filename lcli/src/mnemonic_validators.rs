@@ -50,7 +50,7 @@ pub fn generate_validator_dirs(
                 let keypair = keypair_from_secret(secret.as_bytes())
                     .map_err(|e| format!("Unable build keystore: {:?}", e))?;
 
-                KeystoreBuilder::new(&keypair, password, format!("{}", path))
+                KeystoreBuilder::new(&keypair, password, path.to_string())
                     .map_err(|e| format!("Unable build keystore: {:?}", e))?
                     .build()
                     .map_err(|e| format!("Unable build keystore: {:?}", e))

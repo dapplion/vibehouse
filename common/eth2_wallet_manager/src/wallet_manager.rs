@@ -131,7 +131,7 @@ impl WalletManager {
         let wallet = WalletBuilder::from_mnemonic(mnemonic, password, name)?.build()?;
         let uuid = *wallet.uuid();
 
-        let wallet_dir = self.dir.join(format!("{}", uuid));
+        let wallet_dir = self.dir.join(uuid.to_string());
 
         if wallet_dir.exists() {
             return Err(Error::WalletDirExists(wallet_dir));
@@ -171,7 +171,7 @@ impl WalletManager {
 
                 // Ignore any paths that don't parse as a UUID.
                 if let Ok(uuid) = Uuid::parse_str(&file_name) {
-                    let wallet_path = f.path().join(format!("{}", uuid));
+                    let wallet_path = f.path().join(uuid.to_string());
                     let wallet = File::options()
                         .read(true)
                         .create(false)
@@ -240,17 +240,17 @@ mod tests {
     }
 
     fn wallet_dir_path<P: AsRef<Path>>(base_dir: P, uuid: &Uuid) -> PathBuf {
-        let s = format!("{}", uuid);
+        let s = uuid.to_string();
         base_dir.as_ref().join(&s)
     }
 
     fn lockfile_path<P: AsRef<Path>>(base_dir: P, uuid: &Uuid) -> PathBuf {
-        let s = format!("{}", uuid);
+        let s = uuid.to_string();
         base_dir.as_ref().join(&s).join(LOCK_FILE)
     }
 
     fn json_path<P: AsRef<Path>>(base_dir: P, uuid: &Uuid) -> PathBuf {
-        let s = format!("{}", uuid);
+        let s = uuid.to_string();
         base_dir.as_ref().join(&s).join(&s)
     }
 

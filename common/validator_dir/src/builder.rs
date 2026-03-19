@@ -234,7 +234,7 @@ impl<'a> Builder<'a> {
                         .truncate(true)
                         .open(path)
                         .map_err(Error::UnableToSaveDepositAmount)?
-                        .write_all(format!("{}", amount).as_bytes())
+                        .write_all(amount.to_string().as_bytes())
                         .map_err(Error::UnableToSaveDepositAmount)?
                 }
             }

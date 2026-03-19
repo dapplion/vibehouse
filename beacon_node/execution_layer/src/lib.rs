@@ -1990,7 +1990,7 @@ impl<E: EthSpec> ExecutionLayer<E> {
                         parent_hash = ?block
                             .message()
                             .execution_payload()
-                            .map(|payload| format!("{}", payload.parent_hash()))
+                            .map(|payload| payload.parent_hash().to_string())
                             .unwrap_or_else(|_| "unknown".to_string()),
                         "Builder failed to reveal payload"
                     )
