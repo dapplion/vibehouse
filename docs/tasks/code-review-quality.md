@@ -2076,3 +2076,14 @@ Files touched across: common/ (6), consensus/ (2), beacon_node/ (26), validator_
 Also verified spec status: v1.7.0-alpha.3 still latest. Recent merged PRs #5001 (parent_block_root in bid filtering key) and #5002 (payload signature wording) — both already implemented in our codebase. No action needed.
 
 4991/5000 workspace tests pass (8 web3signer timeouts = external service, 1 skip). lint-full passes. Committed `19d149ab0`.
+
+### Run 1949 (2026-03-19)
+
+**Removed needless `collect()` calls across 12 files** (`clippy::needless_collect`): Eliminated 13 unnecessary intermediate allocations where iterators were collected into `Vec` only to be immediately consumed. 6 locations where collect is required (borrow conflicts with lock guards or mutable self) were annotated with `#[allow(clippy::needless_collect)]`.
+
+Patterns fixed:
+- `.collect::<Vec<_>>().len()` → `.count()`
+- `.collect::<Vec<_>>().is_empty()` → `!iter.any(|_| true)` or `.count() == 0`
+- Intermediate Vec creation where source `.len()` was available directly
+
+Files: common/ (3), consensus/ (2), beacon_node/ (7). 2648 tests pass across modified packages (types, state_processing, store, network, network_utils, lru_cache). lint-full passes. Committed `9892bf213`.
