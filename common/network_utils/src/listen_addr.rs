@@ -16,17 +16,17 @@ pub struct ListenAddr<Ip> {
     pub tcp_port: u16,
 }
 
-impl<Ip: Into<IpAddr> + Clone> ListenAddr<Ip> {
+impl<Ip: Into<IpAddr> + Copy> ListenAddr<Ip> {
     pub fn discovery_socket_addr(&self) -> SocketAddr {
-        (self.addr.clone().into(), self.disc_port).into()
+        (self.addr.into(), self.disc_port).into()
     }
 
     pub fn quic_socket_addr(&self) -> SocketAddr {
-        (self.addr.clone().into(), self.quic_port).into()
+        (self.addr.into(), self.quic_port).into()
     }
 
     pub fn tcp_socket_addr(&self) -> SocketAddr {
-        (self.addr.clone().into(), self.tcp_port).into()
+        (self.addr.into(), self.tcp_port).into()
     }
 }
 

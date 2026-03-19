@@ -118,7 +118,7 @@ impl<E: EthSpec> PeerInfo<E> {
     }
 
     /// Returns the listening addresses of the Peer.
-    pub fn listening_addresses(&self) -> &Vec<Multiaddr> {
+    pub fn listening_addresses(&self) -> &[Multiaddr] {
         &self.listening_addresses
     }
 

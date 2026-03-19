@@ -130,7 +130,7 @@ pub fn reset_execution_layer_info_gauge() {
     }
 }
 
-pub fn expose_execution_layer_info(els: &Vec<crate::ClientVersionV1>) {
+pub fn expose_execution_layer_info(els: &[crate::ClientVersionV1]) {
     for el in els {
         set_gauge_vec(
             &EXECUTION_LAYER_INFO,

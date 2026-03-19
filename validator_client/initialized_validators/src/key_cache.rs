@@ -165,7 +165,7 @@ impl KeyCache {
         self.state == State::DecryptedWithUnsavedUpdates
     }
 
-    pub fn uuids(&self) -> &Vec<Uuid> {
+    pub fn uuids(&self) -> &[Uuid] {
         &self.uuids
     }
 

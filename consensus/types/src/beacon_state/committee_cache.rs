@@ -42,7 +42,7 @@ pub struct CommitteeCache {
 ///
 /// In practice this is only used in tests.
 #[allow(clippy::indexing_slicing)]
-fn compare_shuffling_positions(xs: &Vec<NonZeroUsizeOption>, ys: &Vec<NonZeroUsizeOption>) -> bool {
+fn compare_shuffling_positions(xs: &[NonZeroUsizeOption], ys: &[NonZeroUsizeOption]) -> bool {
     use std::cmp::Ordering;
 
     let (shorter, longer) = match xs.len().cmp(&ys.len()) {

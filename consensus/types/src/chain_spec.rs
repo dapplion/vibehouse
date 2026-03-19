@@ -1807,7 +1807,7 @@ impl BlobSchedule {
         }
     }
 
-    pub fn as_vec(&self) -> &Vec<BlobParameters> {
+    pub fn as_slice(&self) -> &[BlobParameters] {
         &self.schedule
     }
 }
@@ -3166,10 +3166,10 @@ mod tests {
         ];
         let schedule = BlobSchedule::new(entries);
         // Duplicates removed — only 2 entries remain (one per unique epoch).
-        assert_eq!(schedule.as_vec().len(), 2);
+        assert_eq!(schedule.as_slice().len(), 2);
         // Reverse sorted: epoch 20 first, then 10.
-        assert_eq!(schedule.as_vec()[0].epoch, Epoch::new(20));
-        assert_eq!(schedule.as_vec()[1].epoch, Epoch::new(10));
+        assert_eq!(schedule.as_slice()[0].epoch, Epoch::new(20));
+        assert_eq!(schedule.as_slice()[1].epoch, Epoch::new(10));
     }
 
     #[test]
@@ -3189,7 +3189,7 @@ mod tests {
             },
         ];
         let schedule = BlobSchedule::new(entries);
-        assert_eq!(schedule.as_vec().len(), 3);
+        assert_eq!(schedule.as_slice().len(), 3);
     }
 
     #[test]
@@ -3352,7 +3352,7 @@ mod yaml_tests {
 
         // blob schedule is reverse sorted by epoch
         assert_eq!(
-            config.blob_schedule.as_vec(),
+            config.blob_schedule.as_slice(),
             &vec![
                 BlobParameters {
                     epoch: Epoch::new(1584),
