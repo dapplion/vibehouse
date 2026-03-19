@@ -2118,3 +2118,14 @@ Key areas:
 Also fixed 1 `redundant_field_names` lint (`{ info: info }` → `{ info }`) introduced by the auto-fix.
 
 2973 tests pass across modified packages. lint-full passes. Committed `efdf509d5`.
+
+### Run 1952 (2026-03-19)
+
+**Applied 4 pedantic clippy lint fixes across 36 files**:
+
+1. **`unnested_or_patterns`** (18 files, 29 fixes): Combined `Foo(A) | Foo(B)` patterns into `Foo(A | B)` for cleaner match arms
+2. **`from_iter_instead_of_collect`** (7 files, 12 fixes): Replaced `Type::from_iter(iter)` with idiomatic `iter.collect()` — files: execution_requests.rs, data_column_custody_group.rs, topics.rs, migrate.rs, single_block_lookup.rs, custody.rs, validators.rs
+3. **`needless_for_each`** (6 files, 7 fixes): Replaced `.for_each(|x| { body })` with `for x in iter { body }` loops — files: attestation_service.rs, discovery/mod.rs, block_reward.rs, migrate.rs, case_result.rs, lookups.rs
+4. **`needless_continue`** (10 files, 14 fixes): Removed redundant `continue` at end of loop bodies or in trailing else branches — files: eth2/lib.rs, beacon_node_fallback, attestation_service, duties_service (3), notifier_service, payload_attestation_service, beacon_chain (2), gloas_verification, block_sidecar_coupling, sync_committees, http_api/lib.rs
+
+4991/5000 workspace tests pass (8 web3signer timeouts = external service, 1 skip). lint-full passes. Committed `005ec55d5`.
