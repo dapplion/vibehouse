@@ -74,17 +74,17 @@ impl<E: EthSpec> BatchConfig for RangeSyncBatchConfig<E> {
 
 /// Reasons for removing a chain
 #[derive(Debug)]
-#[allow(dead_code)]
 pub enum RemoveChain {
     EmptyPeerPool,
     ChainCompleted,
     /// A chain has failed. This boolean signals whether the chain should be blacklisted.
     ChainFailed {
         blacklist: bool,
+        #[allow(dead_code)]
         failing_batch: BatchId,
     },
-    WrongBatchState(String),
-    WrongChainState(String),
+    WrongBatchState(#[allow(dead_code)] String),
+    WrongChainState(#[allow(dead_code)] String),
 }
 
 #[derive(Debug)]
