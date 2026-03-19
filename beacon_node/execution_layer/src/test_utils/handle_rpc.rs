@@ -605,10 +605,7 @@ pub async fn handle_rpc<E: EthSpec>(
             let mut response = ctx
                 .execution_block_generator
                 .write()
-                .forkchoice_updated(
-                    forkchoice_state.into(),
-                    payload_attributes.map(|json| json.into()),
-                )
+                .forkchoice_updated(forkchoice_state.into(), payload_attributes.map(Into::into))
                 .map_err(|s| (s, GENERIC_ERROR_CODE))?;
 
             if let Some(mut status) = ctx.static_forkchoice_updated_response.lock().clone() {

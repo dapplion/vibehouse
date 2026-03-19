@@ -727,7 +727,7 @@ impl TestRig {
     pub async fn assert_event_journal_contains_ordered(&mut self, expected: &[WorkType]) {
         let expected = expected
             .iter()
-            .map(|ev| ev.into())
+            .map(Into::into)
             .collect::<Vec<&'static str>>();
 
         let mut events = Vec::with_capacity(expected.len());

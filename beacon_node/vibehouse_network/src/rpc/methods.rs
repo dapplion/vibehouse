@@ -328,7 +328,7 @@ impl ssz::Decode for GoodbyeReason {
     }
 
     fn from_ssz_bytes(bytes: &[u8]) -> Result<Self, ssz::DecodeError> {
-        u64::from_ssz_bytes(bytes).map(|n| n.into())
+        u64::from_ssz_bytes(bytes).map(Into::into)
     }
 }
 

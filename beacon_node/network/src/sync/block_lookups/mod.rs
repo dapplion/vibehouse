@@ -163,7 +163,7 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
             &self
                 .single_block_lookups
                 .values()
-                .map(|lookup| lookup.into())
+                .map(Into::into)
                 .collect::<Vec<_>>(),
         )
     }

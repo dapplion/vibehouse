@@ -1095,7 +1095,7 @@ mod test {
                 let kzg_blob: KzgBlobRef = blob.as_ref().try_into().unwrap();
                 (
                     vec![Bytes48::from(commitment); proofs.len()],
-                    proofs.into_iter().map(|p| p.into()).collect::<Vec<_>>(),
+                    proofs.into_iter().map(Into::into).collect::<Vec<_>>(),
                     kzg.compute_cells(kzg_blob).unwrap(),
                 )
             })?;

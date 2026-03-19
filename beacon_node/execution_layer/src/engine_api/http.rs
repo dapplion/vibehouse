@@ -358,7 +358,7 @@ pub mod deposit_methods {
                 .rpc_request("eth_chainId", json!([]), timeout)
                 .await
                 .map_err(|e| format!("eth_chainId call failed {:?}", e))?;
-            hex_to_u64_be(chain_id.as_str()).map(|id| id.into())
+            hex_to_u64_be(chain_id.as_str()).map(Into::into)
         }
 
         /// Returns the current block number.
