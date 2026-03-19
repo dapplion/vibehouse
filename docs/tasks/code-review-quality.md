@@ -1891,3 +1891,15 @@ Full codebase audit: all `pub fn` in gloas.rs confirmed cross-crate (beacon_chai
 ### Run 1936 (2026-03-19)
 
 **Replaced `.map(|x| x.into())` with `.map(Into::into)` across 7 files**: Redundant closure pattern in network sync (block_lookups), vibehouse_network (rpc methods, peerdb), execution_layer (engine_api http, test_utils handle_rpc and execution_block_generator), and network beacon processor tests. Same category as run 1931's method reference cleanup. All 752/756 crate tests pass (4 pre-existing flaky network tests unrelated). Zero clippy warnings, pre-push lint-full passes. Committed `6ef400ccc`.
+
+### Run 1937 (2026-03-19)
+
+**Removed 3 dead public methods from HotColdDB**: Systematic audit of all `pub fn` methods in `hot_cold_store.rs` — checked every method for callers across the entire codebase (external files + internal calls). Found 3 truly dead methods with zero callers anywhere:
+
+1. **`get_execution_payload_dangerous_fork_agnostic`** (line 754) — explicitly marked "DANGEROUS" in its doc comment, guessed the fork when deserializing SSZ. Never called.
+2. **`item_exists`** (line 1339) — generic hot DB existence check wrapper. Never called (callers use `get_item` instead).
+3. **`store_schema_version_atomically`** (line 2809) — atomic schema version storage with batch ops. Dead since schema migration removal (run 557). Only `store_schema_version` (non-atomic) is used.
+
+Also investigated `let _ = bits.set(idx, true)` in block_verification.rs (lines 2072, 2092) — safe by construction (index is `slot % SlotsPerHistoricalRoot` on a `BitVector<SlotsPerHistoricalRoot>`, guaranteed in-bounds). Not changed.
+
+Spec v1.7.0-alpha.3 still latest — no new consensus-specs merges since #5005 (Mar 15). Open Gloas PRs unchanged. 236/236 store tests pass, full workspace compiles clean, clippy clean. Committed `f5ccc337e`.
