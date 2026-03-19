@@ -2101,3 +2101,20 @@ Key areas improved:
 6. **Remaining** (33 fixes across store, execution_layer, http_api, fork_choice, common/eth2, validator_store, etc.)
 
 Spec v1.7.0-alpha.3 still latest. Open PRs #5008 (field name fix), #4992 (cached PTCs), #5003 (proposer lookahead simplification) — none merged yet. 3428 tests pass across all modified packages. lint-full passes. Committed `802100b7a`.
+
+### Run 1951 (2026-03-19)
+
+**Removed 114 redundant clone() calls across 60 files** (`clippy::redundant_clone`): Used `cargo clippy --fix` to automatically remove `.clone()` calls where the value is not used after cloning (last use before move/drop). These are genuine unnecessary allocations — each removed clone eliminates a heap allocation or reference count increment that serves no purpose.
+
+Key areas:
+1. **Types** (9 files) — builder_bid, execution_payload, beacon_block_body, aggregate_and_proof
+2. **Beacon chain** (5 files) — historical_blocks, light_client_server_cache, test_utils, block_times_cache, proposer_cache
+3. **Network** (8 files) — sync manager, block_sidecar_coupling, lookups tests, subnet_service tests
+4. **Store** (5 files) — forwards_iter, hot_cold_store, state_cache, hdiff, blob_sidecar_list
+5. **Execution layer** (3 files) — mock_builder, handle_rpc, json_structures
+6. **vibehouse_network** (5 files) — gossip_cache, pubsub, codec, response_limiter, sync_status
+7. **Remaining** (25 files across validator_client, slasher, logging, network_utils, environment, etc.)
+
+Also fixed 1 `redundant_field_names` lint (`{ info: info }` → `{ info }`) introduced by the auto-fix.
+
+2973 tests pass across modified packages. lint-full passes. Committed `efdf509d5`.
