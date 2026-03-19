@@ -1903,3 +1903,23 @@ Full codebase audit: all `pub fn` in gloas.rs confirmed cross-crate (beacon_chai
 Also investigated `let _ = bits.set(idx, true)` in block_verification.rs (lines 2072, 2092) — safe by construction (index is `slot % SlotsPerHistoricalRoot` on a `BitVector<SlotsPerHistoricalRoot>`, guaranteed in-bounds). Not changed.
 
 Spec v1.7.0-alpha.3 still latest — no new consensus-specs merges since #5005 (Mar 15). Open Gloas PRs unchanged. 236/236 store tests pass, full workspace compiles clean, clippy clean. Committed `f5ccc337e`.
+
+### Run 1938 (2026-03-19)
+
+**Pre-allocated vectors with known sizes in hot paths**: Comprehensive audit of `Vec::new()`/`vec![]` patterns in non-test code where the final size is known at allocation time. Found and fixed 7 vectors across 5 files:
+
+1. **`data_column_custody_group.rs`** — `custody_groups` Vec in `get_custody_groups_ordered()`: size is exactly `custody_group_count`, was growing via push in a while loop. Changed to `Vec::with_capacity(custody_group_count)`.
+
+2. **`kzg_utils.rs`** — `validate_data_columns_with_commitments()`: 4 vectors (`cells`, `column_indices`, `proofs`, `commitments`) with known sizes from `data_column.column().len()`, `kzg_proofs().len()`, and `kzg_commitments.len()`. Pre-allocated all 4.
+
+3. **`kzg_utils.rs`** — `blobs_to_data_column_sidecars()` (2 call sites): `cells` and `cell_ids` vectors in blob reconstruction closure, size is `data_columns.len()`. Pre-allocated both in regular and rayon parallel paths.
+
+4. **`beacon_block_streamer.rs`** — `load_beacon_blocks_from_disk()`: `db_blocks` Vec, size is `block_roots.len()`. Also `ordered_block_roots` and `by_range_blocks` in `get_requests()`, size is `payloads.len()`.
+
+5. **`single_pass.rs`** — `added_validators` Vec in `apply_validator_registry_and_deposits()`, size is `ctxt.new_validator_deposits.len()`.
+
+Also added `rust_out` (stray rustc binary) to `.gitignore`.
+
+Investigated but skipped: batch `validate_data_columns()` (iterator-based, would need clone+count pass), `ValidatorPubkeyCache::new()` (already uses `reserve()` in `import()`), `hot_cold_store.rs` ops Vec (small fixed size, marginal benefit). Full codebase safety audit confirmed: zero unsafe issues in production code, all TODOs tracked in #36 (blocked/deferred), no production panics.
+
+2/2 custody tests pass, 24/24 single_pass tests pass, 3/3 pubkey cache tests pass. Committed `4ce4375e0`.
