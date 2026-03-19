@@ -169,7 +169,10 @@ impl TAggregatePublicKey<blst_core::PublicKey> for BlstAggregatePublicKey {
     }
 
     fn aggregate(pubkeys: &[GenericPublicKey<blst_core::PublicKey>]) -> Result<Self, Error> {
-        let pubkey_refs = pubkeys.iter().map(|pk| pk.point()).collect::<Vec<_>>();
+        let pubkey_refs = pubkeys
+            .iter()
+            .map(GenericPublicKey::point)
+            .collect::<Vec<_>>();
 
         // Public keys have already been checked for subgroup and infinity
         let agg_pub = blst_core::AggregatePublicKey::aggregate(&pubkey_refs, false)?;
@@ -267,7 +270,7 @@ impl TAggregateSignature<blst_core::PublicKey, BlstAggregatePublicKey, blst_core
         pubkeys: &[&GenericPublicKey<blst_core::PublicKey>],
     ) -> bool {
         let pubkeys = pubkeys.iter().map(|pk| pk.point()).collect::<Vec<_>>();
-        let msgs = msgs.iter().map(|hash| hash.as_slice()).collect::<Vec<_>>();
+        let msgs = msgs.iter().map(Hash256::as_slice).collect::<Vec<_>>();
         let signature = self.0.to_signature();
         // Public keys have already been checked for subgroup and infinity
         // Check Signature inside function for subgroup

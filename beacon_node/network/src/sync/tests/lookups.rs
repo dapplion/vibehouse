@@ -1053,7 +1053,7 @@ impl TestRig {
         for slot in 0..depth {
             let parent = blocks
                 .last()
-                .map(|b| b.canonical_root())
+                .map(AsBlock::canonical_root)
                 .unwrap_or_else(Hash256::random);
             let mut block = self.rand_block();
             *block.message_mut().parent_root_mut() = parent;
@@ -1914,7 +1914,7 @@ fn blobs_in_da_checker_skip_download() {
 #[test]
 fn custody_lookup_happy_path() {
     // Gloas (ePBS): data columns come via envelope, not block body
-    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+    if fork_name_from_env().is_some_and(ForkName::gloas_enabled) {
         return;
     }
     let Some(mut r) = TestRig::test_setup_after_fulu() else {
@@ -1943,7 +1943,7 @@ fn custody_lookup_happy_path() {
 #[test]
 fn custody_lookup_empty_response_triggers_retry() {
     // Gloas (ePBS): data columns come via envelope, not block body
-    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+    if fork_name_from_env().is_some_and(ForkName::gloas_enabled) {
         return;
     }
     let Some(mut r) = TestRig::test_setup_after_fulu() else {
@@ -1993,7 +1993,7 @@ fn custody_lookup_empty_response_triggers_retry() {
 #[test]
 fn custody_lookup_bad_data_triggers_penalty_and_retry() {
     // Gloas (ePBS): data columns come via envelope, not block body
-    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+    if fork_name_from_env().is_some_and(ForkName::gloas_enabled) {
         return;
     }
     let Some(mut r) = TestRig::test_setup_after_fulu() else {
@@ -2902,7 +2902,7 @@ mod deneb_only {
 #[test]
 fn missing_envelope_from_attestation_triggers_request() {
     // Only meaningful for Gloas (ePBS) where envelopes are separate from blocks
-    if !fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+    if !fork_name_from_env().is_some_and(ForkName::gloas_enabled) {
         return;
     }
     let mut r = TestRig::test_setup();
@@ -2919,7 +2919,7 @@ fn missing_envelope_from_attestation_triggers_request() {
 #[test]
 fn missing_envelope_from_attestation_debounced() {
     // Only meaningful for Gloas (ePBS)
-    if !fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+    if !fork_name_from_env().is_some_and(ForkName::gloas_enabled) {
         return;
     }
     let mut r = TestRig::test_setup();
@@ -2940,7 +2940,7 @@ fn missing_envelope_from_attestation_debounced() {
 #[test]
 fn missing_envelope_different_blocks_not_debounced() {
     // Only meaningful for Gloas (ePBS)
-    if !fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+    if !fork_name_from_env().is_some_and(ForkName::gloas_enabled) {
         return;
     }
     let mut r = TestRig::test_setup();

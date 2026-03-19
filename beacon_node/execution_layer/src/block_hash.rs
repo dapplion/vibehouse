@@ -51,7 +51,7 @@ pub fn calculate_execution_block_hash<E: EthSpec>(
 
     let rlp_blob_gas_used = payload.blob_gas_used().ok();
     let rlp_excess_blob_gas = payload.excess_blob_gas().ok();
-    let requests_root = execution_requests.map(|requests| requests.requests_hash());
+    let requests_root = execution_requests.map(ExecutionRequests::requests_hash);
 
     // Construct the block header.
     let exec_block_header = ExecutionBlockHeader::from_payload(

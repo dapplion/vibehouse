@@ -726,7 +726,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
             .get_bytes(DBColumn::BeaconBlock, block_root.as_slice())?
             .map(|block_bytes| decoder(&block_bytes))
             .transpose()
-            .map_err(|e| e.into())
+            .map_err(Into::into)
     }
 
     /// Load the execution payload for a block from disk.
@@ -1475,7 +1475,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     pub fn delete_batch(&self, col: DBColumn, ops: Vec<Hash256>) -> Result<(), Error> {
-        let new_ops: HashSet<&[u8]> = ops.iter().map(|v| v.as_slice()).collect();
+        let new_ops: HashSet<&[u8]> = ops.iter().map(Hash256::as_slice).collect();
         self.hot_db.delete_batch(col, new_ops)
     }
 

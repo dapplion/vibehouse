@@ -429,7 +429,7 @@ mod tests {
     fn aggregate_signature_multiple_sigs() {
         let msg = Hash256::from_slice(&[42u8; 32]);
         let sks: Vec<SecretKey> = (0..3).map(|_| SecretKey::random()).collect();
-        let pks: Vec<PublicKey> = sks.iter().map(|sk| sk.public_key()).collect();
+        let pks: Vec<PublicKey> = sks.iter().map(SecretKey::public_key).collect();
         let pk_refs: Vec<&PublicKey> = pks.iter().collect();
 
         let mut agg = AggregateSignature::infinity();

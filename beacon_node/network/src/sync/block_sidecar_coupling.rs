@@ -299,7 +299,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
                 let mut data_columns = Vec::with_capacity(
                     requests
                         .values()
-                        .filter_map(|r| r.to_finished().map(|d| d.len()))
+                        .filter_map(|r| r.to_finished().map(Vec::len))
                         .sum(),
                 );
                 let mut column_to_peer_id: HashMap<u64, PeerId> = HashMap::new();

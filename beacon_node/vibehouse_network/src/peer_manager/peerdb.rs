@@ -161,7 +161,7 @@ impl<E: EthSpec> PeerDB<E> {
 
     /// Returns true if the peer is synced at least to our current head.
     pub fn is_synced(&self, peer_id: &PeerId) -> bool {
-        match self.peers.get(peer_id).map(|info| info.sync_status()) {
+        match self.peers.get(peer_id).map(PeerInfo::sync_status) {
             Some(SyncStatus::Synced { .. }) => true,
             Some(_) => false,
             None => false,

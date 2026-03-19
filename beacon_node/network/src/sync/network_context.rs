@@ -980,7 +980,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
                     .fork_name_at_slot::<T::EthSpec>(b.slot())
                     .gloas_enabled()
             })
-            .map(|b| b.block_root())
+            .map(RpcBlock::block_root)
             .collect();
 
         if gloas_roots.is_empty() {

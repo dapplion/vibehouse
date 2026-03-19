@@ -269,7 +269,7 @@ impl<E: EthSpec> Discovery<E> {
         let mut fut_coll = config
             .boot_nodes_multiaddr
             .iter()
-            .map(|addr| addr.to_string())
+            .map(ToString::to_string)
             // request the ENR for this multiaddr and keep the original for logging
             .map(|addr| {
                 futures::future::join(

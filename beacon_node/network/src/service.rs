@@ -893,7 +893,7 @@ impl<T: BeaconChainTypes> NetworkService<T> {
         let core_topics: HashSet<&GossipKind> = HashSet::from_iter(&core_topics);
         let subscriptions = self.network_globals.gossipsub_subscriptions.read();
         let subscribed_topics: HashSet<&GossipKind> =
-            subscriptions.iter().map(|topic| topic.kind()).collect();
+            subscriptions.iter().map(GossipTopic::kind).collect();
 
         core_topics.is_subset(&subscribed_topics)
     }

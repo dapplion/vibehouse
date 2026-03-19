@@ -196,7 +196,11 @@ impl<T: BeaconChainTypes> ActiveCustodyRequest<T> {
         cx: &mut SyncNetworkContext<T>,
     ) -> CustodyRequestResult<T::EthSpec> {
         let _guard = self.span.clone().entered();
-        if self.column_requests.values().all(|r| r.is_downloaded()) {
+        if self
+            .column_requests
+            .values()
+            .all(ColumnRequest::is_downloaded)
+        {
             // All requests have completed successfully.
             let mut peers = HashMap::<PeerId, Vec<usize>>::new();
             let mut seen_timestamps = vec![];
@@ -260,7 +264,7 @@ impl<T: BeaconChainTypes> ActiveCustodyRequest<T> {
         if peer_requests > 0 {
             let columns_requested_count = columns_to_request_by_peer
                 .values()
-                .map(|v| v.len())
+                .map(Vec::len)
                 .sum::<usize>();
             debug!(
                 lookup_peers = lookup_peers.len(),

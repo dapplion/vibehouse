@@ -389,7 +389,7 @@ impl<E: EthSpec> ExecutionBlockGenerator<E> {
 
         // Set head
         if let Some(head_total_difficulty) =
-            self.head_block.as_ref().and_then(|b| b.total_difficulty())
+            self.head_block.as_ref().and_then(Block::total_difficulty)
         {
             if block.total_difficulty >= head_total_difficulty {
                 self.head_block = Some(Block::PoW(block));
@@ -433,7 +433,7 @@ impl<E: EthSpec> ExecutionBlockGenerator<E> {
 
         // Set head
         if let Some(head_total_difficulty) =
-            self.head_block.as_ref().and_then(|b| b.total_difficulty())
+            self.head_block.as_ref().and_then(Block::total_difficulty)
         {
             if block.total_difficulty >= head_total_difficulty {
                 self.head_block = Some(Block::PoW(block));

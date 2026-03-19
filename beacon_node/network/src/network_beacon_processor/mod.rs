@@ -1,6 +1,6 @@
 use crate::sync::manager::BlockProcessType;
 use crate::{service::NetworkMessage, sync::manager::SyncMessage};
-use beacon_chain::blob_verification::{GossipBlobError, observe_gossip_blob};
+use beacon_chain::blob_verification::{GossipBlobError, KzgVerifiedBlob, observe_gossip_blob};
 use beacon_chain::block_verification_types::RpcBlock;
 use beacon_chain::data_column_verification::{GossipDataColumnError, observe_gossip_data_column};
 use beacon_chain::fetch_blobs::{
@@ -913,7 +913,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 match blobs_or_data_column {
                     EngineGetBlobsOutput::Blobs(blobs) => {
                         self_cloned.publish_blobs_gradually(
-                            blobs.into_iter().map(|b| b.to_blob()).collect(),
+                            blobs.into_iter().map(KzgVerifiedBlob::to_blob).collect(),
                             block_root,
                         );
                     }

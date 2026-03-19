@@ -309,7 +309,7 @@ impl<E: EthSpec> Network<E> {
             // have the same topic count
             let max_topics_at_any_fork = all_topics_for_digests
                 .iter()
-                .map(|topics| topics.len())
+                .map(Vec::len)
                 .max()
                 .expect("each fork has at least 5 hardcoded core topics");
 

@@ -53,6 +53,7 @@ use beacon_chain::validator_monitor::timestamp_now;
 use beacon_chain::{
     AvailabilityProcessingStatus, BeaconChain, BeaconChainTypes, BlockError, EngineState,
 };
+use execution_layer::ExecutionLayer;
 use futures::StreamExt;
 use logging::crit;
 use lru_cache::LRUTimeCache;
@@ -819,7 +820,7 @@ impl<T: BeaconChainTypes> SyncManager<T> {
                 .chain
                 .execution_layer
                 .as_ref()
-                .map(|el| el.get_responsiveness_watch())
+                .map(ExecutionLayer::get_responsiveness_watch)
                 .into();
             futures::stream::iter(ee_responsiveness_watch.await).flatten()
         };

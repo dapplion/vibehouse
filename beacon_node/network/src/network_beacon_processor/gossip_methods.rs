@@ -17,7 +17,9 @@ use beacon_chain::store::Error;
 use beacon_chain::{
     AvailabilityProcessingStatus, BeaconChainError, BeaconChainTypes, BlockError, ForkChoiceError,
     GossipVerifiedBlock, NotifyExecutionLayer,
-    attestation_verification::{self, Error as AttnError, VerifiedAttestation},
+    attestation_verification::{
+        self, Error as AttnError, VerifiedAggregatedAttestation, VerifiedAttestation,
+    },
     data_availability_checker::AvailabilityCheckErrorCategory,
     light_client_finality_update_verification::Error as LightClientFinalityUpdateError,
     light_client_optimistic_update_verification::Error as LightClientOptimisticUpdateError,
@@ -507,7 +509,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         #[allow(clippy::needless_collect)] // The clippy suggestion fails the borrow checker.
         let results = results
             .into_iter()
-            .map(|result| result.map(|verified| verified.into_indexed_attestation()))
+            .map(|result| result.map(VerifiedAggregatedAttestation::into_indexed_attestation))
             .collect::<Vec<_>>();
 
         for (result, package) in results.into_iter().zip(packages.into_iter()) {

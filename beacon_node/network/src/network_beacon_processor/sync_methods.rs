@@ -630,11 +630,11 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         let sent_blocks = downloaded_blocks.len();
         let n_blobs = downloaded_blocks
             .iter()
-            .map(|wrapped| wrapped.n_blobs())
+            .map(RpcBlock::n_blobs)
             .sum::<usize>();
         let n_data_columns = downloaded_blocks
             .iter()
-            .map(|wrapped| wrapped.n_data_columns())
+            .map(RpcBlock::n_data_columns)
             .sum::<usize>();
 
         let result = match self.process_backfill_blocks(downloaded_blocks) {

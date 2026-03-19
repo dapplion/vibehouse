@@ -232,10 +232,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
 
     /// Returns the total count of pending blocks in all the batches of this chain
     pub fn pending_blocks(&self) -> usize {
-        self.batches
-            .values()
-            .map(|batch| batch.pending_blocks())
-            .sum()
+        self.batches.values().map(BatchInfo::pending_blocks).sum()
     }
 
     /// Returns the number of batches in the given metrics state.

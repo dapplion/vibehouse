@@ -1150,7 +1150,7 @@ impl<E: EthSpec> PeerManager<E> {
             .any(|subnet| {
                 let count = custody_subnet_to_peers
                     .get(subnet)
-                    .map(|peers| peers.len())
+                    .map(Vec::len)
                     .unwrap_or(0);
                 count <= MIN_SAMPLING_COLUMN_SUBNET_PEERS as usize
             });
@@ -1482,12 +1482,12 @@ impl<E: EthSpec> PeerManager<E> {
             return;
         }
         // reset the gauges
-        let _ = metrics::PEER_SCORE_DISTRIBUTION
-            .as_ref()
-            .map(|gauge| gauge.reset());
-        let _ = metrics::PEER_SCORE_PER_CLIENT
-            .as_ref()
-            .map(|gauge| gauge.reset());
+        if let Ok(gauge) = metrics::PEER_SCORE_DISTRIBUTION.as_ref() {
+            gauge.reset();
+        }
+        if let Ok(gauge) = metrics::PEER_SCORE_PER_CLIENT.as_ref() {
+            gauge.reset();
+        }
 
         let mut avg_score_per_client: HashMap<String, (f64, usize)> = HashMap::with_capacity(5);
         {

@@ -136,9 +136,7 @@ where
 
     /// Serialize `self` as compressed bytes.
     pub fn serialize_uncompressed(&self) -> Option<[u8; SIGNATURE_UNCOMPRESSED_BYTES_LEN]> {
-        self.point
-            .as_ref()
-            .map(|point| point.serialize_uncompressed())
+        self.point.as_ref().map(TSignature::serialize_uncompressed)
     }
 
     /// Deserialize `self` from compressed bytes.

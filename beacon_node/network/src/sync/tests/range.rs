@@ -480,7 +480,7 @@ fn head_chain_removed_while_finalized_syncing() {
 async fn state_update_while_purging() {
     // Regression test: state update should not panic while purging chains.
     // Gloas (ePBS): cross-harness block import fails due to bid parent_block_hash mismatch
-    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+    if fork_name_from_env().is_some_and(ForkName::gloas_enabled) {
         return;
     }
     let mut rig = TestRig::test_setup();

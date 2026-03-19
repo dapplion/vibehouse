@@ -112,7 +112,7 @@ where
         let pubkeys = self
             .signing_keys
             .iter()
-            .map(|pk| pk.as_ref())
+            .map(AsRef::as_ref)
             .collect::<Vec<_>>();
 
         self.signature

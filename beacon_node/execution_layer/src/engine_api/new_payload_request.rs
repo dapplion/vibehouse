@@ -5,7 +5,7 @@ use state_processing::per_block_processing::deneb::kzg_commitment_to_versioned_h
 use superstruct::superstruct;
 use types::{
     BeaconBlockRef, BeaconStateError, EthSpec, ExecutionBlockHash, ExecutionPayload,
-    ExecutionPayloadRef, Hash256, VersionedHash,
+    ExecutionPayloadRef, Hash256, VariableList, VersionedHash,
 };
 use types::{
     ExecutionPayloadBellatrix, ExecutionPayloadCapella, ExecutionPayloadDeneb,
@@ -136,7 +136,7 @@ impl<'block, E: EthSpec> NewPayloadRequest<'block, E> {
         let _timer = metrics::start_timer(&metrics::EXECUTION_LAYER_VERIFY_BLOCK_HASH);
 
         // Check that no transactions in the payload are zero length
-        if payload.transactions().iter().any(|slice| slice.is_empty()) {
+        if payload.transactions().iter().any(VariableList::is_empty) {
             return Err(Error::ZeroLengthTransaction);
         }
 

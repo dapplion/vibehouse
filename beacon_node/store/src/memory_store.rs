@@ -90,7 +90,7 @@ impl<E: EthSpec> KeyValueStore<E> for MemoryStore<E> {
             .read()
             .range(start_key..)
             .take_while(|(k, _)| k.remove_column_variable(column).is_some())
-            .filter_map(|(k, _)| k.remove_column_variable(column).map(|k| k.to_vec()))
+            .filter_map(|(k, _)| k.remove_column_variable(column).map(<[u8]>::to_vec))
             .collect::<Vec<_>>();
         Box::new(keys.into_iter().filter_map(move |key| {
             self.get_bytes(column, &key).transpose().map(|res| {
@@ -119,7 +119,7 @@ impl<E: EthSpec> KeyValueStore<E> for MemoryStore<E> {
             .read()
             .range(start_key..)
             .take_while(|(k, _)| k.remove_column_variable(column).is_some())
-            .filter_map(|(k, _)| k.remove_column_variable(column).map(|k| k.to_vec()))
+            .filter_map(|(k, _)| k.remove_column_variable(column).map(<[u8]>::to_vec))
             .collect::<Vec<_>>();
         Box::new(keys.into_iter().map(move |key| K::from_bytes(&key)))
     }

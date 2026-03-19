@@ -855,7 +855,7 @@ pub fn update_sync_metrics<E: EthSpec>(network_globals: &Arc<NetworkGlobals<E>>)
     // reset the counts
     if PEERS_PER_SYNC_TYPE
         .as_ref()
-        .map(|metric| metric.reset())
+        .map(IntGaugeVec::reset)
         .is_err()
     {
         return;
