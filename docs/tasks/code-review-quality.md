@@ -2061,3 +2061,18 @@ Spec v1.7.0-alpha.3 still latest — no new consensus-specs merges since #5005 (
 11. **`validator_client/http_api/src/lib.rs`** (2) — `.to_string()` → `.clone()`
 
 Spec v1.7.0-alpha.3 still latest — no new consensus-specs merges since #5005 (Mar 15). Zero clippy warnings (default + `implicit_clone`), lint-full passes. Committed `dc19c1923`.
+
+### Run 1948 (2026-03-19)
+
+**Replaced 62 `.map().unwrap_or()` / `.map().unwrap_or_else()` chains with `.map_or()` / `.map_or_else()` across 48 files** (`clippy::map_unwrap_or`):
+
+Patterns replaced:
+- `.map(|x| f(x)).unwrap_or(default)` → `.map_or(default, |x| f(x))`
+- `.map(|x| f(x)).unwrap_or_else(|| g())` → `.map_or_else(|| g(), |x| f(x))`
+- `.map(Ok).unwrap_or_else(|| fallible())` → `.map_or_else(|| fallible(), Ok)`
+
+Files touched across: common/ (6), consensus/ (2), beacon_node/ (26), validator_client/ (10), account_manager (1), validator_manager (1), testing/ (2).
+
+Also verified spec status: v1.7.0-alpha.3 still latest. Recent merged PRs #5001 (parent_block_root in bid filtering key) and #5002 (payload signature wording) — both already implemented in our codebase. No action needed.
+
+4991/5000 workspace tests pass (8 web3signer timeouts = external service, 1 skip). lint-full passes. Committed `19d149ab0`.
