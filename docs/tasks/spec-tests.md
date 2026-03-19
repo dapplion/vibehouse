@@ -1913,3 +1913,12 @@ Repeated spec tracking checks, all stable. Key facts from this period:
 - **Code audit**: reviewed all Gloas hot paths for performance improvements — `state.validators().len()` is O(1) (just a vec length), no actionable optimizations found.
 - Prep branches `cached-ptc` and `ptc-lookbehind` remain ready on origin.
 
+### Run 1927 (2026-03-19) — comprehensive health check
+- **Spec**: v1.7.0-alpha.3 still latest. consensus-specs HEAD unchanged at 1baa05e (Mar 15). No new merges.
+- **Post-alpha.3 PRs**: #5001 (parent_block_root in bid filter key) — already implemented (observed_execution_bids keys on full tuple). #5002 (wording clarification) — no code impact. #5005 (test fixture fix) — already handled.
+- **CI**: all green. Latest nightly (Mar 18) all passing. Mar 17 nightly flake (finalized_sync_not_enough_custody_peers_on_start) was already fixed in 8f8faa7de.
+- **Build**: zero clippy warnings. Zero compilation warnings. cargo audit: 1 advisory (rsa/Marvin Attack, no fix available — transitive via jsonwebtoken), 5 unmaintained crate warnings (all transitive, not actionable).
+- **Tests**: 4991/4995 passed (4 web3signer failures due to no Java on VPS — infrastructure, not code).
+- **Code quality**: all remaining `#[allow(dead_code)]` annotations are legitimate (error enum Debug fields, feature-gated code, API completeness). All TODOs tracked in #36, blocked on external deps or non-critical.
+- All stable. No action needed.
+
