@@ -2026,3 +2026,20 @@ Patterns replaced:
 Also refactored 2 `let _ = result.map(|gauge| gauge.reset())` patterns to idiomatic `if let Ok(gauge) = result { gauge.reset(); }` in peer_manager metrics.
 
 Files: execution_layer (3), network (12), store (2), vibehouse_network (6), crypto/bls (4). CI: check/clippy/fmt green, pre-push lint-full passes. Committed `f14f89381`.
+
+### Run 1946 (2026-03-19)
+
+**Idiomatic slice types in public APIs and removed redundant clones across 6 files**:
+
+1. **`&Vec<T>` → `&[T]` in 5 public function signatures**:
+   - `key_cache.rs` — `uuids()` return type: `&Vec<Uuid>` → `&[Uuid]`
+   - `chain_spec.rs` — `BlobSchedule::as_vec()` renamed to `as_slice()`, return type: `&Vec<BlobParameters>` → `&[BlobParameters]`
+   - `committee_cache.rs` — `compare_shuffling_positions()` params: `&Vec<NonZeroUsizeOption>` → `&[NonZeroUsizeOption]`
+   - `metrics.rs` — `expose_execution_layer_info()` param: `&Vec<ClientVersionV1>` → `&[ClientVersionV1]`
+   - `peer_info.rs` — `listening_addresses()` return type: `&Vec<Multiaddr>` → `&[Multiaddr]`
+
+2. **Removed 3 redundant `.clone()` on Copy types** in `listen_addr.rs`:
+   - `ListenAddr` impl bound changed from `Into<IpAddr> + Clone` to `Into<IpAddr> + Copy`
+   - `self.addr.clone().into()` → `self.addr.into()` in 3 socket address methods (`Ipv4Addr`/`Ipv6Addr` are `Copy`)
+
+Spec v1.7.0-alpha.3 still latest — no new consensus-specs merges since #5005 (Mar 15). 1085/1085 types tests pass, 68/68 network_utils tests pass, 37/37 peer_info tests pass, zero clippy warnings. Committed `4c9ae7c7e`.
