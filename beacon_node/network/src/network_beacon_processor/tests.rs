@@ -2297,7 +2297,6 @@ async fn drain_validation_result(
 }
 
 /// Helper: assert that a MessageAcceptance is Accept.
-#[allow(dead_code)]
 fn assert_accept(result: MessageAcceptance) {
     assert_matches!(result, MessageAcceptance::Accept);
 }

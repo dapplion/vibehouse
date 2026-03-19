@@ -753,7 +753,6 @@ pub mod ssz_tagged_signed_beacon_block {
     use super::*;
     pub mod encode {
         use super::*;
-        #[allow(unused_imports)]
         use ssz::*;
 
         pub fn is_ssz_fixed_len() -> bool {
@@ -794,7 +793,6 @@ pub mod ssz_tagged_signed_beacon_block {
 
     pub mod decode {
         use super::*;
-        #[allow(unused_imports)]
         use ssz::*;
 
         pub fn is_ssz_fixed_len() -> bool {
@@ -855,7 +853,6 @@ pub mod ssz_tagged_signed_beacon_block_arc {
     pub mod decode {
         pub use super::ssz_tagged_signed_beacon_block::decode::{is_ssz_fixed_len, ssz_fixed_len};
         use super::*;
-        #[allow(unused_imports)]
         use ssz::*;
         use std::sync::Arc;
 
