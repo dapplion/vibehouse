@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1929 (Mar 19) — spec audit, full EF test verification
+
+CI green. Clippy clean. Audited 4 post-alpha.3 spec PRs: #5001 (parent_block_root bid filter — already compliant), #5002 (wording — no code impact), #4940 (Gloas fork choice tests — all 9 pass including new on_execution_payload), #5005 (test-only fix). Full EF spec test verification: 139/139 (fake_crypto+minimal), 79/79 (real crypto+minimal), 9/9 fork choice tests. Checked open Gloas PRs: #4992 (cached PTCs, 1 approval from jtraglia, active discussion) is most likely next to merge — adds previous_ptc/current_ptc fields to BeaconState. Heze fork research: implements FOCIL (EIP-7805, fork-choice enforced inclusion lists). Project in maintenance mode.
+
 ### run 1928 (Mar 19) — maintenance check, all green
 
 CI green. Nightlies green (latest 2 both green). Clippy clean (zero warnings). Spec tracked to v1.7.0-alpha.3 (HEAD still 1baa05e from Mar 15 — no new commits). All 14 tracked Gloas spec PRs still open — none merged. cargo audit: same known issues (rsa, unmaintained transitive deps). cargo-machete false positives investigated (rand, ethereum_ssz all needed by derive macros). No remaining actionable code improvements — all TODOs reference #36 and are blocked or non-critical. Project in maintenance mode.
