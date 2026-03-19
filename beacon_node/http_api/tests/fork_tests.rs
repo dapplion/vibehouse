@@ -559,7 +559,7 @@ async fn bls_to_execution_changes_update_all_around_capella_fork() {
         );
 
         // Included changes should be the ones from `valid_address_changes` in any order.
-        for address_change in bls_to_execution_changes.iter() {
+        for address_change in bls_to_execution_changes {
             assert!(valid_address_changes.contains(address_change));
         }
 

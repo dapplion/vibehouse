@@ -174,7 +174,7 @@ impl ShufflingCache {
                 .copied()
                 .collect::<Vec<_>>();
 
-            for shuffling_id in shuffling_ids_to_prune.iter() {
+            for shuffling_id in &shuffling_ids_to_prune {
                 debug!(
                     shuffling_epoch = %shuffling_id.shuffling_epoch,
                     shuffling_decision_block = ?shuffling_id.shuffling_decision_block,
@@ -498,7 +498,7 @@ mod test {
             .map(|i| (shuffling_id(i as u64), Arc::new(CommitteeCache::default())))
             .collect::<Vec<_>>();
 
-        for (shuffling_id, committee_cache) in shuffling_id_and_committee_caches.iter() {
+        for (shuffling_id, committee_cache) in &shuffling_id_and_committee_caches {
             cache.insert_committee_cache(*shuffling_id, committee_cache);
         }
 

@@ -52,5 +52,5 @@ async fn returns_200_ok() {
             &HeaderValue::from_str("text/plain").unwrap()
         );
     }
-    .await
+    .await;
 }

@@ -339,7 +339,7 @@ impl<E: EthSpec> Case for ForkChoiceTest<E> {
             match step {
                 Step::Tick { tick } => tester.set_tick(*tick),
                 Step::ValidBlock { block } => {
-                    tester.process_block_and_blobs(block.clone(), None, None, true)?
+                    tester.process_block_and_blobs(block.clone(), None, None, true)?;
                 }
                 Step::MaybeValidBlockAndBlobs {
                     block,
@@ -354,7 +354,7 @@ impl<E: EthSpec> Case for ForkChoiceTest<E> {
                 )?,
                 Step::Attestation { attestation } => tester.process_attestation(attestation)?,
                 Step::AttesterSlashing { attester_slashing } => {
-                    tester.process_attester_slashing(attester_slashing.to_ref())
+                    tester.process_attester_slashing(attester_slashing.to_ref());
                 }
                 Step::PowBlock { pow_block } => tester.process_pow_block(pow_block),
                 Step::OnPayloadInfo {
@@ -806,7 +806,7 @@ impl<E: EthSpec> Tester<E> {
             .chain
             .canonical_head
             .fork_choice_write_lock()
-            .on_attester_slashing(attester_slashing)
+            .on_attester_slashing(attester_slashing);
     }
 
     pub fn process_pow_block(&self, pow_block: &PowBlock) {
@@ -1112,7 +1112,7 @@ impl<E: EthSpec> Tester<E> {
 ///
 /// <https://github.com/ethereum/consensus-specs/issues/2566>
 fn assert_checkpoints_eq(name: &str, head: Checkpoint, fc: Checkpoint) {
-    assert_eq!(head, fc, "{}", name)
+    assert_eq!(head, fc, "{}", name);
 }
 
 /// Convenience function to create `Error` messages.

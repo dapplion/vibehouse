@@ -656,7 +656,7 @@ async fn sleep_with_retry_message(pubkey: &PublicKeyBytes, path: Option<&str>) {
         key of {:?} and a derivation path of {}",
         UPLOAD_RETRY_WAIT, pubkey, path
     );
-    sleep(UPLOAD_RETRY_WAIT).await
+    sleep(UPLOAD_RETRY_WAIT).await;
 }
 
 // The tests use crypto and are too slow in debug.
@@ -836,7 +836,7 @@ mod test {
                                     .join(format!("{:?}", initial_keystore.validating_pubkey))
                                     .exists(),
                                 "the source password file should be deleted"
-                            )
+                            );
                         }
                     }
                     Validators::Count(count) => {
@@ -868,7 +868,7 @@ mod test {
                                     .join(format!("{:?}", moved_keystore.validating_pubkey))
                                     .exists(),
                                 "the source password file should be deleted"
-                            )
+                            );
                         }
                     }
                     Validators::Specific(pubkeys) => {
@@ -906,7 +906,7 @@ mod test {
                                         .join(format!("{:?}", pubkey))
                                         .exists(),
                                     "the source password file was used by another validator and should not be deleted"
-                                )
+                                );
                             } else {
                                 assert!(
                                     !src_vc
@@ -915,7 +915,7 @@ mod test {
                                         .join(format!("{:?}", pubkey))
                                         .exists(),
                                     "the source password file should be deleted"
-                                )
+                                );
                             }
                         }
                     }
@@ -938,7 +938,7 @@ mod test {
                                     .join(format!("{:?}", keystore.validating_pubkey))
                                     .exists(),
                                 "the password file should exist"
-                            )
+                            );
                         });
                 }
             }
@@ -983,9 +983,9 @@ mod test {
                         ..
                     } = &mut def.signing_definition
                     {
-                        *path = primary_path.clone()
+                        *path = primary_path.clone();
                     }
-                })
+                });
             }
 
             let dest_vc = if let Some(import_builder) = self.dest_import_builder.take() {
@@ -1014,7 +1014,7 @@ mod test {
                     .collect();
 
                 if let Some(func) = self.mutate_passwords.take() {
-                    func(&mut self.passwords)
+                    func(&mut self.passwords);
                 }
             }
 
@@ -1039,15 +1039,15 @@ mod test {
 
     impl TestResult {
         fn assert_ok(self) {
-            assert_eq!(self.result, Ok(()))
+            assert_eq!(self.result, Ok(()));
         }
 
         fn assert_err(self) {
-            assert!(self.result.is_err())
+            assert!(self.result.is_err());
         }
 
         fn assert_err_is(self, msg: String) {
-            assert_eq!(self.result, Err(msg))
+            assert_eq!(self.result, Err(msg));
         }
     }
 
@@ -1237,7 +1237,7 @@ mod test {
                 passwords.iter_mut().for_each(|(_, passwords)| {
                     passwords.insert(0, "wrong-password".to_string());
                     passwords.push("wrong-password".to_string());
-                })
+                });
             })
             .run_test(|_| Validators::All)
             .await
@@ -1257,7 +1257,7 @@ mod test {
             .mutate_passwords(|passwords| {
                 passwords
                     .iter_mut()
-                    .for_each(|(_, passwords)| *passwords = vec!["wrong-password".to_string()])
+                    .for_each(|(_, passwords)| *passwords = vec!["wrong-password".to_string()]);
             })
             .run_test(|_| Validators::All)
             .await

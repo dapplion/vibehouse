@@ -491,7 +491,7 @@ pub fn get_config<E: EthSpec>(
         client_config
             .network
             .boot_nodes_enr
-            .extend_from_slice(boot_nodes)
+            .extend_from_slice(boot_nodes);
     }
 
     client_config.chain.checkpoint_sync_url_timeout =
@@ -619,7 +619,7 @@ pub fn get_config<E: EthSpec>(
                 .map_err(|_| "Invalid weak subjectivity checkpoint epoch".to_string())?,
         );
 
-        client_config.chain.weak_subjectivity_checkpoint = Some(Checkpoint { epoch, root })
+        client_config.chain.weak_subjectivity_checkpoint = Some(Checkpoint { epoch, root });
     }
 
     if let Some(max_skip_slots) = cli_args.get_one::<String>("max-skip-slots") {
@@ -1031,13 +1031,13 @@ pub fn parse_listening_addresses(cli_args: &ArgMatches) -> Result<ListenAddress,
             if maybe_disc6_port.is_some() {
                 warn!(
                     "When listening only over IPv6, use the --discovery-port flag. The value of --discovery-port6 will be ignored."
-                )
+                );
             }
 
             if maybe_quic6_port.is_some() {
                 warn!(
                     "When listening only over IPv6, use the --quic-port flag. The value of --quic-port6 will be ignored."
-                )
+                );
             }
 
             // use zero ports if required. If not, use the specific udp port. If none given, use
@@ -1356,16 +1356,16 @@ pub fn set_network_config(
             match addr.parse::<IpAddr>() {
                 Ok(IpAddr::V4(v4_addr)) => {
                     if let Some(used) = enr_ip4.as_ref() {
-                        warn!(used = %used, ignored = %v4_addr, "More than one Ipv4 ENR address provided")
+                        warn!(used = %used, ignored = %v4_addr, "More than one Ipv4 ENR address provided");
                     } else {
-                        enr_ip4 = Some(v4_addr)
+                        enr_ip4 = Some(v4_addr);
                     }
                 }
                 Ok(IpAddr::V6(v6_addr)) => {
                     if let Some(used) = enr_ip6.as_ref() {
-                        warn!(used = %used, ignored = %v6_addr,"More than one Ipv6 ENR address provided")
+                        warn!(used = %used, ignored = %v6_addr,"More than one Ipv6 ENR address provided");
                     } else {
-                        enr_ip6 = Some(v6_addr)
+                        enr_ip6 = Some(v6_addr);
                     }
                 }
                 Err(_) => {
@@ -1398,12 +1398,12 @@ pub fn set_network_config(
                                 match socket_addr.ip() {
                                     IpAddr::V4(v4_addr) => {
                                         if resolved_enr_ip4.is_none() {
-                                            resolved_enr_ip4 = Some(v4_addr)
+                                            resolved_enr_ip4 = Some(v4_addr);
                                         }
                                     }
                                     IpAddr::V6(v6_addr) => {
                                         if resolved_enr_ip6.is_none() {
-                                            resolved_enr_ip6 = Some(v6_addr)
+                                            resolved_enr_ip6 = Some(v6_addr);
                                         }
                                     }
                                 }

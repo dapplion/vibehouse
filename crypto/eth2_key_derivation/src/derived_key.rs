@@ -215,7 +215,7 @@ fn flip_bits(input: &[u8]) -> ZeroizeHash {
     let output_bytes = output.as_mut_bytes();
 
     for (i, byte) in input.iter().enumerate() {
-        output_bytes[i] = !byte
+        output_bytes[i] = !byte;
     }
 
     output

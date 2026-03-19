@@ -200,7 +200,7 @@ pub fn set_gauge_entry<P: Atomic>(
     value: P::T,
 ) {
     if let Some(v) = get_gauge(gauge_vec, name) {
-        v.set(value)
+        v.set(value);
     };
 }
 
@@ -235,7 +235,7 @@ pub fn get_int_counter(
 /// Increments the `int_counter_vec` with the given `name`.
 pub fn inc_counter_vec(int_counter_vec: &Result<IntCounterVec>, name: &[&str]) {
     if let Some(counter) = get_int_counter(int_counter_vec, name) {
-        counter.inc()
+        counter.inc();
     }
 }
 
@@ -271,14 +271,14 @@ pub fn start_timer(histogram: &Result<Histogram>) -> Option<HistogramTimer> {
 /// Starts a timer on `vec` with the given `name`.
 pub fn observe_timer_vec(vec: &Result<HistogramVec>, name: &[&str], duration: Duration) {
     if let Some(h) = get_histogram(vec, name) {
-        h.observe(duration_to_f64(duration))
+        h.observe(duration_to_f64(duration));
     }
 }
 
 /// Stops a timer created with `start_timer(..)`.
 pub fn stop_timer(timer: Option<HistogramTimer>) {
     if let Some(t) = timer {
-        t.observe_duration()
+        t.observe_duration();
     }
 }
 
@@ -292,7 +292,7 @@ pub fn stop_timer_with_duration(timer: Option<HistogramTimer>) -> Duration {
 
 pub fn observe_vec(vec: &Result<HistogramVec>, name: &[&str], value: f64) {
     if let Some(h) = get_histogram(vec, name) {
-        h.observe(value)
+        h.observe(value);
     }
 }
 
@@ -358,13 +358,13 @@ pub fn dec_gauge(gauge: &Result<IntGauge>) {
 
 pub fn maybe_set_gauge(gauge: &Result<IntGauge>, value_opt: Option<i64>) {
     if let Some(value) = value_opt {
-        set_gauge(gauge, value)
+        set_gauge(gauge, value);
     }
 }
 
 pub fn maybe_set_float_gauge(gauge: &Result<Gauge>, value_opt: Option<f64>) {
     if let Some(value) = value_opt {
-        set_float_gauge(gauge, value)
+        set_float_gauge(gauge, value);
     }
 }
 
@@ -377,7 +377,7 @@ pub fn observe(histogram: &Result<Histogram>, value: f64) {
 
 pub fn observe_duration(histogram: &Result<Histogram>, duration: Duration) {
     if let Ok(histogram) = histogram {
-        histogram.observe(duration_to_f64(duration))
+        histogram.observe(duration_to_f64(duration));
     }
 }
 
@@ -408,7 +408,7 @@ pub fn decimal_buckets(min_power: i32, max_power: i32) -> Result<Vec<f64>> {
     let mut buckets = Vec::with_capacity(3 * (max_power - min_power + 1) as usize);
     for n in min_power..=max_power {
         for m in &[1f64, 2f64, 5f64] {
-            buckets.push(m * 10f64.powi(n))
+            buckets.push(m * 10f64.powi(n));
         }
     }
     Ok(buckets)

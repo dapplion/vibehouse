@@ -58,7 +58,7 @@ impl<E: EthSpec> NetworkBehaviour for PeerManager<E> {
                     error!(
                         error = e.to_string(),
                         "Failed to check for inbound peers to ping"
-                    )
+                    );
                 }
                 Poll::Ready(None) | Poll::Pending => break,
             }
@@ -74,7 +74,7 @@ impl<E: EthSpec> NetworkBehaviour for PeerManager<E> {
                     error!(
                         error = e.to_string(),
                         "Failed to check for outbound peers to ping"
-                    )
+                    );
                 }
                 Poll::Ready(None) | Poll::Pending => break,
             }
@@ -88,10 +88,10 @@ impl<E: EthSpec> NetworkBehaviour for PeerManager<E> {
                 match self.status_peers.poll_next_unpin(cx) {
                     Poll::Ready(Some(Ok(peer_id))) => {
                         self.status_peers.insert(peer_id);
-                        self.events.push(PeerManagerEvent::Status(peer_id))
+                        self.events.push(PeerManagerEvent::Status(peer_id));
                     }
                     Poll::Ready(Some(Err(e))) => {
-                        error!(error = e.to_string(), "Failed to check for peers to ping")
+                        error!(error = e.to_string(), "Failed to check for peers to ping");
                     }
                     Poll::Ready(None) | Poll::Pending => break,
                 }

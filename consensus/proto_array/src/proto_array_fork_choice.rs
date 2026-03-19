@@ -1021,7 +1021,7 @@ impl ProtoArrayForkChoice {
                 // There are no balance changes required if the node was either valid or
                 // optimistic.
                 ExecutionStatus::Valid(block_hash) | ExecutionStatus::Optimistic(block_hash) => {
-                    node.execution_status = ExecutionStatus::Optimistic(block_hash)
+                    node.execution_status = ExecutionStatus::Optimistic(block_hash);
                 }
                 // An irrelevant node cannot become optimistic, this is a no-op.
                 ExecutionStatus::Irrelevant(_) => (),
@@ -2322,7 +2322,7 @@ mod test_compute_deltas {
                     root: i,
                     parent_root: i - 1,
                 },
-            )
+            );
         }
 
         let last_slot_of_epoch_0 = MainnetEthSpec::slots_per_epoch() - 1;

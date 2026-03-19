@@ -210,7 +210,7 @@ where
     }
 
     fn ssz_append(&self, buf: &mut Vec<u8>) {
-        self.vec.ssz_append(buf)
+        self.vec.ssz_append(buf);
     }
 
     fn ssz_fixed_len() -> usize {

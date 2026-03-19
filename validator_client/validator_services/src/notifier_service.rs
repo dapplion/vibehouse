@@ -66,14 +66,14 @@ pub async fn notify<S: ValidatorStore, T: SlotClock + 'static>(
             available = num_available,
             synced = num_synced,
             "Connected to beacon node(s)"
-        )
+        );
     } else {
         error!(
             total = num_total,
             available = num_available,
             synced = num_synced,
             "No synced beacon nodes"
-        )
+        );
     }
     if num_synced_fallback > 0 {
         set_gauge(&validator_metrics::ETH2_FALLBACK_CONNECTED, 1);
@@ -116,14 +116,14 @@ pub async fn notify<S: ValidatorStore, T: SlotClock + 'static>(
             info!(
                 doppelganger_detecting_validators,
                 "Listening for doppelgangers"
-            )
+            );
         }
 
         if total_validators == 0 {
             info!(
                 msg = "see `vibehouse vm create --help` or the HTTP API documentation",
                 "No validators present"
-            )
+            );
         } else if total_validators == attesting_validators {
             info!(
                 current_epoch_proposers = proposing_validators,

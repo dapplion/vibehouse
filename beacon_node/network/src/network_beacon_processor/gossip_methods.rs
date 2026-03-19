@@ -175,7 +175,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             action,
             source: ReportSource::Gossipsub,
             msg,
-        })
+        });
     }
 
     /// Send a message on `message_tx` that the `message_id` sent by `peer_id` should be propagated on
@@ -194,7 +194,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             propagation_source,
             message_id,
             validation_result,
-        })
+        });
     }
 
     /* Processing functions */
@@ -281,7 +281,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 results = results.len(),
                 packages = packages.len(),
                 "Batch attestation result mismatch"
-            )
+            );
         }
 
         // Map the results into a new `Vec` so that `results` no longer holds a reference to
@@ -377,7 +377,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                                 %peer_id,
                                 ?beacon_block_root,
                                 "Attestation invalid for fork choice"
-                            )
+                            );
                         }
                         e => error!(
                             reason = ?e,
@@ -397,7 +397,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                         %peer_id,
                         ?beacon_block_root,
                         "Attestation invalid for agg pool"
-                    )
+                    );
                 }
 
                 metrics::inc_counter(
@@ -499,7 +499,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 results = results.len(),
                 packages = packages.len(),
                 "Batch agg. attestation result mismatch"
-            )
+            );
         }
 
         // Map the results into a new `Vec` so that `results` no longer holds a reference to
@@ -582,7 +582,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                                 %peer_id,
                                 ?beacon_block_root,
                                 "Aggregate invalid for fork choice"
-                            )
+                            );
                         }
                         e => error!(
                             reason = ?e,
@@ -599,7 +599,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                         %peer_id,
                         ?beacon_block_root,
                         "Attestation invalid for op pool"
-                    )
+                    );
                 }
 
                 metrics::inc_counter(
@@ -685,7 +685,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     gossip_verified_data_column,
                     seen_duration,
                 )
-                .await
+                .await;
             }
             Err(err) => {
                 match err {
@@ -893,7 +893,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     );
                 }
                 self.process_gossip_verified_blob(peer_id, gossip_verified_blob, seen_duration)
-                    .await
+                    .await;
             }
             Err(err) => {
                 match err {
@@ -1539,7 +1539,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                         ?block_root,
                         location = "block gossip",
                         "Failed to defer block import"
-                    )
+                    );
                 }
                 None
             }
@@ -1582,7 +1582,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             async move {
                 self_clone
                     .fetch_engine_blobs_and_publish(block_clone, block_root, publish_blobs)
-                    .await
+                    .await;
             }
             .instrument(current_span),
             "fetch_blobs_gossip",
@@ -1617,7 +1617,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                         source = "gossip",
                         ?block_root,
                         "Failed to inform block import"
-                    )
+                    );
                 };
 
                 debug!(
@@ -2031,7 +2031,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 reason = ?e,
                 %peer_id,
                 "Sync committee signature invalid for agg pool"
-            )
+            );
         }
 
         metrics::inc_counter(&metrics::BEACON_PROCESSOR_SYNC_MESSAGE_IMPORTED_TOTAL);
@@ -2092,7 +2092,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 reason = ?e,
                 %peer_id,
                 "Sync contribution invalid for op pool"
-            )
+            );
         }
         metrics::inc_counter(&metrics::BEACON_PROCESSOR_SYNC_CONTRIBUTION_IMPORTED_TOTAL);
     }
@@ -2202,7 +2202,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                                             light_client_optimistic_update,
                                             false, // Do not reprocess this message again.
                                             seen_timestamp,
-                                        )
+                                        );
                                     }),
                                 },
                             );
@@ -2252,7 +2252,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                             peer_id,
                             PeerAction::HighToleranceError,
                             "light_client_gossip_error",
-                        )
+                        );
                     }
                     LightClientOptimisticUpdateError::TooEarly => {
                         metrics::register_optimistic_update_error(&e);
@@ -2276,7 +2276,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                             %peer_id,
                             error = ?e,
                             "Light client error constructing optimistic update"
-                        )
+                        );
                     }
                     LightClientOptimisticUpdateError::Ignore => {}
                 }
@@ -2544,7 +2544,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                         *beacon_block_root,
                     ))
                     .unwrap_or_else(|_| {
-                        warn!(msg = "MissingEnvelope", "Failed to send to sync service")
+                        warn!(msg = "MissingEnvelope", "Failed to send to sync service");
                     });
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
                 return;
@@ -2582,7 +2582,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                             *beacon_block_root,
                         ))
                         .unwrap_or_else(|_| {
-                            warn!(msg = "UnknownBlockHash", "Failed to send to sync service")
+                            warn!(msg = "UnknownBlockHash", "Failed to send to sync service");
                         });
                     let message_id_clone = message_id.clone();
                     let msg = match failed_att {
@@ -2603,7 +2603,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                                         attestation,
                                         false, // Do not allow this attestation to be re-processed beyond this point.
                                         seen_timestamp,
-                                    )
+                                    );
                                 }),
                             })
                         }
@@ -2628,7 +2628,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                                         should_import,
                                         false, // Do not allow this attestation to be re-processed beyond this point.
                                         seen_timestamp,
-                                    )
+                                    );
                                 }),
                             })
                         }
@@ -3293,7 +3293,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         )
         .is_ok();
 
-        self.propagate_if_timely(is_timely, message_id, peer_id)
+        self.propagate_if_timely(is_timely, message_id, peer_id);
     }
 
     /// If a sync committee signature or sync committee contribution is still valid with respect to
@@ -3310,7 +3310,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             .now()
             .is_some_and(|current_slot| sync_message_slot == current_slot);
 
-        self.propagate_if_timely(is_timely, message_id, peer_id)
+        self.propagate_if_timely(is_timely, message_id, peer_id);
     }
 
     /// Stores a block as a SSZ file, if and where `invalid_block_storage` dictates.
@@ -3352,14 +3352,14 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                         ?block_root,
                         slot = %block.slot(),
                         "Failed to store invalid block/error"
-                    )
+                    );
                 } else {
                     info!(
                         ?path,
                         ?block_root,
                         slot = %block.slot(),
                         "Stored invalid block/error"
-                    )
+                    );
                 }
             };
 
@@ -4293,7 +4293,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 }
 
                 self.process_gossip_verified_execution_proof(peer_id, verified_proof)
-                    .await
+                    .await;
             }
             Err(err) => match err {
                 GossipExecutionProofError::UnknownBlockRoot { .. } => {

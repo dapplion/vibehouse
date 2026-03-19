@@ -305,7 +305,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
                 let mut column_to_peer_id: HashMap<u64, PeerId> = HashMap::new();
                 for req in requests.values() {
                     let data = req.to_finished()?;
-                    data_columns.extend(data.iter().cloned())
+                    data_columns.extend(data.iter().cloned());
                 }
 
                 // An "attempt" is complete here after we have received a response for all the
@@ -334,7 +334,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
                     exceeded_retries: _,
                 }) = &resp
                 {
-                    for (_, peer) in faulty_peers.iter() {
+                    for (_, peer) in faulty_peers {
                         // find the req id associated with the peer and
                         // delete it from the entries as we are going to make
                         // a separate attempt for those components.
@@ -396,7 +396,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
             responses.push(
                 RpcBlock::new(None, block, Some(blobs))
                     .map_err(|e| CouplingError::BlobPeerFailure(format!("{e:?}")))?,
-            )
+            );
         }
 
         // if accumulated sidecars is not empty, log an error but return the responses

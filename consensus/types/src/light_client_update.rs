@@ -573,7 +573,7 @@ impl<E: EthSpec> LightClientUpdate<E> {
 }
 
 fn is_empty_branch(branch: &[Hash256]) -> bool {
-    for index in branch.iter() {
+    for index in branch {
         if *index != Hash256::default() {
             return false;
         }

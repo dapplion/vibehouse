@@ -211,7 +211,7 @@ impl BlockTimesCache {
             slot,
             |timestamps| &mut timestamps.consensus_verified,
             timestamp,
-        )
+        );
     }
 
     pub fn set_time_executed(&mut self, block_root: BlockRoot, slot: Slot, timestamp: Duration) {
@@ -220,7 +220,7 @@ impl BlockTimesCache {
             slot,
             |timestamps| &mut timestamps.executed,
             timestamp,
-        )
+        );
     }
 
     pub fn set_time_started_execution(
@@ -234,7 +234,7 @@ impl BlockTimesCache {
             slot,
             |timestamps| &mut timestamps.started_execution,
             timestamp,
-        )
+        );
     }
 
     pub fn set_time_attestable(&mut self, block_root: BlockRoot, slot: Slot, timestamp: Duration) {
@@ -243,7 +243,7 @@ impl BlockTimesCache {
             slot,
             |timestamps| &mut timestamps.attestable,
             timestamp,
-        )
+        );
     }
 
     pub fn set_time_imported(&mut self, block_root: BlockRoot, slot: Slot, timestamp: Duration) {
@@ -252,7 +252,7 @@ impl BlockTimesCache {
             slot,
             |timestamps| &mut timestamps.imported,
             timestamp,
-        )
+        );
     }
 
     pub fn set_time_set_as_head(&mut self, block_root: BlockRoot, slot: Slot, timestamp: Duration) {
@@ -261,7 +261,7 @@ impl BlockTimesCache {
             slot,
             |timestamps| &mut timestamps.set_as_head,
             timestamp,
-        )
+        );
     }
 
     pub fn get_block_delays(

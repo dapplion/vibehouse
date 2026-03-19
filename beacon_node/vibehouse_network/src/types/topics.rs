@@ -451,8 +451,8 @@ mod tests {
     fn topics() -> Vec<String> {
         let mut topics = Vec::new();
         let fork_digest: [u8; 4] = [1, 2, 3, 4];
-        for encoding in [GossipEncoding::SSZSnappy].iter() {
-            for kind in [
+        for encoding in &[GossipEncoding::SSZSnappy] {
+            for kind in &[
                 BeaconBlock,
                 BeaconAggregateAndProof,
                 SignedContributionAndProof,
@@ -461,9 +461,7 @@ mod tests {
                 VoluntaryExit,
                 ProposerSlashing,
                 AttesterSlashing,
-            ]
-            .iter()
-            {
+            ] {
                 topics.push(GossipTopic::new(kind.clone(), encoding.clone(), fork_digest).into());
             }
         }
@@ -476,7 +474,7 @@ mod tests {
 
     #[test]
     fn test_decode() {
-        for topic in topics().iter() {
+        for topic in &topics() {
             assert!(GossipTopic::decode(topic.as_str()).is_ok());
         }
     }

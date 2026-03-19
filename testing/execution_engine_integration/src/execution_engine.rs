@@ -54,7 +54,7 @@ impl<E> Drop for ExecutionEngine<E> {
     fn drop(&mut self) {
         // Ensure the EE process is killed on drop.
         if let Err(e) = self.child.kill() {
-            eprintln!("failed to kill child: {:?}", e)
+            eprintln!("failed to kill child: {:?}", e);
         }
     }
 }

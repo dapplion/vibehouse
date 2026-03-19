@@ -164,7 +164,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> AttestationService<S, 
                     sleep(duration_to_next_slot + attestation_delay).await;
 
                     if let Err(e) = self.spawn_attestation_tasks() {
-                        crit!(error = e, "Failed to spawn attestation tasks")
+                        crit!(error = e, "Failed to spawn attestation tasks");
                     } else {
                         trace!("Spawned attestation tasks");
                     }
@@ -303,7 +303,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> AttestationService<S, 
                     committee_index,
                     slot = slot.as_u64(),
                     "Error during attestation routine"
-                )
+                );
             })?;
 
         drop(attestations_timer);
@@ -339,7 +339,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> AttestationService<S, 
                     committee_index,
                     slot = slot.as_u64(),
                     "Error during attestation routine"
-                )
+                );
             })?;
         }
 
@@ -730,10 +730,10 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> AttestationService<S, 
                     move || {
                         attestation_service
                             .validator_store
-                            .prune_slashing_protection_db(current_epoch, false)
+                            .prune_slashing_protection_db(current_epoch, false);
                     },
                     "slashing_protection_pruning",
-                )
+                );
             },
             "slashing_protection_pre_pruning",
         );

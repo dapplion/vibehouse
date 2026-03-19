@@ -77,13 +77,13 @@ fn massive_skips() {
                 BeaconStateError::InsufficientValidators
             )),
             "should return error indicating that validators have been slashed out"
-        )
+        );
     } else {
         assert_eq!(
             error,
             SlotProcessingError::BeaconStateError(BeaconStateError::InsufficientValidators),
             "should return error indicating that validators have been slashed out"
-        )
+        );
     }
 }
 
@@ -141,14 +141,14 @@ async fn iterators() {
             x[1].1,
             x[0].1 + 1,
             "block root slots should be increasing by one"
-        )
+        );
     });
     state_roots.windows(2).for_each(|x| {
         assert_eq!(
             x[1].1,
             x[0].1 + 1,
             "state root slots should be increasing by one"
-        )
+        );
     });
 
     let head = harness.chain.head_snapshot();
@@ -548,12 +548,12 @@ async fn unaggregated_attestations_added_to_fork_choice_some_none() {
                 "Latest message epoch for {} should be equal to epoch {}.",
                 validator,
                 slot
-            )
+            );
         } else {
             assert!(
                 latest_message.is_none(),
                 "Latest message slot should be None."
-            )
+            );
         }
     }
 }
@@ -608,7 +608,7 @@ async fn attestations_with_increasing_slots() {
                     earliest_permissible_slot,
                 }
                 if attestation_slot == expected_attestation_slot && earliest_permissible_slot == expected_earliest_permissible_slot
-            ))
+            ));
         } else {
             res.expect("should process attestation");
         }
@@ -730,7 +730,7 @@ async fn run_skip_slot_test(skip_slots: u64) {
 #[tokio::test]
 async fn produces_and_processes_with_genesis_skip_slots() {
     for i in 0..MinimalEthSpec::slots_per_epoch() * 4 {
-        run_skip_slot_test(i).await
+        run_skip_slot_test(i).await;
     }
 }
 

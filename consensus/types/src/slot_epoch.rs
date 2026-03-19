@@ -201,7 +201,7 @@ mod epoch_tests {
         assert_eq!(slots.len(), slots_per_epoch as usize);
 
         for i in 0..slots_per_epoch {
-            assert_eq!(Slot::from(i), slots[i as usize])
+            assert_eq!(Slot::from(i), slots[i as usize]);
         }
     }
 

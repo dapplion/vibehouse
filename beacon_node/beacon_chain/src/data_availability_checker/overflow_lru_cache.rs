@@ -133,7 +133,7 @@ impl<E: EthSpec> PendingComponents<E> {
 
     /// Inserts an executed block into the cache.
     pub fn insert_executed_block(&mut self, block: DietAvailabilityPendingExecutedBlock<E>) {
-        self.block = Some(CachedBlock::Executed(Box::new(block)))
+        self.block = Some(CachedBlock::Executed(Box::new(block)));
     }
 
     /// Inserts a pre-execution block into the cache.
@@ -144,7 +144,7 @@ impl<E: EthSpec> PendingComponents<E> {
         source: BlockImportSource,
     ) {
         if self.block.is_none() {
-            self.block = Some(CachedBlock::PreExecution(block, source))
+            self.block = Some(CachedBlock::PreExecution(block, source));
         }
     }
 
@@ -180,10 +180,10 @@ impl<E: EthSpec> PendingComponents<E> {
             if let Some(block_commitment) = block_commitment_opt
                 && block_commitment == *blob.get_commitment()
             {
-                self.insert_blob_at_index(index, blob)
+                self.insert_blob_at_index(index, blob);
             }
         } else if !self.blob_exists(index) {
-            self.insert_blob_at_index(index, blob)
+            self.insert_blob_at_index(index, blob);
         }
     }
 
@@ -657,7 +657,7 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
             let pending_components = write_lock.get_or_insert_mut(block_root, || {
                 PendingComponents::empty(block_root, self.spec.max_blobs_per_block(epoch) as usize)
             });
-            update_fn(pending_components)?
+            update_fn(pending_components)?;
         }
 
         RwLockReadGuard::try_map(RwLockWriteGuard::downgrade(write_lock), |cache| {
@@ -1465,7 +1465,7 @@ mod pending_components_tests {
     }
 
     pub fn assert_empty_blob_cache(cache: PendingComponents<E>) {
-        for blob in cache.get_cached_blobs().iter() {
+        for blob in cache.get_cached_blobs() {
             assert!(blob.is_none());
         }
     }

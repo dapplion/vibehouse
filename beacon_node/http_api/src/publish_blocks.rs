@@ -626,7 +626,7 @@ async fn post_block_import_logging_and_response<T: BeaconChainTypes>(
             // blocks built with builders we consider the broadcast time to be
             // when the blinded block is published to the builder.
             if is_locally_built_block {
-                late_block_logging(chain, seen_timestamp, block.message(), root, "local")
+                late_block_logging(chain, seen_timestamp, block.message(), root, "local");
             }
             Ok(StatusCode::OK.into_response())
         }
@@ -833,7 +833,7 @@ fn late_block_logging<T: BeaconChainTypes, P: AbstractExecPayload<T::EthSpec>>(
             slot = %block.slot(),
             ?root,
             "Block was broadcast too late"
-        )
+        );
     } else if delay >= delayed_threshold {
         error!(
             msg = "system may be overloaded, block may be orphaned",
@@ -842,7 +842,7 @@ fn late_block_logging<T: BeaconChainTypes, P: AbstractExecPayload<T::EthSpec>>(
             slot = %block.slot(),
             ?root,
             "Block broadcast was delayed"
-        )
+        );
     }
 }
 

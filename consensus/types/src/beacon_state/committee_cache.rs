@@ -365,7 +365,7 @@ where
 
     for (index, validator) in iter.enumerate() {
         if validator.is_active_at(epoch) {
-            active.push(index)
+            active.push(index);
         }
     }
 
@@ -406,7 +406,7 @@ impl Encode for NonZeroUsizeOption {
     }
 
     fn ssz_append(&self, buf: &mut Vec<u8>) {
-        four_byte_option_non_zero_usize::encode::ssz_append(&self.0, buf)
+        four_byte_option_non_zero_usize::encode::ssz_append(&self.0, buf);
     }
 
     fn as_ssz_bytes(&self) -> Vec<u8> {

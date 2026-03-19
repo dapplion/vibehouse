@@ -255,7 +255,7 @@ impl Keystore {
     ///
     /// Note: this does not save the keystore to disk.
     pub fn set_description(&mut self, description: String) {
-        self.json.description = Some(description)
+        self.json.description = Some(description);
     }
 
     /// Returns the pubkey for the keystore, parsed as a `PublicKey` if it parses.

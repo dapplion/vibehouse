@@ -3093,7 +3093,7 @@ async fn gloas_block_production_filters_attestations_by_parent_root() {
         .expect("should have payload_attestations");
 
     // Only the matching attestation should be included
-    for att in payload_attestations.iter() {
+    for att in payload_attestations {
         assert_eq!(
             att.data.beacon_block_root, head_root,
             "only attestations matching parent root should be included"

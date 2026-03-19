@@ -1031,7 +1031,7 @@ async fn invalid_signature_attestation() {
     assert!(
         checked_attestation,
         "the test should check an attestation signature"
-    )
+    );
 }
 
 #[tokio::test]
@@ -1571,7 +1571,7 @@ async fn verify_block_for_gossip_doppelganger_detection() {
         .await
         .unwrap();
 
-    for att in attestations.iter() {
+    for att in &attestations {
         let epoch = att.data().target.epoch;
         let indexed_attestation = match att {
             Attestation::Base(att) => {

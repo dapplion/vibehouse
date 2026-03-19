@@ -316,7 +316,7 @@ impl<T> FifoQueue<T> {
                 queue_len = self.max_length,
                 queue = item_desc,
                 "Work queue is full"
-            )
+            );
         } else {
             self.queue.push_back(item);
         }
@@ -1360,7 +1360,7 @@ impl<E: EthSpec> BeaconProcessor<E> {
                                     error!(
                                         error = ?e,
                                         "Failed to reprocess work event"
-                                    )
+                                    );
                                 }
                             }
                             _ if can_spawn => self.spawn_worker(work, created_timestamp, idle_tx),
@@ -1378,100 +1378,100 @@ impl<E: EthSpec> BeaconProcessor<E> {
                                 crit!(
                                     work_type = "GossipAggregateBatch",
                                     "Unsupported inbound event"
-                                )
+                                );
                             }
                             Work::GossipBlock { .. } => gossip_block_queue.push(work, work_id),
                             Work::GossipBlobSidecar { .. } => gossip_blob_queue.push(work, work_id),
                             Work::GossipDataColumnSidecar { .. } => {
-                                gossip_data_column_queue.push(work, work_id)
+                                gossip_data_column_queue.push(work, work_id);
                             }
                             Work::DelayedImportBlock { .. } => {
-                                delayed_block_queue.push(work, work_id)
+                                delayed_block_queue.push(work, work_id);
                             }
                             Work::GossipVoluntaryExit { .. } => {
-                                gossip_voluntary_exit_queue.push(work, work_id)
+                                gossip_voluntary_exit_queue.push(work, work_id);
                             }
                             Work::GossipProposerSlashing { .. } => {
-                                gossip_proposer_slashing_queue.push(work, work_id)
+                                gossip_proposer_slashing_queue.push(work, work_id);
                             }
                             Work::GossipAttesterSlashing { .. } => {
-                                gossip_attester_slashing_queue.push(work, work_id)
+                                gossip_attester_slashing_queue.push(work, work_id);
                             }
                             Work::GossipExecutionBid { .. } => {
-                                gossip_execution_bid_queue.push(work, work_id)
+                                gossip_execution_bid_queue.push(work, work_id);
                             }
                             Work::GossipExecutionPayload { .. }
                             | Work::RpcPayloadEnvelope { .. } => {
-                                gossip_execution_payload_queue.push(work, work_id)
+                                gossip_execution_payload_queue.push(work, work_id);
                             }
                             Work::GossipPayloadAttestation { .. } => {
-                                gossip_payload_attestation_queue.push(work, work_id)
+                                gossip_payload_attestation_queue.push(work, work_id);
                             }
                             Work::GossipProposerPreferences { .. } => {
-                                gossip_proposer_preferences_queue.push(work, work_id)
+                                gossip_proposer_preferences_queue.push(work, work_id);
                             }
                             Work::GossipExecutionProof { .. } => {
-                                gossip_execution_proof_queue.push(work, work_id)
+                                gossip_execution_proof_queue.push(work, work_id);
                             }
                             Work::GossipSyncSignature { .. } => sync_message_queue.push(work),
                             Work::GossipSyncContribution { .. } => {
-                                sync_contribution_queue.push(work)
+                                sync_contribution_queue.push(work);
                             }
                             Work::GossipLightClientFinalityUpdate { .. } => {
-                                lc_gossip_finality_update_queue.push(work, work_id)
+                                lc_gossip_finality_update_queue.push(work, work_id);
                             }
                             Work::GossipLightClientOptimisticUpdate { .. } => {
-                                lc_gossip_optimistic_update_queue.push(work, work_id)
+                                lc_gossip_optimistic_update_queue.push(work, work_id);
                             }
                             Work::RpcBlock { .. } | Work::IgnoredRpcBlock { .. } => {
-                                rpc_block_queue.push(work, work_id)
+                                rpc_block_queue.push(work, work_id);
                             }
                             Work::RpcBlobs { .. } => rpc_blob_queue.push(work, work_id),
                             Work::RpcCustodyColumn { .. } => {
-                                rpc_custody_column_queue.push(work, work_id)
+                                rpc_custody_column_queue.push(work, work_id);
                             }
                             Work::ColumnReconstruction(_) => column_reconstruction_queue.push(work),
                             Work::ChainSegment { .. } => chain_segment_queue.push(work, work_id),
                             Work::ChainSegmentBackfill { .. } => {
-                                backfill_chain_segment.push(work, work_id)
+                                backfill_chain_segment.push(work, work_id);
                             }
                             Work::Status { .. } => status_queue.push(work, work_id),
                             Work::BlocksByRangeRequest { .. } => bbrange_queue.push(work, work_id),
                             Work::BlocksByRootsRequest { .. } => bbroots_queue.push(work, work_id),
                             Work::BlobsByRangeRequest { .. } => blbrange_queue.push(work, work_id),
                             Work::LightClientBootstrapRequest { .. } => {
-                                lc_bootstrap_queue.push(work, work_id)
+                                lc_bootstrap_queue.push(work, work_id);
                             }
                             Work::LightClientOptimisticUpdateRequest { .. } => {
-                                lc_rpc_optimistic_update_queue.push(work, work_id)
+                                lc_rpc_optimistic_update_queue.push(work, work_id);
                             }
                             Work::LightClientFinalityUpdateRequest { .. } => {
-                                lc_rpc_finality_update_queue.push(work, work_id)
+                                lc_rpc_finality_update_queue.push(work, work_id);
                             }
                             Work::LightClientUpdatesByRangeRequest { .. } => {
-                                lc_update_range_queue.push(work, work_id)
+                                lc_update_range_queue.push(work, work_id);
                             }
                             Work::UnknownBlockAttestation { .. } => {
-                                unknown_block_attestation_queue.push(work)
+                                unknown_block_attestation_queue.push(work);
                             }
                             Work::UnknownBlockAggregate { .. } => {
-                                unknown_block_aggregate_queue.push(work)
+                                unknown_block_aggregate_queue.push(work);
                             }
                             Work::GossipBlsToExecutionChange { .. } => {
-                                gossip_bls_to_execution_change_queue.push(work, work_id)
+                                gossip_bls_to_execution_change_queue.push(work, work_id);
                             }
                             Work::BlobsByRootsRequest { .. } => blbroots_queue.push(work, work_id),
                             Work::ExecutionPayloadEnvelopesByRootRequest { .. } => {
-                                epbroots_queue.push(work, work_id)
+                                epbroots_queue.push(work, work_id);
                             }
                             Work::DataColumnsByRootsRequest { .. } => {
-                                dcbroots_queue.push(work, work_id)
+                                dcbroots_queue.push(work, work_id);
                             }
                             Work::DataColumnsByRangeRequest { .. } => {
-                                dcbrange_queue.push(work, work_id)
+                                dcbrange_queue.push(work, work_id);
                             }
                             Work::UnknownLightClientOptimisticUpdate { .. } => {
-                                unknown_light_client_update_queue.push(work, work_id)
+                                unknown_light_client_update_queue.push(work, work_id);
                             }
                             Work::ApiRequestP0 { .. } => api_request_p0_queue.push(work, work_id),
                             Work::ApiRequestP1 { .. } => api_request_p1_queue.push(work, work_id),
@@ -1559,7 +1559,7 @@ impl<E: EthSpec> BeaconProcessor<E> {
                         msg = "the system has insufficient resources for load",
                         queue_len = aggregate_queue.max_length,
                         "Aggregate attestation queue full"
-                    )
+                    );
                 }
 
                 if attestation_queue.is_full() && attestation_debounce.elapsed() {
@@ -1567,7 +1567,7 @@ impl<E: EthSpec> BeaconProcessor<E> {
                         msg = "the system has insufficient resources for load",
                         queue_len = attestation_queue.max_length,
                         "Attestation queue full"
-                    )
+                    );
                 }
             }
         };
@@ -1668,7 +1668,7 @@ impl<E: EthSpec> BeaconProcessor<E> {
             Work::UnknownBlockAttestation { process_fn }
             | Work::UnknownBlockAggregate { process_fn }
             | Work::UnknownLightClientOptimisticUpdate { process_fn, .. } => {
-                task_spawner.spawn_blocking(process_fn)
+                task_spawner.spawn_blocking(process_fn);
             }
             Work::DelayedImportBlock {
                 beacon_block_slot: _,
@@ -1690,17 +1690,17 @@ impl<E: EthSpec> BeaconProcessor<E> {
             | Work::ExecutionPayloadEnvelopesByRootRequest(process_fn)
             | Work::DataColumnsByRootsRequest(process_fn)
             | Work::DataColumnsByRangeRequest(process_fn) => {
-                task_spawner.spawn_blocking(process_fn)
+                task_spawner.spawn_blocking(process_fn);
             }
             Work::BlocksByRangeRequest(work) | Work::BlocksByRootsRequest(work) => {
-                task_spawner.spawn_async(work)
+                task_spawner.spawn_async(work);
             }
             Work::ChainSegmentBackfill(process_fn) => {
                 if self.config.enable_backfill_rate_limiting {
-                    task_spawner.spawn_blocking_with_rayon(RayonPoolType::LowPriority, process_fn)
+                    task_spawner.spawn_blocking_with_rayon(RayonPoolType::LowPriority, process_fn);
                 } else {
                     // use the global rayon thread pool if backfill rate limiting is disabled.
-                    task_spawner.spawn_blocking(process_fn)
+                    task_spawner.spawn_blocking(process_fn);
                 }
             }
             Work::ApiRequestP0(process_fn) | Work::ApiRequestP1(process_fn) => match process_fn {
@@ -1726,7 +1726,7 @@ impl<E: EthSpec> BeaconProcessor<E> {
             | Work::LightClientOptimisticUpdateRequest(process_fn)
             | Work::LightClientFinalityUpdateRequest(process_fn)
             | Work::LightClientUpdatesByRangeRequest(process_fn) => {
-                task_spawner.spawn_blocking(process_fn)
+                task_spawner.spawn_blocking(process_fn);
             }
             Work::Reprocess(_) => {}
         };
@@ -1751,10 +1751,10 @@ impl TaskSpawner {
         self.executor.spawn(
             async {
                 task.await;
-                drop(self.send_idle_on_drop)
+                drop(self.send_idle_on_drop);
             },
             WORKER_TASK_NAME,
-        )
+        );
     }
 
     /// Spawn a blocking task, dropping the `SendOnDrop` after the task has completed.
@@ -1765,10 +1765,10 @@ impl TaskSpawner {
         self.executor.spawn_blocking(
             || {
                 task();
-                drop(self.send_idle_on_drop)
+                drop(self.send_idle_on_drop);
             },
             WORKER_TASK_NAME,
-        )
+        );
     }
 
     /// Spawns a blocking task on a rayon thread pool, dropping the `SendOnDrop` after task completion.
@@ -1779,11 +1779,11 @@ impl TaskSpawner {
         self.executor.spawn_blocking_with_rayon(
             move || {
                 task();
-                drop(self.send_idle_on_drop)
+                drop(self.send_idle_on_drop);
             },
             rayon_pool_type,
             WORKER_TASK_NAME,
-        )
+        );
     }
 }
 
@@ -1816,7 +1816,7 @@ impl Drop for SendOnDrop {
                 msg = "did not free worker, shutdown may be underway",
                 error = %e,
                 "Unable to free worker"
-            )
+            );
         }
     }
 }

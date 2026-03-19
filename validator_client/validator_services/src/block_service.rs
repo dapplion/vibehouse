@@ -280,14 +280,14 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> BlockService<S, T> {
             trace!(
                 slot = slot.as_u64(),
                 "No local block proposers for this slot"
-            )
+            );
         } else if proposers.len() > 1 {
             error!(
                 action = "producing blocks for all proposers",
                 num_proposers = proposers.len(),
                 slot = slot.as_u64(),
                 "Multiple block proposers for this slot"
-            )
+            );
         }
 
         for validator_pubkey in proposers {
@@ -314,7 +314,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> BlockService<S, T> {
                     }
                 },
                 "block service",
-            )
+            );
         }
         Ok(())
     }
@@ -513,7 +513,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> BlockService<S, T> {
                     .map(|_| ())
                     .or_else(|e| {
                         handle_block_post_error(e, signed_block.signed_block().message().slot())
-                    })?
+                    })?;
             }
             SignedBlock::Blinded(signed_block) => {
                 let _post_timer = validator_metrics::start_timer_vec(

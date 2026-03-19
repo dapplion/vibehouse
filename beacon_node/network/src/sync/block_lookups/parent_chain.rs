@@ -193,6 +193,6 @@ mod tests {
 
     #[test]
     fn find_oldest_fork_ancestor_simple_case() {
-        find_oldest_fork_ancestor_test(&[n(0), np(0, 1), np(1, 2), np(0, 3)], h(1))
+        find_oldest_fork_ancestor_test(&[n(0), np(0, 1), np(1, 2), np(0, 3)], h(1));
     }
 }

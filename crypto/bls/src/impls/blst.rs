@@ -74,7 +74,7 @@ pub fn verify_signature_sets<'a>(
                 return false;
             }
             // Convert the aggregate signature into a signature.
-            sigs.push(point.0.to_signature())
+            sigs.push(point.0.to_signature());
         } else {
             // Any "empty" signature should cause a signature failure.
             return false;
@@ -234,7 +234,7 @@ impl TAggregateSignature<blst_core::PublicKey, BlstAggregatePublicKey, blst_core
     }
 
     fn add_assign_aggregate(&mut self, other: &Self) {
-        self.0.add_aggregate(&other.0)
+        self.0.add_aggregate(&other.0);
     }
 
     fn serialize(&self) -> [u8; SIGNATURE_BYTES_LEN] {

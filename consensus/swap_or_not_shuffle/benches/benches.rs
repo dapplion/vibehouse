@@ -15,12 +15,12 @@ fn shuffle_list(seed: &[u8], list_size: usize) -> Vec<usize> {
 fn shuffles(c: &mut Criterion) {
     c.bench_function("single swap", move |b| {
         let seed = vec![42; 32];
-        b.iter(|| black_box(compute_shuffled_index(0, 10, &seed, SHUFFLE_ROUND_COUNT)))
+        b.iter(|| black_box(compute_shuffled_index(0, 10, &seed, SHUFFLE_ROUND_COUNT)));
     });
 
     c.bench_function("whole list of size 8", move |b| {
         let seed = vec![42; 32];
-        b.iter(|| black_box(shuffle_list(&seed, 8)))
+        b.iter(|| black_box(shuffle_list(&seed, 8)));
     });
 
     for size in [8, 16, 512, 16_384] {
@@ -29,7 +29,7 @@ fn shuffles(c: &mut Criterion) {
             &size,
             move |b, &n| {
                 let seed = vec![42; 32];
-                b.iter(|| black_box(shuffle_list(&seed, n)))
+                b.iter(|| black_box(shuffle_list(&seed, n)));
             },
         );
     }
@@ -43,7 +43,7 @@ fn shuffles(c: &mut Criterion) {
             move |b, &n| {
                 let seed = vec![42; 32];
                 let list: Vec<usize> = (0..n).collect();
-                b.iter(|| black_box(fast_shuffle(list.clone(), SHUFFLE_ROUND_COUNT, &seed, true)))
+                b.iter(|| black_box(fast_shuffle(list.clone(), SHUFFLE_ROUND_COUNT, &seed, true)));
             },
         );
     }

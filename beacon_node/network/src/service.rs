@@ -577,7 +577,7 @@ impl<T: BeaconChainTypes> NetworkService<T> {
                         warn!(
                             error = %e,
                             "failed to send a shutdown signal"
-                        )
+                        );
                     });
             }
         }
@@ -688,7 +688,7 @@ impl<T: BeaconChainTypes> NetworkService<T> {
                         warn!(
                             error = %e,
                             "failed to send a shutdown signal"
-                        )
+                        );
                     }
                     return;
                 }
@@ -759,11 +759,11 @@ impl<T: BeaconChainTypes> NetworkService<T> {
         match msg {
             ValidatorSubscriptionMessage::AttestationSubscribe { subscriptions } => {
                 let subscriptions = subscriptions.into_iter().map(Subscription::Attestation);
-                self.subnet_service.validator_subscriptions(subscriptions)
+                self.subnet_service.validator_subscriptions(subscriptions);
             }
             ValidatorSubscriptionMessage::SyncCommitteeSubscribe { subscriptions } => {
                 let subscriptions = subscriptions.into_iter().map(Subscription::SyncCommittee);
-                self.subnet_service.validator_subscriptions(subscriptions)
+                self.subnet_service.validator_subscriptions(subscriptions);
             }
         }
     }
@@ -840,7 +840,7 @@ impl<T: BeaconChainTypes> NetworkService<T> {
                 info!(
                     epoch = ?current_epoch,
                     "BPO Fork Triggered"
-                )
+                );
             } else {
                 info!(
                     old_fork = ?fork_context.current_fork_name(),

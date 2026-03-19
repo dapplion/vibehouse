@@ -966,7 +966,7 @@ mod tests {
         assert_eq!(
             custody_context.custody_group_count_at_head(&spec),
             val_custody_units_1 + val_custody_units_2
-        )
+        );
     }
 
     #[test]

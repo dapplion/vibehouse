@@ -1274,53 +1274,53 @@ mod tests {
         });
         match req {
             RequestType::Status(status) => {
-                assert_eq!(decoded, RequestType::Status(status))
+                assert_eq!(decoded, RequestType::Status(status));
             }
             RequestType::Goodbye(goodbye) => {
-                assert_eq!(decoded, RequestType::Goodbye(goodbye))
+                assert_eq!(decoded, RequestType::Goodbye(goodbye));
             }
             RequestType::BlocksByRange(bbrange) => {
-                assert_eq!(decoded, RequestType::BlocksByRange(bbrange))
+                assert_eq!(decoded, RequestType::BlocksByRange(bbrange));
             }
             RequestType::BlocksByRoot(bbroot) => {
-                assert_eq!(decoded, RequestType::BlocksByRoot(bbroot))
+                assert_eq!(decoded, RequestType::BlocksByRoot(bbroot));
             }
             RequestType::BlobsByRange(blbrange) => {
-                assert_eq!(decoded, RequestType::BlobsByRange(blbrange))
+                assert_eq!(decoded, RequestType::BlobsByRange(blbrange));
             }
             RequestType::BlobsByRoot(bbroot) => {
-                assert_eq!(decoded, RequestType::BlobsByRoot(bbroot))
+                assert_eq!(decoded, RequestType::BlobsByRoot(bbroot));
             }
             RequestType::DataColumnsByRoot(dcbroot) => {
-                assert_eq!(decoded, RequestType::DataColumnsByRoot(dcbroot))
+                assert_eq!(decoded, RequestType::DataColumnsByRoot(dcbroot));
             }
             RequestType::DataColumnsByRange(dcbrange) => {
-                assert_eq!(decoded, RequestType::DataColumnsByRange(dcbrange))
+                assert_eq!(decoded, RequestType::DataColumnsByRange(dcbrange));
             }
             RequestType::Ping(ping) => {
-                assert_eq!(decoded, RequestType::Ping(ping))
+                assert_eq!(decoded, RequestType::Ping(ping));
             }
             RequestType::MetaData(metadata) => {
-                assert_eq!(decoded, RequestType::MetaData(metadata))
+                assert_eq!(decoded, RequestType::MetaData(metadata));
             }
             RequestType::LightClientBootstrap(light_client_bootstrap_request) => {
                 assert_eq!(
                     decoded,
                     RequestType::LightClientBootstrap(light_client_bootstrap_request)
-                )
+                );
             }
             RequestType::LightClientOptimisticUpdate | RequestType::LightClientFinalityUpdate => {}
             RequestType::LightClientUpdatesByRange(light_client_updates_by_range) => {
                 assert_eq!(
                     decoded,
                     RequestType::LightClientUpdatesByRange(light_client_updates_by_range)
-                )
+                );
             }
             RequestType::ExecutionPayloadEnvelopesByRoot(epbroots) => {
                 assert_eq!(
                     decoded,
                     RequestType::ExecutionPayloadEnvelopesByRoot(epbroots)
-                )
+                );
             }
         }
     }
@@ -2011,7 +2011,7 @@ mod tests {
                 &chain_spec,
             ),
             Ok(None)
-        )
+        );
     }
 
     #[test]
@@ -2030,7 +2030,7 @@ mod tests {
             RequestType::DataColumnsByRange(dcbrange_request()),
             RequestType::MetaData(MetadataRequest::new_v2()),
         ];
-        for req in requests.iter() {
+        for req in requests {
             for fork_name in ForkName::list_all() {
                 encode_then_decode_request(req.clone(), fork_name, &chain_spec);
             }

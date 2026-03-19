@@ -215,7 +215,7 @@ mod tests {
         let indexed_vote_first = create_indexed_attestation(3, 1);
         let indexed_vote_second = create_indexed_attestation(3, 2);
 
-        assert!(indexed_vote_first.is_double_vote(&indexed_vote_second))
+        assert!(indexed_vote_first.is_double_vote(&indexed_vote_second));
     }
 
     #[test]

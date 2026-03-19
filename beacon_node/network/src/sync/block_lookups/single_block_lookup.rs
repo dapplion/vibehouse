@@ -130,7 +130,7 @@ impl<T: BeaconChainTypes> SingleBlockLookup<T> {
     /// Mark this lookup as awaiting a parent lookup from being processed. Meanwhile don't send
     /// components for processing.
     pub fn set_awaiting_parent(&mut self, parent_root: Hash256) {
-        self.awaiting_parent = Some(parent_root)
+        self.awaiting_parent = Some(parent_root);
     }
 
     /// Mark this lookup as no longer awaiting a parent lookup. Components can be sent for
@@ -256,10 +256,10 @@ impl<T: BeaconChainTypes> SingleBlockLookup<T> {
         match &self.component_requests {
             ComponentRequests::WaitingForBlock => {} // do nothing
             ComponentRequests::ActiveBlobRequest(_, expected_blobs) => {
-                self.continue_request::<BlobRequestState<T::EthSpec>>(cx, *expected_blobs)?
+                self.continue_request::<BlobRequestState<T::EthSpec>>(cx, *expected_blobs)?;
             }
             ComponentRequests::ActiveCustodyRequest(_) => {
-                self.continue_request::<CustodyRequestState<T::EthSpec>>(cx, 0)?
+                self.continue_request::<CustodyRequestState<T::EthSpec>>(cx, 0)?;
             }
             ComponentRequests::NotNeeded { .. } => {} // do nothing
         }
@@ -304,13 +304,13 @@ impl<T: BeaconChainTypes> SingleBlockLookup<T> {
                     // Lookup sync event safety: If make_request returns `RequestSent`, we are
                     // guaranteed that `BlockLookups::on_download_response` will be called exactly
                     // with this `req_id`.
-                    request.get_state_mut().on_download_start(req_id)?
+                    request.get_state_mut().on_download_start(req_id)?;
                 }
                 LookupRequestResult::NoRequestNeeded(reason) => {
                     // Lookup sync event safety: Advances this request to the terminal `Processed`
                     // state. If all requests reach this state, the request is marked as completed
                     // in `Self::continue_requests`.
-                    request.get_state_mut().on_completed_request(reason)?
+                    request.get_state_mut().on_completed_request(reason)?;
                 }
                 // Sync will receive a future event to make progress on the request, do nothing now
                 LookupRequestResult::Pending(reason) => {
@@ -524,7 +524,7 @@ impl<T: Clone> SingleLookupRequestState<T> {
     /// stuck lookups. Not fallible as it's purely informational.
     pub fn update_awaiting_download_status(&mut self, new_status: &'static str) {
         if let State::AwaitingDownload(status) = &mut self.state {
-            *status = new_status
+            *status = new_status;
         }
     }
 

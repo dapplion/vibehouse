@@ -80,7 +80,7 @@ impl<T: BeaconChainTypes> RangeDataColumnBatchRequest<T> {
 
         // Note: this assumes that only 1 peer is responsible for a column
         // with a batch.
-        for (id, columns) in self.column_peers.iter() {
+        for (id, columns) in &self.column_peers {
             for column in columns {
                 column_to_peer_id.insert(*column, id.peer);
             }
@@ -103,7 +103,7 @@ impl<T: BeaconChainTypes> RangeDataColumnBatchRequest<T> {
             exceeded_retries: _,
         }) = &resp
         {
-            for (_, peer) in faulty_peers.iter() {
+            for (_, peer) in faulty_peers {
                 // find the req id associated with the peer and
                 // delete it from the entries as we are going to make
                 // a separate attempt for those components.

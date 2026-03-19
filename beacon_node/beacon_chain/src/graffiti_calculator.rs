@@ -161,7 +161,7 @@ pub fn start_engine_version_cache_refresh_service<T: BeaconChainTypes>(
     executor.spawn(
         async move {
             engine_version_cache_refresh_service::<T>(execution_layer, slot_clock, epoch_duration)
-                .await
+                .await;
         },
         "engine_version_cache_refresh_service",
     );

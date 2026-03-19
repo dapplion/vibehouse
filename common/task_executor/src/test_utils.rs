@@ -50,7 +50,7 @@ impl Default for TestRuntime {
 impl Drop for TestRuntime {
     fn drop(&mut self) {
         if let Some(runtime) = self.runtime.take() {
-            Arc::try_unwrap(runtime).unwrap().shutdown_background()
+            Arc::try_unwrap(runtime).unwrap().shutdown_background();
         }
     }
 }

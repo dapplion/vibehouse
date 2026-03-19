@@ -471,7 +471,7 @@ impl TestRig {
     }
 
     pub async fn recompute_head(&self) {
-        self.chain.recompute_head_at_current_slot().await
+        self.chain.recompute_head_at_current_slot().await;
     }
 
     pub fn head_root(&self) -> Hash256 {
@@ -772,7 +772,7 @@ impl TestRig {
 
     pub async fn assert_event_journal(&mut self, expected: &[&str]) {
         self.assert_event_journal_with_timeout(expected, STANDARD_TIMEOUT, false, false)
-            .await
+            .await;
     }
 
     pub async fn assert_event_journal_completes_with_timeout(
@@ -791,7 +791,7 @@ impl TestRig {
             false,
             false,
         )
-        .await
+        .await;
     }
 
     pub async fn assert_event_journal_does_not_complete_with_timeout(
@@ -808,7 +808,7 @@ impl TestRig {
                 .collect::<Vec<_>>(),
             timeout,
         )
-        .await
+        .await;
     }
 
     pub async fn assert_event_journal_completes(&mut self, expected: &[WorkType]) {
@@ -820,7 +820,7 @@ impl TestRig {
                 .chain(std::iter::once(NOTHING_TO_DO))
                 .collect::<Vec<_>>(),
         )
-        .await
+        .await;
     }
 
     /// Assert that the `BeaconProcessor` event journal is as `expected`.
@@ -1480,12 +1480,12 @@ async fn attestation_to_unknown_block_processed(import_method: BlockImportMethod
 
 #[tokio::test]
 async fn attestation_to_unknown_block_processed_after_gossip_block() {
-    attestation_to_unknown_block_processed(BlockImportMethod::Gossip).await
+    attestation_to_unknown_block_processed(BlockImportMethod::Gossip).await;
 }
 
 #[tokio::test]
 async fn attestation_to_unknown_block_processed_after_rpc_block() {
-    attestation_to_unknown_block_processed(BlockImportMethod::Rpc).await
+    attestation_to_unknown_block_processed(BlockImportMethod::Rpc).await;
 }
 
 /// Ensure that attestations that reference an unknown block get properly re-queued and
@@ -1526,7 +1526,7 @@ async fn aggregate_attestation_to_unknown_block(import_method: BlockImportMethod
             }
             for i in 0..num_data_columns {
                 rig.enqueue_gossip_data_columns(i);
-                events.push(WorkType::GossipDataColumnSidecar)
+                events.push(WorkType::GossipDataColumnSidecar);
             }
         }
         BlockImportMethod::Rpc => {
@@ -1566,12 +1566,12 @@ async fn aggregate_attestation_to_unknown_block(import_method: BlockImportMethod
 
 #[tokio::test]
 async fn aggregate_attestation_to_unknown_block_processed_after_gossip_block() {
-    aggregate_attestation_to_unknown_block(BlockImportMethod::Gossip).await
+    aggregate_attestation_to_unknown_block(BlockImportMethod::Gossip).await;
 }
 
 #[tokio::test]
 async fn aggregate_attestation_to_unknown_block_processed_after_rpc_block() {
-    aggregate_attestation_to_unknown_block(BlockImportMethod::Rpc).await
+    aggregate_attestation_to_unknown_block(BlockImportMethod::Rpc).await;
 }
 
 /// Ensure that attestations that reference an unknown block get properly re-queued and re-processed

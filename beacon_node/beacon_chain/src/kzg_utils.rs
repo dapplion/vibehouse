@@ -131,7 +131,7 @@ pub fn validate_data_columns_with_commitments<E: EthSpec>(
         proofs.push(Bytes48::from(proof));
     }
 
-    for &commitment in kzg_commitments.iter() {
+    for &commitment in kzg_commitments {
         commitments.push(Bytes48::from(commitment));
     }
 

@@ -167,7 +167,7 @@ impl<T: BeaconChainTypes> SubnetService<T> {
         }
 
         // Pre-populate the events with permanent subscriptions
-        for subnet in permanent_attestation_subscriptions.iter() {
+        for subnet in &permanent_attestation_subscriptions {
             events.push_back(SubnetServiceMessage::Subscribe(*subnet));
             events.push_back(SubnetServiceMessage::EnrAdd(*subnet));
         }
@@ -382,7 +382,7 @@ impl<T: BeaconChainTypes> SubnetService<T> {
     fn queue_event(&mut self, ev: SubnetServiceMessage) {
         self.events.push_back(ev);
         if let Some(waker) = &self.waker {
-            waker.wake_by_ref()
+            waker.wake_by_ref();
         }
     }
     /// Checks if there are currently queued discovery requests and the time required to make the

@@ -92,7 +92,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 package.should_import,
                 true,
                 package.seen_timestamp,
-            )
+            );
         };
 
         // Define a closure for processing batches of attestations.
@@ -134,7 +134,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 package.aggregate,
                 true,
                 package.seen_timestamp,
-            )
+            );
         };
 
         // Define a closure for processing batches of attestations.
@@ -182,7 +182,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     invalid_block_storage,
                     seen_timestamp,
                 )
-                .await
+                .await;
         };
 
         self.try_send(BeaconWorkEvent {
@@ -212,7 +212,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     blob_sidecar,
                     seen_timestamp,
                 )
-                .await
+                .await;
         };
 
         self.try_send(BeaconWorkEvent {
@@ -240,7 +240,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     column_sidecar,
                     seen_timestamp,
                 )
-                .await
+                .await;
         };
 
         self.try_send(BeaconWorkEvent {
@@ -266,7 +266,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 sync_signature,
                 subnet_id,
                 seen_timestamp,
-            )
+            );
         };
 
         self.try_send(BeaconWorkEvent {
@@ -290,7 +290,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 peer_id,
                 sync_contribution,
                 seen_timestamp,
-            )
+            );
         };
 
         self.try_send(BeaconWorkEvent {
@@ -344,7 +344,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     ) -> Result<(), Error<T::EthSpec>> {
         let processor = self.clone();
         let process_fn = move || {
-            processor.process_gossip_proposer_preferences(message_id, peer_id, *preferences)
+            processor.process_gossip_proposer_preferences(message_id, peer_id, *preferences);
         };
 
         self.try_send(BeaconWorkEvent {
@@ -447,7 +447,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     ) -> Result<(), Error<T::EthSpec>> {
         let processor = self.clone();
         let process_fn = move || {
-            processor.process_gossip_proposer_slashing(message_id, peer_id, *proposer_slashing)
+            processor.process_gossip_proposer_slashing(message_id, peer_id, *proposer_slashing);
         };
 
         self.try_send(BeaconWorkEvent {
@@ -471,7 +471,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 peer_id,
                 light_client_finality_update,
                 seen_timestamp,
-            )
+            );
         };
 
         self.try_send(BeaconWorkEvent {
@@ -496,7 +496,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 light_client_optimistic_update,
                 true,
                 seen_timestamp,
-            )
+            );
         };
 
         self.try_send(BeaconWorkEvent {
@@ -514,7 +514,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     ) -> Result<(), Error<T::EthSpec>> {
         let processor = self.clone();
         let process_fn = move || {
-            processor.process_gossip_attester_slashing(message_id, peer_id, *attester_slashing)
+            processor.process_gossip_attester_slashing(message_id, peer_id, *attester_slashing);
         };
 
         self.try_send(BeaconWorkEvent {
@@ -536,7 +536,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 message_id,
                 peer_id,
                 *bls_to_execution_change,
-            )
+            );
         };
 
         self.try_send(BeaconWorkEvent {
@@ -766,7 +766,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 peer_id,
                 inbound_request_id,
                 request,
-            )
+            );
         };
 
         self.try_send(BeaconWorkEvent {
@@ -784,7 +784,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     ) -> Result<(), Error<T::EthSpec>> {
         let processor = self.clone();
         let process_fn = move || {
-            processor.handle_data_columns_by_root_request(peer_id, inbound_request_id, request)
+            processor.handle_data_columns_by_root_request(peer_id, inbound_request_id, request);
         };
 
         self.try_send(BeaconWorkEvent {
@@ -802,7 +802,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     ) -> Result<(), Error<T::EthSpec>> {
         let processor = self.clone();
         let process_fn = move || {
-            processor.handle_data_columns_by_range_request(peer_id, inbound_request_id, request)
+            processor.handle_data_columns_by_range_request(peer_id, inbound_request_id, request);
         };
 
         self.try_send(BeaconWorkEvent {
@@ -869,7 +869,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     ) -> Result<(), Error<T::EthSpec>> {
         let processor = self.clone();
         let process_fn = move || {
-            processor.handle_light_client_updates_by_range(peer_id, inbound_request_id, request)
+            processor.handle_light_client_updates_by_range(peer_id, inbound_request_id, request);
         };
 
         self.try_send(BeaconWorkEvent {
@@ -892,7 +892,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     /// Creates a log if there is an internal error.
     fn send_network_message(&self, message: NetworkMessage<T::EthSpec>) {
         self.network_tx.send(message).unwrap_or_else(|e| {
-            debug!(error = %e, "Could not send message to the network service. Likely shutdown")
+            debug!(error = %e, "Could not send message to the network service. Likely shutdown");
         });
     }
 
@@ -1092,7 +1092,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     publish_count,
                     ?block_root,
                     "Batch blob publication complete"
-                )
+                );
             },
             "gradual_blob_publication",
         );
@@ -1175,7 +1175,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     publish_count,
                     ?block_root,
                     "Batch data column publishing complete"
-                )
+                );
             },
             "gradual_data_column_publication",
         );

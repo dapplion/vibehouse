@@ -159,7 +159,7 @@ fn empty_wallet_password() {
             .err()
             .expect("should error"),
         Error::EmptyPassword
-    )
+    );
 }
 
 #[test]
@@ -169,7 +169,7 @@ fn empty_wallet_seed() {
             .err()
             .expect("should error"),
         Error::EmptySeed
-    )
+    );
 }
 
 #[test]

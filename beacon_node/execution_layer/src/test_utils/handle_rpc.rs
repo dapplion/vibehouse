@@ -243,7 +243,7 @@ pub async fn handle_rpc<E: EthSpec>(
             let (static_response, should_import) =
                 if let Some(mut response) = ctx.static_new_payload_response.lock().clone() {
                     if response.status.status == PayloadStatusV1Status::Valid {
-                        response.status.latest_valid_hash = Some(*request.block_hash())
+                        response.status.latest_valid_hash = Some(*request.block_hash());
                     }
 
                     (Some(response.status), response.should_import)
@@ -610,7 +610,7 @@ pub async fn handle_rpc<E: EthSpec>(
 
             if let Some(mut status) = ctx.static_forkchoice_updated_response.lock().clone() {
                 if status.status == PayloadStatusV1Status::Valid {
-                    status.latest_valid_hash = Some(head_block_hash)
+                    status.latest_valid_hash = Some(head_block_hash);
                 }
 
                 response.payload_status = status.into();

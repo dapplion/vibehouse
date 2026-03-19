@@ -1228,7 +1228,7 @@ fn perform_debug_logging<T: BeaconChainTypes>(
             .get_block_weight(&old_view.head_block_root),
         old_head = ?old_view.head_block_root,
             "Fork choice updated head"
-        )
+        );
     }
     if new_view.justified_checkpoint != old_view.justified_checkpoint {
         debug!(
@@ -1237,7 +1237,7 @@ fn perform_debug_logging<T: BeaconChainTypes>(
             old_root = ?old_view.justified_checkpoint.root,
             old_epoch = %old_view.justified_checkpoint.epoch,
             "Fork choice justified"
-        )
+        );
     }
     if new_view.finalized_checkpoint != old_view.finalized_checkpoint {
         debug!(
@@ -1246,7 +1246,7 @@ fn perform_debug_logging<T: BeaconChainTypes>(
             old_root = ?old_view.finalized_checkpoint.root,
             old_epoch = %old_view.finalized_checkpoint.epoch,
             "Fork choice finalized"
-        )
+        );
     }
 }
 

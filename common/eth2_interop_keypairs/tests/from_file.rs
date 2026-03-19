@@ -18,6 +18,6 @@ fn load_from_yaml() {
             reference_keypair(i).pk,
             "Decoded key {} does not match generated key",
             i
-        )
+        );
     });
 }

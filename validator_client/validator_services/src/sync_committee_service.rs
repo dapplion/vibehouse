@@ -140,9 +140,9 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> SyncCommitteeService<S
                         crit!(
                             error = ?e,
                             "Failed to spawn sync contribution tasks"
-                        )
+                        );
                     } else {
-                        trace!("Spawned sync contribution tasks")
+                        trace!("Spawned sync contribution tasks");
                     }
 
                     // Do subscriptions for future slots/epochs.
@@ -233,7 +233,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> SyncCommitteeService<S
                 service
                     .publish_sync_committee_signatures(slot, block_root, validator_duties)
                     .map(|_| ())
-                    .await
+                    .await;
             },
             "sync_committee_signature_publish",
         );
@@ -250,7 +250,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> SyncCommitteeService<S
                         aggregate_production_instant,
                     )
                     .map(|_| ())
-                    .await
+                    .await;
             },
             "sync_committee_aggregate_publish",
         );
@@ -353,7 +353,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> SyncCommitteeService<S
                             aggregate_instant,
                         )
                         .map(|_| ())
-                        .await
+                        .await;
                 },
                 "sync_committee_aggregate_publish_subnet",
             );
@@ -390,7 +390,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> SyncCommitteeService<S
                     ?beacon_block_root,
                     error = %e,
                     "Failed to produce sync contribution"
-                )
+                );
             })?
             .ok_or_else(|| {
                 crit!(%slot, ?beacon_block_root, "No aggregate contribution found");
@@ -472,7 +472,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> SyncCommitteeService<S
                     error!(
                         error = ?e,
                         "Error publishing subscriptions"
-                    )
+                    );
                 });
             },
             "sync_committee_subscription_publish",

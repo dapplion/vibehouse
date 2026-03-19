@@ -24,5 +24,5 @@ fn children_deterministic() {
     assert_eq!(
         master.child(u32::MAX).secret(),
         master.child(u32::MAX).secret(),
-    )
+    );
 }

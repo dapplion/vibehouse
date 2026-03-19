@@ -190,7 +190,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> PreparationService<S, 
                             error!(
                                 error = ?e,
                                 "Error during proposer preparation"
-                            )
+                            );
                         })
                         .unwrap_or(());
                 }
@@ -357,7 +357,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> PreparationService<S, 
         // but the explicit `drop` is not enough).
         {
             let guard = self.validator_registration_cache.read();
-            for key in registration_keys.iter() {
+            for key in &registration_keys {
                 if !guard.contains_key(key) {
                     changed_keys.push(key.clone());
                 }

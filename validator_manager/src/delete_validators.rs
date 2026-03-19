@@ -289,7 +289,7 @@ mod test {
 
     impl TestResult {
         fn assert_ok(self) {
-            assert_eq!(self.result, Ok(()))
+            assert_eq!(self.result, Ok(()));
         }
     }
     #[tokio::test]

@@ -123,7 +123,7 @@ impl TaskExecutor {
         task: impl Future<Output = Result<(), ()>> + Send + 'static,
         name: &'static str,
     ) {
-        self.spawn(task.map(|_| ()), name)
+        self.spawn(task.map(|_| ()), name);
     }
 
     /// Spawn a task to monitor the completion of another task.
@@ -154,7 +154,7 @@ impl TaskExecutor {
             #[cfg(not(tokio_unstable))]
             handle.spawn(fut);
         } else {
-            debug!("Couldn't spawn monitor task. Runtime shutting down")
+            debug!("Couldn't spawn monitor task. Runtime shutting down");
         }
     }
 
@@ -169,7 +169,7 @@ impl TaskExecutor {
     /// This function generates prometheus metrics on number of tasks and task duration.
     pub fn spawn(&self, task: impl Future<Output = ()> + Send + 'static, name: &'static str) {
         if let Some(task_handle) = self.spawn_handle(task, name) {
-            self.spawn_monitor(task_handle, name)
+            self.spawn_monitor(task_handle, name);
         }
     }
 
@@ -216,7 +216,7 @@ impl TaskExecutor {
         F: FnOnce() + Send + 'static,
     {
         if let Some(task_handle) = self.spawn_blocking_handle(task, name) {
-            self.spawn_monitor(task_handle, name)
+            self.spawn_monitor(task_handle, name);
         }
     }
 
@@ -237,7 +237,7 @@ impl TaskExecutor {
                 });
             },
             name,
-        )
+        );
     }
 
     /// Spawns a blocking computation on a rayon thread pool and awaits the result.

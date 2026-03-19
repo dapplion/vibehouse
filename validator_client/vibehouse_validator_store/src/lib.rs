@@ -122,7 +122,7 @@ impl<T: SlotClock + 'static, E: EthSpec> VibehouseValidatorStore<T, E> {
                     *pubkey,
                     &self.slot_clock,
                     E::slots_per_epoch(),
-                )?
+                )?;
             }
         }
 

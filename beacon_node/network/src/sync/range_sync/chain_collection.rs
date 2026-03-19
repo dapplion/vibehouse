@@ -110,7 +110,7 @@ impl<T: BeaconChainTypes> ChainCollection<T> {
             }
             RangeSyncState::Idle => {
                 // the removed chain should not be syncing
-                debug_assert!(!was_syncing)
+                debug_assert!(!was_syncing);
             }
         }
     }
@@ -124,13 +124,13 @@ impl<T: BeaconChainTypes> ChainCollection<T> {
     {
         let mut to_remove = Vec::new();
 
-        for (id, chain) in self.finalized_chains.iter_mut() {
+        for (id, chain) in &mut self.finalized_chains {
             if let Err(remove_reason) = func(chain) {
                 to_remove.push((*id, RangeSyncType::Finalized, remove_reason));
             }
         }
 
-        for (id, chain) in self.head_chains.iter_mut() {
+        for (id, chain) in &mut self.head_chains {
             if let Err(remove_reason) = func(chain) {
                 to_remove.push((*id, RangeSyncType::Head, remove_reason));
             }

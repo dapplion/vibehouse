@@ -240,7 +240,7 @@ pub async fn build_node_pair(
 
     match sender.testing_dial(receiver_multiaddr.clone()) {
         Ok(()) => {
-            debug!(address = ?receiver_multiaddr, "Sender dialed receiver")
+            debug!(address = ?receiver_multiaddr, "Sender dialed receiver");
         }
         Err(_) => error!("Dialing failed"),
     };

@@ -378,7 +378,7 @@ mod tests {
         }
 
         pub fn shutdown(self) {
-            Arc::try_unwrap(self.runtime).unwrap().shutdown_background()
+            Arc::try_unwrap(self.runtime).unwrap().shutdown_background();
         }
     }
 
@@ -501,7 +501,7 @@ mod tests {
                     );
                 }
 
-                prev_signature = Some(signature)
+                prev_signature = Some(signature);
             }
             assert!(prev_signature.is_some(), "sanity check");
             self
@@ -896,47 +896,47 @@ mod tests {
 
     #[tokio::test]
     async fn mainnet_base_types() {
-        test_base_types("mainnet", 4242).await
+        test_base_types("mainnet", 4242).await;
     }
 
     #[tokio::test]
     async fn mainnet_altair_types() {
-        test_altair_types("mainnet", 4243).await
+        test_altair_types("mainnet", 4243).await;
     }
 
     #[tokio::test]
     async fn mainnet_bellatrix_types() {
-        test_bellatrix_types("mainnet", 4244).await
+        test_bellatrix_types("mainnet", 4244).await;
     }
 
     #[tokio::test]
     async fn holesky_bellatrix_types() {
         // web3signer does not support forks prior to Bellatrix on Holesky
-        test_bellatrix_types("holesky", 4247).await
+        test_bellatrix_types("holesky", 4247).await;
     }
 
     #[tokio::test]
     async fn sepolia_base_types() {
-        test_base_types("sepolia", 4250).await
+        test_base_types("sepolia", 4250).await;
     }
 
     #[tokio::test]
     async fn sepolia_altair_types() {
-        test_altair_types("sepolia", 4251).await
+        test_altair_types("sepolia", 4251).await;
     }
 
     #[tokio::test]
     async fn sepolia_bellatrix_types() {
-        test_bellatrix_types("sepolia", 4252).await
+        test_bellatrix_types("sepolia", 4252).await;
     }
 
     #[tokio::test]
     async fn slashing_protection_disabled_locally() {
-        test_vibehouse_slashing_protection(SlashingProtectionConfig { local: false }, 4253).await
+        test_vibehouse_slashing_protection(SlashingProtectionConfig { local: false }, 4253).await;
     }
 
     #[tokio::test]
     async fn slashing_protection_enabled_locally() {
-        test_vibehouse_slashing_protection(SlashingProtectionConfig { local: true }, 4254).await
+        test_vibehouse_slashing_protection(SlashingProtectionConfig { local: true }, 4254).await;
     }
 }

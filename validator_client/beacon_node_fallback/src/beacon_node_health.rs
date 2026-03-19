@@ -338,7 +338,7 @@ mod tests {
 
             // Check sync distance.
             if [1, 3, 5, 6].contains(&tier) {
-                assert!(distance_tier == SyncDistanceTier::Synced)
+                assert!(distance_tier == SyncDistanceTier::Synced);
             } else if [2, 7, 8, 9].contains(&tier) {
                 assert!(distance_tier == SyncDistanceTier::Small);
             } else if [4, 11, 12, 13].contains(&tier) {

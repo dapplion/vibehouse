@@ -17,7 +17,7 @@ pub fn cli_run(wallet_base_dir: PathBuf) -> Result<(), String> {
         .wallets()
         .map_err(|e| format!("Unable to list wallets: {:?}", e))?
     {
-        println!("{}", name)
+        println!("{}", name);
     }
 
     Ok(())

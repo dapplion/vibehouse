@@ -30,7 +30,7 @@ pub fn build(execution_clients_dir: &Path) {
 
     if !repo_dir.exists() {
         // Clone the repo
-        build_utils::clone_repo(execution_clients_dir, NETHERMIND_REPO_URL).unwrap()
+        build_utils::clone_repo(execution_clients_dir, NETHERMIND_REPO_URL).unwrap();
     }
 
     // Get the latest tag

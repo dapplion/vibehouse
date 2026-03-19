@@ -31,7 +31,7 @@ impl LamportSecretKey {
         for i in 0..LAMPORT_ARRAY_SIZE {
             let iu = i as usize;
             this.get_mut_chunk(i)
-                .copy_from_slice(&bytes[iu * HASH_SIZE..(iu + 1) * HASH_SIZE])
+                .copy_from_slice(&bytes[iu * HASH_SIZE..(iu + 1) * HASH_SIZE]);
         }
 
         this

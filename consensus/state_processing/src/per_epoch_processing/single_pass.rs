@@ -418,7 +418,7 @@ pub fn process_epoch_single_pass<E: EthSpec>(
                 _,
                 _,
             ) = state.mutable_validator_fields()?;
-            for (_, validator_index) in added_validators.iter() {
+            for (_, validator_index) in &added_validators {
                 let balance = *balances
                     .get(*validator_index)
                     .ok_or(BeaconStateError::UnknownValidator(*validator_index))?;
@@ -984,7 +984,7 @@ impl PendingDepositsContext {
 
         let pending_deposits = state.pending_deposits()?;
 
-        for deposit in pending_deposits.iter() {
+        for deposit in pending_deposits {
             // Do not process deposit requests if the Eth1 bridge deposits are not yet applied.
             if deposit.slot > spec.genesis_slot
                 && state.eth1_deposit_index() < state.deposit_requests_start_index()?

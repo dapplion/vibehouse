@@ -59,7 +59,7 @@ fn all_benches(c: &mut Criterion) {
                     column_sidecars.iter().as_slice()[0..column_sidecars.len() / 2].to_vec(),
                     spec.as_ref(),
                 ))
-            })
+            });
         });
     }
 }

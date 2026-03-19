@@ -926,7 +926,7 @@ mod test {
             &spec,
             make_attestation,
             <E as EthSpec>::MaxValidatorsPerCommittee::to_u64(),
-        )
+        );
     }
 
     #[test]
@@ -943,6 +943,6 @@ mod test {
             &spec,
             make_attestation,
             <E as EthSpec>::MaxValidatorsPerSlot::to_u64(),
-        )
+        );
     }
 }

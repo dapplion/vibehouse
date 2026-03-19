@@ -287,7 +287,7 @@ impl Engine {
                     warn!(
                         error = ?e,
                         "Error during exchange capabilities"
-                    )
+                    );
                 } else {
                     // no point in running this if there was an error fetching the capabilities
                     // as it will just result in an error again

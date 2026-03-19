@@ -253,7 +253,7 @@ pub fn check_minification_invariants(interchange: &Interchange, minified: &Inter
     assert_eq!(uniq_pubkeys, get_uniq_pubkeys(minified));
     assert_eq!(uniq_pubkeys.len(), minified.data.len());
 
-    for &pubkey in uniq_pubkeys.iter() {
+    for &pubkey in &uniq_pubkeys {
         // Minified data should contain 1 block per validator, unless the validator never signed any
         // blocks. All of those blocks should have slots <= the slot of the minified block.
         let original_blocks = get_blocks_of_validator(interchange, pubkey);

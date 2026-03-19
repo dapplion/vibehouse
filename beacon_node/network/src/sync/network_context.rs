@@ -1071,7 +1071,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
                 // Stream terminated — attach envelopes to blocks and return
                 let mut batch = self.pending_envelope_batches.remove(&id.id)?;
 
-                for block in batch.blocks.iter_mut() {
+                for block in &mut batch.blocks {
                     if let Some(env) = batch.received_envelopes.remove(&block.block_root()) {
                         block.set_envelope(env);
                     }
@@ -1897,10 +1897,10 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
         // an Option first to use in an `if let Some() { act on result }` block.
         match result.as_ref() {
             Some(Ok((columns, peer_group, _))) => {
-                debug!(?id, count = columns.len(), peers = ?peer_group, "Custody request success, removing")
+                debug!(?id, count = columns.len(), peers = ?peer_group, "Custody request success, removing");
             }
             Some(Err(e)) => {
-                debug!(?id, error = ?e, "Custody request failure, removing" )
+                debug!(?id, error = ?e, "Custody request failure, removing" );
             }
             None => {
                 self.custody_by_root_requests.insert(id, request);
@@ -2139,7 +2139,7 @@ fn to_fixed_blob_sidecar_list<E: EthSpec>(
         let index = blob.index as usize;
         *fixed_list
             .get_mut(index)
-            .ok_or(LookupVerifyError::UnrequestedIndex(index as u64))? = Some(blob)
+            .ok_or(LookupVerifyError::UnrequestedIndex(index as u64))? = Some(blob);
     }
     Ok(fixed_list)
 }

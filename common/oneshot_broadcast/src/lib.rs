@@ -40,7 +40,7 @@ impl<T> Drop for Sender<T> {
     fn drop(&mut self) {
         let mut lock = self.0.mutex.lock();
         if !matches!(*lock, Future::Ready(_)) {
-            *lock = Future::SenderDropped
+            *lock = Future::SenderDropped;
         }
         self.0.condvar.notify_all();
         // The lock must be held whilst the condvar is notified.
@@ -185,6 +185,6 @@ mod tests {
         // sending down `sender_a` to start listening to `receiver_b`.
         thread::sleep(Duration::from_secs(1));
         drop(sender_b);
-        assert_eq!(handle_0.join().unwrap(), Err(Error::SenderDropped))
+        assert_eq!(handle_0.join().unwrap(), Err(Error::SenderDropped));
     }
 }

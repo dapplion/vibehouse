@@ -70,10 +70,10 @@ pub fn run_parse_ssz<E: EthSpec>(
             format,
         )?,
         "SignedBeaconBlockBase" | "SignedBeaconBlockPhase0" => {
-            decode_and_print(&bytes, SignedBeaconBlockBase::<E>::from_ssz_bytes, format)?
+            decode_and_print(&bytes, SignedBeaconBlockBase::<E>::from_ssz_bytes, format)?;
         }
         "SignedBeaconBlockAltair" => {
-            decode_and_print(&bytes, SignedBeaconBlockAltair::<E>::from_ssz_bytes, format)?
+            decode_and_print(&bytes, SignedBeaconBlockAltair::<E>::from_ssz_bytes, format)?;
         }
         "SignedBeaconBlockBellatrix" => decode_and_print(
             &bytes,
@@ -86,7 +86,7 @@ pub fn run_parse_ssz<E: EthSpec>(
             format,
         )?,
         "SignedBeaconBlockDeneb" => {
-            decode_and_print(&bytes, SignedBeaconBlockDeneb::<E>::from_ssz_bytes, format)?
+            decode_and_print(&bytes, SignedBeaconBlockDeneb::<E>::from_ssz_bytes, format)?;
         }
         "SignedBeaconBlockElectra" => decode_and_print(
             &bytes,
@@ -99,22 +99,22 @@ pub fn run_parse_ssz<E: EthSpec>(
             format,
         )?,
         "BeaconStateBase" | "BeaconStatePhase0" => {
-            decode_and_print(&bytes, BeaconStateBase::<E>::from_ssz_bytes, format)?
+            decode_and_print(&bytes, BeaconStateBase::<E>::from_ssz_bytes, format)?;
         }
         "BeaconStateAltair" => {
-            decode_and_print(&bytes, BeaconStateAltair::<E>::from_ssz_bytes, format)?
+            decode_and_print(&bytes, BeaconStateAltair::<E>::from_ssz_bytes, format)?;
         }
         "BeaconStateBellatrix" => {
-            decode_and_print(&bytes, BeaconStateBellatrix::<E>::from_ssz_bytes, format)?
+            decode_and_print(&bytes, BeaconStateBellatrix::<E>::from_ssz_bytes, format)?;
         }
         "BeaconStateCapella" => {
-            decode_and_print(&bytes, BeaconStateCapella::<E>::from_ssz_bytes, format)?
+            decode_and_print(&bytes, BeaconStateCapella::<E>::from_ssz_bytes, format)?;
         }
         "BeaconStateDeneb" => {
-            decode_and_print(&bytes, BeaconStateDeneb::<E>::from_ssz_bytes, format)?
+            decode_and_print(&bytes, BeaconStateDeneb::<E>::from_ssz_bytes, format)?;
         }
         "BeaconStateElectra" => {
-            decode_and_print(&bytes, BeaconStateElectra::<E>::from_ssz_bytes, format)?
+            decode_and_print(&bytes, BeaconStateElectra::<E>::from_ssz_bytes, format)?;
         }
         "BlobSidecar" => decode_and_print(&bytes, BlobSidecar::<E>::from_ssz_bytes, format)?,
         other => return Err(format!("Unknown type: {}", other)),

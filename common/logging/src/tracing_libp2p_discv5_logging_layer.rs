@@ -63,7 +63,7 @@ pub fn create_libp2p_discv5_tracing_layer(
 ) -> Option<Libp2pDiscv5TracingLayer> {
     if let Some(mut tracing_log_path) = base_tracing_log_path {
         // Ensure that `tracing_log_path` only contains directories.
-        for p in tracing_log_path.clone().iter() {
+        for p in &tracing_log_path.clone() {
             tracing_log_path = tracing_log_path.join(p);
             if let Ok(metadata) = tracing_log_path.metadata()
                 && !metadata.is_dir()

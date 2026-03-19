@@ -265,7 +265,7 @@ impl ProtoArray {
             // Apply the delta to the node.
             if execution_status_is_invalid {
                 // Invalid nodes always have a weight of 0.
-                node.weight = 0
+                node.weight = 0;
             } else if node_delta < 0 {
                 // Note: I am conflicted about whether to use `saturating_sub` or `checked_sub`
                 // here.
@@ -540,13 +540,13 @@ impl ProtoArray {
                             .best_child
                             .is_some_and(|i| invalidated_indices.contains(&i))
                         {
-                            node.best_child = None
+                            node.best_child = None;
                         }
                         if node
                             .best_descendant
                             .is_some_and(|i| invalidated_indices.contains(&i))
                         {
-                            node.best_descendant = None
+                            node.best_descendant = None;
                         }
 
                         break;
@@ -594,7 +594,7 @@ impl ProtoArray {
             }
 
             if let Some(parent_index) = node.parent {
-                index = parent_index
+                index = parent_index;
             } else {
                 // The root of the block tree has been reached (aka the finalized block), without
                 // matching `latest_valid_ancestor_hash`. It's not possible or useful to go any
@@ -638,7 +638,7 @@ impl ProtoArray {
                         });
                     }
                     ExecutionStatus::Optimistic(hash) | ExecutionStatus::Invalid(hash) => {
-                        node.execution_status = ExecutionStatus::Invalid(*hash)
+                        node.execution_status = ExecutionStatus::Invalid(*hash);
                     }
                     ExecutionStatus::Irrelevant(_) => {
                         return Err(Error::IrrelevantDescendant {
@@ -752,7 +752,7 @@ impl ProtoArray {
         self.nodes = self.nodes.split_off(finalized_index);
 
         // Adjust the indices map.
-        for (_root, index) in self.indices.iter_mut() {
+        for index in self.indices.values_mut() {
             *index = index
                 .checked_sub(finalized_index)
                 .ok_or(Error::IndexOverflow("indices"))?;
@@ -760,7 +760,7 @@ impl ProtoArray {
 
         // Iterate through all the existing nodes and adjust their indices to match the new layout
         // of `self.nodes`.
-        for node in self.nodes.iter_mut() {
+        for node in &mut self.nodes {
             if let Some(parent) = node.parent {
                 // If `node.parent` is less than `finalized_index`, set it to `None`.
                 node.parent = parent.checked_sub(finalized_index);
@@ -1061,7 +1061,7 @@ impl ProtoArray {
             // Since `node` is from a higher slot that the finalized checkpoint,
             // replace `node` with the parent of `node`.
             if let Some(parent) = node.parent.and_then(|index| self.nodes.get(index)) {
-                node = parent
+                node = parent;
             } else {
                 // If `node` is not the finalized block and its parent does not
                 // exist in fork choice, then the parent must have been pruned.

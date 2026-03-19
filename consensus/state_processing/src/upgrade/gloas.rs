@@ -138,7 +138,7 @@ fn onboard_builders_from_pending_deposits<E: EthSpec>(
     // Track pubkeys of deposits that will become new validators (not yet in the cache)
     let mut new_validator_pubkeys = Vec::<PublicKeyBytes>::new();
 
-    for deposit in pending_deposits.iter() {
+    for deposit in &pending_deposits {
         // If pubkey belongs to a validator, keep as validator deposit
         if state.pubkey_cache().get(&deposit.pubkey).is_some()
             || new_validator_pubkeys.contains(&deposit.pubkey)

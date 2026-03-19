@@ -805,7 +805,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
                 BatchState::Downloading(..) => {}
                 BatchState::AwaitingDownload => return,
                 BatchState::Failed | BatchState::Poisoned => {
-                    crit!("batch indicates inconsistent chain state while advancing chain")
+                    crit!("batch indicates inconsistent chain state while advancing chain");
                 }
                 BatchState::AwaitingProcessing(..) => {}
                 BatchState::Processing(_) => {
@@ -943,10 +943,10 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
 
                         match batch.download_failed(None) {
                             Err(e) => {
-                                self.fail_sync(BackFillError::BatchInvalidState(batch_id, e.0))?
+                                self.fail_sync(BackFillError::BatchInvalidState(batch_id, e.0))?;
                             }
                             Ok(BatchOperationOutcome::Failed { blacklist: _ }) => {
-                                self.fail_sync(BackFillError::BatchDownloadFailed(batch_id))?
+                                self.fail_sync(BackFillError::BatchDownloadFailed(batch_id))?;
                             }
                             Ok(BatchOperationOutcome::Continue) => {
                                 return self.send_batch(network, batch_id);

@@ -100,7 +100,7 @@ impl Interchange {
         let mut validator_data =
             HashMap::<PublicKeyBytes, (Option<SignedBlock>, Option<SignedAttestation>)>::new();
 
-        for data in self.data.iter() {
+        for data in &self.data {
             // Existing maximum attestation and maximum block.
             let (max_block, max_attestation) = validator_data
                 .entry(data.pubkey)

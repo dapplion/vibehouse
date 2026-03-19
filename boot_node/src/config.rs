@@ -67,7 +67,7 @@ impl<E: EthSpec> BootNodeConfig<E> {
                         .try_into()
                         .map_err(|_| "boot node enr-udp-port not set and listening port is zero")?,
                 ),
-            )
+            );
         };
 
         if let Some(listening_addr_v6) = network_config.listen_addrs().v6()
@@ -80,7 +80,7 @@ impl<E: EthSpec> BootNodeConfig<E> {
                         .try_into()
                         .map_err(|_| "boot node enr-udp-port not set and listening port is zero")?,
                 ),
-            )
+            );
         };
 
         // By default this is enabled. If it is not set, revert to false.

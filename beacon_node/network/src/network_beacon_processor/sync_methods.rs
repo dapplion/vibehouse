@@ -151,7 +151,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 })
                 .is_err()
             {
-                error!(source = "rpc", %block_root,"Failed to inform block import")
+                error!(source = "rpc", %block_root,"Failed to inform block import");
             };
             return;
         };
@@ -225,7 +225,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 // to be sent from the peers if we already have them.
                 let publish_blobs = false;
                 self.fetch_engine_blobs_and_publish(signed_beacon_block, block_root, publish_blobs)
-                    .await
+                    .await;
             }
             _ => {}
         }

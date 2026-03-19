@@ -44,7 +44,7 @@ impl<E: EthSpec> EarlyAttesterCache<E> {
     /// Removes the cached item, meaning that all future calls to `Self::try_attest` will return
     /// `None` until a new cache item is added.
     pub fn clear(&self) {
-        *self.item.write() = None
+        *self.item.write() = None;
     }
 
     /// Updates the cache item, so that `Self::try_attest` with return `Some` when given suitable

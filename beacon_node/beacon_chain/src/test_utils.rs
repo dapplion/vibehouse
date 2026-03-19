@@ -1571,10 +1571,10 @@ where
 
                         match attestation {
                             Attestation::Base(ref mut att) => {
-                                att.aggregation_bits.set(i, true).unwrap()
+                                att.aggregation_bits.set(i, true).unwrap();
                             }
                             Attestation::Electra(ref mut att) => {
-                                att.aggregation_bits.set(i, true).unwrap()
+                                att.aggregation_bits.set(i, true).unwrap();
                             }
                         }
 
@@ -2019,7 +2019,7 @@ where
         for attestation in &mut [&mut attestation_1, &mut attestation_2] {
             match attestation {
                 IndexedAttestation::Base(attestation) => {
-                    for i in attestation.attesting_indices.iter() {
+                    for i in &attestation.attesting_indices {
                         let sk = &self.validator_keypairs[*i as usize].sk;
 
                         let genesis_validators_root = self.chain.genesis_validators_root;
@@ -2036,7 +2036,7 @@ where
                     }
                 }
                 IndexedAttestation::Electra(attestation) => {
-                    for i in attestation.attesting_indices.iter() {
+                    for i in &attestation.attesting_indices {
                         let sk = &self.validator_keypairs[*i as usize].sk;
 
                         let genesis_validators_root = self.chain.genesis_validators_root;
@@ -2131,7 +2131,7 @@ where
         for attestation in &mut [&mut attestation_1, &mut attestation_2] {
             match attestation {
                 IndexedAttestation::Base(attestation) => {
-                    for i in attestation.attesting_indices.iter() {
+                    for i in &attestation.attesting_indices {
                         let sk = &self.validator_keypairs[*i as usize].sk;
 
                         let genesis_validators_root = self.chain.genesis_validators_root;
@@ -2148,7 +2148,7 @@ where
                     }
                 }
                 IndexedAttestation::Electra(attestation) => {
-                    for i in attestation.attesting_indices.iter() {
+                    for i in &attestation.attesting_indices {
                         let sk = &self.validator_keypairs[*i as usize].sk;
 
                         let genesis_validators_root = self.chain.genesis_validators_root;
@@ -2588,7 +2588,7 @@ where
         // it's nice to have fast tests.
         let mut aggregated = Vec::with_capacity(num_validators);
 
-        for (unaggregated_attestations, maybe_signed_aggregate) in attestations.iter() {
+        for (unaggregated_attestations, maybe_signed_aggregate) in &attestations {
             for (attn, subnet) in unaggregated_attestations {
                 let aggregation_bits = attn.get_aggregation_bits();
 
@@ -2622,7 +2622,7 @@ where
             }
 
             if let Some(a) = maybe_signed_aggregate {
-                aggregated.push(a)
+                aggregated.push(a);
             }
         }
 
@@ -2771,7 +2771,7 @@ where
     ) {
         let sync_contributions =
             self.make_sync_contributions(state, block_hash, slot, relative_sync_committee);
-        self.process_sync_contributions(sync_contributions).unwrap()
+        self.process_sync_contributions(sync_contributions).unwrap();
     }
 
     pub async fn add_attested_block_at_slot(

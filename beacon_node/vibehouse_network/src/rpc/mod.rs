@@ -286,7 +286,7 @@ impl<Id: ReqId, E: EthSpec> RPC<Id, E> {
     }
 
     pub fn update_seq_number(&mut self, seq_number: u64) {
-        self.seq_number = seq_number
+        self.seq_number = seq_number;
     }
 
     /// Send a Ping request to the destination `PeerId` via `ConnectionId`.
@@ -552,7 +552,7 @@ where
         }
 
         if let Poll::Ready(event) = self.outbound_request_limiter.poll_ready(cx) {
-            self.events.push(event)
+            self.events.push(event);
         }
 
         if !self.events.is_empty() {

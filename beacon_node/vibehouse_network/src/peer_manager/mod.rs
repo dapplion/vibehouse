@@ -807,7 +807,7 @@ impl<E: EthSpec> PeerManager<E> {
 
         // Disconnect peers with invalid metadata and find other peers instead.
         if invalid_meta_data {
-            self.goodbye_peer(peer_id, GoodbyeReason::Fault, ReportSource::PeerManager)
+            self.goodbye_peer(peer_id, GoodbyeReason::Fault, ReportSource::PeerManager);
         }
 
         updated_cgc
@@ -1392,7 +1392,7 @@ impl<E: EthSpec> PeerManager<E> {
                         peers_to_prune.insert(candidate_peer);
                     } else if let Some(peers) = custody_subnet_to_peers.get_mut(&densest_subnet) {
                         // If we can't find a prune candidate in this subnet, remove peers in this subnet
-                        peers.clear()
+                        peers.clear();
                     }
                 } else {
                     // If there are no peers left to prune, exit.
@@ -1623,7 +1623,7 @@ impl<E: EthSpec> PeerManager<E> {
                 &metrics::PEERS_PER_CUSTODY_GROUP_COUNT,
                 &[&custody_group_count.to_string()],
                 peer_count,
-            )
+            );
         }
 
         // PEERS_PER_CLIENT
@@ -2217,14 +2217,14 @@ mod tests {
             .copied()
             .collect();
 
-        for peer in connected_peers.iter() {
+        for peer in &connected_peers {
             let position = peers.iter().position(|peer_id| peer_id == peer).unwrap();
             println!("{},{}", position, peer);
         }
 
         println!();
 
-        for peer in connected_peers.iter() {
+        for peer in &connected_peers {
             let position = peers.iter().position(|peer_id| peer_id == peer).unwrap();
             println!("{},{}", position, peer);
 
@@ -2724,7 +2724,7 @@ mod tests {
 
         let subnet_assignments = [0, 0, 0, 0, 1, 2, 2];
 
-        for &subnet in subnet_assignments.iter() {
+        for &subnet in &subnet_assignments {
             let peer = PeerId::random();
             peer_manager.inject_connect_ingoing(&peer, "/ip4/0.0.0.0".parse().unwrap(), None);
 
@@ -2834,7 +2834,7 @@ mod tests {
                 let peer_info = peer_db.peer_info_mut(&peer).unwrap();
                 peer_info.update_sync_status(sync_status);
                 // make sure all the peers have some long live subnets that are not protected
-                peer_info.set_custody_subnets(HashSet::from([DataColumnSubnetId::new(2)]))
+                peer_info.set_custody_subnets(HashSet::from([DataColumnSubnetId::new(2)]));
             }
 
             let long_lived_subnets = peer_manager

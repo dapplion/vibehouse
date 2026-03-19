@@ -350,11 +350,11 @@ async fn run(config: ImportConfig) -> Result<(), String> {
         match validator.upload(&http_client, ignore_duplicates).await {
             Ok(status) => match status.status {
                 ImportKeystoreStatus::Imported => {
-                    eprintln!("Uploaded keystore {} of {} to the VC", i + 1, count)
+                    eprintln!("Uploaded keystore {} of {} to the VC", i + 1, count);
                 }
                 ImportKeystoreStatus::Duplicate => {
                     if ignore_duplicates {
-                        eprintln!("Re-uploaded keystore {} of {} to the VC", i + 1, count)
+                        eprintln!("Re-uploaded keystore {} of {} to the VC", i + 1, count);
                     } else {
                         eprintln!(
                             "Keystore {} of {} was uploaded to the VC, but it was a duplicate. \
@@ -665,11 +665,11 @@ pub mod tests {
 
     impl TestResult {
         fn assert_ok(self) {
-            assert_eq!(self.result, Ok(()))
+            assert_eq!(self.result, Ok(()));
         }
 
         fn assert_err_contains(self, msg: &str) {
-            assert!(self.result.unwrap_err().contains(msg))
+            assert!(self.result.unwrap_err().contains(msg));
         }
     }
 

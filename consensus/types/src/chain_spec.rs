@@ -391,7 +391,7 @@ impl ChainSpec {
         ];
 
         // Find the first fork where `epoch` is >= `fork_epoch`.
-        for (fork_epoch_opt, fork_name) in forks.iter() {
+        for (fork_epoch_opt, fork_name) in &forks {
             if let Some(fork_epoch) = fork_epoch_opt
                 && epoch >= *fork_epoch
             {

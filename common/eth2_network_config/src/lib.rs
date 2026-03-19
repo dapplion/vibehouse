@@ -428,7 +428,7 @@ async fn download_genesis_state(
                     errors.push(format!(
                         "Response from {} did not match local checksum",
                         redacted_url
-                    ))
+                    ));
                 }
             }
             Err(e) => errors.push(PrettyReqwestError::from(e).to_string()),

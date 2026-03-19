@@ -256,7 +256,7 @@ impl<Engine: GenericExecutionEngine> TestRig<Engine> {
             }))
             .await;
 
-            for tx in txs.iter() {
+            for tx in &txs {
                 let pending = self
                     .ee_a
                     .execution_engine

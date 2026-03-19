@@ -503,22 +503,22 @@ impl<T: BeaconChainTypes> SyncManager<T> {
         trace!("Sync manager received a failed RPC");
         match sync_request_id {
             SyncRequestId::SingleBlock { id } => {
-                self.on_single_block_response(id, peer_id, RpcEvent::RPCError(error))
+                self.on_single_block_response(id, peer_id, RpcEvent::RPCError(error));
             }
             SyncRequestId::SingleBlob { id } => {
-                self.on_single_blob_response(id, peer_id, RpcEvent::RPCError(error))
+                self.on_single_blob_response(id, peer_id, RpcEvent::RPCError(error));
             }
             SyncRequestId::DataColumnsByRoot(req_id) => {
-                self.on_data_columns_by_root_response(req_id, peer_id, RpcEvent::RPCError(error))
+                self.on_data_columns_by_root_response(req_id, peer_id, RpcEvent::RPCError(error));
             }
             SyncRequestId::BlocksByRange(req_id) => {
-                self.on_blocks_by_range_response(req_id, peer_id, RpcEvent::RPCError(error))
+                self.on_blocks_by_range_response(req_id, peer_id, RpcEvent::RPCError(error));
             }
             SyncRequestId::BlobsByRange(req_id) => {
-                self.on_blobs_by_range_response(req_id, peer_id, RpcEvent::RPCError(error))
+                self.on_blobs_by_range_response(req_id, peer_id, RpcEvent::RPCError(error));
             }
             SyncRequestId::DataColumnsByRange(req_id) => {
-                self.on_data_columns_by_range_response(req_id, peer_id, RpcEvent::RPCError(error))
+                self.on_data_columns_by_range_response(req_id, peer_id, RpcEvent::RPCError(error));
             }
             SyncRequestId::SingleEnvelope { id, block_root } => {
                 // Attestation-triggered envelope request failed — not critical, the
@@ -747,10 +747,10 @@ impl<T: BeaconChainTypes> SyncManager<T> {
                                             debug!(error=?e, "Custody backfill batch processing or downloading failed");
                                         }
                                         CustodyBackfillError::BatchInvalidState(_, reason) => {
-                                            error!(error=?e, reason, "Custody backfill sync failed due to invalid batch state")
+                                            error!(error=?e, reason, "Custody backfill sync failed due to invalid batch state");
                                         }
                                         CustodyBackfillError::InvalidSyncState(reason) => {
-                                            error!(error=?e, reason, "Custody backfill sync failed due to invalid sync state")
+                                            error!(error=?e, reason, "Custody backfill sync failed due to invalid sync state");
                                         }
                                         CustodyBackfillError::Paused => {}
                                     }
@@ -905,7 +905,12 @@ impl<T: BeaconChainTypes> SyncManager<T> {
                 data_column,
                 seen_timestamp,
             } => {
-                self.rpc_data_column_received(sync_request_id, peer_id, data_column, seen_timestamp)
+                self.rpc_data_column_received(
+                    sync_request_id,
+                    peer_id,
+                    data_column,
+                    seen_timestamp,
+                );
             }
             SyncMessage::RpcEnvelope {
                 sync_request_id,
@@ -1222,7 +1227,7 @@ impl<T: BeaconChainTypes> SyncManager<T> {
                         (value, PeerGroup::from_single(peer_id), seen_timestamp)
                     }),
                     &mut self.network,
-                )
+                );
         }
     }
 
@@ -1373,7 +1378,7 @@ impl<T: BeaconChainTypes> SyncManager<T> {
                         (value, PeerGroup::from_single(peer_id), seen_timestamp)
                     }),
                     &mut self.network,
-                )
+                );
         }
     }
 

@@ -566,7 +566,7 @@ where
                 .take(self.maps.len().saturating_sub(SLOTS_RETAINED))
                 .for_each(|slot| {
                     self.maps.remove(&slot);
-                })
+                });
         }
     }
 }
@@ -658,15 +658,15 @@ mod tests {
     fn unset_sync_contribution_bit(a: &mut SyncCommitteeContribution<E>, i: usize) {
         a.aggregation_bits
             .set(i, false)
-            .expect("should unset aggregation bit")
+            .expect("should unset aggregation bit");
     }
 
     fn mutate_attestation_block_root(a: &mut Attestation<E>, block_root: Hash256) {
-        a.data_mut().beacon_block_root = block_root
+        a.data_mut().beacon_block_root = block_root;
     }
 
     fn mutate_attestation_slot(a: &mut Attestation<E>, slot: Slot) {
-        a.data_mut().slot = slot
+        a.data_mut().slot = slot;
     }
 
     fn attestation_block_root_comparator(a: &Attestation<E>, block_root: Hash256) -> bool {
@@ -681,11 +681,11 @@ mod tests {
         a: &mut SyncCommitteeContribution<E>,
         block_root: Hash256,
     ) {
-        a.beacon_block_root = block_root
+        a.beacon_block_root = block_root;
     }
 
     fn mutate_sync_contribution_slot(a: &mut SyncCommitteeContribution<E>, slot: Slot) {
-        a.slot = slot
+        a.slot = slot;
     }
 
     fn sync_contribution_block_root_comparator(

@@ -126,11 +126,11 @@ where
         if let Some(other_point) = other.point() {
             self.is_infinity = self.is_infinity && other.is_infinity;
             if let Some(self_point) = &mut self.point {
-                self_point.add_assign(other_point)
+                self_point.add_assign(other_point);
             } else {
                 let mut self_point = AggSig::infinity();
                 self_point.add_assign(other_point);
-                self.point = Some(self_point)
+                self.point = Some(self_point);
             }
         }
     }
@@ -140,11 +140,11 @@ where
         if let Some(other_point) = other.point() {
             self.is_infinity = self.is_infinity && other.is_infinity;
             if let Some(self_point) = &mut self.point {
-                self_point.add_assign_aggregate(other_point)
+                self_point.add_assign_aggregate(other_point);
             } else {
                 let mut self_point = AggSig::infinity();
                 self_point.add_assign_aggregate(other_point);
-                self.point = Some(self_point)
+                self.point = Some(self_point);
             }
         }
     }

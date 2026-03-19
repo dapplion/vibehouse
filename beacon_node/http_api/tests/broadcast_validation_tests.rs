@@ -138,7 +138,7 @@ pub async fn gossip_partial_pass() {
     let ((block, blobs), _) = tester
         .harness
         .make_block_with_modifier(chain_state_before, slot, |b| {
-            *b.state_root_mut() = Hash256::random()
+            *b.state_root_mut() = Hash256::random();
         })
         .await;
 
@@ -344,7 +344,7 @@ pub async fn consensus_gossip() {
         .harness
         .make_block_with_modifier(state_a, slot_b, |b| {
             *correct_state_root = *b.state_root();
-            *b.state_root_mut() = Hash256::zero()
+            *b.state_root_mut() = Hash256::zero();
         })
         .await;
 
@@ -666,7 +666,7 @@ pub async fn equivocation_gossip() {
         .harness
         .make_block_with_modifier(state_a, slot_b, |b| {
             *correct_state_root = *b.state_root();
-            *b.state_root_mut() = Hash256::zero()
+            *b.state_root_mut() = Hash256::zero();
         })
         .await;
 
@@ -913,7 +913,7 @@ pub async fn blinded_gossip_partial_pass() {
     let (blinded_block, _) = tester
         .harness
         .make_blinded_block_with_modifier(chain_state_before, slot, |b| {
-            *b.state_root_mut() = Hash256::zero()
+            *b.state_root_mut() = Hash256::zero();
         })
         .await;
 
@@ -1130,7 +1130,7 @@ pub async fn blinded_consensus_gossip() {
         .harness
         .make_blinded_block_with_modifier(state_a, slot_b, |b| {
             *correct_state_root = *b.state_root();
-            *b.state_root_mut() = Hash256::zero()
+            *b.state_root_mut() = Hash256::zero();
         })
         .await;
 
@@ -1388,7 +1388,7 @@ pub async fn blinded_equivocation_gossip() {
         .harness
         .make_blinded_block_with_modifier(state_a, slot_b, |b| {
             *correct_state_root = *b.state_root();
-            *b.state_root_mut() = Hash256::zero()
+            *b.state_root_mut() = Hash256::zero();
         })
         .await;
 

@@ -67,7 +67,7 @@ impl<E: EthSpec> ProductionBeaconNode<E> {
                 msg = "this occurs when using relative paths for a datadir location",
                 location = ?legacy_dir,
                 "Legacy datadir location"
-            )
+            );
         }
 
         if let Err(misaligned_forks) = validator_fork_epochs(&spec) {
@@ -194,7 +194,7 @@ struct Discv5Executor(task_executor::TaskExecutor);
 
 impl vibehouse_network::discv5::Executor for Discv5Executor {
     fn spawn(&self, future: std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>) {
-        self.0.spawn(future, "discv5")
+        self.0.spawn(future, "discv5");
     }
 }
 

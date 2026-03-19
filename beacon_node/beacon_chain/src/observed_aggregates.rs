@@ -423,7 +423,7 @@ where
 
         // Prune the pool if this item indicates that the current slot has advanced.
         if lowest_permissible_slot + self.max_capacity() < slot + 1 {
-            self.prune(slot)
+            self.prune(slot);
         }
 
         if let Some(index) = self.sets.iter().position(|set| set.slot == slot) {

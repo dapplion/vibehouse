@@ -166,7 +166,7 @@ impl Config {
             tcp_port,
         });
         self.discv5_config.listen_config = discv5::ListenConfig::from_ip(addr.into(), disc_port);
-        self.discv5_config.table_filter = |enr| enr.ip4().as_ref().is_some_and(is_global_ipv4)
+        self.discv5_config.table_filter = |enr| enr.ip4().as_ref().is_some_and(is_global_ipv4);
     }
 
     /// Sets the listening address to use an ipv6 address. The discv5 ip_mode and table filter is
@@ -187,7 +187,7 @@ impl Config {
         });
 
         self.discv5_config.listen_config = discv5::ListenConfig::from_ip(addr.into(), disc_port);
-        self.discv5_config.table_filter = |enr| enr.ip6().as_ref().is_some_and(is_global_ipv6)
+        self.discv5_config.table_filter = |enr| enr.ip6().as_ref().is_some_and(is_global_ipv6);
     }
 
     /// Sets the listening address to use both an ipv4 and ipv6 address. The discv5 ip_mode and

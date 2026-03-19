@@ -122,7 +122,7 @@ impl StateSummariesDAG {
     ) -> Result<Self, Error> {
         // Group them by latest block root, and sorted state slot
         let mut state_summaries_by_block_root = HashMap::<_, BTreeMap<_, _>>::new();
-        for (state_root, summary) in state_summaries_v22.iter() {
+        for (state_root, summary) in &state_summaries_v22 {
             let summaries = state_summaries_by_block_root
                 .entry(summary.latest_block_root)
                 .or_default();
@@ -244,7 +244,7 @@ impl StateSummariesDAG {
 
     pub fn summaries_by_slot_ascending(&self) -> BTreeMap<Slot, Vec<(Hash256, DAGStateSummary)>> {
         let mut summaries = BTreeMap::<Slot, Vec<_>>::new();
-        for (state_root, summary) in self.state_summaries_by_state_root.iter() {
+        for (state_root, summary) in &self.state_summaries_by_state_root {
             summaries
                 .entry(summary.slot)
                 .or_default()

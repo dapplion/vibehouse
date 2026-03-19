@@ -314,7 +314,7 @@ impl ssz::Encode for GoodbyeReason {
 
     fn ssz_append(&self, buf: &mut Vec<u8>) {
         let conv: u64 = self.clone().into();
-        conv.ssz_append(buf)
+        conv.ssz_append(buf);
     }
 }
 

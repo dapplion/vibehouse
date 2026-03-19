@@ -329,7 +329,7 @@ mod gloas_genesis_tests {
         assert_eq!(state_gloas.builders.len(), 0);
 
         // Builder pending payments initialized to default
-        for payment in state_gloas.builder_pending_payments.iter() {
+        for payment in &state_gloas.builder_pending_payments {
             assert_eq!(payment.withdrawal.amount, 0);
             assert_eq!(payment.weight, 0);
         }

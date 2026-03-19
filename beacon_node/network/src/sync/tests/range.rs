@@ -174,7 +174,7 @@ impl TestRig {
             self.sync_manager.__range_failed_chains(),
             Vec::<Hash256>::new(),
             "Expected no failed chains"
-        )
+        );
     }
 
     #[track_caller]

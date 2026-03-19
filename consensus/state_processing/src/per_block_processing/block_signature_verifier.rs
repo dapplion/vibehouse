@@ -418,7 +418,7 @@ where
         if let Ok(payload_attestations) = block.message().body().payload_attestations() {
             self.sets.sets.reserve(payload_attestations.len());
 
-            for attestation in payload_attestations.iter() {
+            for attestation in payload_attestations {
                 let indexed = super::gloas::get_indexed_payload_attestation(
                     self.state,
                     attestation,
@@ -437,7 +437,7 @@ where
 
                 // Collect pubkeys from attesting indices (owned, to satisfy lifetime).
                 let mut pubkeys = Vec::with_capacity(indexed.attesting_indices.len());
-                for &validator_index in indexed.attesting_indices.iter() {
+                for &validator_index in &indexed.attesting_indices {
                     let pubkey = (self.get_pubkey)(validator_index as usize)
                         .ok_or(SignatureSetError::ValidatorUnknown(validator_index))?;
                     pubkeys.push(pubkey);

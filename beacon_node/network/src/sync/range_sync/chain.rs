@@ -737,7 +737,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
                 }
                 BatchState::Downloading(..) => {}
                 BatchState::Failed | BatchState::Poisoned | BatchState::AwaitingDownload => {
-                    crit!("batch indicates inconsistent chain state while advancing chain")
+                    crit!("batch indicates inconsistent chain state while advancing chain");
                 }
                 BatchState::AwaitingProcessing(..) => {}
                 BatchState::Processing(_) => {
@@ -1330,7 +1330,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
                     visualization_string.push('E');
                     // Add a comma between the empty batches
                     if batch_index < BATCH_BUFFER_SIZE.saturating_sub(1) {
-                        visualization_string.push(',')
+                        visualization_string.push(',');
                     }
                     batch_index += 1;
                 }

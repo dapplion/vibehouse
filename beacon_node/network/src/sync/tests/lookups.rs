@@ -164,7 +164,7 @@ impl TestRig {
 
     fn trigger_unknown_parent_block(&mut self, peer_id: PeerId, block: Arc<SignedBeaconBlock<E>>) {
         let block_root = block.canonical_root();
-        self.send_sync_message(SyncMessage::UnknownParentBlock(peer_id, block, block_root))
+        self.send_sync_message(SyncMessage::UnknownParentBlock(peer_id, block, block_root));
     }
 
     fn trigger_unknown_parent_blob(&mut self, peer_id: PeerId, blob: BlobSidecar<E>) {
@@ -436,7 +436,7 @@ impl TestRig {
         self.send_sync_message(SyncMessage::BlockComponentProcessed {
             process_type: BlockProcessType::SingleBlock { id },
             result,
-        })
+        });
     }
 
     fn single_block_component_processed_imported(&mut self, block_root: Hash256) {
@@ -444,14 +444,14 @@ impl TestRig {
         self.single_block_component_processed(
             id,
             BlockProcessingResult::Ok(AvailabilityProcessingStatus::Imported(block_root)),
-        )
+        );
     }
 
     fn single_blob_component_processed(&mut self, id: Id, result: BlockProcessingResult) {
         self.send_sync_message(SyncMessage::BlockComponentProcessed {
             process_type: BlockProcessType::SingleBlob { id },
             result,
-        })
+        });
     }
 
     fn parent_lookup_block_response(
@@ -573,13 +573,13 @@ impl TestRig {
                     block_root,
                 ))
             },
-        )
+        );
     }
 
     fn complete_single_lookup_block_valid(&mut self, block: SignedBeaconBlock<E>, import: bool) {
         let block_root = block.canonical_root();
         self.complete_lookup_block_download(block);
-        self.complete_lookup_block_import_valid(block_root, import)
+        self.complete_lookup_block_import_valid(block_root, import);
     }
 
     fn parent_lookup_failed(&mut self, id: SingleLookupReqId, peer_id: PeerId, error: RPCError) {
@@ -587,7 +587,7 @@ impl TestRig {
             peer_id,
             sync_request_id: SyncRequestId::SingleBlock { id },
             error,
-        })
+        });
     }
 
     fn parent_lookup_failed_unavailable(&mut self, id: SingleLookupReqId, peer_id: PeerId) {
@@ -606,7 +606,7 @@ impl TestRig {
             peer_id,
             sync_request_id: SyncRequestId::SingleBlock { id },
             error,
-        })
+        });
     }
 
     fn complete_valid_block_request(
@@ -632,7 +632,7 @@ impl TestRig {
             } else {
                 BlockProcessingResult::Ok(AvailabilityProcessingStatus::Imported(block_root))
             },
-        )
+        );
     }
 
     fn complete_valid_custody_request(
@@ -958,7 +958,7 @@ impl TestRig {
                 None
             }
         })
-        .unwrap_or_else(|e| panic!("Expected RPC custody column work: {e}"))
+        .unwrap_or_else(|e| panic!("Expected RPC custody column work: {e}"));
     }
 
     fn expect_no_penalty_for(&mut self, peer_id: PeerId) {
@@ -1098,7 +1098,7 @@ impl TestRig {
         {
             Availability::Available(_) => panic!("block removed from da_checker, available"),
             Availability::MissingComponents(block_root) => {
-                self.log(&format!("inserted block to da_checker {block_root:?}"))
+                self.log(&format!("inserted block to da_checker {block_root:?}"));
             }
         };
     }
@@ -1118,7 +1118,7 @@ impl TestRig {
         {
             Availability::Available(_) => panic!("blob removed from da_checker, available"),
             Availability::MissingComponents(block_root) => {
-                self.log(&format!("inserted blob to da_checker {block_root:?}"))
+                self.log(&format!("inserted blob to da_checker {block_root:?}"));
             }
         };
     }
@@ -1539,7 +1539,7 @@ fn test_parent_lookup_too_deep_grow_ancestor() {
             BlockProcessingResult::Err(BlockError::ParentUnknown {
                 parent_root: block.parent_root(),
             }),
-        )
+        );
     }
 
     // Should create a new syncing chain
@@ -1674,7 +1674,7 @@ fn test_lookup_disconnection_peer_left() {
     let disconnecting_peer = *peer_ids.first().unwrap();
     let block_root = Hash256::random();
     // lookup should have two peers associated with the same block
-    for peer_id in peer_ids.iter() {
+    for peer_id in &peer_ids {
         rig.trigger_unknown_block_from_attestation(block_root, *peer_id);
     }
     // Disconnect the first peer only, which is the one handling the request
@@ -1795,7 +1795,7 @@ fn test_same_chain_race_condition() {
             rig.parent_block_processed(
                 chain_hash,
                 BlockError::DuplicateFullyImported(block.canonical_root()).into(),
-            )
+            );
         } else {
             rig.log(&format!("Block {i} ParentUnknown"));
             rig.parent_block_processed(
@@ -1803,7 +1803,7 @@ fn test_same_chain_race_condition() {
                 BlockProcessingResult::Err(BlockError::ParentUnknown {
                     parent_root: block.parent_root(),
                 }),
-            )
+            );
         }
     }
 

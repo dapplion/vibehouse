@@ -239,7 +239,7 @@ pub fn run_fallback_sim(matches: &ArgMatches) -> Result<(), String> {
             let mut beacon_nodes = Vec::with_capacity(vc_count * bns_per_vc);
             // Each VC gets a unique set of BNs which are not shared with any other VC.
             for j in 0..bns_per_vc {
-                beacon_nodes.push(bns_per_vc * i + j)
+                beacon_nodes.push(bns_per_vc * i + j);
             }
 
             executor.spawn(

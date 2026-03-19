@@ -23,7 +23,7 @@ pub fn compare_fields_derive(input: TokenStream) -> TokenStream {
 
     let mut quotes = vec![];
 
-    for field in struct_data.fields.iter() {
+    for field in &struct_data.fields {
         let Some(ident_a) = &field.ident else {
             panic!("compare_fields_derive only supports named struct fields.");
         };

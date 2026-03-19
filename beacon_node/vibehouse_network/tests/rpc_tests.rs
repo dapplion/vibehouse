@@ -161,7 +161,7 @@ fn test_tcp_status_rpc() {
                 panic!("Future timed out");
             }
         }
-    })
+    });
 }
 
 // Tests a streamed BlocksByRange RPC Message
@@ -308,7 +308,7 @@ fn test_tcp_blocks_by_range_chunked_rpc() {
                     panic!("Future timed out");
             }
         }
-    })
+    });
 }
 
 // Tests a streamed BlobsByRange RPC Message
@@ -436,7 +436,7 @@ fn test_blobs_by_range_chunked_rpc() {
                     panic!("Future timed out");
             }
         }
-    })
+    });
 }
 
 // Tests rejection of blocks over `MAX_RPC_SIZE`.
@@ -543,7 +543,7 @@ fn test_tcp_blocks_by_range_over_limit() {
                     panic!("Future timed out");
             }
         }
-    })
+    });
 }
 
 // Tests that a streamed BlocksByRange RPC Message terminates when all expected chunks were received
@@ -680,7 +680,7 @@ fn test_tcp_blocks_by_range_chunked_rpc_terminates_correctly() {
                 panic!("Future timed out");
             }
         }
-    })
+    });
 }
 
 // Tests an empty response to a BlocksByRange RPC Message
@@ -800,7 +800,7 @@ fn test_tcp_blocks_by_range_single_empty_rpc() {
                 panic!("Future timed out");
             }
         }
-    })
+    });
 }
 
 // Tests a streamed, chunked BlocksByRoot RPC Message
@@ -953,7 +953,7 @@ fn test_tcp_blocks_by_root_chunked_rpc() {
                     panic!("Future timed out");
             }
         }
-    })
+    });
 }
 
 #[test]
@@ -1116,7 +1116,7 @@ fn test_tcp_columns_by_root_chunked_rpc() {
                     panic!("Future timed out");
             }
         }
-    })
+    });
 }
 
 #[test]
@@ -1255,7 +1255,7 @@ fn test_tcp_columns_by_range_chunked_rpc() {
                     panic!("Future timed out");
             }
         }
-    })
+    });
 }
 
 // Tests a streamed, chunked BlocksByRoot RPC Message terminates when all expected reponses have been received
@@ -1405,7 +1405,7 @@ fn test_tcp_blocks_by_root_chunked_rpc_terminates_correctly() {
                 panic!("Future timed out");
             }
         }
-    })
+    });
 }
 
 /// Establishes a pair of nodes and disconnects the pair based on the selected protocol via an RPC
@@ -1471,7 +1471,7 @@ fn goodbye_test(log_level: &str, enable_logging: bool, protocol: Protocol) {
                 panic!("Future timed out");
             }
         }
-    })
+    });
 }
 
 // Tests a Goodbye RPC message
@@ -1624,7 +1624,7 @@ fn test_delayed_rpc_response() {
                 panic!("Future timed out");
             }
         }
-    })
+    });
 }
 
 // Test that a rate-limited error doesn't occur even if the sender attempts to send many requests at
@@ -1735,7 +1735,7 @@ fn test_active_requests() {
                 panic!("Future timed out");
             }
         }
-    })
+    });
 }
 
 // Test that when a node receives an invalid BlocksByRange request exceeding the maximum count,

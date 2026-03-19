@@ -184,7 +184,7 @@ fn beacon_nodes_tls_certs_flag() {
                     dir.path().join("certificate.crt"),
                     dir.path().join("certificate2.crt")
                 ])
-            )
+            );
         });
 }
 
@@ -198,7 +198,7 @@ fn graffiti_flag() {
             assert_eq!(
                 config.graffiti.unwrap().to_string(),
                 "0x6e6963652d677261666669746900000000000000000000000000000000000000"
-            )
+            );
         });
 }
 #[test]
@@ -228,7 +228,7 @@ fn graffiti_file_flag() {
                     .unwrap()
                     .to_string(),
                 "0x6e6963652d677261666669746900000000000000000000000000000000000000"
-            )
+            );
         });
 }
 #[test]
@@ -257,7 +257,7 @@ fn graffiti_file_with_pk_flag() {
                     .unwrap()
                     .to_string(),
                 "0x6e6963652d677261666669746900000000000000000000000000000000000000"
-            )
+            );
         });
 }
 
@@ -274,7 +274,7 @@ fn fee_recipient_flag() {
             assert_eq!(
                 config.validator_store.fee_recipient,
                 Some(Address::from_str("0x00000000219ab540356cbb839cbe05303d7705fa").unwrap())
-            )
+            );
         });
 }
 
@@ -566,7 +566,7 @@ fn builder_registration_timestamp_override_flag() {
         .flag("builder-registration-timestamp-override", Some("100"))
         .run()
         .with_config(|config| {
-            assert_eq!(config.builder_registration_timestamp_override, Some(100))
+            assert_eq!(config.builder_registration_timestamp_override, Some(100));
         });
 }
 #[test]
@@ -631,7 +631,7 @@ fn beacon_nodes_sync_tolerances_flag_default() {
         assert_eq!(
             config.beacon_node_fallback.sync_tolerances,
             BeaconNodeSyncDistanceTiers::default()
-        )
+        );
     });
 }
 #[test]

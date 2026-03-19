@@ -350,7 +350,7 @@ impl<E: EthSpec> Network<E> {
                 .expect("Valid score params and thresholds");
 
             // Mark trusted peers as explicit.
-            for explicit_peer in config.trusted_peers.iter() {
+            for explicit_peer in &config.trusted_peers {
                 gossipsub.add_explicit_peer(&PeerId::from(explicit_peer.clone()));
             }
 
@@ -566,7 +566,7 @@ impl<E: EthSpec> Network<E> {
             match self.swarm.dial(multiaddr.clone()) {
                 Ok(()) => debug!(address = %multiaddr, "Dialing libp2p peer"),
                 Err(err) => {
-                    debug!(address = %multiaddr, error = ?err, "Could not connect to peer")
+                    debug!(address = %multiaddr, error = ?err, "Could not connect to peer");
                 }
             };
         };
@@ -768,7 +768,7 @@ impl<E: EthSpec> Network<E> {
             {
                 Ok(_) => debug!(%topic, "Removed topic weight"),
                 Err(e) => {
-                    warn!(%topic, error = e, "Failed to remove topic weight")
+                    warn!(%topic, error = e, "Failed to remove topic weight");
                 }
             }
         }
@@ -864,7 +864,7 @@ impl<E: EthSpec> Network<E> {
                                 &metrics::FAILED_ATTESTATION_PUBLISHES_PER_SUBNET,
                                 &[subnet_id.as_ref()],
                             ) {
-                                v.inc()
+                                v.inc();
                             };
                         }
                         kind => {
@@ -872,7 +872,7 @@ impl<E: EthSpec> Network<E> {
                                 &metrics::FAILED_PUBLISHES_PER_MAIN_TOPIC,
                                 &[&format!("{:?}", kind)],
                             ) {
-                                v.inc()
+                                v.inc();
                             };
                         }
                     }
@@ -907,7 +907,7 @@ impl<E: EthSpec> Network<E> {
             metrics::inc_counter_vec(
                 &metrics::GOSSIP_UNACCEPTED_MESSAGES_PER_CLIENT,
                 &[client, result],
-            )
+            );
         }
 
         self.gossipsub_mut().report_message_validation_result(
@@ -1847,7 +1847,7 @@ impl<E: EthSpec> Network<E> {
                                 &metrics::GOSSIP_EXPIRED_LATE_PUBLISH_PER_TOPIC_KIND,
                                 &[expired_topic.kind().as_ref()],
                             ) {
-                                v.inc()
+                                v.inc();
                             };
                         }
                     }
@@ -1944,10 +1944,10 @@ impl<E: EthSpec> Network<E> {
             } => {
                 match reason {
                     Ok(_) => {
-                        debug!(?addresses, "Listener gracefully closed")
+                        debug!(?addresses, "Listener gracefully closed");
                     }
                     Err(reason) => {
-                        crit!(?addresses, ?reason, "Listener abruptly closed")
+                        crit!(?addresses, ?reason, "Listener abruptly closed");
                     }
                 };
                 if Swarm::listeners(&self.swarm).count() == 0 {

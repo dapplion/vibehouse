@@ -784,7 +784,7 @@ where
                             light_client_server_rv,
                             beacon_processor_channels.beacon_processor_tx,
                         )
-                        .await
+                        .await;
                     },
                     "lc_update",
                 );

@@ -52,7 +52,7 @@ impl ManualSlotClock {
     }
 
     pub fn advance_slot(&self) {
-        self.set_slot(self.now().unwrap().as_u64() + 1)
+        self.set_slot(self.now().unwrap().as_u64() + 1);
     }
 
     pub fn genesis_duration(&self) -> &Duration {

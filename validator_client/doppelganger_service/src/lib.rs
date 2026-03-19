@@ -191,7 +191,7 @@ async fn beacon_node_liveness<T: 'static + SlotClock>(
             current_epoch_response = current_epoch_responses.len(),
             requested = validator_indices.len(),
             "Liveness query omitted validators"
-        )
+        );
     }
 
     LivenessResponses {
@@ -1034,15 +1034,15 @@ mod test {
     #[test]
     fn detect_after_genesis_with_current_epoch_doppelganger() {
         detect_after_genesis_test(|liveness_responses| {
-            liveness_responses.current_epoch_responses[0].is_live = true
-        })
+            liveness_responses.current_epoch_responses[0].is_live = true;
+        });
     }
 
     #[test]
     fn detect_after_genesis_with_previous_epoch_doppelganger() {
         detect_after_genesis_test(|liveness_responses| {
-            liveness_responses.previous_epoch_responses[0].is_live = true
-        })
+            liveness_responses.previous_epoch_responses[0].is_live = true;
+        });
     }
 
     #[test]
@@ -1357,12 +1357,12 @@ mod test {
                     assert_eq!(
                         scenario.doppelganger.validator_status(pubkey),
                         DoppelgangerStatus::SigningDisabled(pubkey)
-                    )
+                    );
                 } else {
                     assert_eq!(
                         scenario.doppelganger.validator_status(pubkey),
                         DoppelgangerStatus::SigningEnabled(pubkey)
-                    )
+                    );
                 }
             }
         }

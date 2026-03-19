@@ -217,7 +217,7 @@ impl<'a> Builder<'a> {
                         .open(path)
                         .map_err(Error::UnableToSaveDepositData)?
                         .write_all(hex.as_bytes())
-                        .map_err(Error::UnableToSaveDepositData)?
+                        .map_err(Error::UnableToSaveDepositData)?;
                 }
 
                 // Save `ETH1_DEPOSIT_AMOUNT_FILE` to file.
@@ -235,7 +235,7 @@ impl<'a> Builder<'a> {
                         .open(path)
                         .map_err(Error::UnableToSaveDepositAmount)?
                         .write_all(amount.to_string().as_bytes())
-                        .map_err(Error::UnableToSaveDepositAmount)?
+                        .map_err(Error::UnableToSaveDepositAmount)?;
                 }
             }
 

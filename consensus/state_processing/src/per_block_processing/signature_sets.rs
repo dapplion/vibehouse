@@ -716,7 +716,7 @@ where
 {
     // Collect public keys for all attesting validators
     let mut pubkeys = Vec::with_capacity(attesting_indices.len());
-    for &validator_index in attesting_indices.iter() {
+    for &validator_index in attesting_indices {
         let pubkey =
             get_pubkey(validator_index as usize).ok_or(Error::ValidatorUnknown(validator_index))?;
         pubkeys.push(pubkey);

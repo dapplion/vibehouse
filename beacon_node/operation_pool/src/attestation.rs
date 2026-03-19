@@ -172,7 +172,7 @@ impl<'a, E: EthSpec> MaxCover for AttMaxCover<'a, E> {
                 } else {
                     true
                 }
-            })
+            });
         }
     }
 

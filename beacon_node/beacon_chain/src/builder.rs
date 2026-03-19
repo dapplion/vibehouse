@@ -1465,7 +1465,7 @@ mod test {
                 &creds[1..],
                 &hash_fixed(&v.pubkey.serialize())[1..],
                 "rest of withdrawal creds should be pubkey hash"
-            )
+            );
         }
 
         assert_eq!(

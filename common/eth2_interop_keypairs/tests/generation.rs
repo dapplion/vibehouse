@@ -23,7 +23,7 @@ fn reference_private_keys() {
     reference.iter().enumerate().for_each(|(i, reference)| {
         let bytes = be_private_key(i);
         let num = BigUint::from_bytes_be(&bytes);
-        assert_eq!(&num.to_str_radix(10), reference)
+        assert_eq!(&num.to_str_radix(10), reference);
     });
 }
 

@@ -263,7 +263,7 @@ where
     }
 
     fn set_current_slot(&mut self, slot: Slot) {
-        self.time = slot
+        self.time = slot;
     }
 
     fn on_verified_block<Payload: AbstractExecPayload<E>>(
@@ -308,7 +308,7 @@ where
     }
 
     fn set_finalized_checkpoint(&mut self, checkpoint: Checkpoint) {
-        self.finalized_checkpoint = checkpoint
+        self.finalized_checkpoint = checkpoint;
     }
 
     fn set_justified_checkpoint(

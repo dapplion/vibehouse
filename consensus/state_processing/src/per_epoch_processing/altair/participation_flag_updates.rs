@@ -99,7 +99,7 @@ mod tests {
         process_participation_flag_updates::<E>(&mut state).unwrap();
 
         // Current should be all defaults (zero)
-        for flag in state.current_epoch_participation().unwrap().iter() {
+        for flag in state.current_epoch_participation().unwrap() {
             assert_eq!(*flag, ParticipationFlags::default());
         }
     }
@@ -145,7 +145,7 @@ mod tests {
         // Second update: previous should now be all defaults (the reset current)
         process_participation_flag_updates::<E>(&mut state).unwrap();
 
-        for flag in state.previous_epoch_participation().unwrap().iter() {
+        for flag in state.previous_epoch_participation().unwrap() {
             assert_eq!(*flag, ParticipationFlags::default());
         }
     }

@@ -20,7 +20,7 @@ fn valid_empty_history() {
         cases: vec![Test::single(block(1))],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -34,7 +34,7 @@ fn valid_blocks() {
         ],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -44,7 +44,7 @@ fn valid_same_block() {
         cases: vec![Test::single(block), Test::single(block).expect_same_data()],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -56,7 +56,7 @@ fn valid_same_slot_different_validator() {
             Test::with_pubkey(pubkey(1), block(100)),
         ],
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -69,7 +69,7 @@ fn valid_same_block_different_validator() {
             Test::with_pubkey(pubkey(1), block),
         ],
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -84,7 +84,7 @@ fn invalid_double_block_proposal() {
         ],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -104,7 +104,7 @@ fn invalid_double_block_proposal_diff_domain() {
         ],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -117,5 +117,5 @@ fn invalid_unregistered_validator() {
             )))),
         ],
     }
-    .run()
+    .run();
 }

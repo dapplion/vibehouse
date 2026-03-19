@@ -480,7 +480,7 @@ impl<E: EthSpec> PeerDB<E> {
         let mut peers_to_unban = Vec::new();
         let mut result = Vec::new();
 
-        for (peer_id, info) in self.peers.iter_mut() {
+        for (peer_id, info) in &mut self.peers {
             let previous_state = info.score_state();
             // Update scores
             info.score_update();
@@ -1190,7 +1190,7 @@ impl<E: EthSpec> PeerDB<E> {
             } {
                 debug!(peer_id = %to_drop, "Removing old banned peer");
                 self.peers.remove(&to_drop);
-                unbanned_peers.push((to_drop, unbanned_ips))
+                unbanned_peers.push((to_drop, unbanned_ips));
             }
         }
 
@@ -1514,7 +1514,7 @@ mod tests {
         }
         assert_eq!(pdb.disconnected_peers, 0);
 
-        for (_, p) in peer_list.iter() {
+        for p in peer_list.values() {
             pdb.inject_disconnect(p);
             // Allow the timing to update correctly
         }
@@ -1549,7 +1549,7 @@ mod tests {
             peer_list.insert(id, new_peer);
         }
         assert_eq!(pdb.disconnected_peers, pdb.disconnected_peers().count());
-        for (_, p) in peer_list.iter() {
+        for p in peer_list.values() {
             pdb.inject_disconnect(p);
         }
         assert_eq!(pdb.disconnected_peers, pdb.disconnected_peers().count());

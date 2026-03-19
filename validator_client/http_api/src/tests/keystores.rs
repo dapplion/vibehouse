@@ -76,7 +76,7 @@ where
     V: Future<Output = ()>,
 {
     let tester = ApiTester::new().await;
-    f(tester).await
+    f(tester).await;
 }
 
 async fn run_dual_vc_test<F, V>(f: F)
@@ -86,7 +86,7 @@ where
 {
     let tester1 = ApiTester::new().await;
     let tester2 = ApiTester::new().await;
-    f(tester1, tester2).await
+    f(tester1, tester2).await;
 }
 
 fn keystore_pubkey(keystore: &Keystore) -> PublicKeyBytes {
@@ -952,7 +952,7 @@ async fn check_get_set_gas_limit() {
             );
         }
     })
-    .await
+    .await;
 }
 
 fn all_indices(count: usize) -> Vec<usize> {
@@ -1187,7 +1187,7 @@ async fn generic_migration_test(
             }
         }
     })
-    .await
+    .await;
 }
 
 #[tokio::test]
@@ -1219,7 +1219,7 @@ async fn delete_keystores_twice() {
         let delete_res = tester.client.delete_keystores(&delete_req).await.unwrap();
         check_keystore_delete_response(&delete_res, all_not_active(keystores.len()));
     })
-    .await
+    .await;
 }
 
 #[tokio::test]
@@ -1238,7 +1238,7 @@ async fn delete_nonexistent_keystores() {
         let delete_res = tester.client.delete_keystores(&delete_req).await.unwrap();
         check_keystore_delete_response(&delete_res, all_not_found(keystores.len()));
     })
-    .await
+    .await;
 }
 
 fn make_attestation(source_epoch: u64, target_epoch: u64) -> Attestation<E> {
@@ -1310,7 +1310,7 @@ async fn delete_concurrent_with_signing() {
         let handle = handle.spawn(async move {
             for j in 0..num_attestations {
                 let mut att = make_attestation(j, j + 1);
-                for public_key in thread_pubkeys.iter() {
+                for public_key in &thread_pubkeys {
                     let _ = validator_store
                         .sign_attestation(*public_key, 0, &mut att, Epoch::new(j + 1))
                         .await;
@@ -1344,7 +1344,7 @@ async fn delete_concurrent_with_signing() {
                         .await
                         .unwrap();
 
-                    for status in delete_res.data.iter() {
+                    for status in &delete_res.data {
                         assert_ne!(status.status, DeleteKeystoreStatus::Error);
                     }
 
@@ -1372,7 +1372,7 @@ async fn delete_concurrent_with_signing() {
                     assert_eq!(
                         *existing, validator_data,
                         "slashing protection data changed after first export"
-                    )
+                    );
                 })
                 .or_insert(validator_data);
         }
@@ -1413,7 +1413,7 @@ async fn delete_then_reimport() {
         let import_res = tester.client.post_keystores(&import_req).await.unwrap();
         check_keystore_import_response(&import_res, all_imported(keystores.len()));
     })
-    .await
+    .await;
 }
 
 #[tokio::test]
@@ -1423,7 +1423,7 @@ async fn get_empty_remotekeys() {
         let res = tester.client.get_remotekeys().await.unwrap();
         assert_eq!(res, ListRemotekeysResponse { data: vec![] });
     })
-    .await
+    .await;
 }
 
 #[tokio::test]
@@ -1462,7 +1462,7 @@ async fn import_new_remotekeys() {
         let get_res = tester.client.get_remotekeys().await.unwrap();
         check_remotekey_get_response(&get_res, expected_responses);
     })
-    .await
+    .await;
 }
 
 #[tokio::test]
@@ -1505,7 +1505,7 @@ async fn import_same_remotekey_different_url() {
             }],
         );
     })
-    .await
+    .await;
 }
 
 #[tokio::test]
@@ -1555,7 +1555,7 @@ async fn delete_remotekey_then_reimport_different_url() {
             vec![ImportRemotekeyStatus::Imported].into_iter(),
         );
     })
-    .await
+    .await;
 }
 
 #[tokio::test]
@@ -1604,7 +1604,7 @@ async fn import_only_duplicate_remotekeys() {
         let get_res = tester.client.get_remotekeys().await.unwrap();
         check_remotekey_get_response(&get_res, expected_responses);
     })
-    .await
+    .await;
 }
 
 #[tokio::test]
@@ -1672,7 +1672,7 @@ async fn import_some_duplicate_remotekeys() {
         let get_res = tester.client.get_remotekeys().await.unwrap();
         check_remotekey_get_response(&get_res, expected_responses);
     })
-    .await
+    .await;
 }
 
 #[tokio::test]
@@ -1738,7 +1738,7 @@ async fn import_remote_and_local_keys() {
             assert!(get_res.data.contains(&response), "{:?}", response);
         }
     })
-    .await
+    .await;
 }
 
 #[tokio::test]
@@ -1755,7 +1755,7 @@ async fn import_same_local_and_remote_keys() {
 
         // Generate remotekeys with same pubkey as local keystores.
         let mut remotekeys = Vec::new();
-        for keystore in keystores.iter() {
+        for keystore in &keystores {
             remotekeys.push(remotekey_validator_with_pubkey(
                 keystore.public_key().unwrap(),
             ));
@@ -1807,7 +1807,7 @@ async fn import_same_local_and_remote_keys() {
             assert!(get_res.data.contains(&response), "{:?}", response);
         }
     })
-    .await
+    .await;
 }
 #[tokio::test]
 async fn import_same_remote_and_local_keys() {
@@ -1823,7 +1823,7 @@ async fn import_same_remote_and_local_keys() {
 
         // Generate remotekeys with same pubkey as local keystores.
         let mut remotekeys = Vec::new();
-        for keystore in keystores.iter() {
+        for keystore in &keystores {
             remotekeys.push(remotekey_validator_with_pubkey(
                 keystore.public_key().unwrap(),
             ));
@@ -1873,7 +1873,7 @@ async fn import_same_remote_and_local_keys() {
         let get_res = tester.client.get_remotekeys().await.unwrap();
         check_remotekey_get_response(&get_res, expected_responses);
     })
-    .await
+    .await;
 }
 
 #[tokio::test]
@@ -1920,7 +1920,7 @@ async fn delete_remotekeys_twice() {
         let get_res = tester.client.get_remotekeys().await.unwrap();
         check_remotekey_get_response(&get_res, Vec::new());
     })
-    .await
+    .await;
 }
 
 #[tokio::test]
@@ -1947,7 +1947,7 @@ async fn delete_nonexistent_remotekey() {
         let get_res = tester.client.get_remotekeys().await.unwrap();
         check_remotekey_get_response(&get_res, Vec::new());
     })
-    .await
+    .await;
 }
 
 #[tokio::test]
@@ -1984,7 +1984,7 @@ async fn delete_then_reimport_remotekeys() {
         );
 
         // Change remote key url
-        for rk in remotekeys.iter_mut() {
+        for rk in &mut remotekeys {
             rk.url = "http://localhost:1/this-url-hopefully-does-also-not-exist".into();
         }
 
@@ -2013,7 +2013,7 @@ async fn delete_then_reimport_remotekeys() {
         let get_res = tester.client.get_remotekeys().await.unwrap();
         check_remotekey_get_response(&get_res, expected_responses);
     })
-    .await
+    .await;
 }
 
 #[tokio::test]
@@ -2073,7 +2073,7 @@ async fn import_remotekey_web3signer() {
         let get_res = tester.client.get_remotekeys().await.unwrap();
         check_remotekey_get_response(&get_res, expected_responses);
     })
-    .await
+    .await;
 }
 
 #[tokio::test]
@@ -2127,7 +2127,7 @@ async fn import_remotekey_web3signer_disabled() {
         let get_res = tester.client.get_remotekeys().await.unwrap();
         check_remotekey_get_response(&get_res, expected_responses);
     })
-    .await
+    .await;
 }
 
 #[tokio::test]
@@ -2193,5 +2193,5 @@ async fn import_remotekey_web3signer_enabled() {
         let get_res = tester.client.get_remotekeys().await.unwrap();
         check_remotekey_get_response(&get_res, expected_responses);
     })
-    .await
+    .await;
 }

@@ -83,7 +83,7 @@ pub fn start_fallback_updater_service<T: SlotClock + 'static, E: EthSpec>(
                 })
                 .unwrap_or_else(|| Duration::from_secs(1));
 
-            sleep(sleep_time).await
+            sleep(sleep_time).await;
         }
     };
 
@@ -508,7 +508,7 @@ impl<T: SlotClock> BeaconNodeFallback<T> {
         let mut futures = Vec::with_capacity(candidates.len());
         let mut nodes = Vec::with_capacity(candidates.len());
 
-        for candidate in candidates.iter() {
+        for candidate in &candidates {
             futures.push(candidate.refresh_health::<E, T>(
                 &self.distance_tiers,
                 self.slot_clock.as_ref(),

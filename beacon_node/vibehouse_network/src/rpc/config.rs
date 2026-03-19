@@ -224,31 +224,31 @@ impl FromStr for RateLimiterConfig {
                 Protocol::BlobsByRange => blobs_by_range_quota = blobs_by_range_quota.or(quota),
                 Protocol::BlobsByRoot => blobs_by_root_quota = blobs_by_root_quota.or(quota),
                 Protocol::DataColumnsByRoot => {
-                    data_columns_by_root_quota = data_columns_by_root_quota.or(quota)
+                    data_columns_by_root_quota = data_columns_by_root_quota.or(quota);
                 }
                 Protocol::DataColumnsByRange => {
-                    data_columns_by_range_quota = data_columns_by_range_quota.or(quota)
+                    data_columns_by_range_quota = data_columns_by_range_quota.or(quota);
                 }
                 Protocol::Ping => ping_quota = ping_quota.or(quota),
                 Protocol::MetaData => meta_data_quota = meta_data_quota.or(quota),
                 Protocol::LightClientBootstrap => {
-                    light_client_bootstrap_quota = light_client_bootstrap_quota.or(quota)
+                    light_client_bootstrap_quota = light_client_bootstrap_quota.or(quota);
                 }
                 Protocol::LightClientOptimisticUpdate => {
                     light_client_optimistic_update_quota =
-                        light_client_optimistic_update_quota.or(quota)
+                        light_client_optimistic_update_quota.or(quota);
                 }
                 Protocol::LightClientFinalityUpdate => {
                     light_client_finality_update_quota =
-                        light_client_finality_update_quota.or(quota)
+                        light_client_finality_update_quota.or(quota);
                 }
                 Protocol::LightClientUpdatesByRange => {
                     light_client_updates_by_range_quota =
-                        light_client_updates_by_range_quota.or(quota)
+                        light_client_updates_by_range_quota.or(quota);
                 }
                 Protocol::ExecutionPayloadEnvelopesByRoot => {
                     execution_payload_envelopes_by_root_quota =
-                        execution_payload_envelopes_by_root_quota.or(quota)
+                        execution_payload_envelopes_by_root_quota.or(quota);
                 }
             }
         }
@@ -295,6 +295,6 @@ mod tests {
                 max_tokens: NonZeroU64::new(8).unwrap(),
             },
         };
-        assert_eq!(quota.to_string().parse(), Ok(quota))
+        assert_eq!(quota.to_string().parse(), Ok(quota));
     }
 }

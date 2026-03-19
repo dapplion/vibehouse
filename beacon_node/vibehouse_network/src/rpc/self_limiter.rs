@@ -243,7 +243,7 @@ impl<Id: ReqId, E: EthSpec> SelfRateLimiter<Id, E> {
                     // NOTE: Currently cannot remove entries from the DelayQueue, we will just let
                     // them expire and ignore them.
                     for message in queue {
-                        failed_requests.push((message.request_id, *protocol))
+                        failed_requests.push((message.request_id, *protocol));
                     }
                     // Remove the entry
                     false

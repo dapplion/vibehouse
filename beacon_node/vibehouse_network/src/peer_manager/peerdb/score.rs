@@ -222,7 +222,7 @@ impl RealScore {
     /// Applies time-based logic such as decay rates to the score.
     /// This function should be called periodically.
     pub fn update(&mut self) {
-        self.update_at(Instant::now())
+        self.update_at(Instant::now());
     }
 
     /// Applies time-based logic such as decay rates to the score with the given now value.

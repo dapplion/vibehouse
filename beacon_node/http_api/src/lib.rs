@@ -3944,7 +3944,7 @@ async fn post_validator_prepare_beacon_proposer<T: BeaconChainTypes>(
                         })
                         .unwrap_or_else(|e| {
                             debug!(error = %e, "Could not send message to the network service. \
-                        Likely shutdown")
+                        Likely shutdown");
                         });
                 }
             }

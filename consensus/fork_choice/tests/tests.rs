@@ -596,7 +596,7 @@ async fn justified_balances() {
         .apply_blocks(1)
         .await
         .assert_justified_epoch(2)
-        .check_justified_balances()
+        .check_justified_balances();
 }
 
 macro_rules! assert_invalid_block {
@@ -629,7 +629,7 @@ async fn invalid_block_unknown_parent() {
                     err,
                     InvalidBlock::UnknownParent(parent)
                     if parent == junk
-                )
+                );
             },
         )
         .await;
@@ -673,7 +673,7 @@ async fn invalid_block_finalized_slot() {
                     err,
                     InvalidBlock::FinalizedSlot { finalized_slot, .. }
                     if finalized_slot == Epoch::new(2).start_slot(E::slots_per_epoch())
-                )
+                );
             },
         )
         .await;
@@ -710,7 +710,7 @@ async fn invalid_block_finalized_descendant() {
                     err,
                     InvalidBlock::NotFinalizedDescendant {  block_ancestor, .. }
                     if block_ancestor == Some(*invalid_ancestor.lock().unwrap())
-                )
+                );
             },
         )
         .await;
@@ -761,7 +761,7 @@ async fn invalid_attestation_empty_bitfield() {
                 }
             },
             |result| {
-                assert_invalid_attestation!(result, InvalidAttestation::EmptyAggregationBitfield)
+                assert_invalid_attestation!(result, InvalidAttestation::EmptyAggregationBitfield);
             },
         )
         .await;
@@ -787,7 +787,7 @@ async fn invalid_attestation_future_epoch() {
                     result,
                     InvalidAttestation::FutureEpoch { attestation_epoch, current_epoch }
                     if attestation_epoch == Epoch::new(2) && current_epoch == Epoch::new(0)
-                )
+                );
             },
         )
         .await;
@@ -813,7 +813,7 @@ async fn invalid_attestation_past_epoch() {
                     result,
                     InvalidAttestation::PastEpoch { attestation_epoch, current_epoch }
                     if attestation_epoch == Epoch::new(0) && current_epoch == Epoch::new(3)
-                )
+                );
             },
         )
         .await;
@@ -837,7 +837,7 @@ async fn invalid_attestation_target_epoch() {
                     result,
                     InvalidAttestation::BadTargetEpoch { target, slot }
                     if target == Epoch::new(1) && slot == Slot::new(1)
-                )
+                );
             },
         )
         .await;
@@ -863,7 +863,7 @@ async fn invalid_attestation_unknown_target_root() {
                     result,
                     InvalidAttestation::UnknownTargetRoot(root)
                     if root == junk
-                )
+                );
             },
         )
         .await;
@@ -889,7 +889,7 @@ async fn invalid_attestation_unknown_beacon_block_root() {
                     result,
                     InvalidAttestation::UnknownHeadBlock { beacon_block_root }
                     if beacon_block_root == junk
-                )
+                );
             },
         )
         .await;
@@ -917,7 +917,7 @@ async fn invalid_attestation_future_block() {
                     result,
                     InvalidAttestation::AttestsToFutureBlock { block, attestation }
                     if block == 2 && attestation == 1
-                )
+                );
             },
         )
         .await;
@@ -958,7 +958,7 @@ async fn invalid_attestation_inconsistent_ffg_vote() {
                     InvalidAttestation::InvalidTarget { attestation, local }
                     if attestation == attestation_opt.lock().unwrap().unwrap()
                         && local == local_opt.lock().unwrap().unwrap()
-                )
+                );
             },
         )
         .await;
@@ -998,7 +998,7 @@ async fn valid_attestation_skip_across_epoch() {
                 assert_eq!(
                     attestation.data().target.root,
                     attestation.data().beacon_block_root
-                )
+                );
             },
             |result| result.unwrap(),
         )

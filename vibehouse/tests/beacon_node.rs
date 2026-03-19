@@ -104,7 +104,7 @@ fn datadir_flag() {
     CommandLineTest::new()
         .run_with_zero_port()
         .with_config_and_dir(|config, dir| {
-            assert_eq!(*config.data_dir(), dir.path().join("beacon"))
+            assert_eq!(*config.data_dir(), dir.path().join("beacon"));
         });
 }
 
@@ -176,7 +176,7 @@ fn shuffling_cache_default() {
             assert_eq!(
                 config.chain.shuffling_cache_size,
                 beacon_node::beacon_chain::shuffling_cache::DEFAULT_CACHE_SIZE
-            )
+            );
         });
 }
 
@@ -196,7 +196,7 @@ fn fork_choice_before_proposal_timeout_default() {
             assert_eq!(
                 config.chain.fork_choice_before_proposal_timeout_ms,
                 beacon_node::beacon_chain::chain_config::DEFAULT_FORK_CHOICE_BEFORE_PROPOSAL_TIMEOUT
-            )
+            );
         });
 }
 
@@ -235,7 +235,7 @@ fn prepare_payload_lookahead_default() {
             assert_eq!(
                 config.chain.prepare_payload_lookahead,
                 Duration::from_secs(4),
-            )
+            );
         });
 }
 
@@ -248,7 +248,7 @@ fn prepare_payload_lookahead_shorter() {
             assert_eq!(
                 config.chain.prepare_payload_lookahead,
                 Duration::from_millis(1500)
-            )
+            );
         });
 }
 
@@ -507,11 +507,11 @@ fn execution_timeout_multiplier_flag() {
 }
 #[test]
 fn bellatrix_execution_endpoints_flag() {
-    run_bellatrix_execution_endpoints_flag_test("execution-endpoints")
+    run_bellatrix_execution_endpoints_flag_test("execution-endpoints");
 }
 #[test]
 fn bellatrix_execution_endpoint_flag() {
-    run_bellatrix_execution_endpoints_flag_test("execution-endpoint")
+    run_bellatrix_execution_endpoints_flag_test("execution-endpoint");
 }
 #[test]
 fn bellatrix_jwt_secrets_flag() {
@@ -572,7 +572,7 @@ fn run_payload_builder_flag_test(flag: &str, builders: &str) {
         // Only first provided endpoint is parsed as we don't support
         // redundancy.
         assert_eq!(config.builder_url, all_builders.first().cloned());
-    })
+    });
 }
 fn run_payload_builder_flag_test_with_config<F: Fn(&Config)>(
     flag: &str,
@@ -781,7 +781,7 @@ fn network_subscribe_all_data_column_subnets_flag() {
         .flag("subscribe-all-data-column-subnets", None)
         .run_with_zero_port()
         .with_config(|config| {
-            assert_eq!(config.chain.node_custody_type, NodeCustodyType::Supernode)
+            assert_eq!(config.chain.node_custody_type, NodeCustodyType::Supernode);
         });
 }
 #[test]
@@ -790,7 +790,7 @@ fn network_supernode_flag() {
         .flag("supernode", None)
         .run_with_zero_port()
         .with_config(|config| {
-            assert_eq!(config.chain.node_custody_type, NodeCustodyType::Supernode)
+            assert_eq!(config.chain.node_custody_type, NodeCustodyType::Supernode);
         });
 }
 #[test]
@@ -802,7 +802,7 @@ fn network_semi_supernode_flag() {
             assert_eq!(
                 config.chain.node_custody_type,
                 NodeCustodyType::SemiSupernode
-            )
+            );
         });
 }
 #[test]
@@ -810,7 +810,7 @@ fn network_node_custody_type_default() {
     CommandLineTest::new()
         .run_with_zero_port()
         .with_config(|config| {
-            assert_eq!(config.chain.node_custody_type, NodeCustodyType::Fullnode)
+            assert_eq!(config.chain.node_custody_type, NodeCustodyType::Fullnode);
         });
 }
 #[test]
@@ -830,7 +830,7 @@ fn blob_publication_batch_interval() {
             assert_eq!(
                 config.chain.blob_publication_batch_interval,
                 Duration::from_millis(400)
-            )
+            );
         });
 }
 
@@ -871,7 +871,7 @@ fn network_listen_address_flag_v4() {
             assert_eq!(
                 config.network.listen_addrs().v4().map(|addr| addr.addr),
                 Some(addr)
-            )
+            );
         });
 }
 #[test]
@@ -885,7 +885,7 @@ fn network_listen_address_flag_v6() {
             assert_eq!(
                 config.network.listen_addrs().v6().map(|addr| addr.addr),
                 Some(addr)
-            )
+            );
         });
 }
 #[test]
@@ -906,7 +906,7 @@ fn network_listen_address_flag_dual_stack() {
             assert_eq!(
                 config.network.listen_addrs().v4().map(|addr| addr.addr),
                 Some(ipv4_addr)
-            )
+            );
         });
 }
 #[test]
@@ -1321,7 +1321,7 @@ fn enr_udp_port_flag() {
             assert_eq!(
                 config.network.enr_udp4_port.map(|port| port.get()),
                 Some(port)
-            )
+            );
         });
 }
 #[test]
@@ -1334,7 +1334,7 @@ fn enr_quic_port_flag() {
             assert_eq!(
                 config.network.enr_quic4_port.map(|port| port.get()),
                 Some(port)
-            )
+            );
         });
 }
 #[test]
@@ -1347,7 +1347,7 @@ fn enr_tcp_port_flag() {
             assert_eq!(
                 config.network.enr_tcp4_port.map(|port| port.get()),
                 Some(port)
-            )
+            );
         });
 }
 #[test]
@@ -1360,7 +1360,7 @@ fn enr_udp6_port_flag() {
             assert_eq!(
                 config.network.enr_udp6_port.map(|port| port.get()),
                 Some(port)
-            )
+            );
         });
 }
 #[test]
@@ -1373,7 +1373,7 @@ fn enr_quic6_port_flag() {
             assert_eq!(
                 config.network.enr_quic6_port.map(|port| port.get()),
                 Some(port)
-            )
+            );
         });
 }
 #[test]
@@ -1386,7 +1386,7 @@ fn enr_tcp6_port_flag() {
             assert_eq!(
                 config.network.enr_tcp6_port.map(|port| port.get()),
                 Some(port)
-            )
+            );
         });
 }
 #[test]
@@ -1611,7 +1611,7 @@ fn empty_inbound_rate_limiter_flag() {
             assert_eq!(
                 config.network.inbound_rate_limiter_config,
                 Some(vibehouse_network::rpc::config::InboundRateLimiterConfig::default())
-            )
+            );
         });
 }
 #[test]
@@ -1733,7 +1733,7 @@ fn metrics_allow_origin_flag() {
             assert_eq!(
                 config.http_metrics.allow_origin,
                 Some("http://localhost:5059".to_string())
-            )
+            );
         });
 }
 #[test]
@@ -1795,7 +1795,7 @@ fn validator_monitor_metrics_threshold_default() {
                 // If this value changes make sure to update the help text for
                 // the CLI command.
                 64
-            )
+            );
         });
 }
 #[test]
@@ -1807,7 +1807,7 @@ fn validator_monitor_metrics_threshold_custom() {
         )
         .run_with_zero_port()
         .with_config(|config| {
-            assert_eq!(config.validator_monitor.individual_tracking_threshold, 42)
+            assert_eq!(config.validator_monitor.individual_tracking_threshold, 42);
         });
 }
 
@@ -1865,7 +1865,7 @@ fn state_cache_headroom_flag() {
         .flag("state-cache-headroom", Some("16"))
         .run_with_zero_port()
         .with_config(|config| {
-            assert_eq!(config.store.state_cache_headroom, new_non_zero_usize(16))
+            assert_eq!(config.store.state_cache_headroom, new_non_zero_usize(16));
         });
 }
 #[test]
@@ -1877,7 +1877,7 @@ fn historic_state_cache_size_flag() {
             assert_eq!(
                 config.store.historic_state_cache_size,
                 new_non_zero_usize(4)
-            )
+            );
         });
 }
 #[test]
@@ -2022,7 +2022,7 @@ fn epochs_per_migration_default() {
             assert_eq!(
                 config.chain.epochs_per_migration,
                 beacon_node::beacon_chain::migrate::DEFAULT_EPOCHS_PER_MIGRATION
-            )
+            );
         });
 }
 #[test]
@@ -2053,7 +2053,7 @@ fn slasher_flag() {
                 assert_eq!(
                     slasher_config.database_path,
                     dir.path().join("beacon").join("slasher_db")
-                )
+                );
             } else {
                 panic!("Slasher config was parsed incorrectly");
             }
@@ -2332,7 +2332,7 @@ fn disable_proposer_re_orgs() {
         .run_with_zero_port()
         .with_config(|config| {
             assert_eq!(config.chain.re_org_head_threshold, None);
-            assert_eq!(config.chain.re_org_parent_threshold, None)
+            assert_eq!(config.chain.re_org_parent_threshold, None);
         });
 }
 
@@ -2361,7 +2361,7 @@ fn proposer_re_org_max_epochs_since_finalization() {
             assert_eq!(
                 config.chain.re_org_max_epochs_since_finalization.as_u64(),
                 8
-            )
+            );
         });
 }
 
@@ -2371,7 +2371,7 @@ fn proposer_re_org_cutoff() {
         .flag("proposer-reorg-cutoff", Some("500"))
         .run_with_zero_port()
         .with_config(|config| {
-            assert_eq!(config.chain.re_org_cutoff(12), Duration::from_millis(500))
+            assert_eq!(config.chain.re_org_cutoff(12), Duration::from_millis(500));
         });
 }
 
@@ -2383,7 +2383,7 @@ fn proposer_re_org_disallowed_offsets_default() {
             assert_eq!(
                 config.chain.re_org_disallowed_offsets,
                 DisallowedReOrgOffsets::new::<MainnetEthSpec>(vec![0]).unwrap()
-            )
+            );
         });
 }
 
@@ -2396,7 +2396,7 @@ fn proposer_re_org_disallowed_offsets_override() {
             assert_eq!(
                 config.chain.re_org_disallowed_offsets,
                 DisallowedReOrgOffsets::new::<MainnetEthSpec>(vec![1, 2, 3]).unwrap()
-            )
+            );
         });
 }
 
@@ -2488,7 +2488,7 @@ fn logfile_format_flag() {
             assert_eq!(
                 config.logger_config.logfile_format,
                 Some("JSON".to_string())
-            )
+            );
         });
 }
 
@@ -2637,7 +2637,7 @@ fn invalid_gossip_verified_blocks_path() {
             assert_eq!(
                 config.network.invalid_block_storage,
                 Some(PathBuf::from(path))
-            )
+            );
         });
 }
 
@@ -2647,7 +2647,7 @@ fn advertise_false_custody_group_count() {
         .flag("advertise-false-custody-group-count", Some("64"))
         .run_with_zero_port()
         .with_config(|config| {
-            assert_eq!(config.network.advertise_false_custody_group_count, Some(64))
+            assert_eq!(config.network.advertise_false_custody_group_count, Some(64));
         });
 }
 
@@ -2676,7 +2676,7 @@ fn beacon_processor() {
                     max_gossip_aggregate_batch_size: 5,
                     enable_backfill_rate_limiting: false
                 }
-            )
+            );
         });
 }
 
@@ -2709,7 +2709,7 @@ fn http_duplicate_block_status_default() {
     CommandLineTest::new()
         .run_with_zero_port()
         .with_config(|config| {
-            assert_eq!(config.http_api.duplicate_block_status_code.as_u16(), 202)
+            assert_eq!(config.http_api.duplicate_block_status_code.as_u16(), 202);
         });
 }
 
@@ -2720,7 +2720,7 @@ fn http_duplicate_block_status_override() {
         .flag("http-duplicate-block-status", Some("301"))
         .run_with_zero_port()
         .with_config(|config| {
-            assert_eq!(config.http_api.duplicate_block_status_code.as_u16(), 301)
+            assert_eq!(config.http_api.duplicate_block_status_code.as_u16(), 301);
         });
 }
 
@@ -2788,7 +2788,7 @@ fn invalid_block_roots_flag() {
             dir.path().join("invalid-block-roots").as_os_str().to_str(),
         )
         .run_with_zero_port()
-        .with_config(|config| assert_eq!(config.chain.invalid_block_roots.len(), 3))
+        .with_config(|config| assert_eq!(config.chain.invalid_block_roots.len(), 3));
 }
 
 #[test]
@@ -2805,7 +2805,7 @@ fn invalid_block_roots_default_holesky() {
                     .invalid_block_roots
                     .contains(&*INVALID_HOLESKY_BLOCK_ROOT)
             );
-        })
+        });
 }
 
 #[test]
@@ -2814,5 +2814,5 @@ fn invalid_block_roots_default_mainnet() {
         .run_with_zero_port()
         .with_config(|config| {
             assert!(config.chain.invalid_block_roots.is_empty());
-        })
+        });
 }

@@ -244,7 +244,7 @@ mod test {
                 &creds.as_slice()[1..],
                 &hash_fixed(&v.pubkey.serialize())[1..],
                 "rest of withdrawal creds should be pubkey hash"
-            )
+            );
         }
 
         assert_eq!(
@@ -323,7 +323,7 @@ mod test {
                     &creds[12..],
                     &hash_fixed(&v.pubkey.serialize())[0..20],
                     "rest of withdrawal creds should be first 20 bytes of pubkey hash"
-                )
+                );
             }
         }
 

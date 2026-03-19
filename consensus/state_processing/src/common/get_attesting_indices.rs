@@ -33,7 +33,7 @@ pub mod attesting_indices_base {
 
         for (i, validator_index) in committee.iter().enumerate() {
             if let Ok(true) = bitlist.get(i) {
-                indices.push(*validator_index as u64)
+                indices.push(*validator_index as u64);
             }
         }
 

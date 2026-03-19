@@ -199,7 +199,7 @@ async fn run<E: EthSpec>(config: ListConfig) -> Result<Vec<SingleKeystoreRespons
                         "Validator {} has not initiated voluntary exit or the voluntary exit \
                     is yet to be accepted into the beacon chain. Validator status is: {}",
                         validator, validator_data.status
-                    )
+                    );
                 }
             }
         }
@@ -323,7 +323,7 @@ mod test {
 
     impl TestResult {
         fn assert_ok(self) {
-            assert_eq!(self.result, Ok(()))
+            assert_eq!(self.result, Ok(()));
         }
     }
     #[tokio::test]

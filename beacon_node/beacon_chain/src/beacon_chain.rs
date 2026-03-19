@@ -1565,7 +1565,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         head_slot = %head_state.slot(),
                         request_slot = %slot,
                         "Skipping more than an epoch"
-                    )
+                    );
                 }
 
                 let head_state_slot = head_state.slot();
@@ -3776,7 +3776,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let sync_message = verified_sync_committee_message.sync_message();
         let positions_by_subnet_id: &HashMap<SyncSubnetId, Vec<usize>> =
             verified_sync_committee_message.subnet_positions();
-        for (subnet_id, positions) in positions_by_subnet_id.iter() {
+        for (subnet_id, positions) in positions_by_subnet_id {
             for position in positions {
                 let _timer =
                     metrics::start_timer(&metrics::SYNC_CONTRIBUTION_PROCESSING_APPLY_TO_AGG_POOL);
@@ -3992,7 +3992,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
     /// Accept a pre-verified exit and queue it for inclusion in an appropriate block.
     pub fn import_voluntary_exit(&self, exit: SigVerifiedOp<SignedVoluntaryExit, T::EthSpec>) {
-        self.op_pool.insert_voluntary_exit(exit)
+        self.op_pool.insert_voluntary_exit(exit);
     }
 
     /// Verify a proposer slashing before allowing it to propagate on the gossip network.
@@ -4022,7 +4022,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             )));
         }
 
-        self.op_pool.insert_proposer_slashing(proposer_slashing)
+        self.op_pool.insert_proposer_slashing(proposer_slashing);
     }
 
     /// Verify an attester slashing before allowing it to propagate on the gossip network.
@@ -4061,7 +4061,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         }
 
         // Add to the op pool (if we have the ability to propose blocks).
-        self.op_pool.insert_attester_slashing(attester_slashing)
+        self.op_pool.insert_attester_slashing(attester_slashing);
     }
 
     /// Verify a signed BLS to execution change before allowing it to propagate on the gossip network.
@@ -4287,7 +4287,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         mut chain_segment: Vec<RpcBlock<T::EthSpec>>,
         notify_execution_layer: NotifyExecutionLayer,
     ) -> ChainSegmentResult {
-        for block in chain_segment.iter() {
+        for block in &chain_segment {
             if let Err(error) = self.check_invalid_block_roots(block.block_root()) {
                 return ChainSegmentResult::Failed {
                     imported_blocks: vec![],
@@ -4301,7 +4301,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // to transition the fork choice node from EMPTY → FULL.
         let mut envelopes: HashMap<Hash256, Arc<SignedExecutionPayloadEnvelope<T::EthSpec>>> =
             HashMap::new();
-        for block in chain_segment.iter_mut() {
+        for block in &mut chain_segment {
             if let Some(envelope) = block.take_envelope() {
                 envelopes.insert(block.block_root(), envelope);
             }
@@ -4934,7 +4934,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             if let Some(timestamp) = self.slot_clock.now_duration() {
                 self.block_times_cache
                     .write()
-                    .set_time_consensus_verified(block_root, block_slot, timestamp)
+                    .set_time_consensus_verified(block_root, block_slot, timestamp);
             }
 
             let executed_block = chain
@@ -4954,7 +4954,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             if let Some(timestamp) = self.slot_clock.now_duration() {
                 self.block_times_cache
                     .write()
-                    .set_time_executed(block_root, block_slot, timestamp)
+                    .set_time_executed(block_root, block_slot, timestamp);
             }
 
             match executed_block {
@@ -5527,7 +5527,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 use types::IndexedPayloadAttestation;
 
                 let mut observed = self.observed_payload_attestations.lock();
-                for attestation in payload_attestations.iter() {
+                for attestation in payload_attestations {
                     match get_indexed_payload_attestation(&state, attestation, &self.spec) {
                         Ok(indexed) => {
                             // Filter to only new attesters not already seen via gossip.
@@ -5623,7 +5623,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                                 block_root,
                                 signed_block.slot(),
                                 attestable_timestamp,
-                            )
+                            );
                         }
                     } else {
                         warn!(?block_root, "Early attester block missing");
@@ -5924,15 +5924,15 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         }
 
         for exit in block.body().voluntary_exits() {
-            validator_monitor.register_block_voluntary_exit(&exit.message)
+            validator_monitor.register_block_voluntary_exit(&exit.message);
         }
 
         for slashing in block.body().attester_slashings() {
-            validator_monitor.register_block_attester_slashing(slashing)
+            validator_monitor.register_block_attester_slashing(slashing);
         }
 
         for slashing in block.body().proposer_slashings() {
-            validator_monitor.register_block_proposer_slashing(slashing)
+            validator_monitor.register_block_proposer_slashing(slashing);
         }
     }
 
@@ -5995,7 +5995,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         epoch = %a.data().target.epoch,
                         validator_index,
                         "Failed to register observed block attester"
-                    )
+                    );
                 }
             }
         }
@@ -8145,7 +8145,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         error!(
                             error= ?e,
                             "Failed to validate payload"
-                        )
+                        );
                     };
                     Ok(())
                 }
@@ -9279,9 +9279,9 @@ impl<T: BeaconChainTypes> Drop for BeaconChain<T> {
             error!(
                 error = ?e,
                 "Failed to persist on BeaconChain drop"
-            )
+            );
         } else {
-            info!("Saved beacon chain to disk")
+            info!("Saved beacon chain to disk");
         }
     }
 }

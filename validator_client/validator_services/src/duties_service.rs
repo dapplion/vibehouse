@@ -604,7 +604,7 @@ pub fn start_update_service<S: ValidatorStore + 'static, T: SlotClock + 'static>
                     error!(
                         error = ?e,
                        "Failed to poll beacon proposers"
-                    )
+                    );
                 }
             }
         },
@@ -816,7 +816,7 @@ async fn poll_validator_indices<S: ValidatorStore, T: SlotClock + 'static>(
                             .insert(pubkey, next_poll_slot);
                     }
 
-                    debug!(?pubkey, fee_recipient, "Validator without index")
+                    debug!(?pubkey, fee_recipient, "Validator without index");
                 }
                 // Don't exit early on an error, keep attempting to resolve other indices.
                 Err(e) => {
@@ -825,7 +825,7 @@ async fn poll_validator_indices<S: ValidatorStore, T: SlotClock + 'static>(
                         ?pubkey,
                         fee_recipient,
                         "Failed to resolve pubkey to index"
-                    )
+                    );
                 }
             }
         }
@@ -868,7 +868,7 @@ async fn poll_beacon_attesters<S: ValidatorStore + 'static, T: SlotClock + 'stat
 
         for &pubkey in &local_pubkeys {
             if let Some(validator_index) = duties_service.validator_store.validator_index(&pubkey) {
-                local_indices.push(validator_index)
+                local_indices.push(validator_index);
             }
         }
         local_indices
@@ -888,7 +888,7 @@ async fn poll_beacon_attesters<S: ValidatorStore + 'static, T: SlotClock + 'stat
             request_epoch = %current_epoch,
             err = ?e,
             "Failed to download attester duties"
-        )
+        );
     }
 
     update_per_validator_duty_metrics(duties_service, current_epoch, current_slot);
@@ -909,7 +909,7 @@ async fn poll_beacon_attesters<S: ValidatorStore + 'static, T: SlotClock + 'stat
             request_epoch = %next_epoch,
             err = ?e,
             "Failed to download attester duties"
-        )
+        );
     }
 
     update_per_validator_duty_metrics(duties_service, next_epoch, current_slot);
@@ -1021,7 +1021,7 @@ async fn poll_beacon_attesters<S: ValidatorStore + 'static, T: SlotClock + 'stat
         .write()
         .iter_mut()
         .for_each(|(_, map)| {
-            map.retain(|&epoch, _| epoch + HISTORICAL_DUTIES_EPOCHS >= current_epoch)
+            map.retain(|&epoch, _| epoch + HISTORICAL_DUTIES_EPOCHS >= current_epoch);
         });
 
     Ok(())
@@ -1165,7 +1165,7 @@ async fn poll_beacon_attesters_for_epoch<S: ValidatorStore + 'static, T: SlotClo
                         %dependent_root,
                         note = "this may happen from time to time",
                         "Attester duties re-org"
-                    )
+                    );
                 }
                 *mut_value = (dependent_root, duty_and_proof);
             }
@@ -1577,7 +1577,7 @@ async fn poll_beacon_proposers<S: ValidatorStore, T: SlotClock + 'static>(
                         %dependent_root,
                         msg = "this may happen from time to time",
                         "Proposer duties re-org"
-                    )
+                    );
                 }
             }
             // Don't return early here, we still want to try and produce blocks using the cached values.

@@ -484,7 +484,7 @@ impl<E: EthSpec> ExecutionBlockGenerator<E> {
             match &mut block {
                 Block::PoW(b) => b.block_hash = ExecutionBlockHash::from_root(b.tree_hash_root()),
                 Block::PoS(b) => {
-                    *b.block_hash_mut() = ExecutionBlockHash::from_root(b.tree_hash_root())
+                    *b.block_hash_mut() = ExecutionBlockHash::from_root(b.tree_hash_root());
                 }
             }
 

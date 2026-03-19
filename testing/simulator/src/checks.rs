@@ -46,7 +46,7 @@ pub async fn verify_first_finalization<E: EthSpec>(
 /// Delays for `epochs`, plus half a slot extra.
 pub async fn epoch_delay(epochs: Epoch, slot_duration: Duration, slots_per_epoch: u64) {
     let duration = slot_duration * (epochs.as_u64() * slots_per_epoch) as u32 + slot_duration / 2;
-    tokio::time::sleep(duration).await
+    tokio::time::sleep(duration).await;
 }
 
 /// Delays for `slots`, plus half a slot extra.
@@ -231,7 +231,7 @@ pub async fn verify_transition_block_finalized<E: EthSpec>(
     }
     epoch_delay(transition_epoch + 2, slot_duration, E::slots_per_epoch()).await;
     let mut block_hashes = Vec::new();
-    for remote_node in network.remote_nodes()?.iter() {
+    for remote_node in &network.remote_nodes()? {
         let execution_block_hash: ExecutionBlockHash = remote_node
             .get_beacon_blocks::<E>(BlockId::Finalized)
             .await

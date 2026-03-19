@@ -69,7 +69,7 @@ pub static JEMALLOC_ARENAS_LARGE_NDALLOC: LazyLock<metrics::Result<IntGaugeVec>>
     });
 
 pub fn scrape_jemalloc_metrics() {
-    scrape_jemalloc_metrics_fallible().unwrap()
+    scrape_jemalloc_metrics_fallible().unwrap();
 }
 
 pub fn scrape_jemalloc_metrics_fallible() -> Result<(), Error> {

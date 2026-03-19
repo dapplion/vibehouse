@@ -247,7 +247,7 @@ impl<E: EthSpec> Discovery<E> {
                     addr = repr,
                     error = e.to_string(),
                     "Could not add peer to the local routing table"
-                )
+                );
             });
         }
 
@@ -296,7 +296,7 @@ impl<E: EthSpec> Discovery<E> {
                             addr = original_addr.to_string(),
                             error = e.to_string(),
                             "Could not add peer to the local routing table"
-                        )
+                        );
                     });
                 }
                 Err(e) => {
@@ -304,7 +304,7 @@ impl<E: EthSpec> Discovery<E> {
                         multiaddr = original_addr.to_string(),
                         error = e.to_string(),
                         "Error getting mapping to ENR"
-                    )
+                    );
                 }
             }
         }
@@ -385,7 +385,7 @@ impl<E: EthSpec> Discovery<E> {
             debug!(
                 error = %e,
                 "Could not add peer to the local routing table"
-            )
+            );
         }
     }
 
@@ -607,7 +607,7 @@ impl<E: EthSpec> Discovery<E> {
                 warn!(
                     error = ?e,
                     "Could not update eth2 ENR field"
-                )
+                );
             });
 
         // replace the global version with discovery version
@@ -667,7 +667,7 @@ impl<E: EthSpec> Discovery<E> {
         // Search through any queued requests and update the timeout if a query for this subnet
         // already exists
         let mut found = false;
-        for subnet_query in self.queued_queries.iter_mut() {
+        for subnet_query in &mut self.queued_queries {
             if subnet_query.subnet == subnet {
                 if subnet_query.min_ttl < min_ttl {
                     subnet_query.min_ttl = min_ttl;
@@ -882,7 +882,7 @@ impl<E: EthSpec> Discovery<E> {
                         );
                         queries.iter().for_each(|query| {
                             self.add_subnet_query(query.subnet, query.min_ttl, query.retries + 1);
-                        })
+                        });
                     }
                     Ok(r) => {
                         debug!(
@@ -1106,7 +1106,7 @@ impl<E: EthSpec> NetworkBehaviour for Discovery<E> {
     fn on_swarm_event(&mut self, event: FromSwarm) {
         match event {
             FromSwarm::DialFailure(DialFailure { peer_id, error, .. }) => {
-                self.on_dial_failure(peer_id, error)
+                self.on_dial_failure(peer_id, error);
             }
             FromSwarm::NewListenAddr(ev) => {
                 let addr = ev.addr;
@@ -1184,7 +1184,7 @@ impl<E: EthSpec> NetworkBehaviour for Discovery<E> {
 
                 match attempt_enr_update {
                     Ok(true) => {
-                        info!(enr = local_enr.to_base64(), seq = local_enr.seq(), id = %local_enr.node_id(), ip4 = ?local_enr.ip4(), udp4 = ?local_enr.udp4(), tcp4 = ?local_enr.tcp4(), tcp6 = ?local_enr.tcp6(), udp6 = ?local_enr.udp6(),"Updated local ENR")
+                        info!(enr = local_enr.to_base64(), seq = local_enr.seq(), id = %local_enr.node_id(), ip4 = ?local_enr.ip4(), udp4 = ?local_enr.udp4(), tcp4 = ?local_enr.tcp4(), tcp6 = ?local_enr.tcp6(), udp6 = ?local_enr.udp6(),"Updated local ENR");
                     }
                     Ok(false) => {} // Nothing to do, ENR already configured
                     Err(e) => warn!(error = ?e,"Failed to update ENR"),

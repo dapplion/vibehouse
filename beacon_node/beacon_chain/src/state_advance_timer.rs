@@ -189,7 +189,7 @@ async fn state_advance_timer<T: BeaconChainTypes>(
             warn!(
                 msg = "system resources may be overloaded",
                 "State advance routine overloaded"
-            )
+            );
         }
 
         // Run fork choice pre-emptively for the next slot. This processes most of the attestations

@@ -25,7 +25,7 @@ impl AttestationPerformance {
             vec.push(Self {
                 index,
                 ..Default::default()
-            })
+            });
         }
         vec
     }

@@ -656,7 +656,7 @@ impl<E: EthSpec> OperationPool<E> {
     ) {
         self.bls_to_execution_changes
             .write()
-            .prune(head_block, head_state, spec)
+            .prune(head_block, head_state, spec);
     }
 
     /// Prune all types of transactions given the latest head state and head fork.

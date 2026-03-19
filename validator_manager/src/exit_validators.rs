@@ -253,12 +253,12 @@ async fn run<E: EthSpec>(config: ExitConfig) -> Result<(), String> {
                     "Validator {} is not eligible for exit. It will become eligible at epoch {}",
                     validator_to_exit,
                     activation_epoch + spec.shard_committee_period
-                )
+                );
             } else if validator_data.status != ValidatorStatus::ActiveOngoing {
                 eprintln!(
                     "Validator {} is not eligible for exit. Validator status is: {:?}",
                     validator_to_exit, validator_data.status
-                )
+                );
             } else {
                 // Only publish voluntary exit if validator status is ActiveOngoing
                 beacon_node
@@ -562,7 +562,7 @@ mod test {
 
     impl TestResult {
         fn assert_ok(self) {
-            assert_eq!(self.result, Ok(()))
+            assert_eq!(self.result, Ok(()));
         }
     }
     #[tokio::test]

@@ -109,7 +109,7 @@ where
         if verify_signature_sets(signature_sets.iter()) {
             // Since all the signatures verified in a batch, there's no reason for them to be
             // checked again later.
-            check_signatures = CheckAttestationSignature::No
+            check_signatures = CheckAttestationSignature::No;
         }
     }
 
@@ -195,7 +195,7 @@ where
         if verify_signature_sets(signature_sets.iter()) {
             // Since all the signatures verified in a batch, there's no reason for them to be
             // checked again later.
-            check_signatures = CheckAttestationSignature::No
+            check_signatures = CheckAttestationSignature::No;
         }
     }
 

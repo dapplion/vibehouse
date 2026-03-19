@@ -50,7 +50,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             peer_id,
             inbound_request_id,
             response,
-        })
+        });
     }
 
     pub fn send_error_response(
@@ -65,7 +65,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             error,
             reason,
             inbound_request_id,
-        })
+        });
     }
 
     /* Processing functions */
@@ -626,7 +626,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             }
         };
 
-        for lc_update in lc_updates.iter() {
+        for lc_update in &lc_updates {
             self.send_network_message(NetworkMessage::SendResponse {
                 peer_id,
                 response: Response::LightClientUpdatesByRange(Some(Arc::new(lc_update.clone()))),

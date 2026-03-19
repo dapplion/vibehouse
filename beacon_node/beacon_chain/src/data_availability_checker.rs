@@ -1020,7 +1020,7 @@ mod test {
         assert!(
             actual_cached.len() < requested_columns.len(),
             "extra columns should be excluded"
-        )
+        );
     }
 
     /// Test to verify any extra gossip columns received that are not part of the "effective" CGC for
@@ -1097,7 +1097,7 @@ mod test {
         assert!(
             actual_cached.len() < requested_columns.len(),
             "extra columns should be excluded"
-        )
+        );
     }
 
     /// Regression test for KZG verification truncation bug.

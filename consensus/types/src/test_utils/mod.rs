@@ -24,7 +24,7 @@ where
     T: TreeHash + Encode + Decode + Debug + PartialEq,
     U: TreeHash + Encode + Decode + Debug + PartialEq,
 {
-    test_ssz_tree_hash_pair_with(v1, v2, T::from_ssz_bytes)
+    test_ssz_tree_hash_pair_with(v1, v2, T::from_ssz_bytes);
 }
 
 pub fn test_ssz_tree_hash_pair_with<T, U>(

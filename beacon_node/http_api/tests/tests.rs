@@ -872,7 +872,7 @@ impl ApiTester {
                 if let Err(unsupported_media_response) = unsupported_media_response {
                     match unsupported_media_response {
                         ServerMessage(error) => {
-                            assert_eq!(error.code, 415)
+                            assert_eq!(error.code, 415);
                         }
                         _ => panic!("Should error with unsupported media response"),
                     }
@@ -6777,7 +6777,7 @@ impl ApiTester {
             .nodes
             .last_mut()
         {
-            head_node.execution_status = ExecutionStatus::Optimistic(ExecutionBlockHash::zero())
+            head_node.execution_status = ExecutionStatus::Optimistic(ExecutionBlockHash::zero());
         }
 
         // Check responses are now optimistic.

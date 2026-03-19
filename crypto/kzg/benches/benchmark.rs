@@ -18,7 +18,7 @@ pub fn bench_init_context(c: &mut Criterion) {
                     width: rust_eth_kzg::constants::RECOMMENDED_PRECOMP_WIDTH,
                 },
             )
-        })
+        });
     });
     c.bench_function("Initialize context c-kzg (4844)", |b| {
         b.iter(|| {
@@ -33,7 +33,7 @@ pub fn bench_init_context(c: &mut Criterion) {
                 NO_PRECOMPUTE,
             )
             .unwrap()
-        })
+        });
     });
 }
 

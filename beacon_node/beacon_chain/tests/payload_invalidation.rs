@@ -234,11 +234,11 @@ impl InvalidPayloadRig {
                 if latest_valid_hash == ExecutionBlockHash::zero() {
                     mock_execution_layer
                         .server
-                        .all_payloads_invalid_terminal_block_on_new_payload()
+                        .all_payloads_invalid_terminal_block_on_new_payload();
                 } else {
                     mock_execution_layer
                         .server
-                        .all_payloads_invalid_on_new_payload(latest_valid_hash)
+                        .all_payloads_invalid_on_new_payload(latest_valid_hash);
                 }
             }
 
@@ -259,11 +259,11 @@ impl InvalidPayloadRig {
                 if latest_valid_hash == ExecutionBlockHash::zero() {
                     mock_execution_layer
                         .server
-                        .all_payloads_invalid_terminal_block_on_forkchoice_updated()
+                        .all_payloads_invalid_terminal_block_on_forkchoice_updated();
                 } else {
                     mock_execution_layer
                         .server
-                        .all_payloads_invalid_on_forkchoice_updated(latest_valid_hash)
+                        .all_payloads_invalid_on_forkchoice_updated(latest_valid_hash);
                 }
             }
 
@@ -477,7 +477,7 @@ async fn immediate_forkchoice_update_payload_invalid() {
     immediate_forkchoice_update_invalid_test(|latest_valid_hash| Payload::Invalid {
         latest_valid_hash,
     })
-    .await
+    .await;
 }
 
 #[tokio::test]
@@ -485,7 +485,7 @@ async fn immediate_forkchoice_update_payload_invalid_block_hash() {
     if fork_name_from_env().is_some_and(|f| !f.bellatrix_enabled()) {
         return;
     }
-    immediate_forkchoice_update_invalid_test(|_| Payload::InvalidBlockHash).await
+    immediate_forkchoice_update_invalid_test(|_| Payload::InvalidBlockHash).await;
 }
 
 #[tokio::test]
@@ -496,7 +496,7 @@ async fn immediate_forkchoice_update_payload_invalid_terminal_block() {
     immediate_forkchoice_update_invalid_test(|_| Payload::Invalid {
         latest_valid_hash: Some(ExecutionBlockHash::zero()),
     })
-    .await
+    .await;
 }
 
 /// Ensure the client tries to exit when the justified checkpoint is invalidated.
@@ -633,13 +633,13 @@ async fn latest_valid_hash_will_not_validate() {
         let execution_status = rig.execution_status(root);
 
         if slot > LATEST_VALID_SLOT {
-            assert!(execution_status.is_invalid())
+            assert!(execution_status.is_invalid());
         } else if slot == 0 {
-            assert!(execution_status.is_irrelevant())
+            assert!(execution_status.is_irrelevant());
         } else if slot == 1 {
-            assert!(execution_status.is_valid_and_post_bellatrix())
+            assert!(execution_status.is_valid_and_post_bellatrix());
         } else {
-            assert!(execution_status.is_strictly_optimistic())
+            assert!(execution_status.is_strictly_optimistic());
         }
     }
 }

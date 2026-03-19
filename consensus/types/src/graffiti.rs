@@ -146,7 +146,7 @@ impl Encode for Graffiti {
     }
 
     fn ssz_append(&self, buf: &mut Vec<u8>) {
-        self.0.ssz_append(buf)
+        self.0.ssz_append(buf);
     }
 }
 

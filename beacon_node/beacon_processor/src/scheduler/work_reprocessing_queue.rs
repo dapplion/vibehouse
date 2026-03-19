@@ -975,7 +975,7 @@ impl<S: SlotClock> ReprocessQueue<S> {
                 ReprocessQueue::<S>::duration_until_next_backfill_batch_event(&self.slot_clock),
             )));
         } else {
-            self.next_backfill_batch_event = None
+            self.next_backfill_batch_event = None;
         }
     }
 
@@ -1028,7 +1028,7 @@ mod tests {
         let event_times = BACKFILL_SCHEDULE_IN_SLOT
             .map(|(multiplier, divisor)| (slot_duration / divisor) * multiplier);
 
-        for &event_duration_from_slot_start in event_times.iter() {
+        for &event_duration_from_slot_start in &event_times {
             let duration_to_next_event =
                 ReprocessQueue::<TestingSlotClock>::duration_until_next_backfill_batch_event(
                     &slot_clock,
@@ -1041,7 +1041,7 @@ mod tests {
                 event_duration_from_slot_start - current_time
             );
 
-            slot_clock.set_current_time(current_slot_start + event_duration_from_slot_start)
+            slot_clock.set_current_time(current_slot_start + event_duration_from_slot_start);
         }
 
         // check for next event beyond the current slot

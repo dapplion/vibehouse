@@ -901,7 +901,7 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
             match batch.state() {
                 BatchState::Downloading(..) | BatchState::AwaitingValidation(..) => {}
                 BatchState::Failed | BatchState::Poisoned | BatchState::AwaitingDownload => {
-                    crit!("Batch indicates inconsistent data columns while advancing custody sync")
+                    crit!("Batch indicates inconsistent data columns while advancing custody sync");
                 }
                 BatchState::AwaitingProcessing(..) => {}
                 BatchState::Processing(_) => {
@@ -1063,7 +1063,9 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
                                 batch_id, e.0,
                             ))?,
                             Ok(BatchOperationOutcome::Failed { blacklist: _ }) => {
-                                self.fail_sync(CustodyBackfillError::BatchDownloadFailed(batch_id))?
+                                self.fail_sync(CustodyBackfillError::BatchDownloadFailed(
+                                    batch_id,
+                                ))?;
                             }
                             Ok(BatchOperationOutcome::Continue) => {
                                 return self.send_batch(network, batch_id);

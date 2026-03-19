@@ -525,7 +525,7 @@ impl<T: BeaconChainTypes> BeaconBlockStreamer<T> {
         let mut result = vec![];
         for root in ordered_block_roots {
             if let Some(request) = requests.get(&root) {
-                result.push((root, request.clone()))
+                result.push((root, request.clone()));
             } else {
                 crit!(
                     beacon_block_streamer = "request not found",

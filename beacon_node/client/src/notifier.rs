@@ -185,7 +185,7 @@ pub fn spawn_notifier<T: BeaconChainTypes>(
                                 // so we can measure our speed of progress.
                                 if original_earliest_data_column_slot.is_none() {
                                     original_earliest_data_column_slot =
-                                        Some(earliest_data_column_slot)
+                                        Some(earliest_data_column_slot);
                                 }
 
                                 if let Some(original_earliest_data_column_slot) =
@@ -463,7 +463,7 @@ async fn bellatrix_readiness_logging<T: BeaconChainTypes>(
                         .map(|d| d.to_string())
                         .unwrap_or_else(|| "??".into()),
                     "Ready for Bellatrix"
-                )
+                );
             }
             MergeConfig {
                 terminal_total_difficulty: _,
@@ -476,7 +476,7 @@ async fn bellatrix_readiness_logging<T: BeaconChainTypes>(
                     ?terminal_block_hash,
                     ?terminal_block_hash_epoch,
                     "Ready for Bellatrix"
-                )
+                );
             }
             other => error!(
                 config = ?other,
@@ -530,7 +530,7 @@ async fn post_bellatrix_readiness_logging<T: BeaconChainTypes>(
             info!(
                 info = "ensure the execution endpoint is updated to the latest release",
                 "Ready for {}", fork
-            )
+            );
         }
     }
 }
@@ -852,6 +852,6 @@ impl Speedo {
 
     /// Clears all past observations to be used for an alternative sync (i.e backfill sync).
     pub fn clear(&mut self) {
-        self.0.clear()
+        self.0.clear();
     }
 }

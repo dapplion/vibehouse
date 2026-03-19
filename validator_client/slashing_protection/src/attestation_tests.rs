@@ -37,7 +37,7 @@ fn valid_empty_history() {
         cases: vec![Test::single(attestation_data_builder(2, 3))],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -46,7 +46,7 @@ fn valid_genesis() {
         cases: vec![Test::single(attestation_data_builder(0, 0))],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -59,7 +59,7 @@ fn valid_out_of_order_attestation() {
         ],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -71,7 +71,7 @@ fn valid_repeat_attestation() {
         ],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -83,7 +83,7 @@ fn valid_source_from_first_entry() {
         ],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -95,7 +95,7 @@ fn valid_multiple_validators_double_vote() {
             Test::with_pubkey(pubkey(1), attestation_data_builder(0, 1)),
         ],
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -109,7 +109,7 @@ fn valid_vote_chain_repeat_first() {
         ],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -123,7 +123,7 @@ fn valid_vote_chain_repeat_middle() {
         ],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -137,7 +137,7 @@ fn valid_vote_chain_repeat_last() {
         ],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -153,7 +153,7 @@ fn valid_multiple_validators_not_surrounding() {
             Test::with_pubkey(pubkey(1), attestation_data_builder(9, 21)),
         ],
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -165,7 +165,7 @@ fn invalid_source_exceeds_target() {
         ],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -178,7 +178,7 @@ fn invalid_unregistered_validator() {
             )),
         ],
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -192,7 +192,7 @@ fn invalid_double_vote_diff_source() {
         ],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -209,7 +209,7 @@ fn invalid_double_vote_diff_target() {
         ],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -226,7 +226,7 @@ fn invalid_double_vote_diff_data() {
         ],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -246,7 +246,7 @@ fn invalid_double_vote_diff_domain() {
         ],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -268,7 +268,7 @@ fn invalid_double_vote_diff_source_multi() {
         ],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -299,7 +299,7 @@ fn invalid_surrounding_single() {
         ],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -318,7 +318,7 @@ fn invalid_surrounding_from_first_source() {
         ],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -339,7 +339,7 @@ fn invalid_surrounding_multiple_votes() {
         ],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -356,7 +356,7 @@ fn invalid_prev_surrounds_new() {
         ],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }
 
 #[test]
@@ -387,5 +387,5 @@ fn invalid_prev_surrounds_new_multiple() {
         ],
         ..StreamTest::default()
     }
-    .run()
+    .run();
 }

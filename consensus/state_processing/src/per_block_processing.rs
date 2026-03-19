@@ -676,7 +676,7 @@ pub fn process_withdrawals<E: EthSpec, Payload: AbstractExecPayload<E>>(
             });
         }
 
-        for withdrawal in expected_withdrawals.iter() {
+        for withdrawal in &expected_withdrawals {
             decrease_balance(
                 state,
                 withdrawal.validator_index as usize,

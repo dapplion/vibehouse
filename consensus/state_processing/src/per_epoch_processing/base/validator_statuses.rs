@@ -226,7 +226,7 @@ impl ValidatorStatuses {
         let current_epoch = state.current_epoch();
         let previous_epoch = state.previous_epoch();
 
-        for validator in state.validators().iter() {
+        for validator in state.validators() {
             let effective_balance = validator.effective_balance;
             let mut status = ValidatorStatus {
                 is_slashed: validator.slashed,
@@ -316,7 +316,7 @@ impl ValidatorStatuses {
         }
 
         // Compute the total balances
-        for v in self.statuses.iter() {
+        for v in &self.statuses {
             // According to the spec, we only count unslashed validators towards the totals.
             if !v.is_slashed {
                 let validator_balance = v.current_epoch_effective_balance;

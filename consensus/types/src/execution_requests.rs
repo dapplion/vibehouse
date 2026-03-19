@@ -70,7 +70,7 @@ impl<E: EthSpec> ExecutionRequests<E> {
     pub fn requests_hash(&self) -> Hash256 {
         let mut hasher = DynamicContext::new();
 
-        for request in self.get_execution_requests_list().iter() {
+        for request in &self.get_execution_requests_list() {
             let mut request_hasher = DynamicContext::new();
             request_hasher.update(request);
             let request_hash = request_hasher.finalize();

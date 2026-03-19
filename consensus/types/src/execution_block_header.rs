@@ -150,10 +150,10 @@ impl<'a> From<&'a ExecutionBlockHeader> for EncodableExecutionBlockHeader<'a> {
             encodable.withdrawals_root = Some(withdrawals_root.as_slice());
         }
         if let Some(parent_beacon_block_root) = &header.parent_beacon_block_root {
-            encodable.parent_beacon_block_root = Some(parent_beacon_block_root.as_slice())
+            encodable.parent_beacon_block_root = Some(parent_beacon_block_root.as_slice());
         }
         if let Some(requests_root) = &header.requests_root {
-            encodable.requests_root = Some(requests_root.as_slice())
+            encodable.requests_root = Some(requests_root.as_slice());
         }
         encodable
     }

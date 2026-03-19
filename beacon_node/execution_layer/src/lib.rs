@@ -716,7 +716,7 @@ impl<E: EthSpec> ExecutionLayer<E> {
                                 error!(
                                     error = ?e,
                                     "Failed to clean proposer preparation cache"
-                                )
+                                );
                             })
                             .unwrap_or(()),
                         None => error!("Failed to get current epoch from slot clock"),
@@ -1063,7 +1063,7 @@ impl<E: EthSpec> ExecutionLayer<E> {
                     "Chain is optimistic; can't build payload"
                 ),
                 ChainHealth::Healthy => {
-                    crit!("got healthy but also not healthy.. this shouldn't happen!")
+                    crit!("got healthy but also not healthy.. this shouldn't happen!");
                 }
             }
             return self
@@ -1499,7 +1499,7 @@ impl<E: EthSpec> ExecutionLayer<E> {
                     lookahead,
                 );
             } else {
-                debug!(?timestamp, ?now, "Late payload attributes")
+                debug!(?timestamp, ?now, "Late payload attributes");
             }
         }
 
@@ -1975,7 +1975,7 @@ impl<E: EthSpec> ExecutionLayer<E> {
                         block_hash = ?payload.block_hash(),
                         parent_hash = ?payload.parent_hash(),
                         "Builder successfully revealed payload"
-                    )
+                    );
                 }
                 Err(e) => {
                     metrics::inc_counter_vec(
@@ -1993,7 +1993,7 @@ impl<E: EthSpec> ExecutionLayer<E> {
                             .map(|payload| payload.parent_hash().to_string())
                             .unwrap_or_else(|_| "unknown".to_string()),
                         "Builder failed to reveal payload"
-                    )
+                    );
                 }
             }
 
@@ -2344,7 +2344,7 @@ mod test {
                         .await
                         .unwrap(),
                     None
-                )
+                );
             })
             .await
             .move_to_terminal_block()
@@ -2354,7 +2354,7 @@ mod test {
                         .await
                         .unwrap(),
                     Some(terminal_block.unwrap().block_hash)
-                )
+                );
             })
             .await;
     }
@@ -2371,7 +2371,7 @@ mod test {
                         .await
                         .unwrap(),
                     None
-                )
+                );
             })
             .await
             .move_to_terminal_block()
@@ -2382,7 +2382,7 @@ mod test {
                         .await
                         .unwrap(),
                     None
-                )
+                );
             })
             .await;
     }
@@ -2399,7 +2399,7 @@ mod test {
                         .await
                         .unwrap(),
                     Some(true)
-                )
+                );
             })
             .await;
     }
@@ -2418,7 +2418,7 @@ mod test {
                         .await
                         .unwrap(),
                     Some(false)
-                )
+                );
             })
             .await;
     }
@@ -2437,7 +2437,7 @@ mod test {
                         .await
                         .unwrap(),
                     None
-                )
+                );
             })
             .await;
     }

@@ -83,7 +83,7 @@ impl<T: DeserializeOwned> CommandLineTest<T> {
         Self::run(self.cmd, true);
         let contents = fs::read_to_string(self.config_path).unwrap();
         let config: T = serde_json::from_str(&contents).unwrap();
-        func(config)
+        func(config);
     }
 
     fn assert_failed(self) {

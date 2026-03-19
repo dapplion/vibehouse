@@ -2352,7 +2352,7 @@ impl<E: EthSpec> BeaconState<E> {
 
     /// Completely drops the `pubkey_cache`, replacing it with a new, empty cache.
     pub fn drop_pubkey_cache(&mut self) {
-        *self.pubkey_cache_mut() = PubkeyCache::default()
+        *self.pubkey_cache_mut() = PubkeyCache::default();
     }
 
     /// Incrementally update the builder pubkey cache with any builders not yet indexed.
@@ -2878,28 +2878,28 @@ impl<E: EthSpec> BeaconState<E> {
     pub fn apply_pending_mutations(&mut self) -> Result<(), Error> {
         match self {
             Self::Base(inner) => {
-                map_beacon_state_base_tree_list_fields!(inner, |_, x| { x.apply_updates() })
+                map_beacon_state_base_tree_list_fields!(inner, |_, x| { x.apply_updates() });
             }
             Self::Altair(inner) => {
-                map_beacon_state_altair_tree_list_fields!(inner, |_, x| { x.apply_updates() })
+                map_beacon_state_altair_tree_list_fields!(inner, |_, x| { x.apply_updates() });
             }
             Self::Bellatrix(inner) => {
-                map_beacon_state_bellatrix_tree_list_fields!(inner, |_, x| { x.apply_updates() })
+                map_beacon_state_bellatrix_tree_list_fields!(inner, |_, x| { x.apply_updates() });
             }
             Self::Capella(inner) => {
-                map_beacon_state_capella_tree_list_fields!(inner, |_, x| { x.apply_updates() })
+                map_beacon_state_capella_tree_list_fields!(inner, |_, x| { x.apply_updates() });
             }
             Self::Deneb(inner) => {
-                map_beacon_state_deneb_tree_list_fields!(inner, |_, x| { x.apply_updates() })
+                map_beacon_state_deneb_tree_list_fields!(inner, |_, x| { x.apply_updates() });
             }
             Self::Electra(inner) => {
-                map_beacon_state_electra_tree_list_fields!(inner, |_, x| { x.apply_updates() })
+                map_beacon_state_electra_tree_list_fields!(inner, |_, x| { x.apply_updates() });
             }
             Self::Fulu(inner) => {
-                map_beacon_state_fulu_tree_list_fields!(inner, |_, x| { x.apply_updates() })
+                map_beacon_state_fulu_tree_list_fields!(inner, |_, x| { x.apply_updates() });
             }
             Self::Gloas(inner) => {
-                map_beacon_state_gloas_tree_list_fields!(inner, |_, x| { x.apply_updates() })
+                map_beacon_state_gloas_tree_list_fields!(inner, |_, x| { x.apply_updates() });
             }
         }
         Ok(())

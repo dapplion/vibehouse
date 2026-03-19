@@ -54,7 +54,7 @@ pub fn process_operations<E: EthSpec, Payload: AbstractExecPayload<E>>(
     if state.fork_name_unchecked().gloas_enabled() {
         // Process payload attestations
         if let Ok(attestations) = block_body.payload_attestations() {
-            for attestation in attestations.iter() {
+            for attestation in attestations {
                 gloas::process_payload_attestation(state, attestation, verify_signatures, spec)?;
             }
         }
@@ -632,7 +632,7 @@ pub fn process_withdrawal_requests<E: EthSpec>(
         if is_full_exit_request {
             // Only exit validator if it has no pending withdrawals in the queue
             if pending_balance_to_withdraw == 0 {
-                initiate_validator_exit(state, validator_index, spec)?
+                initiate_validator_exit(state, validator_index, spec)?;
             }
             continue;
         }
@@ -690,7 +690,7 @@ pub fn process_deposit_requests<E: EthSpec>(
         } else {
             // Set deposit receipt start index [New in Electra:EIP6110]
             if state.deposit_requests_start_index()? == spec.unset_deposit_requests_start_index {
-                *state.deposit_requests_start_index_mut()? = request.index
+                *state.deposit_requests_start_index_mut()? = request.index;
             }
 
             let slot = state.slot();
@@ -772,7 +772,7 @@ fn is_pending_validator<E: EthSpec>(
     let Ok(pending_deposits) = state.pending_deposits() else {
         return false;
     };
-    for pending_deposit in pending_deposits.iter() {
+    for pending_deposit in pending_deposits {
         if pending_deposit.pubkey != *pubkey {
             continue;
         }

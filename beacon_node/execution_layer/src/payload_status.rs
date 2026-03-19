@@ -63,7 +63,7 @@ pub fn process_payload_status(
                         msg = "expected a null latest_valid_hash",
                         status = ?response.status,
                     "Malformed response from execution engine"
-                    )
+                    );
                 }
 
                 Ok(PayloadStatus::InvalidBlockHash {
@@ -78,7 +78,7 @@ pub fn process_payload_status(
                         msg = "expected a null latest_valid_hash",
                         status = ?response.status,
                     "Malformed response from execution engine"
-                    )
+                    );
                 }
 
                 Ok(PayloadStatus::Syncing)
@@ -91,7 +91,7 @@ pub fn process_payload_status(
                         msg = "expected a null latest_valid_hash",
                         status = ?response.status,
                     "Malformed response from execution engine"
-                    )
+                    );
                 }
 
                 Ok(PayloadStatus::Accepted)

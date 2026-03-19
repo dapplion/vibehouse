@@ -150,7 +150,7 @@ impl<E: EthSpec> ResponseLimiter<E> {
                                 &crate::metrics::RESPONSE_IDLING,
                                 timestamp_now().saturating_sub(response.queued_at),
                             );
-                            responses.push(response)
+                            responses.push(response);
                         }
                         Err(wait_time) => {
                             // The response was taken from the queue, but the limiter didn't allow it.

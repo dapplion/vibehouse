@@ -2746,7 +2746,7 @@ async fn weak_subjectivity_sync_easy() {
     let num_initial_slots = E::slots_per_epoch() * 11;
     let checkpoint_slot = Slot::new(E::slots_per_epoch() * 9);
     let slots = (1..num_initial_slots).map(Slot::new).collect();
-    weak_subjectivity_sync_test(slots, checkpoint_slot, None).await
+    weak_subjectivity_sync_test(slots, checkpoint_slot, None).await;
 }
 
 #[tokio::test]
@@ -2754,7 +2754,7 @@ async fn weak_subjectivity_sync_single_block_batches() {
     let num_initial_slots = E::slots_per_epoch() * 11;
     let checkpoint_slot = Slot::new(E::slots_per_epoch() * 9);
     let slots = (1..num_initial_slots).map(Slot::new).collect();
-    weak_subjectivity_sync_test(slots, checkpoint_slot, Some(1)).await
+    weak_subjectivity_sync_test(slots, checkpoint_slot, Some(1)).await;
 }
 
 #[tokio::test]
@@ -2768,7 +2768,7 @@ async fn weak_subjectivity_sync_unaligned_advanced_checkpoint() {
             slot <= checkpoint_slot - 3 || slot > checkpoint_slot
         })
         .collect();
-    weak_subjectivity_sync_test(slots, checkpoint_slot, None).await
+    weak_subjectivity_sync_test(slots, checkpoint_slot, None).await;
 }
 
 #[tokio::test]
@@ -2782,7 +2782,7 @@ async fn weak_subjectivity_sync_unaligned_unadvanced_checkpoint() {
             slot <= checkpoint_slot || slot > checkpoint_slot + 3
         })
         .collect();
-    weak_subjectivity_sync_test(slots, checkpoint_slot, None).await
+    weak_subjectivity_sync_test(slots, checkpoint_slot, None).await;
 }
 
 // Regression test: skipping slots immediately after genesis should not break the store.
@@ -2794,7 +2794,7 @@ async fn weak_subjectivity_sync_skips_at_genesis() {
     let end_slot = E::slots_per_epoch() * 4;
     let slots = (start_slot..end_slot).map(Slot::new).collect();
     let checkpoint_slot = Slot::new(E::slots_per_epoch() * 2);
-    weak_subjectivity_sync_test(slots, checkpoint_slot, None).await
+    weak_subjectivity_sync_test(slots, checkpoint_slot, None).await;
 }
 
 // Checkpoint sync from the genesis state.
@@ -2807,7 +2807,7 @@ async fn weak_subjectivity_sync_from_genesis() {
     let end_slot = E::slots_per_epoch() * 2;
     let slots = (start_slot..end_slot).map(Slot::new).collect();
     let checkpoint_slot = Slot::new(0);
-    weak_subjectivity_sync_test(slots, checkpoint_slot, None).await
+    weak_subjectivity_sync_test(slots, checkpoint_slot, None).await;
 }
 
 async fn weak_subjectivity_sync_test(
@@ -3370,7 +3370,7 @@ async fn test_import_historical_data_columns_batch() {
     for block in block_root_iter {
         let (block_root, _) = block.unwrap();
         let data_columns = harness.chain.store.get_data_columns(&block_root).unwrap();
-        assert!(data_columns.is_none())
+        assert!(data_columns.is_none());
     }
 
     // Re-import deleted data columns
@@ -3388,7 +3388,7 @@ async fn test_import_historical_data_columns_batch() {
     for block in block_root_iter {
         let (block_root, _) = block.unwrap();
         let data_columns = harness.chain.store.get_data_columns(&block_root).unwrap();
-        assert!(data_columns.is_some())
+        assert!(data_columns.is_some());
     }
 }
 
@@ -3468,7 +3468,7 @@ async fn test_import_historical_data_columns_batch_mismatched_block_root() {
     for block in block_root_iter {
         let (block_root, _) = block.unwrap();
         let data_columns = harness.chain.store.get_data_columns(&block_root).unwrap();
-        assert!(data_columns.is_none())
+        assert!(data_columns.is_none());
     }
 
     // Attempt to import data columns with invalid block roots and expect a failure
@@ -4888,7 +4888,7 @@ async fn ancestor_state_root_prior_to_split() {
                         ))
                         .slot,
                     ancestor_slot,
-                )
+                );
             }
         }
     }
@@ -5305,7 +5305,7 @@ fn check_split_slot(
 
 /// Check that all the states in a chain dump have the correct tree hash.
 fn check_chain_dump(harness: &TestHarness, expected_len: u64) {
-    check_chain_dump_from_slot(harness, Slot::new(0), expected_len)
+    check_chain_dump_from_slot(harness, Slot::new(0), expected_len);
 }
 
 fn check_chain_dump_from_slot(harness: &TestHarness, from_slot: Slot, expected_len: u64) {
@@ -5406,7 +5406,7 @@ fn check_chain_dump_from_slot(harness: &TestHarness, from_slot: Slot, expected_l
 /// Check that every state from the canonical chain is in the database, and that the
 /// reverse state and block root iterators reach genesis.
 fn check_iterators(harness: &TestHarness) {
-    check_iterators_from_slot(harness, Slot::new(0))
+    check_iterators_from_slot(harness, Slot::new(0));
 }
 
 fn check_iterators_from_slot(harness: &TestHarness, slot: Slot) {

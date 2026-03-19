@@ -524,7 +524,7 @@ impl<Key: Hash + Eq + Clone> Limiter<Key> {
     pub fn prune(&mut self, time_limit: Duration) {
         let lim = &mut (time_limit.as_nanos() as u64);
         // remove those for which tat < lim
-        self.tat_per_key.retain(|_k, tat| tat >= lim)
+        self.tat_per_key.retain(|_k, tat| tat >= lim);
     }
 }
 

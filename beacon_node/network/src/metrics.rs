@@ -824,7 +824,7 @@ pub fn update_gossip_metrics<E: EthSpec>(
                         if let Some(v) =
                             get_int_gauge(&BEACON_BLOCK_MESH_PEERS_PER_CLIENT, &[client])
                         {
-                            v.inc()
+                            v.inc();
                         };
                     }
                 }
@@ -840,7 +840,7 @@ pub fn update_gossip_metrics<E: EthSpec>(
                             &BEACON_AGGREGATE_AND_PROOF_MESH_PEERS_PER_CLIENT,
                             &[client],
                         ) {
-                            v.inc()
+                            v.inc();
                         };
                     }
                 }
@@ -894,7 +894,7 @@ pub fn update_sync_metrics<E: EthSpec>(network_globals: &Arc<NetworkGlobals<E>>)
     // Registering this metric is a duplicate for supernodes but helpful for fullnodes. This way
     // operators can monitor the health of only the subnets of their interest without complex
     // Grafana queries.
-    for subnet in custody_column_subnets.iter() {
+    for subnet in &custody_column_subnets {
         set_gauge_entry(
             &PEERS_PER_CUSTODY_COLUMN_SUBNET,
             &[&format!("{subnet}")],

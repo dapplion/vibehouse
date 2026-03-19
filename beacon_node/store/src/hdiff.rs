@@ -586,7 +586,7 @@ impl ValidatorsDiff {
                     x.withdrawable_epoch = diff.withdrawable_epoch;
                 }
             } else {
-                xs.push(diff)
+                xs.push(diff);
             }
         }
 

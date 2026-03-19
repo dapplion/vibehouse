@@ -922,7 +922,7 @@ async fn queue_attestations_from_http() {
             client
                 .post_beacon_pool_attestations_v2::<E>(single_attestations, fork_name)
                 .await
-                .expect("attestations should be processed successfully")
+                .expect("attestations should be processed successfully");
         })
     };
 

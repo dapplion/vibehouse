@@ -201,7 +201,7 @@ impl<T: BeaconChainTypes> Router<T> {
         }
         match request_type {
             RequestType::Status(status_message) => {
-                self.on_status_request(peer_id, inbound_request_id, status_message)
+                self.on_status_request(peer_id, inbound_request_id, status_message);
             }
             RequestType::BlocksByRange(request) => {
                 let mut count = *request.count();
@@ -223,7 +223,7 @@ impl<T: BeaconChainTypes> Router<T> {
                         inbound_request_id,
                         blocks_request,
                     ),
-                )
+                );
             }
             RequestType::BlocksByRoot(request) => self.handle_beacon_processor_send_result(
                 self.network_beacon_processor.send_blocks_by_roots_request(
@@ -301,7 +301,7 @@ impl<T: BeaconChainTypes> Router<T> {
                 self.handle_beacon_processor_send_result(
                     self.network_beacon_processor
                         .send_status_message(peer_id, status_message),
-                )
+                );
             }
             Response::BlocksByRange(beacon_block) => {
                 self.on_blocks_by_range_response(peer_id, app_request_id, beacon_block);
@@ -384,7 +384,7 @@ impl<T: BeaconChainTypes> Router<T> {
                         blob_sidecar,
                         timestamp_now(),
                     ),
-                )
+                );
             }
             PubsubMessage::DataColumnSidecar(data) => {
                 let (subnet_id, column_sidecar) = *data;
@@ -397,14 +397,14 @@ impl<T: BeaconChainTypes> Router<T> {
                             column_sidecar,
                             timestamp_now(),
                         ),
-                )
+                );
             }
             PubsubMessage::VoluntaryExit(exit) => {
                 debug!(%peer_id, "Received a voluntary exit");
                 self.handle_beacon_processor_send_result(
                     self.network_beacon_processor
                         .send_gossip_voluntary_exit(message_id, peer_id, exit),
-                )
+                );
             }
             PubsubMessage::ProposerSlashing(proposer_slashing) => {
                 debug!(
@@ -417,7 +417,7 @@ impl<T: BeaconChainTypes> Router<T> {
                         peer_id,
                         proposer_slashing,
                     ),
-                )
+                );
             }
             PubsubMessage::AttesterSlashing(attester_slashing) => {
                 debug!(
@@ -430,7 +430,7 @@ impl<T: BeaconChainTypes> Router<T> {
                         peer_id,
                         attester_slashing,
                     ),
-                )
+                );
             }
             PubsubMessage::SignedContributionAndProof(contribution_and_proof) => {
                 trace!(
@@ -444,7 +444,7 @@ impl<T: BeaconChainTypes> Router<T> {
                         *contribution_and_proof,
                         timestamp_now(),
                     ),
-                )
+                );
             }
             PubsubMessage::SyncCommitteeMessage(sync_committtee_msg) => {
                 trace!(
@@ -459,7 +459,7 @@ impl<T: BeaconChainTypes> Router<T> {
                         sync_committtee_msg.0,
                         timestamp_now(),
                     ),
-                )
+                );
             }
             PubsubMessage::LightClientFinalityUpdate(light_client_finality_update) => {
                 trace!(
@@ -474,7 +474,7 @@ impl<T: BeaconChainTypes> Router<T> {
                             *light_client_finality_update,
                             timestamp_now(),
                         ),
-                )
+                );
             }
             PubsubMessage::LightClientOptimisticUpdate(light_client_optimistic_update) => {
                 trace!(
@@ -490,7 +490,7 @@ impl<T: BeaconChainTypes> Router<T> {
                             *light_client_optimistic_update,
                             timestamp_now(),
                         ),
-                )
+                );
             }
             PubsubMessage::BlsToExecutionChange(bls_to_execution_change) => self
                 .handle_beacon_processor_send_result(
@@ -528,7 +528,7 @@ impl<T: BeaconChainTypes> Router<T> {
                         proof,
                         timestamp_now(),
                     ),
-                )
+                );
             }
         }
     }
@@ -545,7 +545,7 @@ impl<T: BeaconChainTypes> Router<T> {
             warn!(
                 error = %e,
                 "Could not send message to the sync service"
-            )
+            );
         });
     }
 
@@ -583,7 +583,7 @@ impl<T: BeaconChainTypes> Router<T> {
         self.handle_beacon_processor_send_result(
             self.network_beacon_processor
                 .send_status_message(peer_id, status),
-        )
+        );
     }
 
     /// Handle a `BlocksByRange` response from the peer.
@@ -817,7 +817,7 @@ impl<T: BeaconChainTypes> Router<T> {
             };
 
             if self.logger_debounce.elapsed() {
-                error!(error = %e, work_type, "Unable to send message to the beacon processor")
+                error!(error = %e, work_type, "Unable to send message to the beacon processor");
             }
         }
     }
@@ -840,7 +840,7 @@ impl<E: EthSpec> HandlerNetworkContext<E> {
     fn inform_network(&mut self, msg: NetworkMessage<E>) {
         self.network_send
             .send(msg)
-            .unwrap_or_else(|e| warn!(error = %e,"Could not send message to the network service"))
+            .unwrap_or_else(|e| warn!(error = %e,"Could not send message to the network service"));
     }
 
     /// Sends a request to the network task.
@@ -849,7 +849,7 @@ impl<E: EthSpec> HandlerNetworkContext<E> {
             peer_id,
             app_request_id: AppRequestId::Router,
             request,
-        })
+        });
     }
 
     /// Sends a response to the network task.
@@ -863,7 +863,7 @@ impl<E: EthSpec> HandlerNetworkContext<E> {
             peer_id,
             inbound_request_id,
             response,
-        })
+        });
     }
 }
 

@@ -480,7 +480,7 @@ impl<E: EthSpec> Environment<E> {
     pub fn shutdown_on_idle(self) {
         match Arc::try_unwrap(self.runtime) {
             Ok(runtime) => {
-                runtime.shutdown_timeout(std::time::Duration::from_secs(MAXIMUM_SHUTDOWN_TIME))
+                runtime.shutdown_timeout(std::time::Duration::from_secs(MAXIMUM_SHUTDOWN_TIME));
             }
             Err(e) => warn!(
                 error = ?e,

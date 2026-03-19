@@ -225,7 +225,7 @@ impl<T: BeaconChainTypes> ActiveCustodyRequest<T> {
         // this request (avoiding fragmentation) while varying selection across different requests
         let random_state = RandomState::new();
 
-        for (column_index, request) in self.column_requests.iter() {
+        for (column_index, request) in &self.column_requests {
             if let Some(wait_duration) = request.is_awaiting_download() {
                 if request.download_failures > MAX_CUSTODY_COLUMN_DOWNLOAD_ATTEMPTS {
                     return Err(Error::TooManyFailures);

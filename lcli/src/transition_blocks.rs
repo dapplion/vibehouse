@@ -253,7 +253,7 @@ pub fn run<E: EthSpec>(
         info!("Run {}: {:?}", i, duration);
 
         if output_post_state.is_none() {
-            output_post_state = Some(post_state)
+            output_post_state = Some(post_state);
         }
     }
 

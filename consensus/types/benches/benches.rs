@@ -67,7 +67,7 @@ fn all_benches(c: &mut Criterion) {
                 || state.clone(),
                 |state| black_box(state.as_ssz_bytes()),
                 BatchSize::SmallInput,
-            )
+            );
         },
     );
 
@@ -83,7 +83,7 @@ fn all_benches(c: &mut Criterion) {
                     black_box(state)
                 },
                 BatchSize::SmallInput,
-            )
+            );
         },
     );
 
@@ -96,7 +96,7 @@ fn all_benches(c: &mut Criterion) {
                 || state.clone(),
                 |state| black_box(state.clone()),
                 BatchSize::SmallInput,
-            )
+            );
         },
     );
 
@@ -112,7 +112,7 @@ fn all_benches(c: &mut Criterion) {
                 || state.clone(),
                 |state| black_box(state.update_tree_hash_cache()),
                 BatchSize::SmallInput,
-            )
+            );
         },
     );
 
@@ -135,7 +135,7 @@ fn all_benches(c: &mut Criterion) {
                     )
                 },
                 BatchSize::SmallInput,
-            )
+            );
         },
     );
 
@@ -164,7 +164,7 @@ fn all_benches(c: &mut Criterion) {
                 },
                 |state| black_box(state.update_tree_hash_cache()),
                 BatchSize::SmallInput,
-            )
+            );
         },
     );
 }

@@ -303,7 +303,7 @@ pub fn process_payload_attestation<E: EthSpec>(
         .tree_hash_root();
 
         let mut pubkeys = Vec::with_capacity(indices.len());
-        for &validator_index in indices.iter() {
+        for &validator_index in indices {
             let validator = state.validators().get(validator_index as usize).ok_or(
                 BlockProcessingError::PayloadAttestationInvalid(
                     PayloadAttestationInvalid::AttesterIndexOutOfBounds,
@@ -523,7 +523,7 @@ fn compute_withdrawals_gloas<E: EthSpec>(
             .as_gloas()
             .map_err(BlockProcessingError::BeaconStateError)?;
         let builders_count = state_gloas.builders.len() as u64;
-        for withdrawal in state_gloas.builder_pending_withdrawals.iter() {
+        for withdrawal in &state_gloas.builder_pending_withdrawals {
             if withdrawals.len() >= reserved_limit {
                 break;
             }
@@ -840,12 +840,12 @@ pub(crate) fn get_pending_balance_to_withdraw_for_builder<E: EthSpec>(
 ) -> Result<u64, BeaconStateError> {
     let state_gloas = state.as_gloas()?;
     let mut total = 0u64;
-    for withdrawal in state_gloas.builder_pending_withdrawals.iter() {
+    for withdrawal in &state_gloas.builder_pending_withdrawals {
         if withdrawal.builder_index == builder_index {
             total = total.saturating_add(withdrawal.amount);
         }
     }
-    for payment in state_gloas.builder_pending_payments.iter() {
+    for payment in &state_gloas.builder_pending_payments {
         if payment.withdrawal.builder_index == builder_index {
             total = total.saturating_add(payment.withdrawal.amount);
         }

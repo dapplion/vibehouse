@@ -259,7 +259,7 @@ impl Config {
          * Web3 signer
          */
         if validator_client_config.web3_signer_keep_alive_timeout == 0 {
-            config.initialized_validators.web3_signer_keep_alive_timeout = None
+            config.initialized_validators.web3_signer_keep_alive_timeout = None;
         } else {
             config.initialized_validators.web3_signer_keep_alive_timeout = Some(
                 Duration::from_millis(validator_client_config.web3_signer_keep_alive_timeout),

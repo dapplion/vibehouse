@@ -67,13 +67,13 @@ fn bench_against_states(
     c.bench_function(&format!("compute hdiff {id}"), |b| {
         b.iter(|| {
             HDiff::compute(&source, &target, &config).unwrap();
-        })
+        });
     });
     c.bench_function(&format!("apply hdiff {id}"), |b| {
         b.iter(|| {
             let mut source = source.clone();
             diff.apply(&mut source, &config).unwrap();
-        })
+        });
     });
 }
 

@@ -70,7 +70,7 @@ pub fn context_deserialize(attr: TokenStream, item: TokenStream) -> TokenStream 
 
     // Clone and clean generics for impl use (remove default params)
     let mut impl_generics = input.generics.clone();
-    for param in impl_generics.params.iter_mut() {
+    for param in &mut impl_generics.params {
         if let GenericParam::Type(ty) = param {
             ty.eq_token = None;
             ty.default = None;

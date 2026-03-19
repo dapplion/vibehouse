@@ -72,7 +72,7 @@ impl<T: TransformPersist, E: EthSpec> Encode for SigVerifiedOp<T, E> {
             op: persistable_ref,
             verified_against: &self.verified_against,
         }
-        .ssz_append(buf)
+        .ssz_append(buf);
     }
 
     fn ssz_bytes_len(&self) -> usize {

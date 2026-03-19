@@ -38,7 +38,7 @@ pub async fn compute_light_client_updates<T: BeaconChainTypes>(
             })
             .is_err()
         {
-            error!(%parent_root,"Failed to inform light client update")
+            error!(%parent_root,"Failed to inform light client update");
         };
     }
 }

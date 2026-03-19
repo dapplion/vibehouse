@@ -102,7 +102,7 @@ fn observe_system_health(
         let mut root_fs_disk = None;
         let mut other_matching_fs = None;
 
-        for disk in disks.iter() {
+        for disk in disks {
             if disk.mount_point() == Path::new("/")
                 || disk.mount_point() == Path::new("C:\\")
                 || disk.mount_point() == Path::new("/System/Volumes/Data")

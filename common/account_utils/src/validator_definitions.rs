@@ -389,7 +389,7 @@ impl ValidatorDefinitions {
 
     /// Adds a new `ValidatorDefinition` to `self`.
     pub fn push(&mut self, def: ValidatorDefinition) {
-        self.0.push(def)
+        self.0.push(def);
     }
 
     /// Returns a slice of all `ValidatorDefinition` in `self`.
@@ -424,14 +424,14 @@ pub fn recursively_find_voting_keystores<P: AsRef<Path>>(
         let dir_entry = dir_entry?;
         let file_type = dir_entry.file_type()?;
         if file_type.is_dir() {
-            recursively_find_voting_keystores(dir_entry.path(), matches)?
+            recursively_find_voting_keystores(dir_entry.path(), matches)?;
         } else if file_type.is_file()
             && dir_entry
                 .file_name()
                 .to_str()
                 .is_some_and(is_voting_keystore)
         {
-            matches.push(dir_entry.path())
+            matches.push(dir_entry.path());
         }
         Ok(())
     })

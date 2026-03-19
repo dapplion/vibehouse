@@ -388,7 +388,7 @@ impl<E: EthSpec> PeerInfo<E> {
     /// Sets the client of the peer.
     // VISIBILITY: The peer manager is able to set the client
     pub(in crate::peer_manager) fn set_client(&mut self, client: Client) {
-        self.client = client
+        self.client = client;
     }
 
     /// Replaces the current listening addresses with those specified, returning the current
@@ -409,24 +409,24 @@ impl<E: EthSpec> PeerInfo<E> {
 
     /// Sets the connection status of the peer.
     pub(super) fn set_connection_status(&mut self, connection_status: PeerConnectionStatus) {
-        self.connection_status = connection_status
+        self.connection_status = connection_status;
     }
 
     pub(in crate::peer_manager) fn set_custody_subnets(
         &mut self,
         custody_subnets: HashSet<DataColumnSubnetId>,
     ) {
-        self.custody_subnets = custody_subnets
+        self.custody_subnets = custody_subnets;
     }
 
     /// Sets the ENR of the peer if one is known.
     pub(super) fn set_enr(&mut self, enr: Enr) {
-        self.enr = Some(enr)
+        self.enr = Some(enr);
     }
 
     /// Sets the time that the peer is expected to be needed until for an attached validator duty.
     pub(super) fn set_min_ttl(&mut self, min_ttl: Instant) {
-        self.min_ttl = Some(min_ttl)
+        self.min_ttl = Some(min_ttl);
     }
 
     /// Adds a known subnet for the peer.
@@ -441,13 +441,13 @@ impl<E: EthSpec> PeerInfo<E> {
 
     /// Removes all subnets from the peer.
     pub(super) fn clear_subnets(&mut self) {
-        self.subnets.clear()
+        self.subnets.clear();
     }
 
     /// Applies decay rates to a non-trusted peer's score.
     pub(super) fn score_update(&mut self) {
         if !self.is_trusted {
-            self.score.update()
+            self.score.update();
         }
     }
 
@@ -455,7 +455,7 @@ impl<E: EthSpec> PeerInfo<E> {
     // VISIBILITY: The peer manager is able to modify the score of a peer.
     pub(in crate::peer_manager) fn apply_peer_action_to_score(&mut self, peer_action: PeerAction) {
         if !self.is_trusted {
-            self.score.apply_peer_action(peer_action)
+            self.score.apply_peer_action(peer_action);
         }
     }
 
@@ -532,7 +532,7 @@ impl<E: EthSpec> PeerInfo<E> {
     /// Add an f64 to a non-trusted peer's score abiding by the limits.
     pub fn add_to_score(&mut self, score: f64) {
         if !self.is_trusted {
-            self.score.test_add(score)
+            self.score.test_add(score);
         }
     }
 

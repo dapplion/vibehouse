@@ -342,14 +342,14 @@ impl ValidatorsAndDeposits {
                 .map_err(|e| format!("Failed to get spec from beacon node: {:?}", e))?
                 .data;
             if let Some(config_name) = &bn_config.config_name {
-                eprintln!("Beacon node is on {} network", config_name)
+                eprintln!("Beacon node is on {} network", config_name);
             }
             let bn_spec = bn_config
                 .apply_to_chain_spec::<E>(&E::default_spec())
                 .ok_or("Beacon node appears to be on an incorrect network")?;
             if bn_spec.genesis_fork_version != spec.genesis_fork_version {
                 if let Some(config_name) = bn_spec.config_name {
-                    eprintln!("Beacon node is on {} network", config_name)
+                    eprintln!("Beacon node is on {} network", config_name);
                 }
                 return Err("Beacon node appears to be on the wrong network".to_string());
             }
@@ -442,7 +442,7 @@ impl ValidatorsAndDeposits {
                         ))?;
                     }
                     Ok(None) => {
-                        eprintln!("{:?} was not found in the beacon chain", voting_public_key)
+                        eprintln!("{:?} was not found in the beacon chain", voting_public_key);
                     }
                     Err(e) => {
                         return Err(format!(
@@ -776,11 +776,11 @@ pub mod tests {
         }
 
         fn assert_ok(self) {
-            assert_eq!(self.result, Ok(()))
+            assert_eq!(self.result, Ok(()));
         }
 
         fn assert_err(self) {
-            assert!(self.result.is_err())
+            assert!(self.result.is_err());
         }
     }
 
@@ -794,7 +794,7 @@ pub mod tests {
         TestBuilder::default()
             .mutate_config(|config| {
                 config.eth1_withdrawal_address = None;
-                config.force_bls_withdrawal_credentials = false
+                config.force_bls_withdrawal_credentials = false;
             })
             .run_test()
             .await
@@ -806,7 +806,7 @@ pub mod tests {
         TestBuilder::default()
             .mutate_config(|config| {
                 config.eth1_withdrawal_address = None;
-                config.force_bls_withdrawal_credentials = true
+                config.force_bls_withdrawal_credentials = true;
             })
             .run_test()
             .await

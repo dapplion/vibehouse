@@ -158,7 +158,7 @@ fn get_value(mf: &MetricFamily) -> Option<i64> {
 pub fn gather_metrics(metrics_map: &HashMap<String, JsonMetric>) -> Option<serde_json::Value> {
     let metric_families = metrics::gather();
     let mut res = serde_json::Map::with_capacity(metrics_map.len());
-    for mf in metric_families.iter() {
+    for mf in &metric_families {
         let metric_name = mf.name();
         if metrics_map.contains_key(metric_name) {
             let value = get_value(mf).unwrap_or_default();

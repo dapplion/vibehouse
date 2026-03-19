@@ -52,6 +52,6 @@ mod test {
             hash,
             Hash256::from_str("0x01000000000000000000000025c4a76E7d118705e7Ea2e9b7d8C59930d8aCD3b")
                 .unwrap()
-        )
+        );
     }
 }

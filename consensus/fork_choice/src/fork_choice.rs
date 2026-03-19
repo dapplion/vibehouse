@@ -1568,7 +1568,7 @@ where
             let previous_slot = self.fc_store.get_current_slot();
             // Note: we are relying upon `on_tick` to update `fc_store.time` to ensure we don't
             // get stuck in a loop.
-            self.on_tick(previous_slot + 1)?
+            self.on_tick(previous_slot + 1)?;
         }
 
         // Process any attestations that might now be eligible.
@@ -1647,7 +1647,7 @@ where
             &mut self.queued_attestations,
         ) {
             let payload_present = attestation.index == 1;
-            for validator_index in attestation.attesting_indices.iter() {
+            for validator_index in &attestation.attesting_indices {
                 self.proto_array.process_attestation(
                     *validator_index as usize,
                     attestation.block_root,
@@ -1981,7 +1981,7 @@ mod tests {
         for epoch in 0..3 {
             for slot in 0..E::slots_per_epoch() {
                 let input = epoch * E::slots_per_epoch() + slot;
-                assert_eq!(compute_slots_since_epoch_start::<E>(Slot::new(input)), slot)
+                assert_eq!(compute_slots_since_epoch_start::<E>(Slot::new(input)), slot);
             }
         }
     }
@@ -1992,7 +1992,7 @@ mod tests {
             assert_eq!(
                 compute_start_slot_at_epoch::<E>(Epoch::new(epoch)),
                 epoch * E::slots_per_epoch()
-            )
+            );
         }
     }
 

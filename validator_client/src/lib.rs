@@ -638,9 +638,9 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
                 self.duties_service.beacon_nodes.clone(),
                 self.duties_service.slot_clock.clone(),
             )
-            .map_err(|e| format!("Unable to start doppelganger service: {}", e))?
+            .map_err(|e| format!("Unable to start doppelganger service: {}", e))?;
         } else {
-            info!("Doppelganger protection disabled.")
+            info!("Doppelganger protection disabled.");
         }
 
         let context = self.context.service_context("notifier".into());

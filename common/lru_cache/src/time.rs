@@ -157,7 +157,7 @@ where
             self.map.remove(&element.key);
         }
         #[cfg(test)]
-        self.check_invariant()
+        self.check_invariant();
     }
 
     /// Returns if the key is present after removing expired elements.

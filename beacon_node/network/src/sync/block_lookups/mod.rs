@@ -511,7 +511,7 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
     /* Error responses */
 
     pub fn peer_disconnected(&mut self, peer_id: &PeerId) {
-        for (_, lookup) in self.single_block_lookups.iter_mut() {
+        for lookup in self.single_block_lookups.values_mut() {
             lookup.remove_peer(peer_id);
         }
     }
@@ -754,7 +754,7 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
     pub fn continue_child_lookups(&mut self, block_root: Hash256, cx: &mut SyncNetworkContext<T>) {
         let mut lookup_results = vec![]; // < need to buffer lookup results to not re-borrow &mut self
 
-        for (id, lookup) in self.single_block_lookups.iter_mut() {
+        for (id, lookup) in &mut self.single_block_lookups {
             if lookup.awaiting_parent() == Some(block_root) {
                 lookup.resolve_awaiting_parent();
                 debug!(

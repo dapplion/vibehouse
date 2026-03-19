@@ -459,7 +459,7 @@ where
 
         // drive inbound streams that need to be processed
         let mut substreams_to_remove = Vec::new(); // Closed substreams that need to be removed
-        for (id, info) in self.inbound_substreams.iter_mut() {
+        for (id, info) in &mut self.inbound_substreams {
             loop {
                 match std::mem::replace(&mut info.state, InboundState::Poisoned) {
                     // This state indicates that we are not currently sending any messages to the
@@ -679,7 +679,7 @@ where
                             error: RPCError::Disconnected,
                             proto: entry.get().proto,
                             id: entry.get().req_id,
-                        }))
+                        }));
                 }
                 OutboundSubstreamState::RequestPendingResponse {
                     mut substream,
@@ -887,7 +887,7 @@ where
                 info,
             }) => self.on_fully_negotiated_outbound(protocol, info),
             ConnectionEvent::DialUpgradeError(DialUpgradeError { info, error }) => {
-                self.on_dial_upgrade_error(info, error)
+                self.on_dial_upgrade_error(info, error);
             }
             ConnectionEvent::ListenUpgradeError(ListenUpgradeError {
                 error: (proto, error),

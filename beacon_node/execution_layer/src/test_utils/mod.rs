@@ -273,7 +273,7 @@ impl<E: EthSpec> MockServer<E> {
     }
 
     pub fn push_preloaded_response(&self, response: serde_json::Value) {
-        self.ctx.preloaded_responses.lock().push(response)
+        self.ctx.preloaded_responses.lock().push(response);
     }
 
     pub fn take_previous_request(&self) -> Option<serde_json::Value> {
@@ -281,7 +281,7 @@ impl<E: EthSpec> MockServer<E> {
     }
 
     pub fn set_new_payload_response(&self, response: StaticNewPayloadResponse) {
-        *self.ctx.static_new_payload_response.lock() = Some(response)
+        *self.ctx.static_new_payload_response.lock() = Some(response);
     }
 
     pub fn set_forkchoice_updated_response(&self, status: PayloadStatusV1) {
@@ -492,7 +492,7 @@ impl<E: EthSpec> MockServer<E> {
     }
 
     pub fn drop_all_blocks(&self) {
-        self.ctx.execution_block_generator.write().drop_all_blocks()
+        self.ctx.execution_block_generator.write().drop_all_blocks();
     }
 
     pub fn set_payload_statuses(&self, block_hash: ExecutionBlockHash, status: PayloadStatusV1) {

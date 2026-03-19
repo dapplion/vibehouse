@@ -162,10 +162,10 @@ impl EpochSummary {
     fn update_if_lt<T: Ord>(current: &mut Option<T>, new: T) {
         if let Some(current) = current {
             if new < *current {
-                *current = new
+                *current = new;
             }
         } else {
-            *current = Some(new)
+            *current = Some(new);
         }
     }
 
@@ -227,7 +227,7 @@ impl EpochSummary {
     }
 
     pub fn register_validator_total_balance(&mut self, total_balance: u64) {
-        self.total_balance = Some(total_balance)
+        self.total_balance = Some(total_balance);
     }
 }
 
@@ -423,7 +423,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
             _phantom: PhantomData,
         };
         for pubkey in validators {
-            s.add_validator_pubkey(pubkey)
+            s.add_validator_pubkey(pubkey);
         }
         s
     }
@@ -488,7 +488,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
             .for_each(|(i, validator)| {
                 let i = i as u64;
                 if let Some(validator) = self.validators.get_mut(&validator.pubkey) {
-                    validator.set_index(i)
+                    validator.set_index(i);
                 }
                 self.indices.insert(i, validator.pubkey);
             });
@@ -507,7 +507,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
                 // Cache relevant validator info.
                 if let Some(balance) = state.balances().get(i) {
                     monitored_validator.with_epoch_summary(current_epoch, |summary| {
-                        summary.register_validator_total_balance(*balance)
+                        summary.register_validator_total_balance(*balance);
                     });
                 }
 
@@ -666,7 +666,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
                                     info = "potentially inconsistency in the validator manager",
                                     index = i,
                                     "Missing validator index"
-                                )
+                                );
                             }
                         } else {
                             debug!(
@@ -734,10 +734,10 @@ impl<E: EthSpec> ValidatorMonitor<E> {
                         let head_hit = flag_indices.contains(&TIMELY_HEAD_FLAG_INDEX);
                         let target_hit = flag_indices.contains(&TIMELY_TARGET_FLAG_INDEX);
                         let source_hit = flag_indices.contains(&TIMELY_SOURCE_FLAG_INDEX);
-                        register_simulated_attestation(data, head_hit, target_hit, source_hit)
+                        register_simulated_attestation(data, head_hit, target_hit, source_hit);
                     }
                     Err(BeaconStateError::IncorrectAttestationSource) => {
-                        register_simulated_attestation(data, false, false, false)
+                        register_simulated_attestation(data, false, false, false);
                     }
                     Err(err) => {
                         error!(
@@ -792,7 +792,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
         // - One to account for the state advancing an epoch whilst generating the validator
         //     statuses.
         let prev_epoch = epoch - 2;
-        for (pubkey, monitored_validator) in self.validators.iter() {
+        for (pubkey, monitored_validator) in &self.validators {
             if let Some(i) = monitored_validator.index {
                 let i = i as usize;
                 let id = &monitored_validator.id;
@@ -826,17 +826,17 @@ impl<E: EthSpec> ValidatorMonitor<E> {
                 if previous_epoch_matched_any {
                     validator_metrics.increment_hits();
                     if previous_epoch_matched_target {
-                        validator_metrics.increment_target_hits()
+                        validator_metrics.increment_target_hits();
                     } else {
-                        validator_metrics.increment_target_misses()
+                        validator_metrics.increment_target_misses();
                     }
                     if previous_epoch_matched_head {
-                        validator_metrics.increment_head_hits()
+                        validator_metrics.increment_head_hits();
                     } else {
-                        validator_metrics.increment_head_misses()
+                        validator_metrics.increment_head_misses();
                     }
                 } else {
-                    validator_metrics.increment_misses()
+                    validator_metrics.increment_misses();
                 }
 
                 // Indicates if any attestation made it on-chain.
@@ -848,7 +848,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
                         metrics::inc_counter_vec(
                             &metrics::VALIDATOR_MONITOR_PREV_EPOCH_ON_CHAIN_ATTESTER_HIT,
                             &[label],
-                        )
+                        );
                     });
                     attestation_success.push(id);
                     if self.individual_tracking() {
@@ -859,7 +859,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
                             epoch = %prev_epoch,
                             validator = id,
                             "Previous epoch attestation success"
-                        )
+                        );
                     }
                 } else {
                     self.aggregatable_metric(id, |label| {
@@ -874,7 +874,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
                             epoch = %prev_epoch,
                             validator = id,
                             "Previous epoch attestation missing"
-                        )
+                        );
                     }
                 }
 
@@ -1117,7 +1117,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
         block_root: Hash256,
         slot_clock: &S,
     ) {
-        self.register_beacon_block("gossip", seen_timestamp, block, block_root, slot_clock)
+        self.register_beacon_block("gossip", seen_timestamp, block, block_root, slot_clock);
     }
 
     /// Process a block received on the HTTP API from a local validator.
@@ -1128,7 +1128,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
         block_root: Hash256,
         slot_clock: &S,
     ) {
-        self.register_beacon_block("api", seen_timestamp, block, block_root, slot_clock)
+        self.register_beacon_block("api", seen_timestamp, block, block_root, slot_clock);
     }
 
     fn register_beacon_block<S: SlotClock>(
@@ -1181,7 +1181,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
             seen_timestamp,
             indexed_attestation,
             slot_clock,
-        )
+        );
     }
 
     /// Register an attestation seen on the HTTP API.
@@ -1196,7 +1196,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
             seen_timestamp,
             indexed_attestation,
             slot_clock,
-        )
+        );
     }
 
     fn register_unaggregated_attestation<S: SlotClock>(
@@ -1245,10 +1245,10 @@ impl<E: EthSpec> ValidatorMonitor<E> {
                 }
 
                 validator.with_epoch_summary(epoch, |summary| {
-                    summary.register_unaggregated_attestation(delay)
+                    summary.register_unaggregated_attestation(delay);
                 });
             }
-        })
+        });
     }
 
     /// Register a `signed_aggregate_and_proof` seen on the gossip network.
@@ -1265,7 +1265,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
             signed_aggregate_and_proof,
             indexed_attestation,
             slot_clock,
-        )
+        );
     }
 
     /// Register a `signed_aggregate_and_proof` seen on the HTTP API.
@@ -1282,7 +1282,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
             signed_aggregate_and_proof,
             indexed_attestation,
             slot_clock,
-        )
+        );
     }
 
     fn register_aggregated_attestation<S: SlotClock>(
@@ -1332,7 +1332,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
             }
 
             validator.with_epoch_summary(epoch, |summary| {
-                summary.register_aggregated_attestation(delay)
+                summary.register_aggregated_attestation(delay);
             });
         }
 
@@ -1386,15 +1386,15 @@ impl<E: EthSpec> ValidatorMonitor<E> {
                             src,
                             validator = %id,
                             "Attestation included in aggregate"
-                        )
+                        );
                     };
                 }
 
                 validator.with_epoch_summary(epoch, |summary| {
-                    summary.register_aggregate_attestation_inclusion()
+                    summary.register_aggregate_attestation_inclusion();
                 });
             }
-        })
+        });
     }
 
     /// Register that the `indexed_attestation` was included in a *valid* `BeaconBlock`.
@@ -1471,10 +1471,10 @@ impl<E: EthSpec> ValidatorMonitor<E> {
                 }
 
                 validator.with_epoch_summary(epoch, |summary| {
-                    summary.register_attestation_block_inclusion(inclusion_distance)
+                    summary.register_attestation_block_inclusion(inclusion_distance);
                 });
             }
-        })
+        });
     }
 
     /// Register a sync committee message received over gossip.
@@ -1489,7 +1489,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
             seen_timestamp,
             sync_committee_message,
             slot_clock,
-        )
+        );
     }
 
     /// Register a sync committee message received over the http api.
@@ -1504,7 +1504,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
             seen_timestamp,
             sync_committee_message,
             slot_clock,
-        )
+        );
     }
 
     /// Register a sync committee message.
@@ -1551,7 +1551,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
             }
 
             validator.with_epoch_summary(epoch, |summary| {
-                summary.register_sync_committee_message(delay)
+                summary.register_sync_committee_message(delay);
             });
         }
     }
@@ -1570,7 +1570,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
             sync_contribution,
             participant_pubkeys,
             slot_clock,
-        )
+        );
     }
 
     /// Register a sync committee contribution received over the http api.
@@ -1587,7 +1587,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
             sync_contribution,
             participant_pubkeys,
             slot_clock,
-        )
+        );
     }
 
     /// Register a sync committee contribution.
@@ -1638,11 +1638,11 @@ impl<E: EthSpec> ValidatorMonitor<E> {
             }
 
             validator.with_epoch_summary(epoch, |summary| {
-                summary.register_sync_committee_contribution(delay)
+                summary.register_sync_committee_contribution(delay);
             });
         }
 
-        for validator_pubkey in participant_pubkeys.iter() {
+        for validator_pubkey in participant_pubkeys {
             if let Some(validator) = self.validators.get(validator_pubkey) {
                 let id = &validator.id;
 
@@ -1666,7 +1666,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
                 }
 
                 validator.with_epoch_summary(epoch, |summary| {
-                    summary.register_sync_signature_contribution_inclusion()
+                    summary.register_sync_signature_contribution_inclusion();
                 });
             }
         }
@@ -1711,17 +1711,17 @@ impl<E: EthSpec> ValidatorMonitor<E> {
 
     /// Register an exit from the gossip network.
     pub fn register_gossip_voluntary_exit(&self, exit: &VoluntaryExit) {
-        self.register_voluntary_exit("gossip", exit)
+        self.register_voluntary_exit("gossip", exit);
     }
 
     /// Register an exit from the HTTP API.
     pub fn register_api_voluntary_exit(&self, exit: &VoluntaryExit) {
-        self.register_voluntary_exit("api", exit)
+        self.register_voluntary_exit("api", exit);
     }
 
     /// Register an exit included in a *valid* beacon block.
     pub fn register_block_voluntary_exit(&self, exit: &VoluntaryExit) {
-        self.register_voluntary_exit("block", exit)
+        self.register_voluntary_exit("block", exit);
     }
 
     fn register_voluntary_exit(&self, src: &str, exit: &VoluntaryExit) {
@@ -1748,17 +1748,17 @@ impl<E: EthSpec> ValidatorMonitor<E> {
 
     /// Register a proposer slashing from the gossip network.
     pub fn register_gossip_proposer_slashing(&self, slashing: &ProposerSlashing) {
-        self.register_proposer_slashing("gossip", slashing)
+        self.register_proposer_slashing("gossip", slashing);
     }
 
     /// Register a proposer slashing from the HTTP API.
     pub fn register_api_proposer_slashing(&self, slashing: &ProposerSlashing) {
-        self.register_proposer_slashing("api", slashing)
+        self.register_proposer_slashing("api", slashing);
     }
 
     /// Register a proposer slashing included in a *valid* `BeaconBlock`.
     pub fn register_block_proposer_slashing(&self, slashing: &ProposerSlashing) {
-        self.register_proposer_slashing("block", slashing)
+        self.register_proposer_slashing("block", slashing);
     }
 
     fn register_proposer_slashing(&self, src: &str, slashing: &ProposerSlashing) {
@@ -1795,17 +1795,17 @@ impl<E: EthSpec> ValidatorMonitor<E> {
 
     /// Register an attester slashing from the gossip network.
     pub fn register_gossip_attester_slashing(&self, slashing: AttesterSlashingRef<'_, E>) {
-        self.register_attester_slashing("gossip", slashing)
+        self.register_attester_slashing("gossip", slashing);
     }
 
     /// Register an attester slashing from the HTTP API.
     pub fn register_api_attester_slashing(&self, slashing: AttesterSlashingRef<'_, E>) {
-        self.register_attester_slashing("api", slashing)
+        self.register_attester_slashing("api", slashing);
     }
 
     /// Register an attester slashing included in a *valid* `BeaconBlock`.
     pub fn register_block_attester_slashing(&self, slashing: AttesterSlashingRef<'_, E>) {
-        self.register_attester_slashing("block", slashing)
+        self.register_attester_slashing("block", slashing);
     }
 
     fn register_attester_slashing(&self, src: &str, slashing: AttesterSlashingRef<'_, E>) {
@@ -1843,7 +1843,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
                 );
 
                 validator.with_epoch_summary(epoch, EpochSummary::register_attester_slashing);
-            })
+            });
     }
 
     /// Scrape `self` for metrics.
@@ -1874,7 +1874,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
                 epoch - 2
             };
 
-            for (_, validator) in self.validators.iter() {
+            for validator in self.validators.values() {
                 let id = &validator.id;
                 let summaries = validator.summaries.read();
 

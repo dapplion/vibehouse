@@ -122,7 +122,7 @@ impl MonitoringHttpClient {
                         debug!(endpoint = %self.monitoring_endpoint, "Metrics sent to remote server");
                     }
                     Err(e) => {
-                        error!(error = %e, "Failed to send metrics to remote endpoint")
+                        error!(error = %e, "Failed to send metrics to remote endpoint");
                     }
                 }
             }

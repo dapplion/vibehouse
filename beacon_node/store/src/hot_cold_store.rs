@@ -1011,7 +1011,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         self.block_cache.as_ref().inspect(|cache| {
             cache
                 .lock()
-                .put_data_column_custody_info(Some(data_column_custody_info))
+                .put_data_column_custody_info(Some(data_column_custody_info));
         });
 
         Ok(())
@@ -1564,7 +1564,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                 "Database write failed"
             );
             let mut blob_cache_ops = blob_cache_ops;
-            for op in blob_cache_ops.iter_mut() {
+            for op in &mut blob_cache_ops {
                 let reverse_op = match op {
                     StoreOp::PutBlobs(block_root, _) => StoreOp::DeleteBlobs(*block_root),
                     StoreOp::PutDataColumns(block_root, data_columns) => {
@@ -1597,7 +1597,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                     self.state_cache.lock().delete_block_states(block_root);
                 }
                 StoreOp::DeleteState(state_root, _) => {
-                    self.state_cache.lock().delete_state(state_root)
+                    self.state_cache.lock().delete_state(state_root);
                 }
                 _ => (),
             }
@@ -2641,7 +2641,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         self.block_cache.as_ref().inspect(|cache| {
             cache
                 .lock()
-                .put_data_column_custody_info(data_column_custody_info.clone())
+                .put_data_column_custody_info(data_column_custody_info.clone());
         });
 
         Ok(data_column_custody_info)
@@ -2751,7 +2751,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                 self.block_cache.as_ref().inspect(|cache| {
                     cache
                         .lock()
-                        .put_data_column(*block_root, data_column.clone())
+                        .put_data_column(*block_root, data_column.clone());
                 });
                 Ok(Some(data_column))
             }

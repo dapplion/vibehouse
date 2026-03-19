@@ -228,7 +228,7 @@ impl SyncDutiesMap {
     fn prune(&self, current_sync_committee_period: u64) {
         self.committees
             .write()
-            .retain(|period, _| *period >= current_sync_committee_period)
+            .retain(|period, _| *period >= current_sync_committee_period);
     }
 }
 
@@ -239,7 +239,7 @@ impl CommitteeDuties {
                 .get_mut()
                 .entry(*validator_index)
                 .or_insert(None);
-        })
+        });
     }
 }
 
@@ -303,7 +303,7 @@ pub async fn poll_sync_committee_duties<S: ValidatorStore + 'static, T: SlotCloc
 
         for &pubkey in &local_pubkeys {
             if let Some(validator_index) = duties_service.validator_store.validator_index(&pubkey) {
-                local_indices.push(validator_index)
+                local_indices.push(validator_index);
             }
         }
         local_indices
@@ -341,7 +341,7 @@ pub async fn poll_sync_committee_duties<S: ValidatorStore + 'static, T: SlotCloc
                     current_slot,
                     current_pre_compute_slot,
                 )
-                .await
+                .await;
             },
             "duties_service_sync_selection_proofs",
         );
@@ -389,7 +389,7 @@ pub async fn poll_sync_committee_duties<S: ValidatorStore + 'static, T: SlotCloc
                         current_slot,
                         pre_compute_slot,
                     )
-                    .await
+                    .await;
                 },
                 "duties_service_sync_selection_proofs",
             );
