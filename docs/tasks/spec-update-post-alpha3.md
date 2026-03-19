@@ -212,3 +212,12 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - jsonwebtoken 10.3.0 is latest — no upgrade path for rsa vulnerability
 - All codebase TODOs audited: all blocked (EIP-7892, blst upstream, PeerDAS) or non-critical
 - **No action needed. Codebase healthy, spec current.**
+
+### run 1923 (Mar 19) — routine spec check
+
+- No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
+- Open Gloas PRs unchanged: #4960 (fork choice deposit test), #4932 (sanity/blocks tests) — both test-only
+- #4992 (cached PTCs in state) still open
+- CI green, clippy clean, cargo audit unchanged (rsa advisory, no fix)
+- All post-alpha.3 commits audited: #5001 (parent_block_root in bid filter) already implemented, #4940 (fork choice tests) test runner ready
+- **No action needed. Will re-check next run.**
