@@ -1939,3 +1939,19 @@ Investigated but skipped: batch `validate_data_columns()` (iterator-based, would
 Spec check: v1.7.0-alpha.3 still latest — no new consensus-specs merges since #5005 (Mar 15). Verified post-alpha.3 PRs (#5001 parent_block_root bid filtering, #5002 wording clarification, #4940 fork choice tests) — all already implemented or non-code-impacting. Open Gloas PRs unchanged (#4992 cached PTCs, #4960/#4932 tests, #4843 variable PTC deadline, #4840 EIP-7843, #4630 EIP-7688). Nightly tests passing. CI green.
 
 1085/1085 types tests pass, 1026/1026 state_processing tests pass, clippy clean. Committed `df0e8ead4`.
+
+### Run 1940 (2026-03-19)
+
+**Replaced `format!("{}", x)` with `.to_string()` and side-effect `.map()` with `if let`**: Systematic audit of `format!("{}", x)` patterns across non-test production code. Replaced 23 instances across 11 files:
+
+1. **`builder_client/src/lib.rs`** (9 instances) — `Error::InvalidHeaders(format!("{}", e))` → `Error::InvalidHeaders(e.to_string())` in all 3 blinded blocks endpoints
+2. **`execution_layer/src/lib.rs`** — `format!("{}", payload.parent_hash())` → `payload.parent_hash().to_string()` in relay logging
+3. **`network/src/service.rs`** — `format!("{}", topic)` → `topic.to_string()` in subscription logging
+4. **`execution_layer/src/metrics.rs`** — `let _ = X.as_ref().map(|g| g.reset())` → `if let Ok(g) = X.as_ref() { g.reset(); }` (side-effect map to idiomatic if-let)
+5. **`eth2_keystore/src/keystore.rs`** (4 instances) — `Error::*Error(format!("{}", e))` → `Error::*Error(e.to_string())` for JSON serialization/deserialization errors
+6. **`eth2_wallet/src/wallet.rs`** (4 instances) — same pattern with `KeystoreError` variants
+7. **`eth2_wallet_manager/` (3 files, 7 instances)** — `format!("{}", uuid)` → `uuid.to_string()` for path construction
+8. **`validator_dir/src/builder.rs`** — `format!("{}", amount)` → `amount.to_string()` for deposit amount serialization
+9. **`lcli/src/mnemonic_validators.rs`** — `format!("{}", path)` → `path.to_string()` for keystore path
+
+Spec v1.7.0-alpha.3 still latest — no new consensus-specs merges. Open Gloas PRs unchanged. #4747 (fast confirmation) updated Mar 19 but still open. 747/747 tests pass across affected crates, zero clippy warnings, pre-push lint-full passes. Committed `afbf11a72`.
