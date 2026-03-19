@@ -53,7 +53,7 @@ fn get_custody_groups_ordered(
         ));
     }
 
-    let mut custody_groups = vec![];
+    let mut custody_groups = Vec::with_capacity(custody_group_count as usize);
     let mut current_id = U256::from_be_slice(&raw_node_id);
     while custody_groups.len() < custody_group_count as usize {
         let mut node_id_bytes = [0u8; 32];

@@ -424,7 +424,7 @@ impl<T: BeaconChainTypes> BeaconBlockStreamer<T> {
         self.beacon_chain
             .spawn_blocking_handle(
                 move || {
-                    let mut db_blocks = Vec::new();
+                    let mut db_blocks = Vec::with_capacity(block_roots.len());
                     for root in block_roots {
                         if let Some(cached_block) =
                             streamer.check_caches(root).map(LoadedBeaconBlock::Full)
@@ -467,13 +467,13 @@ impl<T: BeaconChainTypes> BeaconBlockStreamer<T> {
         &self,
         payloads: Vec<(Hash256, LoadResult<T::EthSpec>)>,
     ) -> Vec<(Hash256, EngineRequest<T::EthSpec>)> {
-        let mut ordered_block_roots = Vec::new();
+        let mut ordered_block_roots = Vec::with_capacity(payloads.len());
         let mut requests = HashMap::new();
 
         // we sort the by range blocks by slot before adding them to the
         // request as it should *better* optimize the number of blocks that
         // can fit in the same request
-        let mut by_range_blocks: Vec<BlockParts<T::EthSpec>> = vec![];
+        let mut by_range_blocks: Vec<BlockParts<T::EthSpec>> = Vec::with_capacity(payloads.len());
         let mut no_request = EngineRequest::new_no_request();
 
         for (root, load_result) in payloads {

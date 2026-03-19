@@ -20,3 +20,6 @@ genesis.ssz
 
 # SP1 guest ELF build output
 zkvm/guest/elf/
+
+# Stray rustc output
+rust_out

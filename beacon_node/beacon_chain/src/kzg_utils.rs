@@ -116,10 +116,11 @@ pub fn validate_data_columns_with_commitments<E: EthSpec>(
         return Err((Some(col_index), KzgError::KzgVerificationFailed));
     }
 
-    let mut cells = Vec::new();
-    let mut column_indices = Vec::new();
-    let mut proofs = Vec::new();
-    let mut commitments = Vec::new();
+    let num_cells = data_column.column().len();
+    let mut cells = Vec::with_capacity(num_cells);
+    let mut column_indices = Vec::with_capacity(num_cells);
+    let mut proofs = Vec::with_capacity(data_column.kzg_proofs().len());
+    let mut commitments = Vec::with_capacity(kzg_commitments.len());
 
     for cell in data_column.column() {
         cells.push(ssz_cell_to_crypto_cell::<E>(cell).map_err(|e| (Some(col_index), e))?);
@@ -393,8 +394,8 @@ pub fn reconstruct_blobs<E: EthSpec>(
     let blob_sidecars = blob_indices
         .into_iter()
         .map(|row_index| {
-            let mut cells: Vec<KzgCellRef> = vec![];
-            let mut cell_ids: Vec<u64> = vec![];
+            let mut cells: Vec<KzgCellRef> = Vec::with_capacity(data_columns.len());
+            let mut cell_ids: Vec<u64> = Vec::with_capacity(data_columns.len());
             for data_column in data_columns {
                 let cell = data_column
                     .column()
@@ -495,8 +496,8 @@ pub fn reconstruct_data_columns<E: EthSpec>(
     let blob_cells_and_proofs_vec = (0..num_of_blobs)
         .into_par_iter()
         .map(|row_index| {
-            let mut cells: Vec<KzgCellRef> = vec![];
-            let mut cell_ids: Vec<u64> = vec![];
+            let mut cells: Vec<KzgCellRef> = Vec::with_capacity(data_columns.len());
+            let mut cell_ids: Vec<u64> = Vec::with_capacity(data_columns.len());
             for data_column in &data_columns {
                 let cell = data_column.column().get(row_index).ok_or(
                     KzgError::InconsistentArrayLength(format!(

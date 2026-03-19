@@ -381,7 +381,7 @@ pub fn process_epoch_single_pass<E: EthSpec>(
         // `new_validator_deposits` may contain multiple deposits with the same pubkey where
         // the first deposit creates the new validator and the others are topups.
         // Each item in the vec is a (pubkey, validator_index)
-        let mut added_validators = Vec::new();
+        let mut added_validators = Vec::with_capacity(ctxt.new_validator_deposits.len());
         for deposit in ctxt.new_validator_deposits {
             let deposit_data = DepositData {
                 pubkey: deposit.pubkey,
