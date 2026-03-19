@@ -1996,3 +1996,17 @@ Spec tracking: v1.7.0-alpha.3 still latest. No new merged PRs since last run. Op
 CI: All jobs passing (check/clippy/fmt ✅, ef-tests ✅, network+op_pool ✅, http_api ✅). Nightly tests stable (last 2 runs passed). Previous nightly failures were: (1) fulu network test flake — already fixed in 8f8faa7de, (2) slasher mdbx flake — known CI issue with diagnostics added.
 
 4991/5000 workspace tests pass (8 web3signer failures = external service timeout, not code issue). Committed `71a5bcd23`.
+
+### Run 1944 (2026-03-19)
+
+**Health check + spec compliance audit**: Deep review of codebase health, no code changes needed.
+
+- **Spec check**: v1.7.0-alpha.3 still latest (HEAD 1baa05e7). Recent merged PR #4940 (initial Gloas fork choice tests) — our EF test runner already has `on_execution_payload` handler support, will pick up test vectors on next spec release. Notable open PRs: #4747 (Fast Confirmation Rule, updated today — adds `confirmed_root` to Store, new `on_slot_after_attestations_applied` handler), #5014 (EIP-8025 ZK P2P protocol), #4962 (missed payload withdrawal tests), #4992 (cached PTCs). None merged.
+- **Withdrawal processing audit**: Cross-referenced `process_withdrawals_gloas` + `compute_withdrawals_gloas` against spec. All 4 sweep phases correct (builder pending → partial → builder sweep → validator sweep). `reserved_limit = MAX - 1` for first 3 phases, `max_withdrawals` for validator sweep. Edge cases verified: zero validators (loop bound is 0), builder index flag encoding, `safe_rem` division safety, `update_next_withdrawal_validator_index` logic.
+- **Clone/allocation audit**: Only 2 non-test clones in gloas.rs production code — both necessary (bid stored to state from borrow, signature moved from borrow). No unnecessary allocations in hot paths.
+- **Production safety**: Zero `unwrap()`/`expect()` in production consensus code. All panics/unwraps are in `#[cfg(test)]` modules. All `unsafe` blocks tracked in #36 (blst FFI). All `let _` patterns are intentional (channel sends, format! Debug checks).
+- **CI**: Latest push CI running (check/clippy/fmt ✅). Nightly history: Mar 17 fulu network flake (already fixed 8f8faa7de), Mar 18 ×2 success. Current nightly in progress.
+- **Nightly flake**: `finalized_sync_not_enough_custody_peers_on_start` failed once (Mar 17), passed subsequently. Root cause fixed in 8f8faa7de (same day). Not recurring.
+- **Open issues**: #36 (misc TODOs) — all blocked on external deps. #29 (ROCQ) — lowest priority. #28 (ZK SP1 devnet) — needs GPU. #27 (private validator messages) — feature request.
+
+No code changes. Project in maintenance/monitoring mode awaiting next spec release.
