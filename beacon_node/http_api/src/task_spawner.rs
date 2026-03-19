@@ -64,7 +64,7 @@ impl<E: EthSpec> TaskSpawner<E> {
                 rx,
             )
             .await
-            .and_then(|x| x)
+            .flatten()
         } else {
             tokio::task::spawn_blocking(func)
                 .await
@@ -119,7 +119,7 @@ impl<E: EthSpec> TaskSpawner<E> {
                 rx,
             )
             .await
-            .and_then(|x| x)
+            .flatten()
         } else {
             tokio::task::spawn(func)
                 .await
