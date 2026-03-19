@@ -299,7 +299,7 @@ impl Config {
             hyper::header::HeaderValue::from_str(allow_origin)
                 .map_err(|_| "Invalid allow-origin value")?;
 
-            config.http_api.allow_origin = Some(allow_origin.to_string());
+            config.http_api.allow_origin = Some(allow_origin.clone());
         }
 
         config.http_api.allow_keystore_export = validator_client_config.http_allow_keystore_export;
@@ -335,7 +335,7 @@ impl Config {
             hyper::header::HeaderValue::from_str(allow_origin)
                 .map_err(|_| "Invalid allow-origin value")?;
 
-            config.http_metrics.allow_origin = Some(allow_origin.to_string());
+            config.http_metrics.allow_origin = Some(allow_origin.clone());
         }
 
         if cli_args.get_flag(DISABLE_MALLOC_TUNING_FLAG) {
@@ -351,7 +351,7 @@ impl Config {
                 db_path: None,
                 freezer_db_path: None,
                 update_period_secs,
-                monitoring_endpoint: monitoring_endpoint.to_string(),
+                monitoring_endpoint: monitoring_endpoint.clone(),
             });
         }
 

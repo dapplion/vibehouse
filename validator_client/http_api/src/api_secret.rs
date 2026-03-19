@@ -59,7 +59,7 @@ impl ApiSecret {
                 .collect();
 
             // Create and write the public key to file with appropriate permissions
-            create_with_600_perms(pk_path, pk.to_string().as_bytes()).map_err(|e| {
+            create_with_600_perms(pk_path, pk.as_bytes()).map_err(|e| {
                 format!(
                     "Unable to create file with permissions for {:?}: {:?}",
                     pk_path, e

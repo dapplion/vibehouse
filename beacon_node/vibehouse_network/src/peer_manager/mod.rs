@@ -1539,7 +1539,7 @@ impl<E: EthSpec> PeerManager<E> {
         for (client, (score, peers)) in avg_score_per_client {
             metrics::set_float_gauge_vec(
                 &metrics::PEER_SCORE_PER_CLIENT,
-                &[&client.to_string()],
+                &[&client],
                 score / (peers as f64),
             );
         }

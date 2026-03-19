@@ -156,7 +156,7 @@ pub fn get_config<E: EthSpec>(
             hyper::header::HeaderValue::from_str(allow_origin)
                 .map_err(|_| "Invalid allow-origin value")?;
 
-            client_config.http_api.allow_origin = Some(allow_origin.to_string());
+            client_config.http_api.allow_origin = Some(allow_origin.clone());
         }
 
         if cli_args.get_flag("http-enable-tls") {
@@ -255,7 +255,7 @@ pub fn get_config<E: EthSpec>(
         hyper::header::HeaderValue::from_str(allow_origin)
             .map_err(|_| "Invalid allow-origin value")?;
 
-        client_config.http_metrics.allow_origin = Some(allow_origin.to_string());
+        client_config.http_metrics.allow_origin = Some(allow_origin.clone());
     }
 
     /*
@@ -269,7 +269,7 @@ pub fn get_config<E: EthSpec>(
             db_path: None,
             freezer_db_path: None,
             update_period_secs,
-            monitoring_endpoint: monitoring_endpoint.to_string(),
+            monitoring_endpoint: monitoring_endpoint.clone(),
         });
     }
 

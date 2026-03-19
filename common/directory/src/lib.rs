@@ -22,7 +22,7 @@ pub const CUSTOM_TESTNET_DIR: &str = "custom";
 /// If neither flags are present, returns the default hardcoded network name.
 pub fn get_network_dir(matches: &ArgMatches) -> String {
     if let Some(network_name) = matches.get_one::<String>("network") {
-        network_name.to_string()
+        network_name.clone()
     } else if matches.get_one::<String>("testnet-dir").is_some() {
         CUSTOM_TESTNET_DIR.to_string()
     } else {

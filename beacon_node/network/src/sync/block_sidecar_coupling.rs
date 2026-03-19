@@ -280,13 +280,13 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
             // Columns are deferred — not ready until column requests are activated and complete
             RangeBlockDataRequest::DeferredColumns { .. } => None,
             RangeBlockDataRequest::NoData => Some(
-                Self::responses_with_blobs(blocks.to_vec(), vec![], spec)
+                Self::responses_with_blobs(blocks.clone(), vec![], spec)
                     .map(|blocks| (blocks, peer_group)),
             ),
             RangeBlockDataRequest::Blobs(request) => {
                 let blobs = request.to_finished()?;
                 Some(
-                    Self::responses_with_blobs(blocks.to_vec(), blobs.to_vec(), spec)
+                    Self::responses_with_blobs(blocks.clone(), blobs.clone(), spec)
                         .map(|blocks| (blocks, peer_group)),
                 )
             }
@@ -321,7 +321,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
                 }
 
                 let resp = Self::responses_with_custody_columns(
-                    blocks.to_vec(),
+                    blocks.clone(),
                     data_columns,
                     column_to_peer_id,
                     expected_custody_columns,

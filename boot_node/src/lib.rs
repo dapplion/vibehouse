@@ -19,7 +19,7 @@ pub fn run(
     debug_level: String,
 ) {
     let filter_layer = EnvFilter::try_from_default_env()
-        .or_else(|_| EnvFilter::try_new(debug_level.to_string().to_lowercase()))
+        .or_else(|_| EnvFilter::try_new(debug_level.to_lowercase()))
         .unwrap();
 
     tracing_subscriber::fmt()

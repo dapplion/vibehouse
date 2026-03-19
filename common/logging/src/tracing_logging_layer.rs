@@ -360,7 +360,7 @@ fn build_log_text(
     let full_message = if !formatted_fields.is_empty() {
         format!("{}  {}", padded_message, formatted_fields)
     } else {
-        padded_message.to_string()
+        padded_message.clone()
     };
 
     let message = if !location.is_empty() {

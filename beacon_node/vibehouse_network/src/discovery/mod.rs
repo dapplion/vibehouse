@@ -293,7 +293,7 @@ impl<E: EthSpec> Discovery<E> {
                     );
                     let _ = discv5.add_enr(enr).map_err(|e| {
                         error!(
-                            addr = original_addr.to_string(),
+                            addr = original_addr.clone(),
                             error = e.to_string(),
                             "Could not add peer to the local routing table"
                         );
@@ -301,7 +301,7 @@ impl<E: EthSpec> Discovery<E> {
                 }
                 Err(e) => {
                     error!(
-                        multiaddr = original_addr.to_string(),
+                        multiaddr = original_addr.clone(),
                         error = e.to_string(),
                         "Error getting mapping to ENR"
                     );
