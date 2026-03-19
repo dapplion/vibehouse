@@ -1981,3 +1981,18 @@ Spec v1.7.0-alpha.3 still latest — no new consensus-specs merges. Open Gloas P
 8. **`validator_dir/src/insecure_keys.rs`** — `"".into()` → `String::new()` for insecure keystore builder
 
 Spec v1.7.0-alpha.3 still latest — no new consensus-specs merges since #5005 (Mar 15). Open Gloas PRs unchanged. 176/176 tests pass across affected crates, zero clippy warnings, lint-full passes. Committed `0ea8cb710`.
+
+### Run 1943 (2026-03-19)
+
+**Idiomatic for loops and trailing semicolons across 201 files**: Applied two clippy lints codebase-wide:
+
+1. **`clippy::explicit_iter_loop`** — replaced `for x in collection.iter()` with `for x in &collection` (more idiomatic Rust)
+2. **`clippy::semicolon_if_nothing_returned`** — added trailing `;` to unit-returning expressions for consistent formatting
+
+Also fixed a secondary `clippy::for_kv_map` warning in `peerdb.rs` (use `.values()` instead of destructuring `(_, v)` on map iteration).
+
+Spec tracking: v1.7.0-alpha.3 still latest. No new merged PRs since last run. Open Gloas PRs unchanged. Notable open PR #4992 (cached PTCs in state) adds `previous_ptc`/`current_ptc` fields to BeaconState — not merged, no action needed yet.
+
+CI: All jobs passing (check/clippy/fmt ✅, ef-tests ✅, network+op_pool ✅, http_api ✅). Nightly tests stable (last 2 runs passed). Previous nightly failures were: (1) fulu network test flake — already fixed in 8f8faa7de, (2) slasher mdbx flake — known CI issue with diagnostics added.
+
+4991/5000 workspace tests pass (8 web3signer failures = external service timeout, not code issue). Committed `71a5bcd23`.
