@@ -88,18 +88,6 @@ pub fn get_latest_release(repo_dir: &Path, branch_name: &str) -> Result<String, 
     )
 }
 
-#[allow(dead_code)]
-pub fn update_branch(repo_dir: &Path, branch_name: &str) -> Result<(), String> {
-    output_to_result(
-        Command::new("git")
-            .arg("pull")
-            .current_dir(repo_dir)
-            .output()
-            .map_err(|_| format!("failed to update branch at {:?}/{}", repo_dir, branch_name))?,
-        |_| {},
-    )
-}
-
 /// Checks the status of the [`std::process::Output`] and applies `f` to `stdout` if the process
 /// succeedded. If not, builds a readable error containing stdout and stderr.
 fn output_to_result<OnSuccessFn, T>(output: Output, f: OnSuccessFn) -> Result<T, String>

@@ -961,12 +961,6 @@ impl TestRig {
         .unwrap_or_else(|e| panic!("Expected RPC custody column work: {e}"))
     }
 
-    #[allow(dead_code)]
-    fn expect_no_work_event(&mut self) {
-        self.drain_processor_rx();
-        assert!(self.network_rx_queue.is_empty());
-    }
-
     fn expect_no_penalty_for(&mut self, peer_id: PeerId) {
         self.drain_network_rx();
         let downscore_events = self

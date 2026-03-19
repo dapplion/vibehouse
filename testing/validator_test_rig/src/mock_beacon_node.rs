@@ -35,12 +35,6 @@ impl<E: EthSpec> MockBeaconNode<E> {
         }
     }
 
-    /// Resets all mocks
-    #[allow(dead_code)]
-    pub fn reset_mocks(&mut self) {
-        self.server.reset();
-    }
-
     pub fn mock_config_spec(&mut self, spec: &ChainSpec) {
         let path_pattern = Regex::new(r"^/eth/v1/config/spec$").unwrap();
         let config_and_preset = ConfigAndPreset::from_chain_spec::<E>(spec);

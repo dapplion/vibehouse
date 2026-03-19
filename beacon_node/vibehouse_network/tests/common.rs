@@ -1,5 +1,4 @@
 #![cfg(test)]
-use network_utils::enr_ext::EnrExt;
 use std::sync::Arc;
 use std::sync::Weak;
 use tokio::runtime::Runtime;
@@ -10,7 +9,6 @@ use types::{
     MinimalEthSpec,
 };
 use vibehouse_network::Enr;
-use vibehouse_network::Multiaddr;
 use vibehouse_network::service::Network as LibP2PService;
 use vibehouse_network::{NetworkConfig, NetworkEvent};
 
@@ -151,11 +149,6 @@ pub async fn build_libp2p_instance(
     )
 }
 
-#[allow(dead_code)]
-pub fn get_enr(node: &LibP2PService<E>) -> Enr {
-    node.local_enr()
-}
-
 // Protocol for the node pair connection.
 pub enum Protocol {
     Tcp,
@@ -252,32 +245,4 @@ pub async fn build_node_pair(
         Err(_) => error!("Dialing failed"),
     };
     (sender, receiver)
-}
-
-// Returns `n` peers in a linear topology
-#[allow(dead_code)]
-pub async fn build_linear(
-    rt: Weak<Runtime>,
-    n: usize,
-    fork_name: ForkName,
-    spec: Arc<ChainSpec>,
-) -> Vec<Libp2pInstance> {
-    let mut nodes = Vec::with_capacity(n);
-    for _ in 0..n {
-        nodes.push(
-            build_libp2p_instance(rt.clone(), vec![], fork_name, spec.clone(), false, None).await,
-        );
-    }
-
-    let multiaddrs: Vec<Multiaddr> = nodes
-        .iter()
-        .map(|x| get_enr(x).multiaddr()[1].clone())
-        .collect();
-    for i in 0..n - 1 {
-        match nodes[i].testing_dial(multiaddrs[i + 1].clone()) {
-            Ok(()) => debug!("Connected"),
-            Err(_) => error!("Failed to connect"),
-        };
-    }
-    nodes
 }
