@@ -77,10 +77,10 @@ pub struct GossipCacheBuilder {
     light_client_optimistic_update: Option<Duration>,
 }
 
-#[allow(dead_code)]
 impl GossipCacheBuilder {
     /// By default, all timeouts all disabled. Setting a default timeout will enable all timeout
     /// that are not already set.
+    #[cfg(test)]
     pub fn default_timeout(mut self, timeout: Duration) -> Self {
         self.default_timeout = Some(timeout);
         self
@@ -121,33 +121,9 @@ impl GossipCacheBuilder {
         self
     }
 
-    /// Timeout for aggregated sync committee signatures.
-    pub fn signed_contribution_and_proof_timeout(mut self, timeout: Duration) -> Self {
-        self.signed_contribution_and_proof = Some(timeout);
-        self
-    }
-
-    /// Timeout for sync committee messages.
-    pub fn sync_committee_message_timeout(mut self, timeout: Duration) -> Self {
-        self.sync_committee_message = Some(timeout);
-        self
-    }
-
     /// Timeout for BLS to execution change messages.
     pub fn bls_to_execution_change_timeout(mut self, timeout: Duration) -> Self {
         self.bls_to_execution_change = Some(timeout);
-        self
-    }
-
-    /// Timeout for light client finality update messages.
-    pub fn light_client_finality_update_timeout(mut self, timeout: Duration) -> Self {
-        self.light_client_finality_update = Some(timeout);
-        self
-    }
-
-    /// Timeout for light client optimistic update messages.
-    pub fn light_client_optimistic_update_timeout(mut self, timeout: Duration) -> Self {
-        self.light_client_optimistic_update = Some(timeout);
         self
     }
 
