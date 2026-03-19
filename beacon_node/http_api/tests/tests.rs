@@ -4539,7 +4539,7 @@ impl ApiTester {
             .unwrap();
         let attesting_validators: Vec<usize> = committees
             .into_iter()
-            .flat_map(|committee| committee.committee.iter().cloned())
+            .flat_map(|committee| committee.committee.iter().copied())
             .collect();
         // All attesters should now be considered live
         let expected = expected
@@ -6302,7 +6302,7 @@ impl ApiTester {
             .unwrap();
         let attesting_validators: Vec<usize> = committees
             .into_iter()
-            .flat_map(|committee| committee.committee.iter().cloned())
+            .flat_map(|committee| committee.committee.iter().copied())
             .collect();
         // All attesters should now be considered live
         let expected = expected

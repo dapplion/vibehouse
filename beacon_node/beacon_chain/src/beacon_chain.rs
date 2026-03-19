@@ -7293,7 +7293,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             BeaconState::Bellatrix(_) => {
                 let block_proposal_contents =
                     block_contents.ok_or(BlockProductionError::MissingExecutionPayload)?;
-                let execution_payload_value = block_proposal_contents.block_value().to_owned();
+                let execution_payload_value = *block_proposal_contents.block_value();
                 (
                     BeaconBlock::Bellatrix(BeaconBlockBellatrix {
                         slot,
@@ -7324,7 +7324,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             BeaconState::Capella(_) => {
                 let block_proposal_contents =
                     block_contents.ok_or(BlockProductionError::MissingExecutionPayload)?;
-                let execution_payload_value = block_proposal_contents.block_value().to_owned();
+                let execution_payload_value = *block_proposal_contents.block_value();
 
                 (
                     BeaconBlock::Capella(BeaconBlockCapella {
