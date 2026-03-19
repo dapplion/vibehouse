@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1931 (Mar 19) — health check, spec audit, all stable
+
+- CI: in-progress for latest commit (copied()/dereference cleanup). Previous run green.
+- Spec: v1.7.0-alpha.3 still latest. consensus-specs HEAD unchanged at 1baa05e (Mar 15). No new merges.
+- Spec test vectors: still v1.6.0-beta.0 (Fulu). No Gloas vectors published yet.
+- Post-alpha.3 audit: confirmed #5001 (parent_block_root bid key), #4940 (fork choice tests), #5002 (doc wording) all already implemented. #5008 (field name fix) still open/unmerged.
+- Open Gloas PRs: #4992 (cached PTCs — APPROVED, not merged, updated Mar 17), #5014 (EIP-8025 p2p), #5008, #4962, #4960, #4939, #4932, #4843, #4840, #4630. None merged since last check.
+- Prep branches (`cached-ptc`, `ptc-lookbehind`) ready, waiting for #4992 merge.
+- Clippy: zero warnings. No TODOs/FIXMEs/unwrap() in consensus code.
+- All priorities complete. Project in maintenance mode.
+
 ### run 1917 (Mar 19) — health check, all stable
 
 - CI: in-progress (check+clippy+fmt passed, test jobs running) for sp1-verifier version bump.

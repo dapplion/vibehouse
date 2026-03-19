@@ -378,7 +378,7 @@ mod tests {
         assert_eq!(
             cache
                 .proposer_has_been_observed(block_a.to_ref(), block_a.canonical_root())
-                .map(|x| x.proposer_previously_observed()),
+                .map(super::SeenBlock::proposer_previously_observed),
             Ok(false),
             "no observation in empty cache"
         );
@@ -392,7 +392,7 @@ mod tests {
         assert_eq!(
             cache
                 .proposer_has_been_observed(block_a.to_ref(), block_a.canonical_root())
-                .map(|x| x.proposer_previously_observed()),
+                .map(super::SeenBlock::proposer_previously_observed),
             Ok(true),
             "observed block is indicated as true"
         );
@@ -426,7 +426,7 @@ mod tests {
         assert_eq!(
             cache
                 .proposer_has_been_observed(block_b.to_ref(), block_b.canonical_root())
-                .map(|x| x.proposer_previously_observed()),
+                .map(super::SeenBlock::proposer_previously_observed),
             Ok(false),
             "no observation for new slot"
         );
@@ -440,7 +440,7 @@ mod tests {
         assert_eq!(
             cache
                 .proposer_has_been_observed(block_b.to_ref(), block_b.canonical_root())
-                .map(|x| x.proposer_previously_observed()),
+                .map(super::SeenBlock::proposer_previously_observed),
             Ok(true),
             "observed block in slot 1 is indicated as true"
         );
@@ -486,7 +486,7 @@ mod tests {
         assert_eq!(
             cache
                 .proposer_has_been_observed(block_c.to_ref(), block_c.canonical_root())
-                .map(|x| x.proposer_previously_observed()),
+                .map(super::SeenBlock::proposer_previously_observed),
             Ok(false),
             "no observation for new proposer"
         );
@@ -500,7 +500,7 @@ mod tests {
         assert_eq!(
             cache
                 .proposer_has_been_observed(block_c.to_ref(), block_c.canonical_root())
-                .map(|x| x.proposer_previously_observed()),
+                .map(super::SeenBlock::proposer_previously_observed),
             Ok(true),
             "observed new proposer block is indicated as true"
         );

@@ -249,7 +249,7 @@ impl<'a, E: EthSpec, Payload: AbstractExecPayload<E>> BeaconBlockBodyRef<'a, E, 
                 let blob_leaves = self
                     .blob_kzg_commitments()?
                     .iter()
-                    .map(|commitment| commitment.tree_hash_root())
+                    .map(tree_hash::TreeHash::tree_hash_root)
                     .collect::<Vec<_>>();
                 let depth = E::max_blob_commitments_per_block()
                     .next_power_of_two()
@@ -1113,7 +1113,10 @@ impl<'de, E: EthSpec, Payload: AbstractExecPayload<E>> ContextDeserialize<'de, F
 
 /// Util method helpful for logging.
 pub fn format_kzg_commitments(commitments: &[KzgCommitment]) -> String {
-    let commitment_strings: Vec<String> = commitments.iter().map(|x| x.to_string()).collect();
+    let commitment_strings: Vec<String> = commitments
+        .iter()
+        .map(std::string::ToString::to_string)
+        .collect();
     let commitments_joined = commitment_strings.join(", ");
     let surrounded_commitments = format!("[{}]", commitments_joined);
     surrounded_commitments

@@ -238,7 +238,7 @@ impl StateSummariesDAG {
     pub fn summaries_count(&self) -> usize {
         self.state_summaries_by_block_root
             .values()
-            .map(|s| s.len())
+            .map(std::collections::BTreeMap::len)
             .sum()
     }
 

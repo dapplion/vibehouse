@@ -348,7 +348,7 @@ mod tests {
         let a = vec![1, 2, 3];
         let b = vec![1, 9, 3];
         let mut c = Comparison::from_slice("v".to_string(), &a, &b);
-        c.retain_children(|fc| fc.not_equal());
+        c.retain_children(super::FieldComparison::not_equal);
         match &c {
             Comparison::Parent { children, .. } => {
                 assert_eq!(children.len(), 1);

@@ -830,7 +830,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let iter = BlockRootsIterator::owned(&self.store, state);
         Ok(std::iter::once(Ok((block_root, block.slot())))
             .chain(iter)
-            .map(|result| result.map_err(|e| e.into())))
+            .map(|result| result.map_err(std::convert::Into::into)))
     }
 
     /// Iterates backwards across all `(state_root, slot)` pairs starting from
@@ -1383,7 +1383,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 Ok(None)
             }
         } else {
-            self.get_blobs(block_root).map(|b| b.blobs())
+            self.get_blobs(block_root)
+                .map(store::BlobSidecarListFromRoot::blobs)
         }
     }
 
@@ -1725,7 +1726,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let iter = BlockRootsIterator::new(&self.store, state);
         let iter_with_head = std::iter::once(Ok((beacon_block_root, state.slot())))
             .chain(iter)
-            .map(|result| result.map_err(|e| e.into()));
+            .map(|result| result.map_err(std::convert::Into::into));
 
         process_results(iter_with_head, |mut iter| {
             iter.find(|(_, slot)| *slot == target_slot)
@@ -4610,7 +4611,9 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         self.emit_sse_data_column_sidecar_events(
             &block_root,
-            data_columns.iter().map(|column| column.as_data_column()),
+            data_columns
+                .iter()
+                .map(super::data_column_verification::GossipVerifiedDataColumn::as_data_column),
         );
 
         self.check_gossip_data_columns_availability_and_import(
@@ -4681,12 +4684,17 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         match &engine_get_blobs_output {
             EngineGetBlobsOutput::Blobs(blobs) => {
-                self.emit_sse_blob_sidecar_events(&block_root, blobs.iter().map(|b| b.as_blob()));
+                self.emit_sse_blob_sidecar_events(
+                    &block_root,
+                    blobs
+                        .iter()
+                        .map(super::blob_verification::KzgVerifiedBlob::as_blob),
+                );
             }
             EngineGetBlobsOutput::CustodyColumns(columns) => {
                 self.emit_sse_data_column_sidecar_events(
                     &block_root,
-                    columns.iter().map(|column| column.as_data_column()),
+                    columns.iter().map(super::data_column_verification::KzgVerifiedCustodyDataColumn::as_data_column),
                 );
             }
         }
@@ -4782,7 +4790,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         self.emit_sse_data_column_sidecar_events(
             &block_root,
-            custody_columns.iter().map(|column| column.as_ref()),
+            custody_columns.iter().map(std::convert::AsRef::as_ref),
         );
 
         self.check_rpc_custody_columns_availability_and_import(slot, block_root, custody_columns)
@@ -5230,7 +5238,9 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             EngineGetBlobsOutput::Blobs(blobs) => {
                 self.check_blob_header_signature_and_slashability(
                     block_root,
-                    blobs.iter().map(|b| b.as_blob()),
+                    blobs
+                        .iter()
+                        .map(super::blob_verification::KzgVerifiedBlob::as_blob),
                 )?;
                 self.data_availability_checker
                     .put_kzg_verified_blobs(block_root, blobs)?
@@ -5238,7 +5248,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             EngineGetBlobsOutput::CustodyColumns(data_columns) => {
                 self.check_data_column_sidecar_header_signature_and_slashability(
                     block_root,
-                    data_columns.iter().map(|c| c.as_data_column()),
+                    data_columns.iter().map(super::data_column_verification::KzgVerifiedCustodyDataColumn::as_data_column),
                 )?;
                 self.data_availability_checker
                     .put_kzg_verified_custody_data_columns(block_root, data_columns)?
@@ -5259,7 +5269,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     ) -> Result<AvailabilityProcessingStatus, BlockError> {
         self.check_data_column_sidecar_header_signature_and_slashability(
             block_root,
-            custody_columns.iter().map(|c| c.as_ref()),
+            custody_columns.iter().map(std::convert::AsRef::as_ref),
         )?;
 
         // This slot value is purely informative for the consumers of
@@ -6511,7 +6521,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     &unadvanced_state,
                     &self.spec,
                 )
-                .map(|w| w.into())
+                .map(std::convert::Into::into)
                 .map_err(Error::PrepareProposerFailed)
             } else {
                 get_expected_withdrawals(&unadvanced_state, &self.spec)
@@ -6538,7 +6548,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 &advanced_state,
                 &self.spec,
             )
-            .map(|w| w.into())
+            .map(std::convert::Into::into)
             .map_err(Error::PrepareProposerFailed)
         } else {
             get_expected_withdrawals(&advanced_state, &self.spec)
@@ -7625,7 +7635,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 let expected_kzg_commitments_len = block
                     .body()
                     .blob_kzg_commitments()
-                    .map(|c| c.len())
+                    .map(types::VariableList::len)
                     .or_else(|_| {
                         // Gloas: get commitments from the execution payload bid
                         block

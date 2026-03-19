@@ -356,8 +356,10 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> BlockService<S, T> {
             }
         };
 
-        let signing_time_ms =
-            Duration::from_secs_f64(signing_timer.map_or(0.0, |t| t.stop_and_record())).as_millis();
+        let signing_time_ms = Duration::from_secs_f64(
+            signing_timer.map_or(0.0, validator_metrics::HistogramTimer::stop_and_record),
+        )
+        .as_millis();
 
         info!(
             slot = slot.as_u64(),

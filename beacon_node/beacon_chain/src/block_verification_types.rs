@@ -307,7 +307,7 @@ impl<E: EthSpec> AvailableExecutedBlock<E> {
             .message()
             .body()
             .blob_kzg_commitments()
-            .map_or(0, |commitments| commitments.len());
+            .map_or(0, types::VariableList::len);
         let mut blob_ids = Vec::with_capacity(num_blobs_expected);
         for i in 0..num_blobs_expected {
             blob_ids.push(BlobIdentifier {
@@ -350,7 +350,7 @@ impl<E: EthSpec> AvailabilityPendingExecutedBlock<E> {
             .message()
             .body()
             .blob_kzg_commitments()
-            .map_or(0, |commitments| commitments.len())
+            .map_or(0, types::VariableList::len)
     }
 }
 

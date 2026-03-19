@@ -438,7 +438,7 @@ where
             // Only include slots that are less than the given slot in the average. This should
             // generally avoid including recent slots that are still "filling up".
             .filter(|set| set.slot < slot)
-            .map(|set| set.len())
+            .map(SlotHashSet::len)
             .fold((0, 0), |(count, sum), len| (count + 1, sum + len));
         // If we are unable to determine an average, just use the `self.default_per_slot_capacity`.
         let initial_capacity = sum

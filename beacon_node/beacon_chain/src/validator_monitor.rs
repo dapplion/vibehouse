@@ -1742,7 +1742,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
                 "Voluntary exit"
             );
 
-            validator.with_epoch_summary(epoch, |summary| summary.register_exit());
+            validator.with_epoch_summary(epoch, EpochSummary::register_exit);
         }
     }
 
@@ -1789,7 +1789,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
                 "Proposer slashing"
             );
 
-            validator.with_epoch_summary(epoch, |summary| summary.register_proposer_slashing());
+            validator.with_epoch_summary(epoch, EpochSummary::register_proposer_slashing);
         }
     }
 
@@ -1842,7 +1842,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
                     "Attester slashing"
                 );
 
-                validator.with_epoch_summary(epoch, |summary| summary.register_attester_slashing());
+                validator.with_epoch_summary(epoch, EpochSummary::register_attester_slashing);
             })
     }
 

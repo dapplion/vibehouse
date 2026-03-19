@@ -166,7 +166,7 @@ impl<E: EthSpec> OperationPool<E> {
             .get(&id)
             .map(|contributions| SyncAggregate::from_contributions(contributions))
             .transpose()
-            .map_err(|e| e.into())
+            .map_err(std::convert::Into::into)
     }
 
     /// Total number of sync contributions in the pool.
@@ -174,7 +174,7 @@ impl<E: EthSpec> OperationPool<E> {
         self.sync_contributions
             .read()
             .values()
-            .map(|contributions| contributions.len())
+            .map(std::vec::Vec::len)
             .sum()
     }
 
@@ -410,7 +410,7 @@ impl<E: EthSpec> OperationPool<E> {
         // slashings.
         let mut to_be_slashed = proposer_slashings
             .iter()
-            .map(|s| s.proposer_index())
+            .map(types::ProposerSlashing::proposer_index)
             .collect();
 
         let attester_slashings = self.get_attester_slashings(state, &mut to_be_slashed);

@@ -515,7 +515,7 @@ impl<T: BeaconChainTypes> BeaconBlockStreamer<T> {
 
         // Now deal with the by_range requests. Sort them in order of increasing slot
         let mut by_range = EngineRequest::<T::EthSpec>::new_by_range();
-        by_range_blocks.sort_by_key(|block_parts| block_parts.slot());
+        by_range_blocks.sort_by_key(BlockParts::slot);
         for block_parts in by_range_blocks {
             let root = block_parts.root();
             by_range.push_block_parts(block_parts).await;
@@ -598,7 +598,7 @@ impl<T: BeaconChainTypes> BeaconBlockStreamer<T> {
             let successful = result
                 .as_ref()
                 .as_ref()
-                .map(|opt| opt.is_some())
+                .map(std::option::Option::is_some)
                 .unwrap_or(false);
 
             if sender.send((root, result)).is_err() {

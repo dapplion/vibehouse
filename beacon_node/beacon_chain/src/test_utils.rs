@@ -2416,7 +2416,7 @@ where
         // Vector containing all leaves
         let leaves = datas
             .iter()
-            .map(|data| data.tree_hash_root())
+            .map(tree_hash::TreeHash::tree_hash_root)
             .collect::<Vec<_>>();
 
         // Building a VarList from leaves
@@ -3143,7 +3143,7 @@ where
             .iter()
             .map(|checkpoint| checkpoint.beacon_state.finalized_checkpoint().root)
             .filter(|block_hash| *block_hash != Hash256::zero())
-            .map(|hash| hash.into())
+            .map(std::convert::Into::into)
             .collect()
     }
 

@@ -271,7 +271,7 @@ pub fn cli_run<E: EthSpec>(
 fn existing_validator_count<P: AsRef<Path>>(validator_dir: P) -> Result<usize, String> {
     fs::read_dir(validator_dir.as_ref())
         .map(|iter| {
-            iter.filter_map(|e| e.ok())
+            iter.filter_map(std::result::Result::ok)
                 .filter(|e| {
                     e.file_name() != OsStr::new(validator_definitions::CONFIG_FILENAME)
                         && e.file_name()

@@ -442,7 +442,7 @@ impl<E: EthSpec> KzgVerifiedCustodyDataColumn<E> {
             kzg,
             partial_set_of_columns
                 .iter()
-                .map(|d| d.clone_arc())
+                .map(KzgVerifiedCustodyDataColumn::clone_arc)
                 .collect::<Vec<_>>(),
             spec,
         )?;

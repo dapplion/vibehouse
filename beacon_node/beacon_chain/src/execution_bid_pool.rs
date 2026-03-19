@@ -78,12 +78,14 @@ impl<E: EthSpec> ExecutionBidPool<E> {
 
     /// Returns the number of bids stored for a given slot.
     pub fn bid_count_for_slot(&self, slot: Slot) -> usize {
-        self.bids.get(&slot).map_or(0, |m| m.len())
+        self.bids
+            .get(&slot)
+            .map_or(0, std::collections::HashMap::len)
     }
 
     /// Returns the total number of bids across all slots.
     pub fn total_bid_count(&self) -> usize {
-        self.bids.values().map(|m| m.len()).sum()
+        self.bids.values().map(std::collections::HashMap::len).sum()
     }
 
     /// Returns the number of distinct slots with bids.

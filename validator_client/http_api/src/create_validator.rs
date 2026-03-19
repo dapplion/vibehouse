@@ -38,7 +38,7 @@ pub async fn create_validators_mnemonic<P: AsRef<Path>, T: 'static + SlotClock, 
     let wallet_password = random_password();
     let mut wallet =
         WalletBuilder::from_mnemonic(&mnemonic, wallet_password.as_bytes(), String::new())
-            .and_then(|builder| builder.build())
+            .and_then(account_utils::eth2_wallet::WalletBuilder::build)
             .map_err(|e| {
                 ApiError::ServerError(format!("unable to create EIP-2386 wallet: {:?}", e))
             })?;

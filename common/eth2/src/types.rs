@@ -1067,7 +1067,7 @@ impl SseDataColumnSidecar {
             .unwrap_or_default();
         let versioned_hashes = kzg_commitments
             .iter()
-            .map(|c| c.calculate_versioned_hash())
+            .map(types::KzgCommitment::calculate_versioned_hash)
             .collect();
         SseDataColumnSidecar {
             block_root: data_column_sidecar.block_root(),

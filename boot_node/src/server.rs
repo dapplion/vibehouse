@@ -49,8 +49,8 @@ pub async fn run<E: EthSpec>(
         .map(|fork_id| hex::encode(fork_id.fork_digest))
         .unwrap_or_default();
 
-    let pretty_v4_socket = enr_v4_socket.as_ref().map(|addr| addr.to_string());
-    let pretty_v6_socket = enr_v6_socket.as_ref().map(|addr| addr.to_string());
+    let pretty_v4_socket = enr_v4_socket.as_ref().map(std::string::ToString::to_string);
+    let pretty_v6_socket = enr_v6_socket.as_ref().map(std::string::ToString::to_string);
     info!(
         listening_address = ?discv5_config.listen_config,
         advertised_v4_address = ?pretty_v4_socket,

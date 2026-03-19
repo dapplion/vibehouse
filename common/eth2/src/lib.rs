@@ -661,7 +661,7 @@ impl BeaconNodeHttpClient {
         if let Some(ids) = ids {
             let id_string = ids
                 .iter()
-                .map(|i| i.to_string())
+                .map(std::string::ToString::to_string)
                 .collect::<Vec<_>>()
                 .join(",");
             path.query_pairs_mut().append_pair("id", &id_string);
@@ -757,7 +757,7 @@ impl BeaconNodeHttpClient {
         if let Some(ids) = ids {
             let id_string = ids
                 .iter()
-                .map(|i| i.to_string())
+                .map(std::string::ToString::to_string)
                 .collect::<Vec<_>>()
                 .join(",");
             path.query_pairs_mut().append_pair("id", &id_string);
@@ -766,7 +766,7 @@ impl BeaconNodeHttpClient {
         if let Some(statuses) = statuses {
             let status_string = statuses
                 .iter()
-                .map(|i| i.to_string())
+                .map(std::string::ToString::to_string)
                 .collect::<Vec<_>>()
                 .join(",");
             path.query_pairs_mut().append_pair("status", &status_string);
@@ -1512,7 +1512,7 @@ impl BeaconNodeHttpClient {
         if let Some(indices) = indices {
             let indices_string = indices
                 .iter()
-                .map(|i| i.to_string())
+                .map(std::string::ToString::to_string)
                 .collect::<Vec<_>>()
                 .join(",");
             path.query_pairs_mut()
@@ -1541,7 +1541,7 @@ impl BeaconNodeHttpClient {
         if let Some(hashes) = versioned_hashes {
             let hashes_string = hashes
                 .iter()
-                .map(|hash| hash.to_string())
+                .map(std::string::ToString::to_string)
                 .collect::<Vec<_>>()
                 .join(",");
             path.query_pairs_mut()
@@ -2189,7 +2189,7 @@ impl BeaconNodeHttpClient {
         if let Some(states) = states {
             let state_string = states
                 .iter()
-                .map(|i| i.to_string())
+                .map(std::string::ToString::to_string)
                 .collect::<Vec<_>>()
                 .join(",");
             path.query_pairs_mut().append_pair("state", &state_string);
@@ -2198,7 +2198,7 @@ impl BeaconNodeHttpClient {
         if let Some(directions) = directions {
             let dir_string = directions
                 .iter()
-                .map(|i| i.to_string())
+                .map(std::string::ToString::to_string)
                 .collect::<Vec<_>>()
                 .join(",");
             path.query_pairs_mut().append_pair("direction", &dir_string);
@@ -3035,7 +3035,7 @@ impl BeaconNodeHttpClient {
 
         let topic_string = topic
             .iter()
-            .map(|i| i.to_string())
+            .map(std::string::ToString::to_string)
             .collect::<Vec<_>>()
             .join(",");
         path.query_pairs_mut().append_pair("topics", &topic_string);

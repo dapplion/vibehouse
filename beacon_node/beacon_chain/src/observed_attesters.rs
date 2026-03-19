@@ -344,7 +344,7 @@ impl<T: Item<()>, E: EthSpec> AutoPruningEpochContainer<T, E> {
     /// Returns the number of validators that have been observed at the given `epoch`. Returns
     /// `None` if `self` does not have a cache for that epoch.
     pub fn observed_validator_count(&self, epoch: Epoch) -> Option<usize> {
-        self.items.get(&epoch).map(|item| item.validator_count())
+        self.items.get(&epoch).map(Item::validator_count)
     }
 
     fn sanitize_request(&self, epoch: Epoch, validator_index: usize) -> Result<(), Error> {
@@ -544,7 +544,7 @@ impl<K: SlotData + Eq + Hash + Copy, S, V: Item<S>, E: EthSpec>
     /// Returns the number of validators that have been observed at the given `slot`. Returns
     /// `None` if `self` does not have a cache for that slot.
     pub fn observed_validator_count(&self, key: K) -> Option<usize> {
-        self.items.get(&key).map(|item| item.validator_count())
+        self.items.get(&key).map(Item::validator_count)
     }
 
     fn sanitize_request(&self, slot: Slot, validator_index: usize) -> Result<(), Error> {

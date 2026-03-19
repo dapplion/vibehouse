@@ -55,7 +55,7 @@ impl<E: EthSpec> CachedBlock<E> {
             .message()
             .body()
             .blob_kzg_commitments()
-            .map_or(0, |commitments| commitments.len())
+            .map_or(0, types::VariableList::len)
     }
 }
 
@@ -104,7 +104,7 @@ impl<E: EthSpec> PendingComponents<E> {
         self.verified_data_columns
             .iter()
             .find(|d| d.index() == data_column_index)
-            .map(|d| d.clone_arc())
+            .map(super::super::data_column_verification::KzgVerifiedCustodyDataColumn::clone_arc)
     }
 
     /// Returns a mutable reference to the fixed vector of cached blobs.
@@ -120,7 +120,7 @@ impl<E: EthSpec> PendingComponents<E> {
     pub fn blob_exists(&self, blob_index: usize) -> bool {
         self.get_cached_blobs()
             .get(blob_index)
-            .map(|b| b.is_some())
+            .map(std::option::Option::is_some)
             .unwrap_or(false)
     }
 
@@ -128,7 +128,7 @@ impl<E: EthSpec> PendingComponents<E> {
     pub fn get_cached_data_columns_indices(&self) -> Vec<ColumnIndex> {
         self.verified_data_columns
             .iter()
-            .map(|d| d.index())
+            .map(super::super::data_column_verification::KzgVerifiedCustodyDataColumn::index)
             .collect()
     }
 
@@ -325,7 +325,7 @@ impl<E: EthSpec> PendingComponents<E> {
                 .verified_blobs
                 .iter()
                 .flatten()
-                .map(|blob| blob.seen_timestamp())
+                .map(super::super::blob_verification::KzgVerifiedBlob::seen_timestamp)
                 .max(),
             AvailableBlockData::DataColumns(_) => SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
@@ -490,7 +490,7 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
                 .get(blob_id.index as usize)
                 .ok_or(AvailabilityCheckError::BlobIndexInvalid(blob_id.index))?
                 .as_ref()
-                .map(|blob| blob.clone_blob()))
+                .map(super::super::blob_verification::KzgVerifiedBlob::clone_blob))
         } else {
             Ok(None)
         }
@@ -508,7 +508,7 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
                 pending_components
                     .verified_data_columns
                     .iter()
-                    .map(|col| col.clone_arc())
+                    .map(super::super::data_column_verification::KzgVerifiedCustodyDataColumn::clone_arc)
                     .collect()
             })
     }
@@ -829,7 +829,7 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
             .critical
             .read()
             .peek(&block_root)
-            .and_then(|c| c.epoch());
+            .and_then(PendingComponents::epoch);
 
         // If we don't have an epoch yet (no block or other components), we can't insert proofs
         // into the cache because PendingComponents requires max_blobs_per_block(epoch).

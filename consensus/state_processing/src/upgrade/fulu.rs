@@ -34,7 +34,7 @@ fn initialize_proposer_lookahead<E: EthSpec>(
         );
     }
 
-    Vector::new(lookahead).map_err(|e| e.into())
+    Vector::new(lookahead).map_err(std::convert::Into::into)
 }
 
 pub fn upgrade_state_to_fulu<E: EthSpec>(

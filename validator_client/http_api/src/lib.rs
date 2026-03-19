@@ -1024,7 +1024,10 @@ async fn post_vibehouse_beacon_update<T: 'static + SlotClock + Clone, E: EthSpec
         .map_err(|e| ApiError::BadRequest(e.to_string()))?;
 
     let response = UpdateCandidatesResponse {
-        new_beacon_nodes_list: beacons.iter().map(|surl| surl.to_string()).collect(),
+        new_beacon_nodes_list: beacons
+            .iter()
+            .map(std::string::ToString::to_string)
+            .collect(),
     };
 
     Ok(Json(GenericResponse::from(response)))

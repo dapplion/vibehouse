@@ -1459,8 +1459,10 @@ async fn fill_in_selection_proofs<S: ValidatorStore + 'static, T: SlotClock + 's
                 drop(attesters);
             };
 
-            let time_taken_ms =
-                Duration::from_secs_f64(timer.map_or(0.0, |t| t.stop_and_record())).as_millis();
+            let time_taken_ms = Duration::from_secs_f64(
+                timer.map_or(0.0, validator_metrics::HistogramTimer::stop_and_record),
+            )
+            .as_millis();
             debug!(
                 batch_size,
                 %lookahead_slot,

@@ -479,11 +479,14 @@ pub fn serve<T: BeaconChainTypes>(
 
     let state: SharedState<T> = Arc::new(AppState {
         chain: ctx.chain.clone(),
-        network_tx: ctx.network_senders.as_ref().map(|s| s.network_send()),
+        network_tx: ctx
+            .network_senders
+            .as_ref()
+            .map(network::NetworkSenders::network_send),
         validator_subscription_tx: ctx
             .network_senders
             .as_ref()
-            .map(|s| s.validator_subscription_send()),
+            .map(network::NetworkSenders::validator_subscription_send),
         network_globals: ctx.network_globals.clone(),
         task_spawner: TaskSpawner::new(beacon_processor_send),
         data_dir: config.data_dir.clone(),
@@ -1968,7 +1971,7 @@ async fn get_beacon_block_attestations<T: BeaconChainTypes>(
                 .message()
                 .body()
                 .attestations()
-                .map(|att| att.clone_as_attestation())
+                .map(types::AttestationRef::clone_as_attestation)
                 .collect::<Vec<_>>();
 
             let require_version = match endpoint_version {
@@ -3217,7 +3220,7 @@ async fn get_debug_fork_choice<T: BeaconChainTypes>(
                         execution_block_hash: node
                             .execution_status
                             .block_hash()
-                            .map(|block_hash| block_hash.into_root()),
+                            .map(types::ExecutionBlockHash::into_root),
                     }
                 })
                 .collect::<Vec<_>>();
@@ -3369,7 +3372,9 @@ async fn get_node_peers_by_id<T: BeaconChainTypes>(
                 if let Some(&dir) = peer_info.connection_direction() {
                     return Ok(api_types::GenericResponse::from(api_types::PeerData {
                         peer_id: peer_id.to_string(),
-                        enr: peer_info.enr().map(|enr| enr.to_base64()),
+                        enr: peer_info
+                            .enr()
+                            .map(vibehouse_network::discv5::enr::Enr::to_base64),
                         last_seen_p2p_address: address,
                         direction: dir.into(),
                         state: peer_info.connection_status().clone().into(),
@@ -3419,7 +3424,9 @@ async fn get_node_peers<T: BeaconChainTypes>(
                         if state_matches && direction_matches {
                             peers.push(api_types::PeerData {
                                 peer_id: peer_id.to_string(),
-                                enr: peer_info.enr().map(|enr| enr.to_base64()),
+                                enr: peer_info
+                                    .enr()
+                                    .map(vibehouse_network::discv5::enr::Enr::to_base64),
                                 last_seen_p2p_address: address,
                                 direction,
                                 state,

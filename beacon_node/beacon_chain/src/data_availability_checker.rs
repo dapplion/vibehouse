@@ -165,7 +165,10 @@ impl<T: BeaconChainTypes> DataAvailabilityChecker<T> {
                     components
                         .get_cached_blobs()
                         .iter()
-                        .filter_map(|blob| blob.as_ref().map(|blob| blob.blob_index()))
+                        .filter_map(|blob| {
+                            blob.as_ref()
+                                .map(super::blob_verification::KzgVerifiedBlob::blob_index)
+                        })
                         .collect::<Vec<_>>()
                 })
             })
@@ -176,7 +179,8 @@ impl<T: BeaconChainTypes> DataAvailabilityChecker<T> {
     pub fn cached_data_column_indexes(&self, block_root: &Hash256) -> Option<Vec<u64>> {
         self.availability_cache
             .peek_pending_components(block_root, |components| {
-                components.map(|components| components.get_cached_data_columns_indices())
+                components
+                    .map(overflow_lru_cache::PendingComponents::get_cached_data_columns_indices)
             })
     }
 
@@ -303,8 +307,12 @@ impl<T: BeaconChainTypes> DataAvailabilityChecker<T> {
         block_root: Hash256,
         blobs: I,
     ) -> Result<Availability<T::EthSpec>, AvailabilityCheckError> {
-        self.availability_cache
-            .put_kzg_verified_blobs(block_root, blobs.into_iter().map(|b| b.into_inner()))
+        self.availability_cache.put_kzg_verified_blobs(
+            block_root,
+            blobs
+                .into_iter()
+                .map(super::blob_verification::GossipVerifiedBlob::into_inner),
+        )
     }
 
     #[instrument(skip_all, level = "trace")]
@@ -428,7 +436,7 @@ impl<T: BeaconChainTypes> DataAvailabilityChecker<T> {
                 verify_kzg_for_data_column_list(
                     data_column_list
                         .iter()
-                        .map(|custody_column| custody_column.as_data_column()),
+                        .map(super::data_column_verification::CustodyDataColumn::as_data_column),
                     &self.kzg,
                 )
                 .map_err(AvailabilityCheckError::InvalidColumn)?;
@@ -438,7 +446,7 @@ impl<T: BeaconChainTypes> DataAvailabilityChecker<T> {
                     blob_data: AvailableBlockData::DataColumns(
                         data_column_list
                             .into_iter()
-                            .map(|d| d.clone_arc())
+                            .map(super::data_column_verification::CustodyDataColumn::clone_arc)
                             .collect(),
                     ),
                     blobs_available_timestamp: None,
@@ -521,7 +529,10 @@ impl<T: BeaconChainTypes> DataAvailabilityChecker<T> {
                         block_root,
                         block,
                         blob_data: AvailableBlockData::DataColumns(
-                            data_columns.into_iter().map(|d| d.into_inner()).collect(),
+                            data_columns
+                                .into_iter()
+                                .map(super::data_column_verification::CustodyDataColumn::into_inner)
+                                .collect(),
                         ),
                         blobs_available_timestamp: None,
                         spec: self.spec.clone(),

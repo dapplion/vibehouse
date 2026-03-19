@@ -206,7 +206,7 @@ impl<E: EthSpec> CachedHead<E> {
         self.snapshot
             .beacon_state
             .get_cached_active_validator_indices(RelativeEpoch::Current)
-            .map(|indices| indices.len())
+            .map(<[usize]>::len)
             .ok()
     }
 

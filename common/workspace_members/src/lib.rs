@@ -23,7 +23,7 @@ fn get_workspace_crates() -> Result<Vec<String>, Box<dyn Error>> {
 pub fn workspace_crates(_input: TokenStream) -> TokenStream {
     match get_workspace_crates() {
         Ok(crate_names) => {
-            let crate_strs = crate_names.iter().map(|s| s.as_str());
+            let crate_strs = crate_names.iter().map(std::string::String::as_str);
             quote! {
                 &[#(#crate_strs),*]
             }

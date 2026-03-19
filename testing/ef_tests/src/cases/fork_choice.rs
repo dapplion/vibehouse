@@ -596,7 +596,7 @@ impl<E: EthSpec> Tester<E> {
                 || Ok(()),
             ))?
             .map(|avail: AvailabilityProcessingStatus| avail.try_into());
-        let success = data_column_success && result.as_ref().is_ok_and(|inner| inner.is_ok());
+        let success = data_column_success && result.as_ref().is_ok_and(std::result::Result::is_ok);
         if success != valid {
             return Err(Error::DidntFail(format!(
                 "block with root {} was valid={} whilst test expects valid={}. result: {:?}",
@@ -686,7 +686,7 @@ impl<E: EthSpec> Tester<E> {
                 || Ok(()),
             ))?
             .map(|avail: AvailabilityProcessingStatus| avail.try_into());
-        let success = blob_success && result.as_ref().is_ok_and(|inner| inner.is_ok());
+        let success = blob_success && result.as_ref().is_ok_and(std::result::Result::is_ok);
         if success != valid {
             return Err(Error::DidntFail(format!(
                 "block with root {} was valid={} whilst test expects valid={}. result: {:?}",

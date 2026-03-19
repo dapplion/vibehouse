@@ -39,7 +39,7 @@ impl<E: EthSpec> DietAvailabilityPendingExecutedBlock<E> {
             .message()
             .body()
             .blob_kzg_commitments()
-            .map_or(0, |commitments| commitments.len())
+            .map_or(0, types::VariableList::len)
     }
 
     /// Returns the epoch corresponding to `self.slot()`.
@@ -196,7 +196,7 @@ impl<T: BeaconChainTypes> StateLRUCache<T> {
             .in_scope(|| block_replayer.apply_blocks(vec![blinded_block], None));
 
         block_replayer
-            .map(|block_replayer| block_replayer.into_state())
+            .map(state_processing::BlockReplayer::into_state)
             .and_then(|mut state| {
                 state
                     .build_exit_cache(&self.spec)

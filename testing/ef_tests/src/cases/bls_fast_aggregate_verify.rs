@@ -32,7 +32,7 @@ impl Case for BlsFastAggregateVerify {
             .input
             .pubkeys
             .iter()
-            .map(|pkb| pkb.try_into())
+            .map(std::convert::TryInto::try_into)
             .collect::<Result<Vec<_>, _>>();
 
         let pubkeys = match pubkeys_result {

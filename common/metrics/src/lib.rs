@@ -287,7 +287,7 @@ pub fn stop_timer(timer: Option<HistogramTimer>) {
 /// Return the duration that the timer was running for, or 0.0 if it was `None` due to incorrect
 /// initialisation.
 pub fn stop_timer_with_duration(timer: Option<HistogramTimer>) -> Duration {
-    Duration::from_secs_f64(timer.map_or(0.0, |t| t.stop_and_record()))
+    Duration::from_secs_f64(timer.map_or(0.0, prometheus::HistogramTimer::stop_and_record))
 }
 
 pub fn observe_vec(vec: &Result<HistogramVec>, name: &[&str], value: f64) {

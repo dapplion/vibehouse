@@ -201,7 +201,7 @@ pub async fn verify_full_sync_aggregates_up_to<E: EthSpec>(
                 .message()
                 .body()
                 .sync_aggregate()
-                .map(|agg| agg.num_set_bits())
+                .map(types::SyncAggregate::num_set_bits)
             })
             .map_err(|e| format!("Error while getting beacon block: {:?}", e))?
             .map_err(|_| format!("Altair block {} should have sync aggregate", slot))?;

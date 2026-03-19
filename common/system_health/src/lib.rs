@@ -161,7 +161,7 @@ fn observe_system_health(
         None => {
             // Get the frequency from average measured frequencies
             let global_cpu_frequency: f32 =
-                cpus.iter().map(|cpu| cpu.frequency()).sum::<u64>() as f32 / cpus.len() as f32;
+                cpus.iter().map(sysinfo::CpuExt::frequency).sum::<u64>() as f32 / cpus.len() as f32;
             // Shift to ghz to 1dp
             (global_cpu_frequency / 100.0).round() / 10.0
         }

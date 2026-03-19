@@ -699,7 +699,10 @@ impl<T: SlotClock> BeaconNodeFallback<T> {
 
         let results = future::join_all(futures).await;
 
-        let errors: Vec<_> = results.into_iter().filter_map(|res| res.err()).collect();
+        let errors: Vec<_> = results
+            .into_iter()
+            .filter_map(std::result::Result::err)
+            .collect();
 
         if !errors.is_empty() {
             Err(Errors(errors))
@@ -729,7 +732,7 @@ impl<T: SlotClock> BeaconNodeFallback<T> {
 async fn sort_nodes_by_health(nodes: &mut Vec<CandidateBeaconNode>) {
     // Fetch all health values.
     let health_results: Vec<Result<BeaconNodeHealth, CandidateError>> =
-        future::join_all(nodes.iter().map(|node| node.health())).await;
+        future::join_all(nodes.iter().map(CandidateBeaconNode::health)).await;
 
     // Pair health results with their indices.
     let mut indices_with_health: Vec<(usize, Result<BeaconNodeHealth, CandidateError>)> =

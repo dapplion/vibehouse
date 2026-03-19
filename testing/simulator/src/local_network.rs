@@ -448,7 +448,7 @@ impl<E: EthSpec> LocalNetwork<E> {
         beacon_nodes
             .iter()
             .chain(proposer_nodes.iter())
-            .map(|beacon_node| beacon_node.remote_node())
+            .map(node_test_rig::LocalBeaconNode::remote_node)
             .collect()
     }
 

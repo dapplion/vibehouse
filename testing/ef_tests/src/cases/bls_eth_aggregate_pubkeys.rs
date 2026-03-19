@@ -21,7 +21,7 @@ impl Case for BlsEthAggregatePubkeys {
         let pubkeys_result = self
             .input
             .iter()
-            .map(|pkb| pkb.decompress())
+            .map(bls::generics::GenericPublicKeyBytes::decompress)
             .collect::<Result<Vec<_>, _>>();
 
         let pubkeys = match pubkeys_result {

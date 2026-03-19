@@ -328,7 +328,7 @@ impl<E: EthSpec, Payload: AbstractExecPayload<E>> SignedBeaconBlock<E, Payload> 
         self.message()
             .body()
             .blob_kzg_commitments()
-            .map(|c| c.len())
+            .map(ssz_types::VariableList::len)
             .unwrap_or(0)
     }
 

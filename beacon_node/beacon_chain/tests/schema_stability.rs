@@ -102,7 +102,8 @@ async fn schema_stability() {
 
 /// Check that the set of database columns is unchanged.
 fn check_db_columns() {
-    let current_columns: Vec<&'static str> = DBColumn::iter().map(|c| c.as_str()).collect();
+    let current_columns: Vec<&'static str> =
+        DBColumn::iter().map(store::DBColumn::as_str).collect();
     let expected_columns = vec![
         "bma", "blk", "blb", "bev", "bdc", "bdi", "ste", "hsd", "hsn", "bsn", "bsd", "bss", "bs3",
         "bcs", "bst", "exp", "bch", "opo", "etc", "frk", "pkc", "brp", "bsx", "bsr", "bbx", "bbr",

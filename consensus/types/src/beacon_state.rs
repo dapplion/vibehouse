@@ -1445,7 +1445,7 @@ impl<E: EthSpec> BeaconState<E> {
             .collect::<Result<Vec<_>, _>>()?;
         let decompressed_pubkeys = pubkeys
             .iter()
-            .map(|pk| pk.decompress())
+            .map(bls::generics::GenericPublicKeyBytes::decompress)
             .collect::<Result<Vec<_>, _>>()?;
         let aggregate_pubkey = AggregatePublicKey::aggregate(&decompressed_pubkeys)?;
 

@@ -521,7 +521,7 @@ fn publish_column_sidecars<T: BeaconChainTypes>(
     let malicious_withhold_count = chain.config.malicious_withhold_count;
     let mut data_column_sidecars = data_column_sidecars
         .iter()
-        .map(|d| d.clone_data_column())
+        .map(beacon_chain::data_column_verification::GossipVerifiedDataColumn::clone_data_column)
         .collect::<Vec<_>>();
     if malicious_withhold_count > 0 {
         let columns_to_keep = data_column_sidecars

@@ -116,7 +116,7 @@ pub fn get_validator_info<T: BeaconChainTypes>(
     let indices = request_data
         .indices
         .iter()
-        .map(|index| index.to_string())
+        .map(std::string::ToString::to_string)
         .collect::<HashSet<String>>();
 
     let ids = validator_ids
@@ -187,7 +187,7 @@ pub fn post_validator_monitor_metrics<T: BeaconChainTypes>(
     let indices = request_data
         .indices
         .iter()
-        .map(|index| index.to_string())
+        .map(std::string::ToString::to_string)
         .collect::<HashSet<String>>();
 
     let ids = validator_ids

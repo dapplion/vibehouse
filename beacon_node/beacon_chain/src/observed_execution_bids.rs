@@ -147,7 +147,10 @@ impl<E: EthSpec> ObservedExecutionBids<E> {
 
     /// Returns the total number of bids currently tracked across all slots.
     pub fn observed_bid_count(&self) -> usize {
-        self.observed_bids.values().map(|m| m.len()).sum()
+        self.observed_bids
+            .values()
+            .map(std::collections::HashMap::len)
+            .sum()
     }
 
     /// Clear all observed bids. Useful for testing.
