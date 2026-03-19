@@ -1074,11 +1074,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
                 Ok(request_id) => {
                     // inform the batch about the new request
                     batch.start_downloading(request_id)?;
-                    if self
-                        .optimistic_start
-                        .map(|epoch| epoch == batch_id)
-                        .unwrap_or(false)
-                    {
+                    if self.optimistic_start.is_some_and(|epoch| epoch == batch_id) {
                         debug!(epoch = %batch_id, %batch, %batch_state, "Requesting optimistic batch");
                     } else {
                         debug!(epoch = %batch_id, %batch, %batch_state, "Requesting batch");

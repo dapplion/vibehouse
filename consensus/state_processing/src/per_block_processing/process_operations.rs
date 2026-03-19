@@ -603,8 +603,7 @@ pub fn process_withdrawal_requests<E: EthSpec>(
         let has_correct_credential = validator.has_execution_withdrawal_credential(spec);
         let is_correct_source_address = validator
             .get_execution_withdrawal_address(spec)
-            .map(|addr| addr == request.source_address)
-            .unwrap_or(false);
+            .is_some_and(|addr| addr == request.source_address);
 
         if !(has_correct_credential && is_correct_source_address) {
             continue;

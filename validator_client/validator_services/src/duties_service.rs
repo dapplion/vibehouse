@@ -756,8 +756,7 @@ async fn poll_validator_indices<S: ValidatorStore, T: SlotClock + 'static>(
                     .unknown_validator_next_poll_slots
                     .read()
                     .get(&pubkey)
-                    .map(|&poll_slot| poll_slot > current_slot || is_first_slot_of_epoch)
-                    .unwrap_or(false);
+                    .is_some_and(|&poll_slot| poll_slot > current_slot || is_first_slot_of_epoch);
                 if poll_later {
                     continue;
                 }

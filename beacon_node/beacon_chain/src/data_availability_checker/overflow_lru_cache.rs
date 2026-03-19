@@ -120,8 +120,7 @@ impl<E: EthSpec> PendingComponents<E> {
     pub fn blob_exists(&self, blob_index: usize) -> bool {
         self.get_cached_blobs()
             .get(blob_index)
-            .map(std::option::Option::is_some)
-            .unwrap_or(false)
+            .is_some_and(std::option::Option::is_some)
     }
 
     /// Returns the indices of cached custody columns

@@ -598,8 +598,7 @@ impl<T: BeaconChainTypes> BeaconBlockStreamer<T> {
             let successful = result
                 .as_ref()
                 .as_ref()
-                .map(std::option::Option::is_some)
-                .unwrap_or(false);
+                .is_ok_and(std::option::Option::is_some);
 
             if sender.send((root, result)).is_err() {
                 break;

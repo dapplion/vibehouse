@@ -154,8 +154,7 @@ impl Validator {
         self.withdrawal_credentials
             .as_slice()
             .first()
-            .map(|byte| *byte == spec.eth1_address_withdrawal_prefix_byte)
-            .unwrap_or(false)
+            .is_some_and(|byte| *byte == spec.eth1_address_withdrawal_prefix_byte)
     }
 
     /// Check if ``validator`` has an 0x02 prefixed "compounding" withdrawal credential.
@@ -309,8 +308,7 @@ pub fn is_compounding_withdrawal_credential(
     withdrawal_credentials
         .as_slice()
         .first()
-        .map(|prefix_byte| *prefix_byte == spec.compounding_withdrawal_prefix_byte)
-        .unwrap_or(false)
+        .is_some_and(|prefix_byte| *prefix_byte == spec.compounding_withdrawal_prefix_byte)
 }
 
 #[cfg(test)]

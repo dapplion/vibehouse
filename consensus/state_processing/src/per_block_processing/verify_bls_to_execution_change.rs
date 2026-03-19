@@ -32,8 +32,7 @@ pub fn verify_bls_to_execution_change<E: EthSpec>(
             .withdrawal_credentials
             .as_slice()
             .first()
-            .map(|byte| *byte == spec.bls_withdrawal_prefix_byte)
-            .unwrap_or(false),
+            .is_some_and(|byte| *byte == spec.bls_withdrawal_prefix_byte),
         Invalid::NonBlsWithdrawalCredentials
     );
 
