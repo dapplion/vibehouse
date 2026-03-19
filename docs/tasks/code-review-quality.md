@@ -1883,3 +1883,7 @@ Full codebase audit: all `pub fn` in gloas.rs confirmed cross-crate (beacon_chai
 ### Run 1934 (2026-03-19)
 
 **Health check — all clear, nothing actionable**: Zero clippy warnings, zero build warnings (`cargo build --release` clean). Spec v1.7.0-alpha.3 still latest — no new consensus-specs merges since #5005 (Mar 15). All 11 TODOs confirmed tracked in #36, all blocked on external dependencies or non-critical. `cargo audit`: unchanged (rsa RUSTSEC-2023-0071 no fix, 5 allowed warnings all transitive). CI for latest push (`7907432dd`): 4/6 green (check ✅, ef-tests ✅, http_api ✅, network+op_pool ✅), beacon_chain + unit tests in progress. Nightly tests: last 2 runs passed (Mar 18). `cached-ptc` branch 1 commit behind main (task docs only) — clean rebase when spec PR #4992 merges. No code changes needed.
+
+### Run 1935 (2026-03-19)
+
+**Replaced `.and_then(|x| x)` with `.flatten()` in task_spawner.rs**: Two instances in `beacon_node/http_api/src/task_spawner.rs` (lines 67, 122) used `.and_then(|x| x)` to flatten `Result<Result<T, E>, E>` — replaced with `Result::flatten()` (stable since Rust 1.82). Comprehensive codebase search found no other idiomatic improvement opportunities — recent runs (1930-1934) already cleaned up `.copied()`, method references, and dead `#[allow]` annotations. Spec v1.7.0-alpha.3 still latest — no new consensus-specs merges. PR #4992 (cached PTCs) still open, `mergeable_state=clean`. 346/346 http_api tests pass, zero clippy warnings, pre-push lint-full passes. Committed `f51314532`.
