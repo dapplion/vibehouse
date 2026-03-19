@@ -2087,3 +2087,17 @@ Patterns fixed:
 - Intermediate Vec creation where source `.len()` was available directly
 
 Files: common/ (3), consensus/ (2), beacon_node/ (7). 2648 tests pass across modified packages (types, state_processing, store, network, network_utils, lru_cache). lint-full passes. Committed `9892bf213`.
+
+### Run 1950 (2026-03-19)
+
+**Combined match arms with identical bodies across 46 files** (`clippy::match_same_arms`): Fixed 104 of 108 warnings by merging match arms that share the same body using `|` patterns. The remaining 4 warnings are unfixable (codec.rs: arms bind different types; beacon_processor: different variant shapes with extra struct fields).
+
+Key areas improved:
+1. **RPC protocol** (16 fixes) — consolidated version strings, protocol mappings, response limits, and max_responses across protocol variants
+2. **Peer manager** (17 fixes) — merged error handling arms for RPC errors, rate limiting, and test data setup
+3. **Network sync** (17 fixes) — combined request state tracking, batch status, and lookup state arms
+4. **Beacon chain** (11 fixes) — merged block verification status checks, availability checker, and graffiti handling
+5. **Consensus types** (10 fixes) — consolidated superstruct fork variant arms in beacon_state, signed_beacon_block, beacon_block_body
+6. **Remaining** (33 fixes across store, execution_layer, http_api, fork_choice, common/eth2, validator_store, etc.)
+
+Spec v1.7.0-alpha.3 still latest. Open PRs #5008 (field name fix), #4992 (cached PTCs), #5003 (proposer lookahead simplification) — none merged yet. 3428 tests pass across all modified packages. lint-full passes. Committed `802100b7a`.
