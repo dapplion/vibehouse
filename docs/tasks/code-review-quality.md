@@ -1887,3 +1887,7 @@ Full codebase audit: all `pub fn` in gloas.rs confirmed cross-crate (beacon_chai
 ### Run 1935 (2026-03-19)
 
 **Replaced `.and_then(|x| x)` with `.flatten()` in task_spawner.rs**: Two instances in `beacon_node/http_api/src/task_spawner.rs` (lines 67, 122) used `.and_then(|x| x)` to flatten `Result<Result<T, E>, E>` — replaced with `Result::flatten()` (stable since Rust 1.82). Comprehensive codebase search found no other idiomatic improvement opportunities — recent runs (1930-1934) already cleaned up `.copied()`, method references, and dead `#[allow]` annotations. Spec v1.7.0-alpha.3 still latest — no new consensus-specs merges. PR #4992 (cached PTCs) still open, `mergeable_state=clean`. 346/346 http_api tests pass, zero clippy warnings, pre-push lint-full passes. Committed `f51314532`.
+
+### Run 1936 (2026-03-19)
+
+**Replaced `.map(|x| x.into())` with `.map(Into::into)` across 7 files**: Redundant closure pattern in network sync (block_lookups), vibehouse_network (rpc methods, peerdb), execution_layer (engine_api http, test_utils handle_rpc and execution_block_generator), and network beacon processor tests. Same category as run 1931's method reference cleanup. All 752/756 crate tests pass (4 pre-existing flaky network tests unrelated). Zero clippy warnings, pre-push lint-full passes. Committed `6ef400ccc`.
