@@ -603,7 +603,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
 
         let mut activated = 0;
         for (id, expected_columns, start_slot, count, parent_span) in deferred {
-            let column_indexes: HashSet<ColumnIndex> = expected_columns.iter().cloned().collect();
+            let column_indexes: HashSet<ColumnIndex> = expected_columns.iter().copied().collect();
 
             // Try to find custody peers for the deferred columns
             let Ok(columns_by_range_peers) = self.select_columns_by_range_peers_to_request(
@@ -723,7 +723,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
                     .chain
                     .sampling_columns_for_epoch(epoch)
                     .iter()
-                    .cloned()
+                    .copied()
                     .collect();
                 match self.select_columns_by_range_peers_to_request(
                     &column_indexes,
@@ -2015,7 +2015,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
                 .chain
                 .sampling_columns_for_epoch(batch_id.epoch)
                 .iter()
-                .cloned()
+                .copied()
                 .collect();
 
             self.select_columns_by_range_peers_to_request(

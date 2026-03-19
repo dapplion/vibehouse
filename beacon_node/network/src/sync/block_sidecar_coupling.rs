@@ -735,7 +735,7 @@ mod tests {
         let expects_custody_columns = batched_column_requests
             .iter()
             .flatten()
-            .cloned()
+            .copied()
             .collect::<Vec<_>>();
         let custody_column_request_ids =
             (0..batched_column_requests.len() as u32).collect::<Vec<_>>();

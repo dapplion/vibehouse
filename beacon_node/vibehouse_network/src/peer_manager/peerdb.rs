@@ -1593,7 +1593,7 @@ mod tests {
         }
         assert_eq!(pdb.disconnected_peers, 0);
 
-        for p in pdb.connected_peer_ids().cloned().collect::<Vec<_>>() {
+        for p in pdb.connected_peer_ids().copied().collect::<Vec<_>>() {
             pdb.inject_disconnect(&p);
         }
         assert_eq!(pdb.disconnected_peers, pdb.disconnected_peers().count());
@@ -1611,7 +1611,7 @@ mod tests {
         }
         assert_eq!(pdb.banned_peers_count.banned_peers(), 0);
 
-        for p in pdb.connected_peer_ids().cloned().collect::<Vec<_>>() {
+        for p in pdb.connected_peer_ids().copied().collect::<Vec<_>>() {
             let _ = pdb.report_peer(&p, PeerAction::Fatal, ReportSource::PeerManager, "");
             pdb.inject_disconnect(&p);
         }

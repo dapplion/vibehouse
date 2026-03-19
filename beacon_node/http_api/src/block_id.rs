@@ -356,7 +356,7 @@ impl BlockId {
         let blob_indices_opt = query.versioned_hashes.map(|versioned_hashes| {
             versioned_hashes
                 .iter()
-                .flat_map(|versioned_hash| {
+                .filter_map(|versioned_hash| {
                     blob_kzg_commitments.iter().position(|commitment| {
                         let computed_hash = commitment.calculate_versioned_hash();
                         computed_hash == *versioned_hash
@@ -411,7 +411,7 @@ impl BlockId {
             Some(vec) => {
                 let list: Vec<_> = vec
                     .into_iter()
-                    .flat_map(|index| blob_sidecar_list.get(index as usize).cloned())
+                    .filter_map(|index| blob_sidecar_list.get(index as usize).cloned())
                     .collect();
 
                 BlobSidecarList::new(list, max_blobs_per_block)

@@ -67,12 +67,12 @@ where
 
     let attesting_indices_1 = attestation_1
         .attesting_indices_iter()
-        .cloned()
+        .copied()
         .collect::<BTreeSet<_>>();
 
     let attesting_indices_2 = attestation_2
         .attesting_indices_iter()
-        .cloned()
+        .copied()
         .collect::<BTreeSet<_>>();
 
     let mut slashable_indices = vec![];

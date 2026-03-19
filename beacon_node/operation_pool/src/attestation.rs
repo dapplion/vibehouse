@@ -57,7 +57,7 @@ impl<'a, E: EthSpec> AttMaxCover<'a, E> {
         let fresh_validators_rewards: HashMap<u64, u64> = indices
             .iter()
             .copied()
-            .flat_map(|validator_index| {
+            .filter_map(|validator_index| {
                 let effective_balance =
                     state.get_effective_balance(validator_index as usize).ok()?;
                 let reward =

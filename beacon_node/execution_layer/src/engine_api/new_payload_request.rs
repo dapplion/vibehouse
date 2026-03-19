@@ -131,7 +131,7 @@ impl<'block, E: EthSpec> NewPayloadRequest<'block, E> {
     /// <https://github.com/ethereum/consensus-specs/blob/v1.4.0-beta.2/specs/deneb/beacon-chain.md#is_valid_block_hash>
     pub fn verify_payload_block_hash(&self) -> Result<(), Error> {
         let payload = self.execution_payload_ref();
-        let parent_beacon_block_root = self.parent_beacon_block_root().ok().cloned();
+        let parent_beacon_block_root = self.parent_beacon_block_root().ok().copied();
 
         let _timer = metrics::start_timer(&metrics::EXECUTION_LAYER_VERIFY_BLOCK_HASH);
 

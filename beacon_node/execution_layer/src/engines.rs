@@ -158,7 +158,7 @@ impl Engine {
             .lock()
             .await
             .get(&PayloadIdCacheKey::new(head_block_hash, payload_attributes))
-            .cloned()
+            .copied()
     }
 
     pub async fn notify_forkchoice_updated(

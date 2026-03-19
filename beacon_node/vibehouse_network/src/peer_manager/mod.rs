@@ -2214,7 +2214,7 @@ mod tests {
             .peers
             .read()
             .connected_or_dialing_peers()
-            .cloned()
+            .copied()
             .collect();
 
         for peer in connected_peers.iter() {
@@ -2326,7 +2326,7 @@ mod tests {
             .peers
             .read()
             .connected_or_dialing_peers()
-            .cloned()
+            .copied()
             .collect();
 
         assert!(!connected_peers.contains(&peers[0]));
@@ -2429,7 +2429,7 @@ mod tests {
             .peers
             .read()
             .connected_or_dialing_peers()
-            .cloned()
+            .copied()
             .collect();
 
         assert!(!connected_peers.contains(&peers[0]));
@@ -2529,7 +2529,7 @@ mod tests {
             .peers
             .read()
             .connected_or_dialing_peers()
-            .cloned()
+            .copied()
             .collect();
 
         println!("Connected peers: {:?}", connected_peers);
@@ -2698,7 +2698,7 @@ mod tests {
             .peers
             .read()
             .connected_or_dialing_peers()
-            .cloned()
+            .copied()
             .collect();
 
         // Either peer 4 or 5 should be removed.
@@ -2764,7 +2764,7 @@ mod tests {
             .peers
             .read()
             .connected_or_dialing_peers()
-            .cloned()
+            .copied()
             .collect();
 
         // Peer 4 (on least dense attestation subnet 1) should be kept
@@ -2870,7 +2870,7 @@ mod tests {
             .peers
             .read()
             .connected_or_dialing_peers()
-            .cloned()
+            .copied()
             .collect();
 
         // Count how many synced/advanced peers are kept vs behind/unknown peers
@@ -2960,7 +2960,7 @@ mod tests {
             .peers
             .read()
             .connected_or_dialing_peers()
-            .cloned()
+            .copied()
             .collect();
 
         // only 2 peers should be pruned from the 4 peers in subnet 0.

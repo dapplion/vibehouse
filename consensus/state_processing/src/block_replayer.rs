@@ -281,7 +281,7 @@ where
                         let withdrawals = self
                             .state
                             .payload_expected_withdrawals()
-                            .map(|w| w.iter().cloned().collect::<Vec<_>>().into())
+                            .map(|w| w.iter().copied().collect::<Vec<_>>().into())
                             .unwrap_or_default();
                         let envelope = blinded.into_full_with_withdrawals(withdrawals);
                         drop(process_execution_payload_envelope(
@@ -377,7 +377,7 @@ where
                     let withdrawals = self
                         .state
                         .payload_expected_withdrawals()
-                        .map(|w| w.iter().cloned().collect::<Vec<_>>().into())
+                        .map(|w| w.iter().copied().collect::<Vec<_>>().into())
                         .unwrap_or_default();
                     let envelope = blinded.into_full_with_withdrawals(withdrawals);
                     process_execution_payload_envelope(

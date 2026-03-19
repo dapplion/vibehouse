@@ -1010,7 +1010,7 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
                 .peers
                 .read()
                 .synced_peers_for_epoch(batch_id)
-                .cloned()
+                .copied()
                 .collect::<HashSet<_>>();
 
             let request = batch.to_data_columns_by_range_request().map_err(|_| {

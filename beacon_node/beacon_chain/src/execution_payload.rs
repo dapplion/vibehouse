@@ -419,7 +419,7 @@ pub fn get_execution_payload<T: BeaconChainTypes>(
                 state
                     .payload_expected_withdrawals()?
                     .iter()
-                    .cloned()
+                    .copied()
                     .collect(),
             )
         }

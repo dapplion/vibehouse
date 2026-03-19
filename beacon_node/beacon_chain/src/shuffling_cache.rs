@@ -171,7 +171,7 @@ impl ShufflingCache {
                             .as_ref()
                 })
                 .take(prune_count)
-                .cloned()
+                .copied()
                 .collect::<Vec<_>>();
 
             for shuffling_id in shuffling_ids_to_prune.iter() {

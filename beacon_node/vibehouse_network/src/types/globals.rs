@@ -204,7 +204,7 @@ impl<E: EthSpec> NetworkGlobals<E> {
                 column_index,
                 &self.spec,
             ))
-            .cloned()
+            .copied()
             .collect::<Vec<_>>()
     }
 

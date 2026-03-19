@@ -926,7 +926,7 @@ fn context_bytes_to_fork_name(
 ) -> Result<ForkName, RPCError> {
     fork_context
         .get_fork_from_context_bytes(context_bytes)
-        .cloned()
+        .copied()
         .ok_or_else(|| {
             let encoded = hex::encode(context_bytes);
             RPCError::ErrorResponse(

@@ -220,7 +220,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
 
     /// Peers currently syncing this chain.
     pub fn peers(&self) -> impl Iterator<Item = PeerId> + '_ {
-        self.peers.iter().cloned()
+        self.peers.iter().copied()
     }
 
     /// Progress in epochs made by the chain
@@ -1052,7 +1052,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
                 .peers
                 .read()
                 .synced_peers_for_epoch(batch_id)
-                .cloned()
+                .copied()
                 .collect::<HashSet<_>>();
 
             match network.block_components_by_range_request(
@@ -1139,7 +1139,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
                 .peers
                 .read()
                 .synced_peers_for_epoch(batch_id)
-                .cloned()
+                .copied()
                 .collect::<HashSet<_>>();
 
             match network.retry_columns_by_range(
@@ -1176,7 +1176,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
             .peers
             .read()
             .synced_peers()
-            .cloned()
+            .copied()
             .collect();
         if synced_column_peers.is_empty() {
             return;

@@ -366,7 +366,7 @@ where
             head_root: *status.head_root(),
             finalized_epoch: *status.finalized_epoch(),
             finalized_root: *status.finalized_root(),
-            earliest_available_slot: status.earliest_available_slot().ok().cloned(),
+            earliest_available_slot: status.earliest_available_slot().ok().copied(),
         };
 
         // update the state of the collection

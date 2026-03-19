@@ -1786,7 +1786,7 @@ mod tests {
             .unwrap()
             .payload_expected_withdrawals
             .iter()
-            .cloned()
+            .copied()
             .collect();
         assert!(
             !stale_withdrawals.is_empty(),
@@ -1810,7 +1810,7 @@ mod tests {
             .unwrap()
             .payload_expected_withdrawals
             .iter()
-            .cloned()
+            .copied()
             .collect();
         assert_eq!(
             stale_withdrawals, after_empty,
@@ -7781,7 +7781,7 @@ mod tests {
             .unwrap()
             .payload_expected_withdrawals
             .iter()
-            .cloned()
+            .copied()
             .collect();
 
         assert_eq!(

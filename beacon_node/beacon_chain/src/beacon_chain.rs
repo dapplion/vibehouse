@@ -8903,18 +8903,18 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let columns_required = custody_context
             .custody_columns_for_epoch(None, &self.spec)
             .iter()
-            .cloned()
+            .copied()
             .collect::<HashSet<_>>();
 
         let current_columns_at_epoch = custody_context
             .custody_columns_for_epoch(Some(epoch), &self.spec)
             .iter()
-            .cloned()
+            .copied()
             .collect::<HashSet<_>>();
 
         columns_required
             .difference(&current_columns_at_epoch)
-            .cloned()
+            .copied()
             .collect::<HashSet<_>>()
     }
 

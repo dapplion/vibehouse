@@ -370,7 +370,7 @@ pub fn process_epoch_single_pass<E: EthSpec>(
             state
                 .pending_deposits()?
                 .iter_from(ctxt.next_deposit_index)?
-                .cloned(),
+                .copied(),
         )?;
         for deposit in ctxt.deposits_to_postpone {
             new_balance_deposits.push(deposit)?;

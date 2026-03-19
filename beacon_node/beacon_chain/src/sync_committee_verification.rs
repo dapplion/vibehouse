@@ -468,7 +468,7 @@ impl VerifiedSyncCommitteeMessage {
         if !subnet_positions.contains_key(&subnet_id) {
             return Err(Error::InvalidSubnetId {
                 received: subnet_id,
-                expected: subnet_positions.keys().cloned().collect::<Vec<_>>(),
+                expected: subnet_positions.keys().copied().collect::<Vec<_>>(),
             });
         }
 

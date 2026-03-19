@@ -705,7 +705,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
                 attestation_slot
                     < current_slot - Slot::new(UNAGGREGATED_ATTESTATION_LAG_SLOTS as u64)
             })
-            .cloned()
+            .copied()
             .collect();
 
         let unaggregated_attestations = &mut self.unaggregated_attestations;

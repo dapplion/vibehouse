@@ -797,11 +797,11 @@ pub fn load_test_blobs_bundle_v1<E: EthSpec>() -> Result<(KzgCommitment, KzgProo
     Ok((
         commitments
             .first()
-            .cloned()
+            .copied()
             .ok_or("commitment missing in test bundle")?,
         proofs
             .first()
-            .cloned()
+            .copied()
             .ok_or("proof missing in test bundle")?,
         blobs
             .first()
@@ -822,7 +822,7 @@ pub fn load_test_blobs_bundle_v2<E: EthSpec>()
     Ok((
         commitments
             .first()
-            .cloned()
+            .copied()
             .ok_or("commitment missing in test bundle")?,
         // there's only one blob in the test bundle, hence we take all the cell proofs here.
         proofs,

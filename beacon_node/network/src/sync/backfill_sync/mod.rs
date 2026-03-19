@@ -901,7 +901,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
                 .peers
                 .read()
                 .synced_peers_for_epoch(batch_id)
-                .cloned()
+                .copied()
                 .collect::<HashSet<_>>();
 
             let (request, is_blob_batch) = batch.to_blocks_by_range_request();
@@ -978,7 +978,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
                 .peers
                 .read()
                 .synced_peers_for_epoch(batch_id)
-                .cloned()
+                .copied()
                 .collect::<HashSet<_>>();
 
             match network.retry_columns_by_range(

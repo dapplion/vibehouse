@@ -157,7 +157,7 @@ impl<T: BeaconChainTypes> SubnetService<T> {
             events.push_back(SubnetServiceMessage::DiscoverPeers(
                 permanent_attestation_subscriptions
                     .iter()
-                    .cloned()
+                    .copied()
                     .map(|subnet| SubnetDiscovery {
                         subnet,
                         min_ttl: None,

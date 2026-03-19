@@ -151,7 +151,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     head_root: *status.head_root(),
                     finalized_epoch: *status.finalized_epoch(),
                     finalized_root: *status.finalized_root(),
-                    earliest_available_slot: status.earliest_available_slot().ok().cloned(),
+                    earliest_available_slot: status.earliest_available_slot().ok().copied(),
                 };
                 self.send_sync_message(SyncMessage::AddPeer(peer_id, info));
             }
@@ -311,7 +311,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         let slots_by_block_root: HashMap<Hash256, Slot> = request
             .blob_ids
             .iter()
-            .flat_map(|blob_id| {
+            .filter_map(|blob_id| {
                 let block_root = blob_id.block_root;
                 self.chain
                     .data_availability_checker

@@ -223,7 +223,7 @@ impl<T: SlotClock + 'static, E: EthSpec> VibehouseValidatorStore<T, E> {
             .validators
             .read()
             .iter_voting_pubkeys()
-            .cloned()
+            .copied()
             .collect::<Vec<_>>();
 
         pubkeys
@@ -593,7 +593,7 @@ impl<T: SlotClock + 'static, E: EthSpec> ValidatorStore for VibehouseValidatorSt
             .validators
             .read()
             .iter_voting_pubkeys()
-            .cloned()
+            .copied()
             .collect::<Vec<_>>();
 
         pubkeys

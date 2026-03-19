@@ -4144,7 +4144,7 @@ async fn post_validator_liveness_epoch<T: BeaconChainTypes>(
             let liveness: Vec<api_types::StandardLivenessResponseData> = indices
                 .0
                 .iter()
-                .cloned()
+                .copied()
                 .map(|index| {
                     let is_live = chain.validator_seen_at_epoch(index as usize, epoch);
                     api_types::StandardLivenessResponseData { index, is_live }
@@ -4604,7 +4604,7 @@ async fn post_vibehouse_liveness<T: BeaconChainTypes>(
             let liveness: Vec<api_types::LivenessResponseData> = request_data
                 .indices
                 .iter()
-                .cloned()
+                .copied()
                 .map(|index| {
                     let is_live = chain.validator_seen_at_epoch(index as usize, request_data.epoch);
                     api_types::LivenessResponseData {

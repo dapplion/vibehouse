@@ -697,7 +697,7 @@ mod tests {
     fn summaries_by_slot_ascending_order() {
         let dag = linear_dag();
         let by_slot = dag.summaries_by_slot_ascending();
-        let slots: Vec<Slot> = by_slot.keys().cloned().collect();
+        let slots: Vec<Slot> = by_slot.keys().copied().collect();
         assert_eq!(slots, vec![Slot::new(1), Slot::new(2), Slot::new(3)]);
     }
 

@@ -408,7 +408,7 @@ impl<T: BeaconChainTypes> SyncManager<T> {
             head_root: *status.head_root(),
             finalized_epoch: *status.finalized_epoch(),
             finalized_root: *status.finalized_root(),
-            earliest_available_slot: status.earliest_available_slot().ok().cloned(),
+            earliest_available_slot: status.earliest_available_slot().ok().copied(),
         };
 
         let sync_type = remote_sync_type(&local, &remote, &self.chain);
@@ -461,7 +461,7 @@ impl<T: BeaconChainTypes> SyncManager<T> {
             head_root: *status.head_root(),
             finalized_epoch: *status.finalized_epoch(),
             finalized_root: *status.finalized_root(),
-            earliest_available_slot: status.earliest_available_slot().ok().cloned(),
+            earliest_available_slot: status.earliest_available_slot().ok().copied(),
         };
 
         let head_slot = head_slot.unwrap_or_else(|| {

@@ -65,7 +65,7 @@ mod tests {
             .current_epoch_participation()
             .unwrap()
             .iter()
-            .cloned()
+            .copied()
             .collect();
 
         process_participation_flag_updates::<E>(&mut state).unwrap();
@@ -75,7 +75,7 @@ mod tests {
             .previous_epoch_participation()
             .unwrap()
             .iter()
-            .cloned()
+            .copied()
             .collect();
         assert_eq!(current_before, previous_after);
     }
@@ -197,7 +197,7 @@ mod tests {
             .current_epoch_participation()
             .unwrap()
             .iter()
-            .cloned()
+            .copied()
             .collect();
 
         process_participation_flag_updates::<E>(&mut state).unwrap();
@@ -206,7 +206,7 @@ mod tests {
             .previous_epoch_participation()
             .unwrap()
             .iter()
-            .cloned()
+            .copied()
             .collect();
         assert_eq!(current_snapshot, previous_after);
     }
