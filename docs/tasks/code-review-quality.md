@@ -2010,3 +2010,19 @@ CI: All jobs passing (check/clippy/fmt ✅, ef-tests ✅, network+op_pool ✅, h
 - **Open issues**: #36 (misc TODOs) — all blocked on external deps. #29 (ROCQ) — lowest priority. #28 (ZK SP1 devnet) — needs GPU. #27 (private validator messages) — feature request.
 
 No code changes. Project in maintenance/monitoring mode awaiting next spec release.
+
+### Run 1945 (2026-03-19)
+
+**Replaced 41 redundant closures with method references across 26 files** (`clippy::redundant_closure_for_method_calls`):
+
+Patterns replaced:
+- `|x| x.method()` → `Type::method` (e.g., `|b| b.total_difficulty()` → `Block::total_difficulty`)
+- `|x| x.into()` → `Into::into`
+- `|x| x.as_ref()` → `AsRef::as_ref`
+- `|x| x.to_string()` → `ToString::to_string`
+- `|x| x.len()` → `Vec::len`
+- `|x| x.is_empty()` → `VariableList::is_empty`
+
+Also refactored 2 `let _ = result.map(|gauge| gauge.reset())` patterns to idiomatic `if let Ok(gauge) = result { gauge.reset(); }` in peer_manager metrics.
+
+Files: execution_layer (3), network (12), store (2), vibehouse_network (6), crypto/bls (4). CI: check/clippy/fmt green, pre-push lint-full passes. Committed `f14f89381`.
