@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 1930 (Mar 19) — clippy lint improvements: copied() and filter_map()
+
+Applied two clippy lint improvements across 36 files (66 substitutions): (1) `.cloned()` → `.copied()` for Copy types (62 instances) — `copied()` is more efficient and communicates that the type is Copy, (2) `.flat_map()` → `.filter_map()` for Option return types (5 instances) — `filter_map` is the idiomatic choice. All changes are mechanical and semantically identical. Lint clean, 4991/5000 tests pass (9 web3signer infrastructure-dependent failures, pre-existing). Spec v1.7.0-alpha.3 still latest — no new commits since #5005 (Mar 15). All open Gloas PRs unchanged.
+
 ### run 1929 (Mar 19) — spec audit, full EF test verification
 
 CI green. Clippy clean. Audited 4 post-alpha.3 spec PRs: #5001 (parent_block_root bid filter — already compliant), #5002 (wording — no code impact), #4940 (Gloas fork choice tests — all 9 pass including new on_execution_payload), #5005 (test-only fix). Full EF spec test verification: 139/139 (fake_crypto+minimal), 79/79 (real crypto+minimal), 9/9 fork choice tests. Checked open Gloas PRs: #4992 (cached PTCs, 1 approval from jtraglia, active discussion) is most likely next to merge — adds previous_ptc/current_ptc fields to BeaconState. Heze fork research: implements FOCIL (EIP-7805, fork-choice enforced inclusion lists). Project in maintenance mode.
