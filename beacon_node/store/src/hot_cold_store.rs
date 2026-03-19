@@ -749,15 +749,6 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         }
     }
 
-    /// Load the execution payload for a block from disk.
-    /// DANGEROUS: this method just guesses the fork.
-    pub fn get_execution_payload_dangerous_fork_agnostic(
-        &self,
-        block_root: &Hash256,
-    ) -> Result<Option<ExecutionPayload<E>>, Error> {
-        self.get_item(block_root)
-    }
-
     /// Check if the execution payload for a block exists on disk.
     pub fn execution_payload_exists(&self, block_root: &Hash256) -> Result<bool, Error> {
         self.get_item::<ExecutionPayload<E>>(block_root)
@@ -1334,10 +1325,6 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
 
     pub fn get_item<I: StoreItem>(&self, key: &Hash256) -> Result<Option<I>, Error> {
         self.hot_db.get(key)
-    }
-
-    pub fn item_exists<I: StoreItem>(&self, key: &Hash256) -> Result<bool, Error> {
-        self.hot_db.exists::<I>(key)
     }
 
     /// Convert a batch of `StoreOp` to a batch of `KeyValueStoreOp`.
@@ -2803,23 +2790,6 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     /// Store the database schema version.
     pub fn store_schema_version(&self, schema_version: SchemaVersion) -> Result<(), Error> {
         self.hot_db.put(&SCHEMA_VERSION_KEY, &schema_version)
-    }
-
-    /// Store the database schema version atomically with additional operations.
-    pub fn store_schema_version_atomically(
-        &self,
-        schema_version: SchemaVersion,
-        mut ops: Vec<KeyValueStoreOp>,
-    ) -> Result<(), Error> {
-        let key = SCHEMA_VERSION_KEY.as_slice();
-        let op = KeyValueStoreOp::PutKeyValue(
-            SchemaVersion::db_column(),
-            key.to_vec(),
-            schema_version.as_store_bytes(),
-        );
-        ops.push(op);
-
-        self.hot_db.do_atomically(ops)
     }
 
     /// Initialise the anchor info for checkpoint sync starting from `block`.
