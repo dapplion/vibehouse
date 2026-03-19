@@ -1923,3 +1923,19 @@ Also added `rust_out` (stray rustc binary) to `.gitignore`.
 Investigated but skipped: batch `validate_data_columns()` (iterator-based, would need clone+count pass), `ValidatorPubkeyCache::new()` (already uses `reserve()` in `import()`), `hot_cold_store.rs` ops Vec (small fixed size, marginal benefit). Full codebase safety audit confirmed: zero unsafe issues in production code, all TODOs tracked in #36 (blocked/deferred), no production panics.
 
 2/2 custody tests pass, 24/24 single_pass tests pass, 3/3 pubkey cache tests pass. Committed `4ce4375e0`.
+
+### Run 1939 (2026-03-19)
+
+**Replaced `.map(...).unwrap_or(false)` with `is_some_and`/`is_ok_and` across 7 files**: Systematic audit of `.map(|x| ...).unwrap_or(false)` patterns in non-test code. Replaced 8 instances with the idiomatic `is_some_and()`/`is_ok_and()` methods (stable since Rust 1.70):
+
+1. **`validator.rs`** (2 instances) — `has_eth1_withdrawal_credential` and `is_compounding_withdrawal_credential`: `.first().map(|byte| *byte == ...).unwrap_or(false)` → `.first().is_some_and(|byte| *byte == ...)`
+2. **`verify_bls_to_execution_change.rs`** — BLS withdrawal prefix check: same pattern
+3. **`process_operations.rs`** — withdrawal request source address check: `.map(|addr| addr == ...).unwrap_or(false)` → `.is_some_and(...)`
+4. **`chain.rs`** — optimistic batch detection: `.map(|epoch| epoch == batch_id).unwrap_or(false)` → `.is_some_and(...)`
+5. **`duties_service.rs`** — unknown validator poll slot check: same pattern
+6. **`beacon_block_streamer.rs`** — result success check: `.map(Option::is_some).unwrap_or(false)` → `.is_ok_and(Option::is_some)` (on a `Result`)
+7. **`overflow_lru_cache.rs`** — blob existence check: `.map(Option::is_some).unwrap_or(false)` → `.is_some_and(Option::is_some)` (on nested `Option`)
+
+Spec check: v1.7.0-alpha.3 still latest — no new consensus-specs merges since #5005 (Mar 15). Verified post-alpha.3 PRs (#5001 parent_block_root bid filtering, #5002 wording clarification, #4940 fork choice tests) — all already implemented or non-code-impacting. Open Gloas PRs unchanged (#4992 cached PTCs, #4960/#4932 tests, #4843 variable PTC deadline, #4840 EIP-7843, #4630 EIP-7688). Nightly tests passing. CI green.
+
+1085/1085 types tests pass, 1026/1026 state_processing tests pass, clippy clean. Committed `df0e8ead4`.
