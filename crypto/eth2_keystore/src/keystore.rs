@@ -114,7 +114,7 @@ impl<'a> KeystoreBuilder<'a> {
                 cipher: Cipher::Aes128Ctr(Aes128Ctr { iv }),
                 uuid: Uuid::new_v4(),
                 path,
-                description: "".to_string(),
+                description: String::new(),
             })
         }
     }

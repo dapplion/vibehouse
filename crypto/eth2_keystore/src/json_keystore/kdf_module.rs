@@ -25,7 +25,7 @@ pub struct EmptyString;
 
 impl From<EmptyString> for String {
     fn from(_from: EmptyString) -> String {
-        "".into()
+        String::new()
     }
 }
 

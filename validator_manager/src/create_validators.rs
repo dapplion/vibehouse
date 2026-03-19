@@ -377,7 +377,7 @@ impl ValidatorsAndDeposits {
         // it anywhere.
         let withdrawal_keystore_password = random_password_string();
         let mut wallet =
-            WalletBuilder::from_mnemonic(&mnemonic, wallet_password.as_ref(), "".to_string())
+            WalletBuilder::from_mnemonic(&mnemonic, wallet_password.as_ref(), String::new())
                 .map_err(|e| format!("Unable create seed from mnemonic: {:?}", e))?
                 .build()
                 .map_err(|e| format!("Unable to create wallet: {:?}", e))?;

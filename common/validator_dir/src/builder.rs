@@ -322,7 +322,7 @@ fn random_keystore() -> Result<(Keystore, PlainText), Error> {
         .into_bytes()
         .into();
 
-    let keystore = KeystoreBuilder::new(&keypair, password.as_bytes(), "".into())?.build()?;
+    let keystore = KeystoreBuilder::new(&keypair, password.as_bytes(), String::new())?.build()?;
 
     Ok((keystore, password))
 }

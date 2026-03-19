@@ -207,7 +207,7 @@ impl<E: EthSpec> Discovery<E> {
     ) -> Result<Self, String> {
         let enr_dir = match config.network_dir.to_str() {
             Some(path) => String::from(path),
-            None => String::from(""),
+            None => String::new(),
         };
 
         let local_enr = network_globals.local_enr.read().clone();

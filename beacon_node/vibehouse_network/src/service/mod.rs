@@ -391,7 +391,7 @@ impl<E: EthSpec> Network<E> {
             let local_public_key = local_keypair.public();
             let identify_config = if config.private {
                 identify::Config::new(
-                    "".into(),
+                    String::new(),
                     local_public_key, // Still send legitimate public key
                 )
                 .with_cache_size(0)

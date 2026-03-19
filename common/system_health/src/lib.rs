@@ -181,10 +181,10 @@ fn observe_system_health(
         disk_bytes_free,
         system_uptime,
         app_uptime,
-        system_name: sysinfo.name().unwrap_or_else(|| String::from("")),
-        kernel_version: sysinfo.kernel_version().unwrap_or_else(|| "".into()),
-        os_version: sysinfo.long_os_version().unwrap_or_else(|| "".into()),
-        host_name: sysinfo.host_name().unwrap_or_else(|| "".into()),
+        system_name: sysinfo.name().unwrap_or_default(),
+        kernel_version: sysinfo.kernel_version().unwrap_or_default(),
+        os_version: sysinfo.long_os_version().unwrap_or_default(),
+        host_name: sysinfo.host_name().unwrap_or_default(),
     }
 }
 

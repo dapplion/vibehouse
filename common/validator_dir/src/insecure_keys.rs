@@ -38,7 +38,7 @@ impl Builder<'_> {
 pub fn generate_deterministic_keystore(i: usize) -> Result<(Keystore, PlainText), String> {
     let keypair = generate_deterministic_keypair(i);
 
-    let keystore = KeystoreBuilder::new(&keypair, INSECURE_PASSWORD, "".into())
+    let keystore = KeystoreBuilder::new(&keypair, INSECURE_PASSWORD, String::new())
         .map_err(|e| format!("Unable to create keystore builder: {:?}", e))?
         .kdf(insecure_kdf())
         .build()
