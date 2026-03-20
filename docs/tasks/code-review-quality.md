@@ -2848,3 +2848,18 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - All 1085 types tests pass. Full workspace compiles. Full lint clean. Pushed.
 - **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since March 15.
 - **CI**: new commit pushed, awaiting CI.
+
+### Run 2013 (2026-03-20)
+
+**Wildcard import cleanup — state_processing complete.**
+
+- Replaced `use types::*;` with explicit imports across 12 files in `consensus/state_processing/src/`:
+  - `common/base.rs`, `common/altair.rs` — minimal (1-2 types each)
+  - `per_block_processing/errors.rs` — 8 types
+  - `per_block_processing/is_valid_indexed_attestation.rs`, `verify_proposer_slashing.rs`, `verify_bls_to_execution_change.rs`, `verify_attestation.rs`, `verify_attester_slashing.rs`, `verify_exit.rs` — 4-6 types in prod, 15-30 in test blocks
+  - `per_block_processing.rs`, `per_slot_processing.rs`, `genesis.rs` — already done in prior run
+- Test modules using `super::*` needed expanded test imports for types like `FixedBytesExtended`, `EthSpec`, `FixedVector`, `Hash256`, `Epoch`, `Slot`, etc.
+- Skipped `per_block_processing/tests.rs` (integration test, ~1148 lines, uses 100+ types) and `testing/ef_tests/src/type_name.rs` (130+ types) — wildcard justified.
+- **Remaining wildcards**: 12 files total (11 test files + 1 ef_tests type_name). All production code is now wildcard-free.
+- All 1026 state_processing tests pass. Full workspace compiles. Full lint clean. Pushed.
+- **Spec check**: v1.7.0-alpha.3 still latest. PR #5001 (parent_block_root in bid filter key) already implemented. No new spec changes needed.
