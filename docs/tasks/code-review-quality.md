@@ -3055,3 +3055,12 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
 
 No actionable code changes. All priorities 1-6 complete. Codebase stable.
+
+### Run 2032 (2026-03-21)
+
+**Security fix: rustls-webpki RUSTSEC-2026-0049.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (March 15). Open PRs: #5022 (payload attestation block check — already compliant), #5008 (field name doc fix — no code impact), #4979/#4992/#5020 (PTC lookbehind — none merged).
+- **Security audit**: `cargo audit` found fixable `rustls-webpki` 0.103.9 vulnerability (CRL distribution point matching logic). Updated to 0.103.10. Remaining: `rsa` (no fix available), 5 unmaintained warnings (not vulnerabilities).
+- **Tests**: 4992/4996 passed (4 web3signer timeouts — external service, unrelated). Full lint clean. CI green.
+- **Test coverage review**: Investigated envelope_processing.rs — has 56 unit tests covering all 11 validation checks (not 0 as initially estimated). Proto_array has 150+ Gloas-specific fork choice tests. Coverage is comprehensive.
