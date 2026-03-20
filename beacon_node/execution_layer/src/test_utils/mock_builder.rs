@@ -1065,7 +1065,7 @@ async fn blinded_blocks_dispatch<E: EthSpec>(
 ) -> axum::response::Response {
     let endpoint_version: EndpointVersion = match version_str.parse() {
         Ok(v) => v,
-        Err(_) => {
+        Err(()) => {
             return (
                 axum::http::StatusCode::BAD_REQUEST,
                 "Invalid EndpointVersion",

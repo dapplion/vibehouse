@@ -872,13 +872,7 @@ impl ChainSpec {
 
     // TODO(EIP-7892): remove this once we have fork-version changes on BPO forks (#36)
     pub fn max_blobs_per_block_within_fork(&self, fork_name: ForkName) -> u64 {
-        if !fork_name.fulu_enabled() {
-            if fork_name.electra_enabled() {
-                self.max_blobs_per_block_electra
-            } else {
-                self.max_blobs_per_block
-            }
-        } else {
+        if fork_name.fulu_enabled() {
             // Find the max blobs per block in the fork schedule
             // This logic will need to be more complex once there are forks beyond Fulu
             let mut max_blobs_per_block = self.max_blobs_per_block_electra;
@@ -888,6 +882,12 @@ impl ChainSpec {
                 }
             }
             max_blobs_per_block
+        } else {
+            if fork_name.electra_enabled() {
+                self.max_blobs_per_block_electra
+            } else {
+                self.max_blobs_per_block
+            }
         }
     }
 

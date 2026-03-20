@@ -505,7 +505,9 @@ where
         .as_ref()
         .ok_or(BlockProductionError::ExecutionLayerMissing)?;
 
-    let parent_hash = if !is_merge_transition_complete {
+    let parent_hash = if is_merge_transition_complete {
+        latest_execution_payload_header_block_hash
+    } else {
         let is_terminal_block_hash_set = spec.terminal_block_hash != ExecutionBlockHash::zero();
         let is_activation_epoch_reached =
             current_epoch >= spec.terminal_block_hash_activation_epoch;
@@ -538,8 +540,6 @@ where
                 },
             ));
         }
-    } else {
-        latest_execution_payload_header_block_hash
     };
 
     // Try to obtain the fork choice update parameters from the cached head.

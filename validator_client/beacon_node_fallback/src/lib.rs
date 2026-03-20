@@ -704,10 +704,10 @@ impl<T: SlotClock> BeaconNodeFallback<T> {
             .filter_map(std::result::Result::err)
             .collect();
 
-        if !errors.is_empty() {
-            Err(Errors(errors))
-        } else {
+        if errors.is_empty() {
             Ok(())
+        } else {
+            Err(Errors(errors))
         }
     }
 

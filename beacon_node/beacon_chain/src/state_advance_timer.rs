@@ -158,7 +158,12 @@ async fn state_advance_timer<T: BeaconChainTypes>(
         };
 
         // Only spawn the state advance task if the lock was previously free.
-        if !is_running.lock() {
+        if is_running.lock() {
+            warn!(
+                msg = "system resources may be overloaded",
+                "State advance routine overloaded"
+            );
+        } else {
             let beacon_chain = beacon_chain.clone();
             let is_running = is_running.clone();
 
@@ -184,11 +189,6 @@ async fn state_advance_timer<T: BeaconChainTypes>(
                     is_running.unlock();
                 },
                 "state_advance_blocking",
-            );
-        } else {
-            warn!(
-                msg = "system resources may be overloaded",
-                "State advance routine overloaded"
             );
         }
 

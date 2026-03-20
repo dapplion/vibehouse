@@ -819,10 +819,10 @@ impl<'a, T: BeaconChainTypes> VerifiedAggregatedAttestation<'a, T> {
                     &indexed_attestation,
                 )
                 .and_then(|is_valid| {
-                    if !is_valid {
-                        Err(Error::InvalidSignature)
-                    } else {
+                    if is_valid {
                         Ok(())
+                    } else {
+                        Err(Error::InvalidSignature)
                     }
                 }) {
                     return Err(SignatureInvalid(e));

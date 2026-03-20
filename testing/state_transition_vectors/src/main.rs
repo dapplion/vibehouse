@@ -127,7 +127,6 @@ fn write_to_file(path: &Path, item: &[u8]) -> Result<(), String> {
         .map_err(|e| format!("Unable to create {path:?}: {e:?}"))
         .and_then(|mut file| {
             file.write_all(item)
-                .map(|_| ())
                 .map_err(|e| format!("Unable to write to {path:?}: {e:?}"))
         })
 }

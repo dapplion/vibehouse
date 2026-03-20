@@ -525,7 +525,7 @@ impl Future for SignalFuture {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match self.signal.poll_recv(cx) {
             Poll::Pending => Poll::Pending,
-            Poll::Ready(Some(_)) => Poll::Ready(Some(ShutdownReason::Success(self.message))),
+            Poll::Ready(Some(())) => Poll::Ready(Some(ShutdownReason::Success(self.message))),
             Poll::Ready(None) => Poll::Ready(None),
         }
     }

@@ -79,15 +79,15 @@ impl SensitiveUrl {
         let mut redacted = full.clone();
         redacted
             .path_segments_mut()
-            .map_err(|_| SensitiveError::InvalidUrl("URL cannot be a base.".to_string()))?
+            .map_err(|()| SensitiveError::InvalidUrl("URL cannot be a base.".to_string()))?
             .clear();
         redacted.set_query(None);
 
         if redacted.has_authority() {
-            redacted.set_username("").map_err(|_| {
+            redacted.set_username("").map_err(|()| {
                 SensitiveError::RedactError("Unable to redact username.".to_string())
             })?;
-            redacted.set_password(None).map_err(|_| {
+            redacted.set_password(None).map_err(|()| {
                 SensitiveError::RedactError("Unable to redact password.".to_string())
             })?;
         }

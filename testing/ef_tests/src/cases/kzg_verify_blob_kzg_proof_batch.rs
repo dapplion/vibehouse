@@ -62,7 +62,7 @@ impl<E: EthSpec> Case for KZGVerifyBlobKZGProofBatch<E> {
                     blobs.iter().collect(),
                     &proofs,
                 ) {
-                    Ok(_) => Ok(true),
+                    Ok(()) => Ok(true),
                     Err(KzgError::KzgVerificationFailed) => Ok(false),
                     Err(e) => Err(Error::InternalError(format!(
                         "Failed to validate blobs: {e:?}"

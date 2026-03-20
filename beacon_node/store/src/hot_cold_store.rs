@@ -2789,10 +2789,10 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     ) -> Result<KeyValueStoreOp, Error> {
         // Set the `state_upper_limit` to the slot of the *next* checkpoint.
         let next_snapshot_slot = self.hierarchy.next_snapshot_slot(anchor_slot)?;
-        let state_upper_limit = if !retain_historic_states {
-            STATE_UPPER_LIMIT_NO_RETAIN
-        } else {
+        let state_upper_limit = if retain_historic_states {
             next_snapshot_slot
+        } else {
+            STATE_UPPER_LIMIT_NO_RETAIN
         };
         let anchor_info = AnchorInfo {
             anchor_slot,

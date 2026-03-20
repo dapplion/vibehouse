@@ -63,14 +63,14 @@ impl SyncDuty {
         pubkey: PublicKeyBytes,
         validator_sync_committee_indices: Vec<u64>,
     ) -> Option<Self> {
-        if !validator_sync_committee_indices.is_empty() {
+        if validator_sync_committee_indices.is_empty() {
+            None
+        } else {
             Some(SyncDuty {
                 pubkey,
                 validator_index,
                 validator_sync_committee_indices,
             })
-        } else {
-            None
         }
     }
 

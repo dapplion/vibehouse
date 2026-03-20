@@ -55,7 +55,7 @@ impl<E: EthSpec> Case for KZGVerifyCellKZGProofBatch<E> {
                     .collect::<Vec<_>>();
                 let kzg = get_kzg();
                 match kzg.verify_cell_proof_batch(&cells, &proofs, cell_indices, &commitments) {
-                    Ok(_) => Ok(true),
+                    Ok(()) => Ok(true),
                     Err((_, KzgError::KzgVerificationFailed)) => Ok(false),
                     Err(e) => Err(Error::InternalError(format!(
                         "Failed to validate cells: {e:?}"

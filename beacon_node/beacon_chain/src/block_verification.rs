@@ -1254,7 +1254,7 @@ impl<T: BeaconChainTypes> SignatureVerifiedBlock<T> {
 
         let result = info_span!("signature_verify").in_scope(|| signature_verifier.verify());
         match result {
-            Ok(_) => {
+            Ok(()) => {
                 // GLOAS blocks are always "data available" from the block's perspective
                 // (the execution payload arrives separately via the payload envelope).
                 let maybe_available = if block.fork_name_unchecked().gloas_enabled() {

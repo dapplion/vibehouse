@@ -357,7 +357,7 @@ impl<S: SlotClock> Stream for ReprocessQueue<S> {
 
         if let Some(next_backfill_batch_event) = self.next_backfill_batch_event.as_mut() {
             match next_backfill_batch_event.as_mut().poll(cx) {
-                Poll::Ready(_) => {
+                Poll::Ready(()) => {
                     let maybe_batch = self.queued_backfill_batches.pop();
                     self.recompute_next_backfill_batch_event();
 
@@ -974,12 +974,12 @@ impl<S: SlotClock> ReprocessQueue<S> {
 
     fn recompute_next_backfill_batch_event(&mut self) {
         // only recompute the `next_backfill_batch_event` if there are backfill batches in the queue
-        if !self.queued_backfill_batches.is_empty() {
+        if self.queued_backfill_batches.is_empty() {
+            self.next_backfill_batch_event = None;
+        } else {
             self.next_backfill_batch_event = Some(Box::pin(tokio::time::sleep(
                 ReprocessQueue::<S>::duration_until_next_backfill_batch_event(&self.slot_clock),
             )));
-        } else {
-            self.next_backfill_batch_event = None;
         }
     }
 

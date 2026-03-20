@@ -682,10 +682,10 @@ impl<T: SlotClock + 'static, E: EthSpec> ValidatorStore for VibehouseValidatorSt
                     return Some(u64::MAX);
                 }
                 self.builder_boost_factor.or({
-                    if !self.builder_proposals {
-                        Some(0)
-                    } else {
+                    if self.builder_proposals {
                         None
+                    } else {
+                        Some(0)
                     }
                 })
             })

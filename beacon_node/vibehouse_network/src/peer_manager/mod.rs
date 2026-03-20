@@ -742,7 +742,7 @@ impl<E: EthSpec> PeerManager<E> {
                 // we have no meta-data for this peer, update
                 let cgc = meta_data
                     .custody_group_count()
-                    .map_or_else(|_| "unknown".to_string(), |&count| count.to_string());
+                    .map_or_else(|()| "unknown".to_string(), |&count| count.to_string());
                 debug!(
                     %peer_id,
                     new_seq_no = meta_data.seq_number(),

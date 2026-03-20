@@ -133,7 +133,7 @@ impl MerkleTree {
                     // Try inserting on the left node -> if it fails because it is full, insert in right side.
                     (Node(_, _, _), Zero(_)) => {
                         match left.push_leaf(elem, depth - 1) {
-                            Ok(_) => (),
+                            Ok(()) => (),
                             // Left node is full, insert in right node
                             Err(MerkleTreeError::MerkleTreeFull) => {
                                 *right = MerkleTree::create(&[elem], depth - 1);

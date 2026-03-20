@@ -410,7 +410,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
         let received = blocks.len();
 
         match batch.download_completed(blocks, peer_group) {
-            Ok(_) => {
+            Ok(()) => {
                 let awaiting_batches =
                     self.processing_target.saturating_sub(batch_id) / BACKFILL_EPOCHS_PER_BATCH;
                 debug!(
@@ -480,7 +480,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
                 .fail_sync(BackFillError::InvalidSyncState(format!(
                     "Trying to process a batch that does not exist: {batch_id}"
                 )))
-                .map(|_| ProcessResult::Successful);
+                .map(|()| ProcessResult::Successful);
         };
 
         // NOTE: We send empty batches to the processor in order to trigger the block processor
@@ -491,7 +491,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
             Err(e) => {
                 return self
                     .fail_sync(BackFillError::BatchInvalidState(batch_id, e.0))
-                    .map(|_| ProcessResult::Successful);
+                    .map(|()| ProcessResult::Successful);
             }
             Ok(v) => v,
         };
@@ -557,7 +557,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
                             .fail_sync(BackFillError::InvalidSyncState(format!(
                                 "Current processing batch not found: {batch_id}"
                             )))
-                            .map(|_| ProcessResult::Successful);
+                            .map(|()| ProcessResult::Successful);
                     }
                 }
             }
@@ -623,7 +623,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
                     Err(e) => {
                         // Batch was in the wrong state
                         self.fail_sync(BackFillError::BatchInvalidState(batch_id, e.0))
-                            .map(|_| ProcessResult::Successful)
+                            .map(|()| ProcessResult::Successful)
                     }
                     Ok(BatchOperationOutcome::Failed { blacklist: _ }) => {
                         // check that we have not exceeded the re-process retry counter
@@ -643,7 +643,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
                             network.report_peer(peer, *penalty, "backfill_batch_failed");
                         }
                         self.fail_sync(BackFillError::BatchProcessingFailed(batch_id))
-                            .map(|_| ProcessResult::Successful)
+                            .map(|()| ProcessResult::Successful)
                     }
 
                     Ok(BatchOperationOutcome::Continue) => {
@@ -656,7 +656,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
                         }
                         // Handle this invalid batch, that is within the re-process retries limit.
                         self.handle_invalid_batch(network, batch_id)
-                            .map(|_| ProcessResult::Successful)
+                            .map(|()| ProcessResult::Successful)
                     }
                 }
             }
@@ -764,23 +764,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
                                 .peer_group
                                 .all()
                                 .any(|p| processed_attempt.peer_group.all().any(|q| p == q));
-                            if !shared_peers {
-                                // Different peers sent the correct batch, the previous peers did not
-                                // We negatively score the original peers.
-                                let action = PeerAction::LowToleranceError;
-                                debug!(
-                                    batch_epoch = ?id,
-                                    score_adjustment = %action,
-                                    "Re-processed batch validated. Scoring original peers"
-                                );
-                                for peer in attempt.peer_group.all() {
-                                    network.report_peer(
-                                        *peer,
-                                        action,
-                                        "backfill_reprocessed_original_peer",
-                                    );
-                                }
-                            } else {
+                            if shared_peers {
                                 // The same peer(s) corrected the previous mistake. There was an error, so we
                                 // negative score the original peers.
                                 let action = PeerAction::MidToleranceError;
@@ -794,6 +778,22 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
                                         *peer,
                                         action,
                                         "backfill_reprocessed_same_peer",
+                                    );
+                                }
+                            } else {
+                                // Different peers sent the correct batch, the previous peers did not
+                                // We negatively score the original peers.
+                                let action = PeerAction::LowToleranceError;
+                                debug!(
+                                    batch_epoch = ?id,
+                                    score_adjustment = %action,
+                                    "Re-processed batch validated. Scoring original peers"
+                                );
+                                for peer in attempt.peer_group.all() {
+                                    network.report_peer(
+                                        *peer,
+                                        action,
+                                        "backfill_reprocessed_original_peer",
                                     );
                                 }
                             }
@@ -985,7 +985,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
                 req,
                 &failed_columns,
             ) {
-                Ok(_) => {
+                Ok(()) => {
                     debug!(
                         ?batch_id,
                         id, "Retried column requests from different peers"

@@ -122,7 +122,7 @@ impl<E: EthSpec> Case for KZGVerifyBlobKZGProof<E> {
         let kzg = get_kzg();
         let result = parse_input(&self.input).and_then(|(blob, commitment, proof)| {
             match validate_blob::<E>(&kzg, &blob, commitment, proof) {
-                Ok(_) => Ok(true),
+                Ok(()) => Ok(true),
                 Err(KzgError::KzgVerificationFailed) => Ok(false),
                 Err(e) => Err(Error::InternalError(format!(
                     "Failed to validate blob: {e:?}"

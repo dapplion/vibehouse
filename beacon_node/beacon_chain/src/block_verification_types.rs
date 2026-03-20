@@ -164,10 +164,10 @@ impl<E: EthSpec> RpcBlock<E> {
             return Err(AvailabilityCheckError::MissingCustodyColumns);
         }
         // Treat empty data column lists as if they are missing.
-        let inner = if !custody_columns.is_empty() {
-            RpcBlockInner::BlockAndCustodyColumns(block, VariableList::new(custody_columns)?)
-        } else {
+        let inner = if custody_columns.is_empty() {
             RpcBlockInner::Block(block)
+        } else {
+            RpcBlockInner::BlockAndCustodyColumns(block, VariableList::new(custody_columns)?)
         };
         Ok(Self {
             block_root,

@@ -1054,10 +1054,10 @@ async fn poll_beacon_attesters_for_epoch<S: ValidatorStore + 'static, T: SlotClo
     // request for extra data unless necessary in order to save on network bandwidth.
     let uninitialized_validators =
         get_uninitialized_validators(duties_service, &epoch, local_pubkeys);
-    let initial_indices_to_request = if !uninitialized_validators.is_empty() {
-        uninitialized_validators.as_slice()
-    } else {
+    let initial_indices_to_request = if uninitialized_validators.is_empty() {
         &local_indices[0..min(INITIAL_DUTIES_QUERY_SIZE, local_indices.len())]
+    } else {
+        uninitialized_validators.as_slice()
     };
 
     let response =
@@ -1100,12 +1100,12 @@ async fn poll_beacon_attesters_for_epoch<S: ValidatorStore + 'static, T: SlotClo
         .into_iter()
         .filter(|duty| validators_to_update.contains(&&duty.pubkey));
 
-    let mut new_duties = if !indices_to_request.is_empty() {
+    let mut new_duties = if indices_to_request.is_empty() {
+        vec![]
+    } else {
         post_validator_duties_attester(duties_service, epoch, indices_to_request.as_slice())
             .await?
             .data
-    } else {
-        vec![]
     };
     new_duties.extend(new_initial_duties);
 

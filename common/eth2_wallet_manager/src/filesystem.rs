@@ -24,15 +24,15 @@ pub enum Error {
 pub fn read<P: AsRef<Path>>(wallet_dir: P, uuid: &Uuid) -> Result<Wallet, Error> {
     let json_path = wallet_json_path(wallet_dir, uuid);
 
-    if !json_path.exists() {
-        Err(Error::WalletDoesNotExist(json_path))
-    } else {
+    if json_path.exists() {
         File::options()
             .read(true)
             .create(false)
             .open(json_path)
             .map_err(Error::UnableToReadWallet)
             .and_then(|f| Wallet::from_json_reader(f).map_err(Error::JsonRead))
+    } else {
+        Err(Error::WalletDoesNotExist(json_path))
     }
 }
 

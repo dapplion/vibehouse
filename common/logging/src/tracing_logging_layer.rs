@@ -68,10 +68,10 @@ where
     fn on_event(&self, event: &tracing::Event<'_>, ctx: Context<S>) {
         let meta = event.metadata();
         let log_level = meta.level();
-        let timestamp = if !self.disable_log_timestamp {
-            Local::now().format("%b %d %H:%M:%S%.3f").to_string()
-        } else {
+        let timestamp = if self.disable_log_timestamp {
             String::new()
+        } else {
+            Local::now().format("%b %d %H:%M:%S%.3f").to_string()
         };
 
         let mut writer = self.non_blocking_writer.clone();
@@ -357,16 +357,16 @@ fn build_log_text(
         .collect::<Vec<_>>()
         .join(", ");
 
-    let full_message = if !formatted_fields.is_empty() {
-        format!("{padded_message}  {formatted_fields}")
-    } else {
+    let full_message = if formatted_fields.is_empty() {
         padded_message
+    } else {
+        format!("{padded_message}  {formatted_fields}")
     };
 
-    let message = if !location.is_empty() {
-        format!("{timestamp} {level_str} {location} {full_message}\n")
-    } else {
+    let message = if location.is_empty() {
         format!("{timestamp} {level_str} {full_message}\n")
+    } else {
+        format!("{timestamp} {level_str} {location} {full_message}\n")
     };
 
     if let Err(e) = writer.write_all(message.as_bytes()) {

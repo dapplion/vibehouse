@@ -393,7 +393,7 @@ impl<E: EthSpec, T: EpochTransition<E>> Case for EpochProcessing<E, T> {
             post_state.build_all_committee_caches(spec).unwrap();
         }
 
-        let mut result = T::run(&mut state, spec).map(|_| state);
+        let mut result = T::run(&mut state, spec).map(|()| state);
 
         compare_beacon_state_results_without_caches(&mut result, &mut expected)
     }

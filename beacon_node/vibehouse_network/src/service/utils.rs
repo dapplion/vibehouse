@@ -159,7 +159,7 @@ pub fn load_private_key(config: &NetworkConfig) -> Keypair {
     let _ = std::fs::create_dir_all(&config.network_dir);
     let hex_key = hex::encode(local_private_key.secret().to_bytes());
     match File::create(network_key_f.clone()).and_then(|mut f| f.write_all(hex_key.as_bytes())) {
-        Ok(_) => {
+        Ok(()) => {
             debug!("New network key generated and written to disk");
         }
         Err(e) => {
@@ -310,7 +310,7 @@ pub(crate) fn save_metadata_to_disk<E: EthSpec>(dir: &Path, metadata: MetaData<E
     // This is to prevent ugly branching logic when reading the metadata from disk.
     let metadata_bytes = metadata.metadata_v2().as_ssz_bytes();
     match File::create(dir.join(METADATA_FILENAME)).and_then(|mut f| f.write_all(&metadata_bytes)) {
-        Ok(_) => {
+        Ok(()) => {
             debug!("Metadata written to disk");
         }
         Err(e) => {

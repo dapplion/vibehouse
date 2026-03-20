@@ -601,28 +601,28 @@ fn handle_rpc_request<E: EthSpec>(
         // MetaData requests return early from InboundUpgrade and do not reach the decoder.
         // Handle this case just for completeness.
         SupportedProtocol::MetaDataV3 => {
-            if !decoded_buffer.is_empty() {
+            if decoded_buffer.is_empty() {
+                Ok(Some(RequestType::MetaData(MetadataRequest::new_v3())))
+            } else {
                 Err(RPCError::InternalError(
                     "Metadata requests shouldn't reach decoder",
                 ))
-            } else {
-                Ok(Some(RequestType::MetaData(MetadataRequest::new_v3())))
             }
         }
         SupportedProtocol::MetaDataV2 => {
-            if !decoded_buffer.is_empty() {
+            if decoded_buffer.is_empty() {
+                Ok(Some(RequestType::MetaData(MetadataRequest::new_v2())))
+            } else {
                 Err(RPCError::InternalError(
                     "Metadata requests shouldn't reach decoder",
                 ))
-            } else {
-                Ok(Some(RequestType::MetaData(MetadataRequest::new_v2())))
             }
         }
         SupportedProtocol::MetaDataV1 => {
-            if !decoded_buffer.is_empty() {
-                Err(RPCError::InvalidData("Metadata request".to_string()))
-            } else {
+            if decoded_buffer.is_empty() {
                 Ok(Some(RequestType::MetaData(MetadataRequest::new_v1())))
+            } else {
+                Err(RPCError::InvalidData("Metadata request".to_string()))
             }
         }
     }

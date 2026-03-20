@@ -247,7 +247,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> SyncCommitteeService<S
                         aggregators,
                         aggregate_production_instant,
                     )
-                    .map(|_| ())
+                    .map(|()| ())
                     .await;
             },
             "sync_committee_aggregate_publish",

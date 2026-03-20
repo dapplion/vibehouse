@@ -192,7 +192,7 @@ impl<E: EthSpec> LightClientHeaderCapella<E> {
             block
                 .message()
                 .body_capella()
-                .map_err(|_| Error::BeaconBlockBodyError)?
+                .map_err(|()| Error::BeaconBlockBodyError)?
                 .to_owned(),
         );
 
@@ -234,7 +234,7 @@ impl<E: EthSpec> LightClientHeaderDeneb<E> {
             block
                 .message()
                 .body_deneb()
-                .map_err(|_| Error::BeaconBlockBodyError)?
+                .map_err(|()| Error::BeaconBlockBodyError)?
                 .to_owned(),
         );
 
@@ -276,7 +276,7 @@ impl<E: EthSpec> LightClientHeaderElectra<E> {
             block
                 .message()
                 .body_electra()
-                .map_err(|_| Error::BeaconBlockBodyError)?
+                .map_err(|()| Error::BeaconBlockBodyError)?
                 .to_owned(),
         );
 
@@ -318,7 +318,7 @@ impl<E: EthSpec> LightClientHeaderFulu<E> {
             block
                 .message()
                 .body_fulu()
-                .map_err(|_| Error::BeaconBlockBodyError)?
+                .map_err(|()| Error::BeaconBlockBodyError)?
                 .to_owned(),
         );
 
@@ -360,7 +360,7 @@ impl<E: EthSpec> LightClientHeaderGloas<E> {
             block
                 .message()
                 .body_gloas()
-                .map_err(|_| Error::BeaconBlockBodyError)?
+                .map_err(|()| Error::BeaconBlockBodyError)?
                 .to_owned(),
         );
 

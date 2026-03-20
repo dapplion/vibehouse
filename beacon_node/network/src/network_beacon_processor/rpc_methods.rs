@@ -1429,7 +1429,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         into_response: F,
     ) {
         match result {
-            Ok(_) => self.send_network_message(NetworkMessage::SendResponse {
+            Ok(()) => self.send_network_message(NetworkMessage::SendResponse {
                 peer_id,
                 inbound_request_id,
                 response: into_response(None),

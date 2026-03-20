@@ -229,7 +229,7 @@ pub fn read_new_wallet_password_from_cli(
 
             // Ensure the password meets the minimum requirements.
             match is_password_sufficiently_complex(password.as_bytes()) {
-                Ok(_) => {
+                Ok(()) => {
                     eprintln!("{RETYPE_PASSWORD_PROMPT}");
                     let retyped_password =
                         PlainText::from(read_password_from_user(stdin_inputs)?.as_bytes().to_vec());

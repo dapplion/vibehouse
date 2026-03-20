@@ -95,7 +95,7 @@ fn check_not_ssz(headers: &HeaderMap) -> Result<(), ApiError> {
 pub fn parse_endpoint_version(version_str: &str) -> Result<api_types::EndpointVersion, ApiError> {
     version_str
         .parse::<api_types::EndpointVersion>()
-        .map_err(|_| ApiError::bad_request("Invalid version identifier"))
+        .map_err(|()| ApiError::bad_request("Invalid version identifier"))
 }
 
 #[cfg(test)]

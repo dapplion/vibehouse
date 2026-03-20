@@ -482,14 +482,14 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
                 .fail_sync(CustodyBackfillError::InvalidSyncState(format!(
                     "Trying to process a batch that does not exist: {batch_id}"
                 )))
-                .map(|_| ProcessResult::Successful);
+                .map(|()| ProcessResult::Successful);
         };
 
         let (data_columns, _) = match batch.start_processing() {
             Err(e) => {
                 return self
                     .fail_sync(CustodyBackfillError::BatchInvalidState(batch_id, e.0))
-                    .map(|_| ProcessResult::Successful);
+                    .map(|()| ProcessResult::Successful);
             }
             Ok(v) => v,
         };
@@ -568,7 +568,7 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
                 let received = data_columns.len();
 
                 match batch.download_completed(data_columns, PeerGroup::from_single(*peer_id)) {
-                    Ok(_) => {
+                    Ok(()) => {
                         let awaiting_batches = self.processing_target.saturating_sub(batch_id)
                             / CUSTODY_BACKFILL_EPOCHS_PER_BATCH;
                         debug!(
@@ -674,7 +674,7 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
                             .fail_sync(CustodyBackfillError::InvalidSyncState(format!(
                                 "Current processing batch not found: {batch_id}"
                             )))
-                            .map(|_| ProcessResult::Successful);
+                            .map(|()| ProcessResult::Successful);
                     }
                 }
             }
@@ -754,7 +754,7 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
                         Err(e) => {
                             // Batch was in the wrong state
                             self.fail_sync(CustodyBackfillError::BatchInvalidState(batch_id, e.0))
-                                .map(|_| ProcessResult::Successful)
+                                .map(|()| ProcessResult::Successful)
                         }
                         Ok(BatchOperationOutcome::Failed { blacklist: _ }) => {
                             warn!(
@@ -763,14 +763,14 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
                                 "Custody backfill batch failed to download. Penalizing peers"
                             );
                             self.fail_sync(CustodyBackfillError::BatchProcessingFailed(batch_id))
-                                .map(|_| ProcessResult::Successful)
+                                .map(|()| ProcessResult::Successful)
                         }
 
                         Ok(BatchOperationOutcome::Continue) => {
                             self.advance_custody_backfill_sync(batch_id);
                             // Handle this invalid batch, that is within the re-process retries limit.
                             self.handle_invalid_batch(network, batch_id)
-                                .map(|_| ProcessResult::Successful)
+                                .map(|()| ProcessResult::Successful)
                         }
                     }
                 } else {

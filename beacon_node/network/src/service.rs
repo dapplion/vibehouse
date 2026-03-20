@@ -446,16 +446,16 @@ impl<T: BeaconChainTypes> NetworkService<T> {
 
                     event = self.libp2p.next_event() => self.on_libp2p_event(event, &mut shutdown_sender).await,
 
-                    Some(_) = &mut self.next_digest_update => self.update_next_fork_digest(),
+                    Some(()) = &mut self.next_digest_update => self.update_next_fork_digest(),
 
-                    Some(_) = &mut self.next_unsubscribe => {
+                    Some(()) = &mut self.next_unsubscribe => {
                         let new_enr_fork_id = self.beacon_chain.enr_fork_id();
                         self.libp2p.unsubscribe_from_fork_topics_except(new_enr_fork_id.fork_digest);
                         info!("Unsubscribed from old fork topics");
                         self.next_unsubscribe = Box::pin(None.into());
                     }
 
-                    Some(_) = &mut self.next_topic_subscriptions => {
+                    Some(()) = &mut self.next_topic_subscriptions => {
                         if let Some((epoch, _)) = self.beacon_chain.duration_to_next_digest() {
                             let fork_name = self.beacon_chain.spec.fork_name_at_epoch(epoch);
                             let fork_digest = self.beacon_chain.compute_fork_digest(epoch);

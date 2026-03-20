@@ -235,13 +235,13 @@ impl Engine {
         let (state, cache_action) = match self.api.upcheck().await {
             Ok(()) => {
                 let mut state = self.state.write().await;
-                if **state != EngineStateInternal::Synced {
+                if **state == EngineStateInternal::Synced {
+                    debug!("Execution engine online");
+                } else {
                     info!("Execution engine online");
 
                     // Send the node our latest forkchoice_state.
                     self.send_latest_forkchoice_state().await;
-                } else {
-                    debug!("Execution engine online");
                 }
                 state.update(EngineStateInternal::Synced);
                 (**state, ResponseCacheAction::Update)

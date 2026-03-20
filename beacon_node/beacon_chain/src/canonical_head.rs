@@ -720,7 +720,40 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         drop(fork_choice_read_lock);
 
         // If the head has changed, update `self.canonical_head`.
-        let new_cached_head = if new_view.head_block_root != old_view.head_block_root {
+        let new_cached_head = if new_view.head_block_root == old_view.head_block_root {
+            // See above: Gloas blocks have Irrelevant execution status, so head_hash
+            // from fork choice is None until the envelope arrives. Use state.latest_block_hash.
+            let head_hash = new_forkchoice_update_parameters.head_hash.or_else(|| {
+                old_cached_head
+                    .snapshot
+                    .beacon_state
+                    .latest_block_hash()
+                    .ok()
+                    .filter(|h| **h != ExecutionBlockHash::zero())
+                    .copied()
+            });
+
+            let new_cached_head = CachedHead {
+                // The head hasn't changed, take a relatively cheap `Arc`-clone of the existing
+                // head.
+                snapshot: old_cached_head.snapshot.clone(),
+                justified_checkpoint: new_view.justified_checkpoint,
+                finalized_checkpoint: new_view.finalized_checkpoint,
+                head_hash,
+                justified_hash: new_forkchoice_update_parameters.justified_hash,
+                finalized_hash: new_forkchoice_update_parameters.finalized_hash,
+            };
+
+            let mut cached_head_write_lock = self.canonical_head.cached_head_write_lock();
+
+            // Enshrine the new head as the canonical cached head. Whilst the head block hasn't
+            // changed, the FFG checkpoints must have changed.
+            *cached_head_write_lock = new_cached_head;
+
+            // Take a clone of the cached head for later use. It is cloned whilst
+            // holding the write-lock to ensure we get exactly the head we just enshrined.
+            cached_head_write_lock.clone()
+        } else {
             metrics::inc_counter(&metrics::FORK_CHOICE_CHANGED_HEAD);
 
             let mut new_snapshot = {
@@ -786,39 +819,6 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             self.early_attester_cache.clear();
 
             new_head
-        } else {
-            // See above: Gloas blocks have Irrelevant execution status, so head_hash
-            // from fork choice is None until the envelope arrives. Use state.latest_block_hash.
-            let head_hash = new_forkchoice_update_parameters.head_hash.or_else(|| {
-                old_cached_head
-                    .snapshot
-                    .beacon_state
-                    .latest_block_hash()
-                    .ok()
-                    .filter(|h| **h != ExecutionBlockHash::zero())
-                    .copied()
-            });
-
-            let new_cached_head = CachedHead {
-                // The head hasn't changed, take a relatively cheap `Arc`-clone of the existing
-                // head.
-                snapshot: old_cached_head.snapshot.clone(),
-                justified_checkpoint: new_view.justified_checkpoint,
-                finalized_checkpoint: new_view.finalized_checkpoint,
-                head_hash,
-                justified_hash: new_forkchoice_update_parameters.justified_hash,
-                finalized_hash: new_forkchoice_update_parameters.finalized_hash,
-            };
-
-            let mut cached_head_write_lock = self.canonical_head.cached_head_write_lock();
-
-            // Enshrine the new head as the canonical cached head. Whilst the head block hasn't
-            // changed, the FFG checkpoints must have changed.
-            *cached_head_write_lock = new_cached_head;
-
-            // Take a clone of the cached head for later use. It is cloned whilst
-            // holding the write-lock to ensure we get exactly the head we just enshrined.
-            cached_head_write_lock.clone()
         };
 
         // Alias for readability.

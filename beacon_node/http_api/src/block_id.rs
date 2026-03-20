@@ -316,15 +316,15 @@ impl BlockId {
 
         // Return the `BlobSidecarList` identified by `self`.
         let max_blobs_per_block = chain.spec.max_blobs_per_block(block.epoch()) as usize;
-        let blob_sidecar_list = if !blob_kzg_commitments.is_empty() {
+        let blob_sidecar_list = if blob_kzg_commitments.is_empty() {
+            BlobSidecarList::new(vec![], max_blobs_per_block)
+                .map_err(|e| ApiError::server_error(format!("{e:?}")))?
+        } else {
             if chain.spec.is_peer_das_enabled_for_epoch(block.epoch()) {
                 Self::get_blobs_from_data_columns(chain, root, query.indices, &block)?
             } else {
                 Self::get_blobs(chain, root, query.indices, max_blobs_per_block)?
             }
-        } else {
-            BlobSidecarList::new(vec![], max_blobs_per_block)
-                .map_err(|e| ApiError::server_error(format!("{e:?}")))?
         };
 
         Ok((block, blob_sidecar_list, execution_optimistic, finalized))
@@ -362,15 +362,15 @@ impl BlockId {
         });
 
         let max_blobs_per_block = chain.spec.max_blobs_per_block(block.epoch()) as usize;
-        let blob_sidecar_list = if !blob_kzg_commitments.is_empty() {
+        let blob_sidecar_list = if blob_kzg_commitments.is_empty() {
+            BlobSidecarList::new(vec![], max_blobs_per_block)
+                .map_err(|e| ApiError::server_error(format!("{e:?}")))?
+        } else {
             if chain.spec.is_peer_das_enabled_for_epoch(block.epoch()) {
                 Self::get_blobs_from_data_columns(chain, root, blob_indices_opt, &block)?
             } else {
                 Self::get_blobs(chain, root, blob_indices_opt, max_blobs_per_block)?
             }
-        } else {
-            BlobSidecarList::new(vec![], max_blobs_per_block)
-                .map_err(|e| ApiError::server_error(format!("{e:?}")))?
         };
 
         let blobs = blob_sidecar_list

@@ -134,14 +134,14 @@ impl Kzg {
         kzg_commitment: KzgCommitment,
         kzg_proof: KzgProof,
     ) -> Result<(), Error> {
-        if !self.trusted_setup.verify_blob_kzg_proof(
+        if self.trusted_setup.verify_blob_kzg_proof(
             blob,
             &kzg_commitment.into(),
             &kzg_proof.into(),
         )? {
-            Err(Error::KzgVerificationFailed)
-        } else {
             Ok(())
+        } else {
+            Err(Error::KzgVerificationFailed)
         }
     }
 
@@ -165,14 +165,14 @@ impl Kzg {
             .map(|proof| Bytes48::from(*proof))
             .collect::<Vec<_>>();
 
-        if !self.trusted_setup.verify_blob_kzg_proof_batch(
+        if self.trusted_setup.verify_blob_kzg_proof_batch(
             blobs,
             &commitments_bytes,
             &proofs_bytes,
         )? {
-            Err(Error::KzgVerificationFailed)
-        } else {
             Ok(())
+        } else {
+            Err(Error::KzgVerificationFailed)
         }
     }
 
@@ -303,7 +303,7 @@ impl Kzg {
                 );
 
                 match verification_result {
-                    Ok(_) => Ok(()),
+                    Ok(()) => Ok(()),
                     Err(e) if e.is_proof_invalid() => {
                         Err((Some(column_index), Error::KzgVerificationFailed))
                     }

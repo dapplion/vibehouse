@@ -138,7 +138,7 @@ async fn get_events_until_timeout<S: Stream<Item = SubnetServiceMessage> + Unpin
                         break;
                     }
             }
-            _ = sleep.as_mut() => {
+            () = sleep.as_mut() => {
                 break;
             }
 

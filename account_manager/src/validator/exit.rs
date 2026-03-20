@@ -197,10 +197,10 @@ async fn publish_voluntary_exit<E: EthSpec>(
         eprintln!("Enter the exit phrase from the above URL to confirm the voluntary exit: ");
     }
 
-    let confirmation = if !no_confirmation {
-        account_utils::read_input_from_user(stdin_inputs)?
-    } else {
+    let confirmation = if no_confirmation {
         CONFIRMATION_PHRASE.to_string()
+    } else {
+        account_utils::read_input_from_user(stdin_inputs)?
     };
 
     if confirmation == CONFIRMATION_PHRASE {

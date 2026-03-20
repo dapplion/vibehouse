@@ -94,12 +94,12 @@ fn output_to_result<OnSuccessFn, T>(output: Output, f: OnSuccessFn) -> Result<T,
 where
     OnSuccessFn: Fn(Vec<u8>) -> T,
 {
-    if !output.status.success() {
+    if output.status.success() {
+        Ok(f(output.stdout))
+    } else {
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         Err(format!("stderr: {stderr}\nstdout: {stdout}"))
-    } else {
-        Ok(f(output.stdout))
     }
 }
 

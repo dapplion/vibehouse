@@ -561,7 +561,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             .process_blocks(downloaded_blocks.iter(), notify_execution_layer)
             .await
         {
-            (imported_blocks, Ok(_)) => {
+            (imported_blocks, Ok(())) => {
                 debug!(
                             batch_epoch = %epoch,
                             first_block_slot = start_slot,
@@ -638,7 +638,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             .sum::<usize>();
 
         let result = match self.process_backfill_blocks(downloaded_blocks) {
-            (imported_blocks, Ok(_)) => {
+            (imported_blocks, Ok(())) => {
                 debug!(
                             batch_epoch = %epoch,
                             first_block_slot = start_slot,
@@ -930,7 +930,18 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 })
             }
             ref err @ BlockError::ExecutionPayloadError(ref epe) => {
-                if !epe.penalize_peer() {
+                if epe.penalize_peer() {
+                    debug!(
+                        error = ?err,
+                        "Invalid execution payload"
+                    );
+                    Err(ChainSegmentFailed {
+                        message: format!(
+                            "Peer sent a block containing invalid execution payload. Reason: {err:?}"
+                        ),
+                        peer_action: Some(PeerAction::LowToleranceError),
+                    })
+                } else {
                     // These errors indicate an issue with the EL and not the `ChainSegment`.
                     // Pause the syncing while the EL recovers
                     debug!(
@@ -942,17 +953,6 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                         message: format!("Execution layer offline. Reason: {err:?}"),
                         // Do not penalize peers for internal errors.
                         peer_action: None,
-                    })
-                } else {
-                    debug!(
-                        error = ?err,
-                        "Invalid execution payload"
-                    );
-                    Err(ChainSegmentFailed {
-                        message: format!(
-                            "Peer sent a block containing invalid execution payload. Reason: {err:?}"
-                        ),
-                        peer_action: Some(PeerAction::LowToleranceError),
                     })
                 }
             }

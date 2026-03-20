@@ -70,12 +70,12 @@ where
                 f.retain_children(FieldComparison::not_equal);
             }
 
-            if !mismatching_fields.is_empty() {
+            if mismatching_fields.is_empty() {
+                Ok(())
+            } else {
                 Err(Error::NotEqual(format!(
                     "Fields not equal (a = expected, b = result): {mismatching_fields:#?}"
                 )))
-            } else {
-                Ok(())
             }
         }
         _ => compare_result(result, expected),

@@ -694,22 +694,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
                                 .peer_group
                                 .all()
                                 .any(|p| processed_attempt.peer_group.all().any(|q| p == q));
-                            if !shared_peers {
-                                // Different peers sent the correct batch, the previous peers did not
-                                let action = PeerAction::LowToleranceError;
-                                debug!(
-                                    batch_epoch = %id,
-                                    score_adjustment = %action,
-                                    "Re-processed batch validated. Scoring original peers"
-                                );
-                                for peer in attempt.peer_group.all() {
-                                    network.report_peer(
-                                        *peer,
-                                        action,
-                                        "batch_reprocessed_original_peer",
-                                    );
-                                }
-                            } else {
+                            if shared_peers {
                                 // The same peer(s) corrected the previous mistake.
                                 let action = PeerAction::MidToleranceError;
                                 debug!(
@@ -722,6 +707,21 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
                                         *peer,
                                         action,
                                         "batch_reprocessed_same_peer",
+                                    );
+                                }
+                            } else {
+                                // Different peers sent the correct batch, the previous peers did not
+                                let action = PeerAction::LowToleranceError;
+                                debug!(
+                                    batch_epoch = %id,
+                                    score_adjustment = %action,
+                                    "Re-processed batch validated. Scoring original peers"
+                                );
+                                for peer in attempt.peer_group.all() {
+                                    network.report_peer(
+                                        *peer,
+                                        action,
+                                        "batch_reprocessed_original_peer",
                                     );
                                 }
                             }
@@ -1137,7 +1137,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
                 req,
                 &failed_columns,
             ) {
-                Ok(_) => {
+                Ok(()) => {
                     // inform the batch about the new request
                     batch.start_downloading(id)?;
                     debug!(

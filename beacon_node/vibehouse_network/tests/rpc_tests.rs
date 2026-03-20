@@ -155,9 +155,9 @@ fn test_tcp_status_rpc() {
         .instrument(info_span!("Receiver"));
 
         tokio::select! {
-            _ = sender_future => {}
+            () = sender_future => {}
             _ = receiver_future => {}
-            _ = sleep(Duration::from_secs(30)) => {
+            () = sleep(Duration::from_secs(30)) => {
                 panic!("Future timed out");
             }
         }
@@ -302,9 +302,9 @@ fn test_tcp_blocks_by_range_chunked_rpc() {
         .instrument(info_span!("Receiver"));
 
         tokio::select! {
-            _ = sender_future => {}
+            () = sender_future => {}
             _ = receiver_future => {}
-            _ = sleep(Duration::from_secs(30)) => {
+            () = sleep(Duration::from_secs(30)) => {
                     panic!("Future timed out");
             }
         }
@@ -430,9 +430,9 @@ fn test_blobs_by_range_chunked_rpc() {
         .instrument(info_span!("Receiver"));
 
         tokio::select! {
-            _ = sender_future => {}
+            () = sender_future => {}
             _ = receiver_future => {}
-            _ = sleep(Duration::from_secs(30)) => {
+            () = sleep(Duration::from_secs(30)) => {
                     panic!("Future timed out");
             }
         }
@@ -537,9 +537,9 @@ fn test_tcp_blocks_by_range_over_limit() {
         .instrument(info_span!("Receiver"));
 
         tokio::select! {
-            _ = sender_future => {}
+            () = sender_future => {}
             _ = receiver_future => {}
-            _ = sleep(Duration::from_secs(30)) => {
+            () = sleep(Duration::from_secs(30)) => {
                     panic!("Future timed out");
             }
         }
@@ -655,7 +655,7 @@ fn test_tcp_blocks_by_range_chunked_rpc_terminates_correctly() {
                             message_info = Some((peer_id, inbound_request_id));
                         }
                     }
-                    futures::future::Either::Right((_, _)) => {} // The timeout hit, send messages if required
+                    futures::future::Either::Right(((), _)) => {} // The timeout hit, send messages if required
                     futures::future::Either::Left(_) => continue,
                 }
 
@@ -675,8 +675,8 @@ fn test_tcp_blocks_by_range_chunked_rpc_terminates_correctly() {
 
         tokio::select! {
             _ = sender_future => {}
-            _ = receiver_future => {}
-            _ = sleep(Duration::from_secs(30)) => {
+            () = receiver_future => {}
+            () = sleep(Duration::from_secs(30)) => {
                 panic!("Future timed out");
             }
         }
@@ -794,9 +794,9 @@ fn test_tcp_blocks_by_range_single_empty_rpc() {
         }
         .instrument(info_span!("Receiver"));
         tokio::select! {
-            _ = sender_future => {}
+            () = sender_future => {}
             _ = receiver_future => {}
-            _ = sleep(Duration::from_secs(20)) => {
+            () = sleep(Duration::from_secs(20)) => {
                 panic!("Future timed out");
             }
         }
@@ -947,9 +947,9 @@ fn test_tcp_blocks_by_root_chunked_rpc() {
         }
         .instrument(info_span!("Receiver"));
         tokio::select! {
-            _ = sender_future => {}
+            () = sender_future => {}
             _ = receiver_future => {}
-            _ = sleep(Duration::from_secs(300)) => {
+            () = sleep(Duration::from_secs(300)) => {
                     panic!("Future timed out");
             }
         }
@@ -1110,9 +1110,9 @@ fn test_tcp_columns_by_root_chunked_rpc() {
         }
         .instrument(info_span!("Receiver"));
         tokio::select! {
-            _ = sender_future => {}
+            () = sender_future => {}
             _ = receiver_future => {}
-            _ = sleep(Duration::from_secs(300)) => {
+            () = sleep(Duration::from_secs(300)) => {
                     panic!("Future timed out");
             }
         }
@@ -1249,9 +1249,9 @@ fn test_tcp_columns_by_range_chunked_rpc() {
         }
         .instrument(info_span!("Receiver"));
         tokio::select! {
-            _ = sender_future => {}
+            () = sender_future => {}
             _ = receiver_future => {}
-            _ = sleep(Duration::from_secs(300)) => {
+            () = sleep(Duration::from_secs(300)) => {
                     panic!("Future timed out");
             }
         }
@@ -1380,7 +1380,7 @@ fn test_tcp_blocks_by_root_chunked_rpc_terminates_correctly() {
                             message_info = Some((peer_id, inbound_request_id));
                         }
                     }
-                    futures::future::Either::Right((_, _)) => {} // The timeout hit, send messages if required
+                    futures::future::Either::Right(((), _)) => {} // The timeout hit, send messages if required
                     futures::future::Either::Left(_) => continue,
                 }
 
@@ -1399,9 +1399,9 @@ fn test_tcp_blocks_by_root_chunked_rpc_terminates_correctly() {
         .instrument(info_span!("Receiver"));
 
         tokio::select! {
-            _ = sender_future => {}
-            _ = receiver_future => {}
-            _ = sleep(Duration::from_secs(30)) => {
+            () = sender_future => {}
+            () = receiver_future => {}
+            () = sleep(Duration::from_secs(30)) => {
                 panic!("Future timed out");
             }
         }
@@ -1467,7 +1467,7 @@ fn goodbye_test(log_level: &str, enable_logging: bool, protocol: Protocol) {
 
         tokio::select! {
             _ = total_future => {}
-            _ = sleep(Duration::from_secs(30)) => {
+            () = sleep(Duration::from_secs(30)) => {
                 panic!("Future timed out");
             }
         }
@@ -1618,9 +1618,9 @@ fn test_delayed_rpc_response() {
         };
 
         tokio::select! {
-            _ = sender_future => {}
+            () = sender_future => {}
             _ = receiver_future => {}
-            _ = sleep(Duration::from_secs(30)) => {
+            () = sleep(Duration::from_secs(30)) => {
                 panic!("Future timed out");
             }
         }
@@ -1719,7 +1719,7 @@ fn test_active_requests() {
                         }
                     }
                     // Introduce a delay in sending responses to trigger request queueing on the sender side.
-                    _ = sleep(Duration::from_secs(3)) => {
+                    () = sleep(Duration::from_secs(3)) => {
                         for (peer_id, inbound_request_id) in received_requests.drain(..) {
                             receiver.send_response(peer_id, inbound_request_id, rpc_response.clone());
                         }
@@ -1729,9 +1729,9 @@ fn test_active_requests() {
         };
 
         tokio::select! {
-            _ = sender_future => {}
+            () = sender_future => {}
             _ = receiver_future => {}
-            _ = sleep(Duration::from_secs(30)) => {
+            () = sleep(Duration::from_secs(30)) => {
                 panic!("Future timed out");
             }
         }
@@ -1883,9 +1883,9 @@ fn test_request_too_large(app_request_id: AppRequestId, request: RequestType<E>)
         .instrument(info_span!("Receiver"));
 
         tokio::select! {
-            _ = sender_future => {}
+            () = sender_future => {}
             _ = receiver_future => {}
-            _ = sleep(Duration::from_secs(30)) => {
+            () = sleep(Duration::from_secs(30)) => {
                 panic!("Future timed out");
             }
         }

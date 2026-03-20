@@ -424,12 +424,12 @@ pub fn process_signed_contribution_and_proofs<T: BeaconChainTypes>(
         }
     }
 
-    if !failures.is_empty() {
+    if failures.is_empty() {
+        Ok(())
+    } else {
         Err(ApiError::IndexedBadRequest {
             message: "error processing contribution and proofs".to_string(),
             failures,
         })
-    } else {
-        Ok(())
     }
 }

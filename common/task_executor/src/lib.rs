@@ -188,7 +188,7 @@ impl TaskExecutor {
     ) {
         if let Some(int_gauge) = metrics::get_int_gauge(&metrics::ASYNC_TASKS_COUNT, &[name]) {
             let int_gauge_1 = int_gauge.clone();
-            let future = task.then(move |_| {
+            let future = task.then(move |()| {
                 int_gauge_1.dec();
                 futures::future::ready(())
             });
@@ -380,7 +380,7 @@ impl TaskExecutor {
                     );
                     Some(output)
                 }
-                _ = exit => {
+                () = exit => {
                     debug!(
                         name,
                         "Cancelled block_on task"

@@ -354,7 +354,7 @@ pub fn save_enr_to_disk(dir: &Path, enr: &Enr) {
     match File::create(dir.join(Path::new(ENR_FILENAME)))
         .and_then(|mut f| f.write_all(enr.to_base64().as_bytes()))
     {
-        Ok(_) => {
+        Ok(()) => {
             debug!("ENR written to disk");
         }
         Err(e) => {

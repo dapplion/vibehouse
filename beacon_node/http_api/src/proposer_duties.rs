@@ -270,17 +270,17 @@ fn convert_to_api_response<T: BeaconChainTypes>(
 
     // Consistency check.
     let slots_per_epoch = T::EthSpec::slots_per_epoch() as usize;
-    if proposer_data.len() != slots_per_epoch {
-        Err(ApiError::server_error(format!(
-            "{} proposers is not enough for {} slots",
-            proposer_data.len(),
-            slots_per_epoch,
-        )))
-    } else {
+    if proposer_data.len() == slots_per_epoch {
         Ok(api_types::DutiesResponse {
             dependent_root,
             execution_optimistic: Some(execution_optimistic),
             data: proposer_data,
         })
+    } else {
+        Err(ApiError::server_error(format!(
+            "{} proposers is not enough for {} slots",
+            proposer_data.len(),
+            slots_per_epoch,
+        )))
     }
 }

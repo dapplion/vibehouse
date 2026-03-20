@@ -219,21 +219,10 @@ impl Block {
         // For child blocks in the Fulu fork epoch itself, we want to use the old logic. There is no
         // lookahead in the first Fulu epoch. So we check whether Fulu is enabled at
         // `child_block_epoch - 1`, i.e. whether `child_block_epoch > fulu_fork_epoch`.
-        if !spec
+        if spec
             .fork_name_at_epoch(child_block_epoch.saturating_sub(1_u64))
             .fulu_enabled()
         {
-            // Prior to Fulu the proposer shuffling decision root for the current epoch is the same
-            // as the attestation shuffling for the *next* epoch, i.e. it is determined at the start
-            // of the current epoch.
-            if block_epoch == child_block_epoch {
-                self.next_epoch_shuffling_id.shuffling_decision_block
-            } else {
-                // Otherwise, the child block epoch is greater, so its decision root is its parent
-                // root itself (this block's root).
-                self.root
-            }
-        } else {
             // After Fulu the proposer shuffling is determined with lookahead, so if the block
             // lies in the same epoch as its parent, its decision root is the same as the
             // parent's current epoch attester shuffling
@@ -248,6 +237,17 @@ impl Block {
             } else {
                 // The child block lies in the future beyond the lookahead, at the point where this
                 // block (its parent) will be the decision block.
+                self.root
+            }
+        } else {
+            // Prior to Fulu the proposer shuffling decision root for the current epoch is the same
+            // as the attestation shuffling for the *next* epoch, i.e. it is determined at the start
+            // of the current epoch.
+            if block_epoch == child_block_epoch {
+                self.next_epoch_shuffling_id.shuffling_decision_block
+            } else {
+                // Otherwise, the child block epoch is greater, so its decision root is its parent
+                // root itself (this block's root).
                 self.root
             }
         }

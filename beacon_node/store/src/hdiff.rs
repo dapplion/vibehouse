@@ -493,32 +493,32 @@ impl ValidatorsDiff {
                         // activation_eligibility_epoch can never be zero under any case. It's
                         // set to either FAR_FUTURE_EPOCH or get_current_epoch(state) + 1
                         activation_eligibility_epoch: if y.activation_eligibility_epoch
-                            != x.activation_eligibility_epoch
+                            == x.activation_eligibility_epoch
                         {
-                            y.activation_eligibility_epoch
-                        } else {
                             Epoch::new(0)
+                        } else {
+                            y.activation_eligibility_epoch
                         },
                         // activation_epoch can never be zero under any case. It's
                         // set to either FAR_FUTURE_EPOCH or epoch + 1 + MAX_SEED_LOOKAHEAD
-                        activation_epoch: if y.activation_epoch != x.activation_epoch {
-                            y.activation_epoch
-                        } else {
+                        activation_epoch: if y.activation_epoch == x.activation_epoch {
                             Epoch::new(0)
+                        } else {
+                            y.activation_epoch
                         },
                         // exit_epoch can never be zero under any case. It's set to either
                         // FAR_FUTURE_EPOCH or > epoch + 1 + MAX_SEED_LOOKAHEAD
-                        exit_epoch: if y.exit_epoch != x.exit_epoch {
-                            y.exit_epoch
-                        } else {
+                        exit_epoch: if y.exit_epoch == x.exit_epoch {
                             Epoch::new(0)
+                        } else {
+                            y.exit_epoch
                         },
                         // withdrawable_epoch can never be zero under any case. It's set to
                         // either FAR_FUTURE_EPOCH or > epoch + 1 + MAX_SEED_LOOKAHEAD
-                        withdrawable_epoch: if y.withdrawable_epoch != x.withdrawable_epoch {
-                            y.withdrawable_epoch
-                        } else {
+                        withdrawable_epoch: if y.withdrawable_epoch == x.withdrawable_epoch {
                             Epoch::new(0)
+                        } else {
+                            y.withdrawable_epoch
                         },
                     }
                 } else {

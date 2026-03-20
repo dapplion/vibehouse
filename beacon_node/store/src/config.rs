@@ -127,13 +127,13 @@ impl StoreConfig {
         // We previously allowed the hierarchy exponents to change on non-archive nodes, but since
         // schema v24 and the use of hdiffs in the hot DB, changing will require a resync.
         let current_config = self.as_disk_config();
-        if current_config != *on_disk_config {
+        if current_config == *on_disk_config {
+            Ok(())
+        } else {
             Err(StoreConfigError::IncompatibleStoreConfig {
                 config: current_config,
                 on_disk: on_disk_config.clone(),
             })
-        } else {
-            Ok(())
         }
     }
 

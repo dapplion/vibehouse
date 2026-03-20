@@ -3760,13 +3760,13 @@ AttnError::AggregatorAlreadyKnown(_)) => {}
                 }
             }
 
-            if !failures.is_empty() {
+            if failures.is_empty() {
+                Ok(())
+            } else {
                 Err(ApiError::IndexedBadRequest {
                     message: "error processing aggregate and proofs".into(),
                     failures,
                 })
-            } else {
-                Ok(())
             }
         })
         .await
@@ -4486,7 +4486,7 @@ async fn post_vibehouse_finalize<T: BeaconChainTypes>(
 
             chain
                 .manually_finalize_state(request_data.state_root, checkpoint)
-                .map(|_| api_types::GenericResponse::from(request_data))
+                .map(|()| api_types::GenericResponse::from(request_data))
                 .map_err(|e| {
                     ApiError::bad_request(format!("Failed to finalize state due to error: {e:?}"))
                 })

@@ -1067,7 +1067,7 @@ impl<T: BeaconChainTypes> SyncManager<T> {
         block_component: BlockComponent<T::EthSpec>,
     ) {
         match self.should_search_for_block(Some(slot), &peer_id) {
-            Ok(_) => {
+            Ok(()) => {
                 if self.block_lookups.search_child_and_parent(
                     block_root,
                     block_component,
@@ -1091,7 +1091,7 @@ impl<T: BeaconChainTypes> SyncManager<T> {
 
     fn handle_unknown_block_root(&mut self, peer_id: PeerId, block_root: Hash256) {
         match self.should_search_for_block(None, &peer_id) {
-            Ok(_) => {
+            Ok(()) => {
                 if self.block_lookups.search_unknown_block(
                     block_root,
                     &[peer_id],

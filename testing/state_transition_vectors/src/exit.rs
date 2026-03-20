@@ -93,7 +93,7 @@ impl ExitTest {
         let (block, pre_state) = self.block_and_pre_state().await;
         let mut post_state = pre_state.clone();
         let (post_state, error) = match Self::process(&block, &mut post_state) {
-            Ok(_) => (Some(post_state), None),
+            Ok(()) => (Some(post_state), None),
             Err(e) => (None, Some(format!("{e:?}"))),
         };
 

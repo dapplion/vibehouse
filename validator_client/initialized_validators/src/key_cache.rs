@@ -97,10 +97,10 @@ impl KeyCache {
     /// Open an existing file or create a new, empty one if it does not exist.
     pub fn open_or_create<P: AsRef<Path>>(validators_dir: P) -> Result<Self, Error> {
         let cache_path = Self::cache_file_path(validators_dir.as_ref());
-        if !cache_path.exists() {
-            Ok(Self::new())
-        } else {
+        if cache_path.exists() {
             Self::open(validators_dir)
+        } else {
+            Ok(Self::new())
         }
     }
 

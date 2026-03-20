@@ -766,7 +766,7 @@ impl<E: EthSpec> Network<E> {
                 .gossipsub_mut()
                 .set_topic_params(libp2p_topic, new_param.clone())
             {
-                Ok(_) => debug!(%topic, "Removed topic weight"),
+                Ok(()) => debug!(%topic, "Removed topic weight"),
                 Err(e) => {
                     warn!(%topic, error = e, "Failed to remove topic weight");
                 }
@@ -1939,7 +1939,7 @@ impl<E: EthSpec> Network<E> {
                 addresses, reason, ..
             } => {
                 match reason {
-                    Ok(_) => {
+                    Ok(()) => {
                         debug!(?addresses, "Listener gracefully closed");
                     }
                     Err(reason) => {

@@ -680,10 +680,10 @@ async fn root_handler<E: EthSpec>(
 
     let preloaded_response = {
         let mut preloaded_responses = ctx.preloaded_responses.lock();
-        if !preloaded_responses.is_empty() {
-            Some(preloaded_responses.remove(0))
-        } else {
+        if preloaded_responses.is_empty() {
             None
+        } else {
+            Some(preloaded_responses.remove(0))
         }
     };
 

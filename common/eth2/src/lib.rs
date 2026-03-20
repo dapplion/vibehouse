@@ -1340,7 +1340,7 @@ impl BeaconNodeHttpClient {
     ) -> Result<Url, Error> {
         let mut path = self.eth_path(V2)?;
         path.path_segments_mut()
-            .map_err(|_| Error::InvalidUrl(self.server.clone()))?
+            .map_err(|()| Error::InvalidUrl(self.server.clone()))?
             .extend(&["beacon", "blocks"]);
 
         path.set_query(
@@ -1358,7 +1358,7 @@ impl BeaconNodeHttpClient {
     ) -> Result<Url, Error> {
         let mut path = self.eth_path(V2)?;
         path.path_segments_mut()
-            .map_err(|_| Error::InvalidUrl(self.server.clone()))?
+            .map_err(|()| Error::InvalidUrl(self.server.clone()))?
             .extend(&["beacon", "blinded_blocks"]);
 
         path.set_query(

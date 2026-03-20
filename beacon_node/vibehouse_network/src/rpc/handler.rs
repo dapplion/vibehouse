@@ -393,7 +393,7 @@ where
         // Check if we are shutting down, and if the timer ran out
         if let HandlerState::ShuttingDown(delay) = &mut self.state {
             match delay.as_mut().poll(cx) {
-                Poll::Ready(_) => {
+                Poll::Ready(()) => {
                     self.state = HandlerState::Deactivated;
                     debug!(
                         peer_id = %self.peer_id,
@@ -877,7 +877,7 @@ where
         match event {
             ConnectionEvent::FullyNegotiatedInbound(FullyNegotiatedInbound {
                 protocol,
-                info: _,
+                info: (),
             }) => self.on_fully_negotiated_inbound(protocol),
             ConnectionEvent::FullyNegotiatedOutbound(FullyNegotiatedOutbound {
                 protocol,
@@ -1120,7 +1120,7 @@ async fn send_message_to_inbound_substream<E: EthSpec>(
     last_chunk: bool,
 ) -> Result<(InboundSubstream<E>, bool), RPCError> {
     if matches!(message, RpcResponse::StreamTermination(_)) {
-        substream.close().await.map(|_| (substream, true))
+        substream.close().await.map(|()| (substream, true))
     } else {
         // chunks that are not stream terminations get sent, and the stream is closed if
         // the response is an error
@@ -1130,7 +1130,7 @@ async fn send_message_to_inbound_substream<E: EthSpec>(
 
         // If we need to close the substream, do so and return the result.
         if last_chunk || is_error || send_result.is_err() {
-            let close_result = substream.close().await.map(|_| (substream, true));
+            let close_result = substream.close().await.map(|()| (substream, true));
             // If there was an error in sending, return this error, otherwise, return the
             // result of closing the substream.
             if let Err(e) = send_result {
@@ -1139,6 +1139,6 @@ async fn send_message_to_inbound_substream<E: EthSpec>(
             return close_result;
         }
         // Everything worked as expected return the result.
-        send_result.map(|_| (substream, false))
+        send_result.map(|()| (substream, false))
     }
 }

@@ -118,7 +118,7 @@ impl<E: EthSpec> Case for SanityBlocks<E> {
                     Err(BlockProcessingError::StateRootMismatch)
                 }
             })
-            .map(|_| (bulk_state, indiv_state));
+            .map(|()| (bulk_state, indiv_state));
 
         let (mut bulk_result, mut indiv_result) = match result {
             Err(e) => (Err(e.clone()), Err(e)),

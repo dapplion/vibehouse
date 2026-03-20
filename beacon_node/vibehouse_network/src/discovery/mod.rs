@@ -252,12 +252,12 @@ impl<E: EthSpec> Discovery<E> {
         }
 
         // Start the discv5 service and obtain an event stream
-        let event_stream = if !config.disable_discovery {
+        let event_stream = if config.disable_discovery {
+            EventStream::InActive
+        } else {
             discv5.start().map_err(|e| e.to_string()).await?;
             debug!("Discovery service started");
             EventStream::Awaiting(Box::pin(discv5.event_stream()))
-        } else {
-            EventStream::InActive
         };
 
         if !config.boot_nodes_multiaddr.is_empty() {

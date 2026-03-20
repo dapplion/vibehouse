@@ -212,7 +212,9 @@ pub fn process_epoch_single_pass<E: EthSpec>(
     // Compute shared values required for different parts of epoch processing.
     let rewards_ctxt = &RewardsAndPenaltiesContext::new(progressive_balances, state_ctxt, spec)?;
 
-    let mut activation_queues = if !fork_name.electra_enabled() {
+    let mut activation_queues = if fork_name.electra_enabled() {
+        None
+    } else {
         let activation_queue = epoch_cache
             .activation_queue()?
             .get_validators_eligible_for_activation(
@@ -221,8 +223,6 @@ pub fn process_epoch_single_pass<E: EthSpec>(
             );
         let next_epoch_activation_queue = ActivationQueue::default();
         Some((activation_queue, next_epoch_activation_queue))
-    } else {
-        None
     };
     let effective_balances_ctxt = &EffectiveBalancesContext::new(spec)?;
 
@@ -702,7 +702,16 @@ fn process_single_registry_update(
     exit_balance_to_consume: Option<&mut u64>,
     spec: &ChainSpec,
 ) -> Result<(), Error> {
-    if !state_ctxt.fork_name.electra_enabled() {
+    if state_ctxt.fork_name.electra_enabled() {
+        process_single_registry_update_post_electra(
+            validator,
+            exit_cache,
+            state_ctxt,
+            earliest_exit_epoch.ok_or(Error::MissingEarliestExitEpoch)?,
+            exit_balance_to_consume.ok_or(Error::MissingExitBalanceToConsume)?,
+            spec,
+        )
+    } else {
         let (activation_queue, next_epoch_activation_queue) =
             activation_queues.ok_or(Error::SinglePassMissingActivationQueue)?;
         process_single_registry_update_pre_electra(
@@ -712,15 +721,6 @@ fn process_single_registry_update(
             activation_queue,
             next_epoch_activation_queue,
             state_ctxt,
-            spec,
-        )
-    } else {
-        process_single_registry_update_post_electra(
-            validator,
-            exit_cache,
-            state_ctxt,
-            earliest_exit_epoch.ok_or(Error::MissingEarliestExitEpoch)?,
-            exit_balance_to_consume.ok_or(Error::MissingExitBalanceToConsume)?,
             spec,
         )
     }

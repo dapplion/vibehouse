@@ -141,11 +141,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 });
             }
 
-            if !self.store.get_config().prune_payloads {
-                // If prune-payloads is set to false, store the block which includes the execution payload
-                self.store
-                    .block_as_kv_store_ops(&block_root, (*block).clone(), &mut hot_batch)?;
-            } else {
+            if self.store.get_config().prune_payloads {
                 let blinded_block = block.clone_as_blinded();
                 // Store block in the hot database without payload.
                 self.store.blinded_block_as_kv_store_ops(
@@ -153,6 +149,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     &blinded_block,
                     &mut hot_batch,
                 );
+            } else {
+                // If prune-payloads is set to false, store the block which includes the execution payload
+                self.store
+                    .block_as_kv_store_ops(&block_root, (*block).clone(), &mut hot_batch)?;
             }
 
             match &block_data {

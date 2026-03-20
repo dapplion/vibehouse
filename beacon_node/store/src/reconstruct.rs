@@ -172,7 +172,7 @@ where
 
                 let state_root = prev_state_root
                     .ok_or(())
-                    .or_else(|_| state.update_tree_hash_cache())?;
+                    .or_else(|()| state.update_tree_hash_cache())?;
 
                 // Stage state for storage in freezer DB.
                 self.store_cold_state(&state_root, &state, &mut io_batch)?;

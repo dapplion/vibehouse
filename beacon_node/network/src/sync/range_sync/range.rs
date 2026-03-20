@@ -225,7 +225,7 @@ where
                     );
                 }
             }
-            Err(_) => {
+            Err(()) => {
                 trace!(%chain_id, "BlocksByRange response for removed chain");
             }
         }
@@ -255,7 +255,7 @@ where
                 );
             }
 
-            Err(_) => {
+            Err(()) => {
                 trace!(%chain_id, "BlocksByRange response for removed chain");
             }
         }
@@ -317,7 +317,7 @@ where
                     );
                 }
             }
-            Err(_) => {
+            Err(()) => {
                 trace!(%chain_id, "BlocksByRange response for removed chain");
             }
         }
