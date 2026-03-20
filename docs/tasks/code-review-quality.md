@@ -2579,3 +2579,24 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since #5005 (March 15). Open Gloas PRs unchanged.
 - **CI**: All jobs green. Nightly and spec-test-version-check passed.
 - **Verification**: 92/92 targeted tests passed (types chain_spec, slashing_protection), all 3 lint categories clean, cargo fmt clean, pre-push lint passes.
+
+### Run 1989 (2026-03-20)
+
+**Monitoring run — no code changes.** Updated task docs only.
+
+### Run 1990 (2026-03-20)
+
+**Pedantic clippy fix: default_trait_access — 7 files, 12 locations.**
+
+- Replaced `Default::default()` with explicit type defaults for better readability:
+  - `custody_context.rs`: `HashMap::default()`, `BTreeMap::default()`
+  - `block_rewards.rs`: `RewardCache::default()` (×2)
+  - `version.rs`: `EmptyMetadata::default()` (×2)
+  - `nat.rs`: `SearchOptions::default()`
+  - `peer_info.rs`: `PeerConnectionStatus::default()`
+  - `self_limiter.rs`: `HashMap::default()` (×2), `DelayQueue::default()`, `SmallVec::default()`
+  - `test_utils.rs`: `InitializedValidatorsConfig::default()`
+- **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since #5005 (March 15). Open Gloas PRs: #5023 (block root filenames), #5022 (on_payload_attestation block check — we already have this), #5008 (field name fix — doc-only, not actionable).
+- **Pedantic clippy status**: All actionable categories fixed. Remaining are bulk categories not worth the churn: `# Errors` docs (1564), `must_use` (1176), doc backticks (1008), cast truncation (517), pass by value (306), `# Panics` docs (216), wildcard imports (177).
+- **CI**: All jobs green. Nightly and spec-test-version-check passed.
+- **Verification**: 999/999 beacon_chain tests, network + http_api tests pass (failures were missing FORK_NAME env — pre-existing), full workspace clippy clean, cargo fmt clean, pre-push lint-full passes.
