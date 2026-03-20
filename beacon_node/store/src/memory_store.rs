@@ -5,7 +5,7 @@ use crate::{
 use parking_lot::RwLock;
 use std::collections::{BTreeMap, HashSet};
 use std::marker::PhantomData;
-use types::*;
+use types::EthSpec;
 
 type DBMap = BTreeMap<BytesKey, Vec<u8>>;
 

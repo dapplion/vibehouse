@@ -1,4 +1,6 @@
-use super::common::*;
+use super::common::{
+    COUNT_FLAG, STDIN_INPUTS_FLAG, UploadError, ValidatorSpecification, vc_http_client,
+};
 use crate::DumpConfig;
 use account_utils::read_password_from_user;
 use clap::{Arg, ArgAction, ArgMatches, Command};

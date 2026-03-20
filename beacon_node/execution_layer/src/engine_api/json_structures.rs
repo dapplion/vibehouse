@@ -1,5 +1,16 @@
-use super::*;
+use super::{
+    Address, ClientVersionV1, Error, EthSpec, ExecutionBlockHash, ExecutionPayload,
+    ExecutionPayloadBellatrix, ExecutionPayloadBodyV1, ExecutionPayloadCapella,
+    ExecutionPayloadDeneb, ExecutionPayloadElectra, ExecutionPayloadFulu, ExecutionPayloadGloas,
+    ExecutionRequests, ForkchoiceState, ForkchoiceUpdatedResponse, GetPayloadResponse,
+    GetPayloadResponseBellatrix, GetPayloadResponseCapella, GetPayloadResponseDeneb,
+    GetPayloadResponseElectra, GetPayloadResponseFulu, GetPayloadResponseGloas, Hash256, KzgProofs,
+    PayloadAttributes, PayloadAttributesV1, PayloadAttributesV2, PayloadAttributesV3, PayloadId,
+    PayloadStatusV1, PayloadStatusV1Status, Transactions, Uint256, VariableList, Withdrawal,
+    Withdrawals,
+};
 use alloy_rlp::RlpEncodable;
+use eth2::types::BlobsBundle;
 use serde::{Deserialize, Serialize};
 use ssz::{Decode, Encode};
 use strum::EnumString;
@@ -9,7 +20,7 @@ use types::blob_sidecar::BlobsList;
 use types::execution_requests::{
     ConsolidationRequests, DepositRequests, RequestType, WithdrawalRequests,
 };
-use types::{Blob, FixedVector, KzgProof, Unsigned};
+use types::{Blob, FixedVector, KzgProof};
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -1041,9 +1052,10 @@ pub struct TransitionConfigurationV1 {
 
 /// Serializes the `logs_bloom` field of an `ExecutionPayload`.
 pub mod serde_logs_bloom {
-    use super::*;
+    use super::FixedVector;
     use serde::{Deserializer, Serializer};
     use serde_utils::hex::PrefixedHexVisitor;
+    use types::Unsigned;
 
     pub fn serialize<S, U>(bytes: &FixedVector<u8, U>, serializer: S) -> Result<S::Ok, S::Error>
     where

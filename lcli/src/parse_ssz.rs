@@ -9,7 +9,12 @@ use std::fs::File;
 use std::io::Read;
 use std::str::FromStr;
 use tracing::info;
-use types::*;
+use types::{
+    BeaconState, BeaconStateAltair, BeaconStateBase, BeaconStateBellatrix, BeaconStateCapella,
+    BeaconStateDeneb, BeaconStateElectra, BlobSidecar, EthSpec, SignedBeaconBlock,
+    SignedBeaconBlockAltair, SignedBeaconBlockBase, SignedBeaconBlockBellatrix,
+    SignedBeaconBlockCapella, SignedBeaconBlockDeneb, SignedBeaconBlockElectra,
+};
 
 enum OutputFormat {
     Json,

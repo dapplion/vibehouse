@@ -1,4 +1,9 @@
-use proto_array::fork_choice_test_definition::*;
+use proto_array::fork_choice_test_definition::{
+    ForkChoiceTestDefinition, get_execution_status_test_definition_01,
+    get_execution_status_test_definition_02, get_execution_status_test_definition_03,
+    get_ffg_case_01_test_definition, get_ffg_case_02_test_definition, get_no_votes_test_definition,
+    get_votes_test_definition,
+};
 use std::fs::File;
 
 fn main() {

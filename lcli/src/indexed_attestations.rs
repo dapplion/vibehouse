@@ -4,7 +4,7 @@ use state_processing::common::{attesting_indices_base, attesting_indices_electra
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use types::*;
+use types::{Attestation, BeaconState, EthSpec};
 
 fn read_file_bytes(filename: &Path) -> Result<Vec<u8>, String> {
     let mut bytes = vec![];

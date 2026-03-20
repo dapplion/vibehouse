@@ -1,4 +1,4 @@
-use super::common::*;
+use super::common::{IGNORE_DUPLICATES_FLAG, UploadError, ValidatorSpecification, vc_http_client};
 use crate::DumpConfig;
 use account_utils::eth2_keystore::Keystore;
 use clap::{Arg, ArgAction, ArgMatches, Command};

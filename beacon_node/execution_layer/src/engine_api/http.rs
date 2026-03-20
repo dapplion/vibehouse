@@ -1,10 +1,25 @@
 //! Contains an implementation of `EngineAPI` using the JSON-RPC API via HTTP.
 
-use super::*;
+use super::{
+    BlockByNumberQuery, ClientCode, ClientVersionV1, EngineCapabilities, Error, EthSpec,
+    ExecutionBlock, ExecutionBlockHash, ExecutionPayload, ExecutionPayloadBodyV1, ForkName,
+    ForkchoiceState, ForkchoiceUpdatedResponse, GetPayloadResponse, GetPayloadResponseBellatrix,
+    Hash256, NewPayloadRequest, NewPayloadRequestDeneb, NewPayloadRequestElectra,
+    NewPayloadRequestFulu, NewPayloadRequestGloas, PayloadAttributes, PayloadId, PayloadStatusV1,
+    Uint256,
+};
 use crate::auth::Auth;
-use crate::json_structures::*;
+use crate::json_structures::{
+    BlobAndProofV1, BlobAndProofV2, JsonClientVersionV1, JsonExecutionPayload,
+    JsonExecutionPayloadBellatrix, JsonExecutionPayloadBodyV1, JsonForkchoiceStateV1,
+    JsonForkchoiceUpdatedV1Response, JsonGetPayloadResponse, JsonGetPayloadResponseBellatrix,
+    JsonGetPayloadResponseCapella, JsonGetPayloadResponseDeneb, JsonGetPayloadResponseElectra,
+    JsonGetPayloadResponseFulu, JsonGetPayloadResponseGloas, JsonPayloadAttributes,
+    JsonPayloadIdRequest, JsonPayloadStatusV1, JsonRequestBody, JsonResponseBody,
+};
 use reqwest::header::CONTENT_TYPE;
 use sensitive_url::SensitiveUrl;
+use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::json;
 use std::collections::HashSet;
@@ -1418,13 +1433,18 @@ impl HttpJsonRpc {
 
 #[cfg(test)]
 mod test {
-    use super::auth::JwtKey;
     use super::*;
+    use crate::auth::JwtKey;
+    use crate::engine_api::{LATEST_TAG, PayloadAttributesV1, PayloadStatusV1Status};
+    use crate::json_structures::TransparentJsonPayloadId;
     use crate::test_utils::{DEFAULT_JWT_SECRET, MockServer};
     use std::future::Future;
     use std::str::FromStr;
     use std::sync::Arc;
-    use types::{FixedBytesExtended, MainnetEthSpec, Unsigned};
+    use types::{
+        Address, ExecutionPayloadBellatrix, FixedBytesExtended, MainnetEthSpec, Transactions,
+        Unsigned, VariableList,
+    };
 
     struct Tester {
         server: MockServer<MainnetEthSpec>,

@@ -11,7 +11,10 @@ use std::collections::HashSet;
 use std::mem;
 use store::{DBColumn, Error as StoreError, StoreItem};
 use types::attestation::AttestationOnDisk;
-use types::*;
+use types::{
+    AttestationRef, AttesterSlashing, EthSpec, ProposerSlashing, SignedBlsToExecutionChange,
+    SignedVoluntaryExit, SyncCommitteeContribution,
+};
 
 type PersistedSyncContributions<E> = Vec<(SyncAggregateId, Vec<SyncCommitteeContribution<E>>)>;
 

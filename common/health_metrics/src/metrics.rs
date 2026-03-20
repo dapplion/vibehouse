@@ -1,6 +1,9 @@
 use crate::observe::Observe;
 use eth2::vibehouse::{ProcessHealth, SystemHealth};
-use metrics::*;
+use metrics::{
+    Gauge, IntGauge, Result, set_float_gauge, set_gauge, try_create_float_gauge,
+    try_create_int_gauge,
+};
 use std::sync::LazyLock;
 
 pub static PROCESS_NUM_THREADS: LazyLock<Result<IntGauge>> = LazyLock::new(|| {

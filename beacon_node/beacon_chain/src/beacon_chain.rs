@@ -136,7 +136,29 @@ use tree_hash::TreeHash;
 use types::blob_sidecar::FixedBlobSidecarList;
 use types::data_column_sidecar::ColumnIndex;
 use types::payload::BlockProductionVersion;
-use types::*;
+use types::{
+    AbstractExecPayload, AggregateSignature, Attestation, AttestationData, AttestationDuty,
+    AttestationRef, AttestationShufflingId, AttesterSlashing, BeaconBlock, BeaconBlockAltair,
+    BeaconBlockBase, BeaconBlockBellatrix, BeaconBlockBodyAltair, BeaconBlockBodyBase,
+    BeaconBlockBodyBellatrix, BeaconBlockBodyCapella, BeaconBlockBodyDeneb, BeaconBlockBodyElectra,
+    BeaconBlockBodyFulu, BeaconBlockBodyGloas, BeaconBlockCapella, BeaconBlockDeneb,
+    BeaconBlockElectra, BeaconBlockFulu, BeaconBlockGloas, BeaconBlockRef, BeaconState,
+    BeaconStateError, BitVector, BlindedPayload, BlobSidecar, BlobSidecarList, BlobsList,
+    BlockImportSource, ChainSpec, Checkpoint, CommitteeCache, CommitteeIndex, DataColumnSidecar,
+    DataColumnSidecarList, DataColumnSubnetId, Deposit, EnrForkId, Epoch, Eth1Data, EthSpec,
+    ExecPayload, ExecutionBlockHash, ExecutionPayloadBid, ExecutionPayloadEnvelope,
+    ExecutionPayloadGloas, ExecutionPayloadHeader, ExecutionRequests, FixedBytesExtended, ForkName,
+    ForkVersionedResponse, FullPayload, Graffiti, Hash256, InconsistentFork, KzgProofs,
+    LightClientBootstrap, LightClientFinalityUpdate, LightClientOptimisticUpdate,
+    LightClientUpdate, PayloadAttestation, PayloadAttestationData, PayloadAttestationMessage,
+    ProposerSlashing, PublicKey, PublicKeyBytes, RelativeEpoch, Signature, SignedAggregateAndProof,
+    SignedBeaconBlock, SignedBeaconBlockHash, SignedBlindedBeaconBlock,
+    SignedBlindedExecutionPayloadEnvelope, SignedBlsToExecutionChange, SignedContributionAndProof,
+    SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope, SignedProposerPreferences,
+    SignedVoluntaryExit, SingleAttestation, Slot, SubnetId, SyncAggregate, SyncCommittee,
+    SyncCommitteeContribution, SyncCommitteeMessage, SyncContributionData, SyncDuty, SyncSubnetId,
+    Uint256, VariableList, Withdrawals,
+};
 
 pub type ForkChoiceError = fork_choice::Error<crate::ForkChoiceStoreError>;
 

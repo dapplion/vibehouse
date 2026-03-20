@@ -23,7 +23,9 @@ use types::{
     BlobSidecar, DataColumnSidecar, EthSpec, ForkContext, SignedBeaconBlock,
     SignedExecutionPayloadEnvelope,
 };
-use vibehouse_network::rpc::*;
+use vibehouse_network::rpc::{
+    BlocksByRangeRequest, InboundRequestId, RPCError, RequestType, StatusMessage, methods,
+};
 use vibehouse_network::{
     MessageId, NetworkGlobals, PeerId, PubsubMessage, Response,
     service::api_types::{AppRequestId, SyncRequestId},

@@ -6,7 +6,10 @@ use crate::{
 use parking_lot::RwLock;
 use proto_array::Block as ProtoBlock;
 use std::sync::Arc;
-use types::*;
+use types::{
+    Attestation, BeaconState, BlobSidecarList, ChainSpec, Checkpoint, CommitteeIndex,
+    DataColumnSidecarList, Epoch, EthSpec, Hash256, SignedBeaconBlock, Slot,
+};
 
 pub struct CacheItem<E: EthSpec> {
     /*
@@ -204,7 +207,8 @@ mod tests {
     use crate::attester_cache::CommitteeLengths;
     use fork_choice::ExecutionStatus;
     use types::{
-        AttestationShufflingId, BeaconBlock, ChainSpec, ForkName, MinimalEthSpec, Signature,
+        AttestationShufflingId, BeaconBlock, ChainSpec, FixedBytesExtended, ForkName,
+        MinimalEthSpec, Signature,
     };
 
     type E = MinimalEthSpec;

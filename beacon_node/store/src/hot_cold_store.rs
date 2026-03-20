@@ -39,7 +39,13 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, error, info, instrument, warn};
 use types::data_column_sidecar::{ColumnIndex, DataColumnSidecar, DataColumnSidecarList};
-use types::*;
+use types::{
+    AbstractExecPayload, BeaconState, BeaconStateError, BlindedPayload, BlobSidecar,
+    BlobSidecarList, ChainSpec, Epoch, EthSpec, ExecutionPayload, ExecutionPayloadGloas,
+    FixedBytesExtended, ForkName, ForkVersionDecode, Hash256, LightClientUpdate, MerkleProof,
+    SignedBeaconBlock, SignedBlindedBeaconBlock, SignedBlindedExecutionPayloadEnvelope,
+    SignedExecutionPayloadEnvelope, Slot, SyncCommittee, Unsigned,
+};
 use zstd::{Decoder, Encoder};
 
 /// On-disk database that stores finalized states efficiently.

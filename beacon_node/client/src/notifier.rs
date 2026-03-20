@@ -20,7 +20,7 @@ use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
-use types::*;
+use types::{EthSpec, ExecPayload, ExecutionBlockHash, ForkName, Slot};
 use vibehouse_network::{NetworkGlobals, types::SyncState};
 
 /// Create a warning log whenever the peer count is at or below this value.

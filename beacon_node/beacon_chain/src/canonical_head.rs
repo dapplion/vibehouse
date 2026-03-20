@@ -59,7 +59,10 @@ use store::{
 use task_executor::{JoinHandle, ShutdownReason};
 use tracing::info_span;
 use tracing::{debug, error, info, instrument, warn};
-use types::*;
+use types::{
+    BeaconState, BeaconStateError, ChainSpec, Checkpoint, EthSpec, ExecPayload, ExecutionBlockHash,
+    Fork, Hash256, RelativeEpoch, SignedBeaconBlock, Slot,
+};
 use vibehouse_tracing::SPAN_RECOMPUTE_HEAD;
 
 /// Simple wrapper around `RwLock` that uses private visibility to prevent any other modules from

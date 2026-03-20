@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tree_hash::TreeHash;
-use types::*;
+use types::{Address, ChainSpec, DepositData, Hash256, Keypair, PublicKeyBytes, SignatureBytes};
 use zeroize::Zeroizing;
 
 pub const IGNORE_DUPLICATES_FLAG: &str = "ignore-duplicates";

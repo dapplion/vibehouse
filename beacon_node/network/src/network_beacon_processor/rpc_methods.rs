@@ -17,7 +17,10 @@ use vibehouse_network::rpc::methods::{
     BlobsByRangeRequest, BlobsByRootRequest, DataColumnsByRangeRequest, DataColumnsByRootRequest,
     ExecutionPayloadEnvelopesByRootRequest,
 };
-use vibehouse_network::rpc::*;
+use vibehouse_network::rpc::{
+    BlocksByRangeRequest, BlocksByRootRequest, GoodbyeReason, InboundRequestId,
+    LightClientBootstrapRequest, RpcErrorResponse, StatusMessage, methods,
+};
 use vibehouse_network::{PeerId, ReportSource, Response, SyncInfo};
 use vibehouse_tracing::{
     SPAN_HANDLE_BLOBS_BY_RANGE_REQUEST, SPAN_HANDLE_BLOBS_BY_ROOT_REQUEST,

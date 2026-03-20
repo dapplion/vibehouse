@@ -1,4 +1,7 @@
-use super::common::*;
+use super::common::{
+    COUNT_FLAG, STDIN_INPUTS_FLAG, StandardDepositDataJson, ValidatorSpecification,
+    write_to_json_file,
+};
 use crate::DumpConfig;
 use account_utils::{random_password_string, read_mnemonic_from_cli, read_password_from_user};
 use clap::{Arg, ArgAction, ArgMatches, Command};
@@ -13,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use std::time::Duration;
-use types::*;
+use types::{Address, ChainSpec, EthSpec, PublicKeyBytes, WithdrawalCredentials};
 
 pub const CMD: &str = "create";
 pub const OUTPUT_PATH_FLAG: &str = "output-path";
@@ -589,6 +592,7 @@ pub mod tests {
     use std::str::FromStr;
     use tempfile::{TempDir, tempdir};
     use tree_hash::TreeHash;
+    use types::{DepositData, MainnetEthSpec, SignatureBytes, SignedRoot};
 
     type E = MainnetEthSpec;
 

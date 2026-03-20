@@ -10,7 +10,7 @@ use execution_layer::{
 use std::net::Ipv4Addr;
 use std::path::PathBuf;
 use std::sync::Arc;
-use types::*;
+use types::EthSpec;
 
 pub fn run<E: EthSpec>(mut env: Environment<E>, matches: &ArgMatches) -> Result<(), String> {
     let jwt_path: PathBuf = parse_required(matches, "jwt-output-path")?;

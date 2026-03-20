@@ -1,7 +1,7 @@
 //! A helper library for parsing values from `clap::ArgMatches`.
 
 use clap::ArgMatches;
-use clap::builder::styling::*;
+use clap::builder::styling::{AnsiColor, Styles};
 use eth2_network_config::{DEFAULT_HARDCODED_NETWORK, Eth2NetworkConfig};
 use ssz::Decode;
 use std::path::PathBuf;

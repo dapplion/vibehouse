@@ -1,9 +1,11 @@
-use super::*;
+use super::{
+    BeaconChainHarness, E, EphemeralHarnessType, TestVector, VALIDATOR_COUNT, get_harness,
+};
 use state_processing::{
     BlockProcessingError, BlockSignatureStrategy, ConsensusContext, VerifyBlockRoot,
     per_block_processing, per_block_processing::errors::ExitInvalid,
 };
-use types::{BeaconBlock, Epoch};
+use types::{BeaconBlock, BeaconState, Epoch, EthSpec, SignedBeaconBlock};
 
 // Default validator index to exit.
 pub const VALIDATOR_INDEX: u64 = 0;

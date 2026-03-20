@@ -6,7 +6,7 @@ use execution_layer::BlockByNumberQuery;
 use serde::{Deserialize, Serialize, Serializer};
 use std::fmt;
 use std::fmt::Write;
-use types::*;
+use types::{ChainSpec, Epoch, EthSpec, ExecutionBlockHash, Hash256, Slot, Uint256};
 
 /// The time before the Bellatrix fork when we will start issuing warnings about preparation.
 pub const SECONDS_IN_A_WEEK: u64 = 604_800;

@@ -20,7 +20,7 @@ use state_processing::signature_sets::{
     signed_aggregate_signature_set,
 };
 use std::borrow::Cow;
-use types::*;
+use types::{SignedAggregateAndProof, SingleAttestation, SubnetId};
 
 /// Verify aggregated attestations using batch BLS signature verification.
 ///

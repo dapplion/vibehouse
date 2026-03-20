@@ -30,7 +30,10 @@ use state_processing::{
 use task_executor::ShutdownReason;
 use tokio::task::JoinError;
 use types::milhouse::Error as MilhouseError;
-use types::*;
+use types::{
+    AttestationError, BeaconStateError, Checkpoint, Epoch, EpochCacheError, ExecutionBlockHash,
+    Hash256, InconsistentFork, LightClientUpdateError, PublicKeyBytes, RelativeEpochError, Slot,
+};
 
 macro_rules! easy_from_to {
     ($from: ident, $to: ident) => {
@@ -312,6 +315,7 @@ easy_from_to!(EpochCacheError, BlockProductionError);
 #[cfg(test)]
 mod tests {
     use super::*;
+    use types::ForkName;
 
     #[test]
     fn from_arith_error() {

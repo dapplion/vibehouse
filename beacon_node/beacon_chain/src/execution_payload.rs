@@ -27,7 +27,10 @@ use tokio::task::JoinHandle;
 use tracing::{Instrument, debug, debug_span, warn};
 use tree_hash::TreeHash;
 use types::payload::BlockProductionVersion;
-use types::*;
+use types::{
+    BeaconBlockRef, BeaconState, BeaconStateError, EthSpec, ExecPayload, ExecutionBlockHash,
+    FullPayload, Hash256, SignedBeaconBlock, Uint256, Withdrawal,
+};
 
 pub type PreparePayloadResult<E> = Result<BlockProposalContentsType<E>, BlockProductionError>;
 pub type PreparePayloadHandle<E> = JoinHandle<Option<PreparePayloadResult<E>>>;

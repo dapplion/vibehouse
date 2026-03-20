@@ -158,7 +158,10 @@ async fn metrics_handler<E: EthSpec>(State(ctx): State<Arc<Context<E>>>) -> impl
 pub fn gather_prometheus_metrics<E: EthSpec>(
     ctx: &Context<E>,
 ) -> std::result::Result<String, String> {
-    use validator_metrics::*;
+    use validator_metrics::{
+        ATTESTER_COUNT, CURRENT_EPOCH, Encoder, GENESIS_DISTANCE, NEXT_EPOCH, PROPOSER_COUNT,
+        TextEncoder, set_gauge, set_int_gauge,
+    };
     let mut buffer = vec![];
     let encoder = TextEncoder::new();
 
