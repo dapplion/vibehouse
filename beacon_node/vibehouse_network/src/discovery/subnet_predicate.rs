@@ -1,7 +1,6 @@
 //! The subnet predicate used for searching for a particular subnet.
 use super::*;
 use crate::types::{EnrAttestationBitfield, EnrSyncCommitteeBitfield};
-use std::ops::Deref;
 use tracing::trace;
 use types::ChainSpec;
 use types::data_column_custody_group::compute_subnets_for_node;
@@ -27,12 +26,10 @@ where
             enr.sync_committee_bitfield::<E>();
 
         let predicate = subnets.iter().any(|subnet| match subnet {
-            Subnet::Attestation(s) => attestation_bitfield
-                .get(*s.deref() as usize)
-                .unwrap_or(false),
+            Subnet::Attestation(s) => attestation_bitfield.get(**s as usize).unwrap_or(false),
             Subnet::SyncCommittee(s) => sync_committee_bitfield
                 .as_ref()
-                .is_ok_and(|b| b.get(*s.deref() as usize).unwrap_or(false)),
+                .is_ok_and(|b| b.get(**s as usize).unwrap_or(false)),
             Subnet::DataColumn(s) => {
                 if let Ok(custody_group_count) = enr.custody_group_count::<E>(&spec) {
                     compute_subnets_for_node::<E>(enr.node_id().raw(), custody_group_count, &spec)

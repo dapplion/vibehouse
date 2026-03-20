@@ -1163,7 +1163,7 @@ mod tests {
     fn client_code_invalid_length() {
         assert!(ClientCode::try_from("ABC".to_string()).is_err());
         assert!(ClientCode::try_from("A".to_string()).is_err());
-        assert!(ClientCode::try_from("".to_string()).is_err());
+        assert!(ClientCode::try_from(String::new()).is_err());
     }
 
     #[test]

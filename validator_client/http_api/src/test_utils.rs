@@ -382,7 +382,7 @@ impl ApiTester {
          */
 
         let mnemonic = mnemonic_from_phrase(mnemonic.as_str()).unwrap();
-        let mut wallet = WalletBuilder::from_mnemonic(&mnemonic, PASSWORD_BYTES, "".to_string())
+        let mut wallet = WalletBuilder::from_mnemonic(&mnemonic, PASSWORD_BYTES, String::new())
             .unwrap()
             .build()
             .unwrap();

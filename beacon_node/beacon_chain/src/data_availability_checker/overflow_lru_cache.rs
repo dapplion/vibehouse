@@ -395,7 +395,7 @@ impl<E: EthSpec> PendingComponents<E> {
     }
 
     pub fn status_str(&self, num_expected_columns_opt: Option<usize>) -> String {
-        let block_count = if self.block.is_some() { 1 } else { 0 };
+        let block_count = u8::from(self.block.is_some());
         if let Some(num_expected_columns) = num_expected_columns_opt {
             format!(
                 "block {} data_columns {}/{}",

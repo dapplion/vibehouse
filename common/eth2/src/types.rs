@@ -2187,7 +2187,7 @@ mod tests {
             SkipRandaoVerification::No
         );
         assert_eq!(
-            SkipRandaoVerification::try_from(Some("".to_string())).unwrap(),
+            SkipRandaoVerification::try_from(Some(String::new())).unwrap(),
             SkipRandaoVerification::Yes
         );
         assert!(SkipRandaoVerification::try_from(Some("true".to_string())).is_err());
@@ -2255,7 +2255,7 @@ mod tests {
 
     #[test]
     fn query_vec_empty_string() {
-        let qv = QueryVec::<u64>::try_from("".to_string()).unwrap();
+        let qv = QueryVec::<u64>::try_from(String::new()).unwrap();
         assert!(qv.values.is_empty());
     }
 

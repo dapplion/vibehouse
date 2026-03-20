@@ -354,7 +354,7 @@ impl<T: BeaconChainTypes> ActiveCustodyRequest<T> {
             .map(|peer| {
                 (
                     // Prioritize peers that claim to know have imported this block
-                    if lookup_peers.contains(peer) { 0 } else { 1 },
+                    u8::from(!lookup_peers.contains(peer)),
                     // De-prioritize peers that we have already attempted to download from
                     self.peer_attempts.get(peer).copied().unwrap_or(0),
                     // Prefer peers with fewer requests to load balance across peers.

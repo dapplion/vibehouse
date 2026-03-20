@@ -882,12 +882,10 @@ impl ChainSpec {
                 }
             }
             max_blobs_per_block
+        } else if fork_name.electra_enabled() {
+            self.max_blobs_per_block_electra
         } else {
-            if fork_name.electra_enabled() {
-                self.max_blobs_per_block_electra
-            } else {
-                self.max_blobs_per_block
-            }
+            self.max_blobs_per_block
         }
     }
 

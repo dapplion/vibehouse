@@ -1592,7 +1592,7 @@ impl<E: EthSpec> BeaconProcessor<E> {
         metrics::observe_timer_vec(
             &metrics::BEACON_PROCESSOR_QUEUE_TIME,
             &[work_type.into()],
-            Instant::now() - created_timestamp,
+            created_timestamp.elapsed(),
         );
 
         let worker_timer =

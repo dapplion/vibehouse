@@ -119,11 +119,8 @@ impl<E: EthSpec> Attestation<E> {
                 .map_err(|_| Error::InvalidCommitteeIndex)?;
             // In Gloas, data.index indicates payload availability:
             // 0 = payload not present (or same-slot attestation), 1 = payload present
-            let index = if spec.fork_name_at_slot::<E>(slot).gloas_enabled() && payload_present {
-                1u64
-            } else {
-                0u64
-            };
+            let index =
+                u64::from(spec.fork_name_at_slot::<E>(slot).gloas_enabled() && payload_present);
             Ok(Attestation::Electra(AttestationElectra {
                 aggregation_bits: BitList::with_capacity(committee_length)
                     .map_err(|_| Error::InvalidCommitteeLength)?,

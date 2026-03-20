@@ -53,7 +53,7 @@ impl Display for ErrorType {
         #[allow(clippy::invalid_regex)]
         let re = Regex::new("\\p{C}").expect("Regex is valid");
         let error_type_str =
-            String::from_utf8_lossy(&re.replace_all(self.0.deref(), &b""[..])).to_string();
+            String::from_utf8_lossy(&re.replace_all(&self.0, &b""[..])).to_string();
         write!(f, "{error_type_str}")
     }
 }
@@ -1261,9 +1261,9 @@ mod tests {
     fn old_blocks_by_range_display() {
         let req = OldBlocksByRangeRequest::new(1, 10, 2);
         let s = format!("{req}");
-        assert!(s.contains("1"));
+        assert!(s.contains('1'));
         assert!(s.contains("10"));
-        assert!(s.contains("2"));
+        assert!(s.contains('2'));
     }
 
     // ── DataColumnsByRangeRequest ─────────────────────────────
@@ -1324,7 +1324,7 @@ mod tests {
         };
         let s = format!("{req}");
         assert!(s.contains("10"));
-        assert!(s.contains("3"));
+        assert!(s.contains('3'));
     }
 
     // ── LightClientUpdatesByRangeRequest ──────────────────────

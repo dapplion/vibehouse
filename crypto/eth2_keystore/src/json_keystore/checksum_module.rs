@@ -134,7 +134,7 @@ mod tests {
     fn empty_map_from_non_object_fails() {
         assert!(EmptyMap::try_from(Value::Null).is_err());
         assert!(EmptyMap::try_from(Value::Bool(true)).is_err());
-        assert!(EmptyMap::try_from(Value::String("".into())).is_err());
+        assert!(EmptyMap::try_from(Value::String(String::new())).is_err());
         assert!(EmptyMap::try_from(Value::Array(vec![])).is_err());
     }
 

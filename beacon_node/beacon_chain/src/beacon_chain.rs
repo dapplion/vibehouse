@@ -4629,8 +4629,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Note: blobs should have at least one item and all items have the same parent root.
         if let Some(parent_root) = blobs
             .iter()
-            .filter_map(|b| b.as_ref().map(|b| b.block_parent_root()))
-            .next()
+            .find_map(|b| b.as_ref().map(|b| b.block_parent_root()))
             && !self
                 .canonical_head
                 .fork_choice_read_lock()
