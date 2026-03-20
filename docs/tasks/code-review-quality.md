@@ -2673,3 +2673,14 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
 
 No actionable work found. All priorities 1-6 complete. Codebase stable.
+
+### Run 1997 (2026-03-20)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since March 15. Open Gloas PRs unchanged: #5023 (block root filenames + comptests), #4979/#4992 (PTC lookbehind — competing approaches, still under discussion), #4892 (remove impossible branch). None merged, none actionable.
+- **PTC caching watch**: #4992 (lightweight 2-committee cache, 8KB/state) vs #4979 (full lookbehind slice, 256KB/state) — both address epoch-boundary PTC divergence bug. Would add new BeaconState fields. No decision yet.
+- **CI**: All jobs green. Latest two runs on main passed.
+- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
+
+No actionable work found. All priorities 1-6 complete. Codebase stable.
