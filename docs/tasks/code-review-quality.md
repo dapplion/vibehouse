@@ -2271,3 +2271,13 @@ Key areas:
 7. **Remaining** (43 files across store, validator_client, common, proto_array, etc.)
 
 Spec v1.7.0-alpha.3 still latest — no new releases. 4991 workspace tests pass (9 web3signer timeouts = external). lint-full passes. Committed `018024abd`.
+
+### Run 1961 (2026-03-20)
+
+**Applied 3 pedantic clippy fixes across 29 files**:
+
+1. **`explicit_iter_loop`** (18 files, 21 fixes): Removed unnecessary `.into_iter()` calls in `for` loops — `for x in collection` is idiomatic when consuming the collection, `.into_iter()` is implicit
+2. **`range_plus_one`** (1 file, 1 fix): Replaced `0..n + 1` with `0..=n` inclusive range (validator_pubkey_cache.rs)
+3. **`semicolon_if_nothing_returned`** (10 files, 18 fixes): Added missing semicolons after expressions in blocks that return unit — makes the unit return explicit
+
+Spec v1.7.0-alpha.3 still latest — no new releases or Gloas-relevant merges. 2025 targeted tests pass (proto_array, fork_choice, state_processing, store, logging, beacon_processor, vibehouse_network) + 69 EF SSZ static tests. lint-full passes. Committed `d3ab34544`.
