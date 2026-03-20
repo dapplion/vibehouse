@@ -104,8 +104,8 @@ pub fn build_response_v3<T: BeaconChainTypes>(
 
     let block_contents = build_block_contents::build_block_contents(fork_name, block_response)?;
 
-    match accept_header {
-        Some(api_types::Accept::Ssz) => axum::http::Response::builder()
+    if let Some(api_types::Accept::Ssz) = accept_header {
+        axum::http::Response::builder()
             .status(200)
             .body(axum::body::Body::from(block_contents.as_ssz_bytes()))
             .map(|r| add_ssz_content_type_header(r.into_response()))
@@ -113,20 +113,19 @@ pub fn build_response_v3<T: BeaconChainTypes>(
             .map(|res| add_execution_payload_blinded_header(res, execution_payload_blinded))
             .map(|res| add_execution_payload_value_header(res, execution_payload_value))
             .map(|res| add_consensus_block_value_header(res, consensus_block_value))
-            .map_err(|e| ApiError::server_error(format!("failed to create response: {e}"))),
-        _ => {
-            let resp = axum::Json(ForkVersionedResponse {
-                version: fork_name,
-                metadata,
-                data: block_contents,
-            })
-            .into_response();
-            let resp = add_consensus_version_header(resp, fork_name);
-            let resp = add_execution_payload_blinded_header(resp, execution_payload_blinded);
-            let resp = add_execution_payload_value_header(resp, execution_payload_value);
-            let resp = add_consensus_block_value_header(resp, consensus_block_value);
-            Ok(resp)
-        }
+            .map_err(|e| ApiError::server_error(format!("failed to create response: {e}")))
+    } else {
+        let resp = axum::Json(ForkVersionedResponse {
+            version: fork_name,
+            metadata,
+            data: block_contents,
+        })
+        .into_response();
+        let resp = add_consensus_version_header(resp, fork_name);
+        let resp = add_execution_payload_blinded_header(resp, execution_payload_blinded);
+        let resp = add_execution_payload_value_header(resp, execution_payload_value);
+        let resp = add_consensus_block_value_header(resp, consensus_block_value);
+        Ok(resp)
     }
 }
 

@@ -6753,16 +6753,13 @@ mod tests {
         // With zero balance, acceptance requires random_value == 0 (probability 1/65536 per try).
         // The algorithm is deterministic and will eventually find values. Just verify it
         // either succeeds with correct size or errors cleanly.
-        match ptc {
-            Ok(members) => {
-                assert_eq!(members.len(), E::ptc_size(), "PTC should have correct size");
-                for &idx in &members {
-                    assert!((idx as usize) < 8, "PTC member {idx} out of range");
-                }
+        if let Ok(members) = ptc {
+            assert_eq!(members.len(), E::ptc_size(), "PTC should have correct size");
+            for &idx in &members {
+                assert!((idx as usize) < 8, "PTC member {idx} out of range");
             }
-            Err(_) => {
-                // An error is also acceptable for degenerate inputs
-            }
+        } else {
+            // An error is also acceptable for degenerate inputs
         }
     }
 

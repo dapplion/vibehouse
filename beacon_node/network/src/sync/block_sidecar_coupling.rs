@@ -381,9 +381,8 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
                     return Err(CouplingError::BlobPeerFailure(
                         "Repeat blob index".to_string(),
                     ));
-                } else {
-                    *blob_opt = Some(blob);
                 }
+                *blob_opt = Some(blob);
             }
             let blobs = RuntimeVariableList::new(
                 blobs_buffer.into_iter().flatten().collect::<Vec<_>>(),

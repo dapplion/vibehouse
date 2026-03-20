@@ -932,12 +932,15 @@ impl<T: BeaconChainTypes> Drop for NetworkService<T> {
             error!(error = ?e, "Failed to clear old DHT entries");
         }
         // Still try to update new entries
-        match persist_dht::<T::EthSpec, T::HotStore, T::ColdStore>(self.store.clone(), enrs) {
-            Err(e) => error!(
+        if let Err(e) =
+            persist_dht::<T::EthSpec, T::HotStore, T::ColdStore>(self.store.clone(), enrs)
+        {
+            error!(
                 error = ?e,
                 "Failed to persist DHT on drop"
-            ),
-            Ok(_) => info!("Saved DHT state"),
+            )
+        } else {
+            info!("Saved DHT state")
         }
         info!("Network service shutdown");
     }

@@ -323,20 +323,19 @@ impl InitializedValidator {
 
                 // Check if a client has already been initialized for this remote signer url.
                 let http_client = if let Some(client_map) = web3_signer_client_map {
-                    match client_map.get(&web3_signer) {
-                        Some(client) => client.clone(),
-                        None => {
-                            let client = build_web3_signer_client(
-                                web3_signer.root_certificate_path.clone(),
-                                web3_signer.client_identity_path.clone(),
-                                web3_signer.client_identity_password.clone(),
-                                request_timeout,
-                                config.web3_signer_keep_alive_timeout,
-                                config.web3_signer_max_idle_connections,
-                            )?;
-                            client_map.insert(web3_signer, client.clone());
-                            client
-                        }
+                    if let Some(client) = client_map.get(&web3_signer) {
+                        client.clone()
+                    } else {
+                        let client = build_web3_signer_client(
+                            web3_signer.root_certificate_path.clone(),
+                            web3_signer.client_identity_path.clone(),
+                            web3_signer.client_identity_password.clone(),
+                            request_timeout,
+                            config.web3_signer_keep_alive_timeout,
+                            config.web3_signer_max_idle_connections,
+                        )?;
+                        client_map.insert(web3_signer, client.clone());
+                        client
                     }
                 } else {
                     // There are no clients in the map.

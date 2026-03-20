@@ -302,9 +302,8 @@ impl StateSummariesDAG {
                             root_state_root: state_root,
                             root_state_slot: summary.slot,
                         });
-                    } else {
-                        state_root = summary.previous_state_root;
                     }
+                    state_root = summary.previous_state_root;
                 }
             }
         }

@@ -238,11 +238,10 @@ pub async fn build_node_pair(
 
     let receiver_multiaddr = joined.await.1;
 
-    match sender.testing_dial(receiver_multiaddr.clone()) {
-        Ok(()) => {
-            debug!(address = ?receiver_multiaddr, "Sender dialed receiver");
-        }
-        Err(_) => error!("Dialing failed"),
+    if let Ok(()) = sender.testing_dial(receiver_multiaddr.clone()) {
+        debug!(address = ?receiver_multiaddr, "Sender dialed receiver");
+    } else {
+        error!("Dialing failed")
     }
     (sender, receiver)
 }

@@ -2366,13 +2366,12 @@ impl<E: EthSpec> BeaconState<E> {
         let mut cache = mem::take(self.builder_pubkey_cache_mut());
         let cached_len = cache.len();
 
-        let builders_len = match self.builders() {
-            Ok(builders) => builders.len(),
-            Err(_) => {
-                // Pre-Gloas: no builders, nothing to cache
-                *self.builder_pubkey_cache_mut() = cache;
-                return Ok(());
-            }
+        let builders_len = if let Ok(builders) = self.builders() {
+            builders.len()
+        } else {
+            // Pre-Gloas: no builders, nothing to cache
+            *self.builder_pubkey_cache_mut() = cache;
+            return Ok(());
         };
 
         // Only scan builders beyond what we've already cached.

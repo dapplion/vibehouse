@@ -111,48 +111,45 @@ pub fn load_private_key(config: &NetworkConfig) -> Keypair {
     if let Ok(mut network_key_file) = File::open(network_key_f.clone()) {
         // Limit read to reasonable hex key size: 32 bytes = 64 hex chars + "0x" prefix + whitespace
         let mut buffer = vec![0u8; 70];
-        match network_key_file.read(&mut buffer) {
-            Ok(bytes_read) => {
-                if let Ok(hex_string) = String::from_utf8(buffer[..bytes_read].to_vec()) {
-                    // First try to parse as hex string
-                    let hex_content = hex_string.trim();
-                    if let Ok(keypair) = keypair_from_hex(hex_content) {
-                        debug!("Loaded network key from disk (hex format).");
-                        return keypair;
-                    }
+        if let Ok(bytes_read) = network_key_file.read(&mut buffer) {
+            if let Ok(hex_string) = String::from_utf8(buffer[..bytes_read].to_vec()) {
+                // First try to parse as hex string
+                let hex_content = hex_string.trim();
+                if let Ok(keypair) = keypair_from_hex(hex_content) {
+                    debug!("Loaded network key from disk (hex format).");
+                    return keypair;
                 }
             }
-            Err(_) => debug!("Could not read network key file as string, trying binary format"),
+        } else {
+            debug!("Could not read network key file as string, trying binary format")
         }
 
         // If hex parsing failed or file couldn't be read as string, try binary format
         if let Ok(mut network_key_file) = File::open(network_key_f.clone()) {
             let mut key_bytes: Vec<u8> = Vec::with_capacity(36);
-            match network_key_file.read_to_end(&mut key_bytes) {
-                Err(_) => debug!("Could not read network key file"),
-                Ok(_) => {
-                    // only accept secp256k1 keys for now
-                    if let Ok(secret_key) = secp256k1::SecretKey::try_from_bytes(&mut key_bytes) {
-                        let kp: secp256k1::Keypair = secret_key.clone().into();
-                        debug!(
-                            "Loaded network key from disk (binary format), migrating to hex format."
-                        );
+            if network_key_file.read_to_end(&mut key_bytes).is_err() {
+                debug!("Could not read network key file")
+            } else {
+                // only accept secp256k1 keys for now
+                if let Ok(secret_key) = secp256k1::SecretKey::try_from_bytes(&mut key_bytes) {
+                    let kp: secp256k1::Keypair = secret_key.clone().into();
+                    debug!(
+                        "Loaded network key from disk (binary format), migrating to hex format."
+                    );
 
-                        // Migrate binary key to hex format
-                        let hex_key = hex::encode(secret_key.to_bytes());
-                        if let Err(e) = File::create(network_key_f)
-                            .and_then(|mut f| f.write_all(hex_key.as_bytes()))
-                        {
-                            debug!("Failed to migrate key to hex format: {}", e);
-                        } else {
-                            debug!("Successfully migrated key to hex format.");
-                        }
-
-                        return kp.into();
+                    // Migrate binary key to hex format
+                    let hex_key = hex::encode(secret_key.to_bytes());
+                    if let Err(e) = File::create(network_key_f)
+                        .and_then(|mut f| f.write_all(hex_key.as_bytes()))
+                    {
+                        debug!("Failed to migrate key to hex format: {}", e);
                     } else {
-                        debug!("Network key file is not a valid secp256k1 key");
+                        debug!("Successfully migrated key to hex format.");
                     }
+
+                    return kp.into();
                 }
+                debug!("Network key file is not a valid secp256k1 key");
             }
         }
     }

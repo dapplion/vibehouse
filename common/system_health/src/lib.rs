@@ -152,15 +152,14 @@ fn observe_system_health(
             .and_then(|(_, result)| result.parse::<f32>().ok())
     });
 
-    let global_cpu_frequency = match cpu_frequency_from_name {
-        Some(freq) => freq,
-        None => {
-            // Get the frequency from average measured frequencies
-            let global_cpu_frequency: f32 =
-                cpus.iter().map(sysinfo::CpuExt::frequency).sum::<u64>() as f32 / cpus.len() as f32;
-            // Shift to ghz to 1dp
-            (global_cpu_frequency / 100.0).round() / 10.0
-        }
+    let global_cpu_frequency = if let Some(freq) = cpu_frequency_from_name {
+        freq
+    } else {
+        // Get the frequency from average measured frequencies
+        let global_cpu_frequency: f32 =
+            cpus.iter().map(sysinfo::CpuExt::frequency).sum::<u64>() as f32 / cpus.len() as f32;
+        // Shift to ghz to 1dp
+        (global_cpu_frequency / 100.0).round() / 10.0
     };
 
     SystemHealth {

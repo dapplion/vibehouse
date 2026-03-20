@@ -166,13 +166,12 @@ async fn fetch_and_process_blobs_v1<T: BeaconChainTypes>(
         debug!(num_expected_blobs, "No blobs fetched from the EL");
         inc_counter(&metrics::BLOBS_FROM_EL_MISS_TOTAL);
         return Ok(None);
-    } else {
-        debug!(
-            num_expected_blobs,
-            num_fetched_blobs, "Received blobs from the EL"
-        );
-        inc_counter(&metrics::BLOBS_FROM_EL_HIT_TOTAL);
     }
+    debug!(
+        num_expected_blobs,
+        num_fetched_blobs, "Received blobs from the EL"
+    );
+    inc_counter(&metrics::BLOBS_FROM_EL_HIT_TOTAL);
 
     if chain_adapter.fork_choice_contains_block(&block_root) {
         // Avoid computing sidecars if the block has already been imported.

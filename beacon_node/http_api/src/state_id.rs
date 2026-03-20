@@ -115,11 +115,10 @@ impl StateId {
                         .map_err(BeaconChainError::ForkChoiceError)
                         .map_err(ApiError::unhandled_error)?;
                     return Ok((*root, execution_optimistic, true));
-                } else {
-                    return Err(ApiError::not_found(format!(
-                        "beacon state for state root {root}"
-                    )));
                 }
+                return Err(ApiError::not_found(format!(
+                    "beacon state for state root {root}"
+                )));
             }
         };
 

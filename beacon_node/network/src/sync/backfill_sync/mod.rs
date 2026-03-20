@@ -1168,9 +1168,8 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
             // Conditions that we have completed a backfill sync
             if anchor_info.block_backfill_complete(self.beacon_chain.genesis_backfill_slot) {
                 return true;
-            } else {
-                error!("Backfill out of sync with beacon chain");
             }
+            error!("Backfill out of sync with beacon chain");
         }
         false
     }

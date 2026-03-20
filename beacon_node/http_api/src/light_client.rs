@@ -26,28 +26,25 @@ pub fn get_light_client_updates<T: BeaconChainTypes>(
         .get_light_client_updates(query.start_period, query.count)
         .map_err(|_| ApiError::not_found("No LightClientUpdates found".to_string()))?;
 
-    match accept_header {
-        Some(api_types::Accept::Ssz) => {
-            let response_chunks: Vec<u8> = light_client_updates
-                .into_iter()
-                .flat_map(|update| {
-                    map_light_client_update_to_response_chunk::<T>(&chain, update).as_ssz_bytes()
-                })
-                .collect();
+    if let Some(api_types::Accept::Ssz) = accept_header {
+        let response_chunks: Vec<u8> = light_client_updates
+            .into_iter()
+            .flat_map(|update| {
+                map_light_client_update_to_response_chunk::<T>(&chain, update).as_ssz_bytes()
+            })
+            .collect();
 
-            axum::http::Response::builder()
-                .status(200)
-                .body(axum::body::Body::from(response_chunks))
-                .map(|r| add_ssz_content_type_header(r.into_response()))
-                .map_err(|e| ApiError::server_error(format!("failed to create response: {e}")))
-        }
-        _ => {
-            let fork_versioned_response = light_client_updates
-                .iter()
-                .map(|update| map_light_client_update_to_json_response::<T>(&chain, update.clone()))
-                .collect::<Vec<BeaconResponse<LightClientUpdate<T::EthSpec>>>>();
-            Ok(axum::Json(fork_versioned_response).into_response())
-        }
+        axum::http::Response::builder()
+            .status(200)
+            .body(axum::body::Body::from(response_chunks))
+            .map(|r| add_ssz_content_type_header(r.into_response()))
+            .map_err(|e| ApiError::server_error(format!("failed to create response: {e}")))
+    } else {
+        let fork_versioned_response = light_client_updates
+            .iter()
+            .map(|update| map_light_client_update_to_json_response::<T>(&chain, update.clone()))
+            .collect::<Vec<BeaconResponse<LightClientUpdate<T::EthSpec>>>>();
+        Ok(axum::Json(fork_versioned_response).into_response())
     }
 }
 
@@ -69,20 +66,19 @@ pub fn get_light_client_bootstrap<T: BeaconChainTypes>(
         })?
         .ok_or_else(|| ApiError::not_found("No LightClientBootstrap found".to_string()))?;
 
-    match accept_header {
-        Some(api_types::Accept::Ssz) => axum::http::Response::builder()
+    if let Some(api_types::Accept::Ssz) = accept_header {
+        axum::http::Response::builder()
             .status(200)
             .body(axum::body::Body::from(
                 light_client_bootstrap.as_ssz_bytes(),
             ))
             .map(|r| add_consensus_version_header(r.into_response(), fork_name))
             .map(add_ssz_content_type_header)
-            .map_err(|e| ApiError::server_error(format!("failed to create response: {e}"))),
-        _ => {
-            let fork_versioned_response =
-                map_light_client_bootstrap_to_json_response::<T>(fork_name, light_client_bootstrap);
-            Ok(axum::Json(fork_versioned_response).into_response())
-        }
+            .map_err(|e| ApiError::server_error(format!("failed to create response: {e}")))
+    } else {
+        let fork_versioned_response =
+            map_light_client_bootstrap_to_json_response::<T>(fork_name, light_client_bootstrap);
+        Ok(axum::Json(fork_versioned_response).into_response())
     }
 }
 

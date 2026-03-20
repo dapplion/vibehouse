@@ -463,65 +463,63 @@ impl ValidatorsDiff {
                 let validator_diff = if let Some(x) = xs.get(i) {
                     if y == x {
                         return None;
-                    } else {
-                        let pubkey_changed = y.pubkey != x.pubkey;
-                        // Note: If researchers attempt to change the Validator container, go quickly to
-                        // All Core Devs and push hard to add another List in the BeaconState instead.
-                        Validator {
-                            // The pubkey can be changed on index re-use
-                            pubkey: if pubkey_changed {
-                                y.pubkey
-                            } else {
-                                PublicKeyBytes::empty()
-                            },
-                            // withdrawal_credentials can be set to zero initially but can never be
-                            // changed INTO zero. On index re-use it can be set to zero, but in that
-                            // case the pubkey will also change.
-                            withdrawal_credentials: if pubkey_changed
-                                || y.withdrawal_credentials != x.withdrawal_credentials
-                            {
-                                y.withdrawal_credentials
-                            } else {
-                                Hash256::ZERO
-                            },
-                            // effective_balance can increase and decrease
-                            effective_balance: y
-                                .effective_balance
-                                .wrapping_sub(x.effective_balance),
-                            // slashed can only change from false into true. In an index re-use it can
-                            // switch back to false, but in that case the pubkey will also change.
-                            slashed: y.slashed,
-                            // activation_eligibility_epoch can never be zero under any case. It's
-                            // set to either FAR_FUTURE_EPOCH or get_current_epoch(state) + 1
-                            activation_eligibility_epoch: if y.activation_eligibility_epoch
-                                != x.activation_eligibility_epoch
-                            {
-                                y.activation_eligibility_epoch
-                            } else {
-                                Epoch::new(0)
-                            },
-                            // activation_epoch can never be zero under any case. It's
-                            // set to either FAR_FUTURE_EPOCH or epoch + 1 + MAX_SEED_LOOKAHEAD
-                            activation_epoch: if y.activation_epoch != x.activation_epoch {
-                                y.activation_epoch
-                            } else {
-                                Epoch::new(0)
-                            },
-                            // exit_epoch can never be zero under any case. It's set to either
-                            // FAR_FUTURE_EPOCH or > epoch + 1 + MAX_SEED_LOOKAHEAD
-                            exit_epoch: if y.exit_epoch != x.exit_epoch {
-                                y.exit_epoch
-                            } else {
-                                Epoch::new(0)
-                            },
-                            // withdrawable_epoch can never be zero under any case. It's set to
-                            // either FAR_FUTURE_EPOCH or > epoch + 1 + MAX_SEED_LOOKAHEAD
-                            withdrawable_epoch: if y.withdrawable_epoch != x.withdrawable_epoch {
-                                y.withdrawable_epoch
-                            } else {
-                                Epoch::new(0)
-                            },
-                        }
+                    }
+
+                    let pubkey_changed = y.pubkey != x.pubkey;
+                    // Note: If researchers attempt to change the Validator container, go quickly to
+                    // All Core Devs and push hard to add another List in the BeaconState instead.
+                    Validator {
+                        // The pubkey can be changed on index re-use
+                        pubkey: if pubkey_changed {
+                            y.pubkey
+                        } else {
+                            PublicKeyBytes::empty()
+                        },
+                        // withdrawal_credentials can be set to zero initially but can never be
+                        // changed INTO zero. On index re-use it can be set to zero, but in that
+                        // case the pubkey will also change.
+                        withdrawal_credentials: if pubkey_changed
+                            || y.withdrawal_credentials != x.withdrawal_credentials
+                        {
+                            y.withdrawal_credentials
+                        } else {
+                            Hash256::ZERO
+                        },
+                        // effective_balance can increase and decrease
+                        effective_balance: y.effective_balance.wrapping_sub(x.effective_balance),
+                        // slashed can only change from false into true. In an index re-use it can
+                        // switch back to false, but in that case the pubkey will also change.
+                        slashed: y.slashed,
+                        // activation_eligibility_epoch can never be zero under any case. It's
+                        // set to either FAR_FUTURE_EPOCH or get_current_epoch(state) + 1
+                        activation_eligibility_epoch: if y.activation_eligibility_epoch
+                            != x.activation_eligibility_epoch
+                        {
+                            y.activation_eligibility_epoch
+                        } else {
+                            Epoch::new(0)
+                        },
+                        // activation_epoch can never be zero under any case. It's
+                        // set to either FAR_FUTURE_EPOCH or epoch + 1 + MAX_SEED_LOOKAHEAD
+                        activation_epoch: if y.activation_epoch != x.activation_epoch {
+                            y.activation_epoch
+                        } else {
+                            Epoch::new(0)
+                        },
+                        // exit_epoch can never be zero under any case. It's set to either
+                        // FAR_FUTURE_EPOCH or > epoch + 1 + MAX_SEED_LOOKAHEAD
+                        exit_epoch: if y.exit_epoch != x.exit_epoch {
+                            y.exit_epoch
+                        } else {
+                            Epoch::new(0)
+                        },
+                        // withdrawable_epoch can never be zero under any case. It's set to
+                        // either FAR_FUTURE_EPOCH or > epoch + 1 + MAX_SEED_LOOKAHEAD
+                        withdrawable_epoch: if y.withdrawable_epoch != x.withdrawable_epoch {
+                            y.withdrawable_epoch
+                        } else {
+                            Epoch::new(0)
+                        },
                     }
                 } else {
                     y.clone()

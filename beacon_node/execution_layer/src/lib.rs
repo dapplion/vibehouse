@@ -704,12 +704,11 @@ impl<E: EthSpec> ExecutionLayer<E> {
                     // Wait for next epoch
                     sleep(duration_to_next_epoch).await;
 
-                    match slot_clock
+                    if let Some(current_epoch) = slot_clock
                         .now()
                         .map(|slot| slot.epoch(E::slots_per_epoch()))
                     {
-                        Some(current_epoch) => el
-                            .clean_proposer_caches(current_epoch)
+                        el.clean_proposer_caches(current_epoch)
                             .await
                             .map_err(|e| {
                                 error!(
@@ -717,8 +716,9 @@ impl<E: EthSpec> ExecutionLayer<E> {
                                     "Failed to clean proposer preparation cache"
                                 );
                             })
-                            .unwrap_or(()),
-                        None => error!("Failed to get current epoch from slot clock"),
+                            .unwrap_or(())
+                    } else {
+                        error!("Failed to get current epoch from slot clock")
                     }
                 } else {
                     error!("Failed to read slot clock");
@@ -1291,17 +1291,16 @@ impl<E: EthSpec> ExecutionLayer<E> {
                         )
                         .await?;
 
-                    match response.payload_id {
-                        Some(payload_id) => payload_id,
-                        None => {
-                            error!(
-                                      msg = "No payload ID, the engine is likely syncing. \
-                                      This has the potential to cause a missed block proposal.",
-                            status = ?response.payload_status,
-                                      "Exec engine unable to produce payload"
-                                  );
-                            return Err(ApiError::PayloadIdUnavailable);
-                        }
+                    if let Some(payload_id) = response.payload_id {
+                        payload_id
+                    } else {
+                        error!(
+                                  msg = "No payload ID, the engine is likely syncing. \
+                                  This has the potential to cause a missed block proposal.",
+                        status = ?response.payload_status,
+                                  "Exec engine unable to produce payload"
+                              );
+                        return Err(ApiError::PayloadIdUnavailable);
                     }
                 };
 
@@ -1606,9 +1605,8 @@ impl<E: EthSpec> ExecutionLayer<E> {
                         .is_some()
                     {
                         return Ok(Some(terminal_block_hash));
-                    } else {
-                        return Ok(None);
                     }
+                    return Ok(None);
                 }
 
                 let block = self.get_pow_block_at_total_difficulty(engine, spec).await?;
@@ -1679,9 +1677,8 @@ impl<E: EthSpec> ExecutionLayer<E> {
 
                 if block_reached_ttd && !parent_reached_ttd {
                     return Ok(Some(block));
-                } else {
-                    block = parent;
                 }
+                block = parent;
             } else {
                 return Ok(None);
             }

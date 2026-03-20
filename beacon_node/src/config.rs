@@ -1199,21 +1199,20 @@ pub fn set_network_config(
         let mut enrs: Vec<Enr> = vec![];
         let mut multiaddrs: Vec<Multiaddr> = vec![];
         for addr in boot_enr_str.split(',') {
-            match addr.parse() {
-                Ok(enr) => enrs.push(enr),
-                Err(_) => {
-                    // parsing as ENR failed, try as Multiaddr
-                    let multi: Multiaddr = addr
-                        .parse()
-                        .map_err(|_| format!("Not valid as ENR nor Multiaddr: {addr}"))?;
-                    if !multi.iter().any(|proto| matches!(proto, Protocol::Udp(_))) {
-                        error!(multiaddr = multi.to_string(), "Missing UDP in Multiaddr");
-                    }
-                    if !multi.iter().any(|proto| matches!(proto, Protocol::P2p(_))) {
-                        error!(multiaddr = multi.to_string(), "Missing P2P in Multiaddr");
-                    }
-                    multiaddrs.push(multi);
+            if let Ok(enr) = addr.parse() {
+                enrs.push(enr)
+            } else {
+                // parsing as ENR failed, try as Multiaddr
+                let multi: Multiaddr = addr
+                    .parse()
+                    .map_err(|_| format!("Not valid as ENR nor Multiaddr: {addr}"))?;
+                if !multi.iter().any(|proto| matches!(proto, Protocol::Udp(_))) {
+                    error!(multiaddr = multi.to_string(), "Missing UDP in Multiaddr");
                 }
+                if !multi.iter().any(|proto| matches!(proto, Protocol::P2p(_))) {
+                    error!(multiaddr = multi.to_string(), "Missing P2P in Multiaddr");
+                }
+                multiaddrs.push(multi);
             }
         }
         config.boot_nodes_enr = enrs;

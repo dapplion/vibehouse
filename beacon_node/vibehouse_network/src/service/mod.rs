@@ -805,15 +805,12 @@ impl<E: EthSpec> Network<E> {
 
         let topic: Topic = topic.into();
 
-        match self.gossipsub_mut().subscribe(&topic) {
-            Err(e) => {
-                warn!(%topic, error = ?e, "Failed to subscribe to topic");
-                false
-            }
-            Ok(_) => {
-                debug!(%topic, "Subscribed to topic");
-                true
-            }
+        if let Err(e) = self.gossipsub_mut().subscribe(&topic) {
+            warn!(%topic, error = ?e, "Failed to subscribe to topic");
+            false
+        } else {
+            debug!(%topic, "Subscribed to topic");
+            true
         }
     }
 

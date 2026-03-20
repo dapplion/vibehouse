@@ -1390,26 +1390,26 @@ pub fn verify_attestation_target_root<E: EthSpec>(
             // fundamentally invalid.
             expected: None,
         });
-    } else {
-        let target_root = if head_block_epoch == attestation_epoch {
-            // If the block is in the same epoch as the attestation, then use the target root
-            // from the block.
-            head_block.target_root
-        } else {
-            // If the head block is from a previous epoch then skip slots will cause the head block
-            // root to become the target block root.
-            //
-            // We know the head block is from a previous epoch due to a previous check.
-            head_block.root
-        };
+    }
 
-        // Reject any attestation with an invalid target root.
-        if target_root != attestation_data.target.root {
-            return Err(Error::InvalidTargetRoot {
-                attestation: attestation_data.target.root,
-                expected: Some(target_root),
-            });
-        }
+    let target_root = if head_block_epoch == attestation_epoch {
+        // If the block is in the same epoch as the attestation, then use the target root
+        // from the block.
+        head_block.target_root
+    } else {
+        // If the head block is from a previous epoch then skip slots will cause the head block
+        // root to become the target block root.
+        //
+        // We know the head block is from a previous epoch due to a previous check.
+        head_block.root
+    };
+
+    // Reject any attestation with an invalid target root.
+    if target_root != attestation_data.target.root {
+        return Err(Error::InvalidTargetRoot {
+            attestation: attestation_data.target.root,
+            expected: Some(target_root),
+        });
     }
 
     Ok(())

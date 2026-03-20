@@ -157,9 +157,8 @@ impl<'a> Builder<'a> {
 
         if dir.exists() {
             return Err(Error::DirectoryAlreadyExists(dir));
-        } else {
-            create_dir_all(&dir).map_err(Error::UnableToCreateDir)?;
         }
+        create_dir_all(&dir).map_err(Error::UnableToCreateDir)?;
 
         if let Some(password_dir) = &self.password_dir {
             create_dir_all(password_dir).map_err(Error::UnableToCreatePasswordDir)?;
@@ -207,18 +206,18 @@ impl<'a> Builder<'a> {
                 let path = dir.join(ETH1_DEPOSIT_DATA_FILE);
                 if path.exists() {
                     return Err(Error::DepositDataAlreadyExists(path));
-                } else {
-                    let hex = format!("0x{}", hex::encode(deposit_data));
-                    File::options()
-                        .write(true)
-                        .read(true)
-                        .create(true)
-                        .truncate(true)
-                        .open(path)
-                        .map_err(Error::UnableToSaveDepositData)?
-                        .write_all(hex.as_bytes())
-                        .map_err(Error::UnableToSaveDepositData)?;
                 }
+
+                let hex = format!("0x{}", hex::encode(deposit_data));
+                File::options()
+                    .write(true)
+                    .read(true)
+                    .create(true)
+                    .truncate(true)
+                    .open(path)
+                    .map_err(Error::UnableToSaveDepositData)?
+                    .write_all(hex.as_bytes())
+                    .map_err(Error::UnableToSaveDepositData)?;
 
                 // Save `ETH1_DEPOSIT_AMOUNT_FILE` to file.
                 //
@@ -226,17 +225,16 @@ impl<'a> Builder<'a> {
                 let path = dir.join(ETH1_DEPOSIT_AMOUNT_FILE);
                 if path.exists() {
                     return Err(Error::DepositAmountAlreadyExists(path));
-                } else {
-                    File::options()
-                        .write(true)
-                        .read(true)
-                        .create(true)
-                        .truncate(true)
-                        .open(path)
-                        .map_err(Error::UnableToSaveDepositAmount)?
-                        .write_all(amount.to_string().as_bytes())
-                        .map_err(Error::UnableToSaveDepositAmount)?;
                 }
+                File::options()
+                    .write(true)
+                    .read(true)
+                    .create(true)
+                    .truncate(true)
+                    .open(path)
+                    .map_err(Error::UnableToSaveDepositAmount)?
+                    .write_all(amount.to_string().as_bytes())
+                    .map_err(Error::UnableToSaveDepositAmount)?;
             }
 
             if self.password_dir.is_none() && self.store_withdrawal_keystore {

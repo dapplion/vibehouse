@@ -297,31 +297,31 @@ impl<'a, E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>
                 continuation_data,
                 column,
             } => {
-                match iter.next() {
-                    Some(x) => x.map(Some),
+                if let Some(x) = iter.next() {
+                    x.map(Some)
+                } else {
                     // Once the pre-finalization iterator is consumed, transition
                     // to a post-finalization iterator beginning from the last slot
                     // of the pre iterator.
-                    None => {
-                        // If the iterator has an end slot (inclusive) which has already been
-                        // covered by the (exclusive) frozen forwards iterator, then we're done!
-                        if end_slot.is_some_and(|end_slot| iter.end_slot == end_slot + 1) {
-                            *self = Finished;
-                            return Ok(None);
-                        }
 
-                        let continuation_data = continuation_data.take();
-                        let start_slot = iter.end_slot;
-
-                        *self = PostFinalizationLazy {
-                            continuation_data,
-                            store,
-                            start_slot,
-                            column: *column,
-                        };
-
-                        self.do_next()
+                    // If the iterator has an end slot (inclusive) which has already been
+                    // covered by the (exclusive) frozen forwards iterator, then we're done!
+                    if end_slot.is_some_and(|end_slot| iter.end_slot == end_slot + 1) {
+                        *self = Finished;
+                        return Ok(None);
                     }
+
+                    let continuation_data = continuation_data.take();
+                    let start_slot = iter.end_slot;
+
+                    *self = PostFinalizationLazy {
+                        continuation_data,
+                        store,
+                        start_slot,
+                        column: *column,
+                    };
+
+                    self.do_next()
                 }
             }
             PostFinalizationLazy {

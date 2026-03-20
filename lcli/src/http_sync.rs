@@ -94,9 +94,8 @@ pub async fn run_async<T: EthSpec>(
             }
 
             return Err(format!("error posting {slot}: {e:?}"));
-        } else {
-            println!("success");
         }
+        println!("success");
     }
 
     println!("SYNCED!!!!");

@@ -1185,18 +1185,18 @@ impl<E: EthSpec> BeaconProcessor<E> {
                                     let mut process_batch_opt = None;
                                     for _ in 0..batch_size {
                                         if let Some(item) = attestation_queue.pop() {
-                                            match item {
-                                                Work::GossipAttestation {
-                                                    attestation,
-                                                    process_individual: _,
-                                                    process_batch,
-                                                } => {
-                                                    attestations.push(*attestation);
-                                                    if process_batch_opt.is_none() {
-                                                        process_batch_opt = Some(process_batch);
-                                                    }
+                                            if let Work::GossipAttestation {
+                                                attestation,
+                                                process_individual: _,
+                                                process_batch,
+                                            } = item
+                                            {
+                                                attestations.push(*attestation);
+                                                if process_batch_opt.is_none() {
+                                                    process_batch_opt = Some(process_batch);
                                                 }
-                                                _ => error!("Invalid item in attestation queue"),
+                                            } else {
+                                                error!("Invalid item in attestation queue")
                                             }
                                         }
                                     }

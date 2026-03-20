@@ -12,20 +12,22 @@ pub fn get_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
 ) -> Result<Graffiti, ApiError> {
     let initialized_validators_rw_lock = validator_store.initialized_validators();
     let initialized_validators = initialized_validators_rw_lock.read();
-    match initialized_validators.validator(&validator_pubkey.compress()) {
-        None => Err(ApiError::NotFound(
+    if initialized_validators
+        .validator(&validator_pubkey.compress())
+        .is_none()
+    {
+        Err(ApiError::NotFound(
             "The key was not found on the server".to_string(),
-        )),
-        Some(_) => {
-            let Some(graffiti) = initialized_validators.graffiti(&validator_pubkey.into()) else {
-                return graffiti_flag.ok_or_else(|| {
-                    ApiError::ServerError(
-                        "No graffiti found, unable to return the process-wide default".to_string(),
-                    )
-                });
-            };
-            Ok(graffiti)
-        }
+        ))
+    } else {
+        let Some(graffiti) = initialized_validators.graffiti(&validator_pubkey.into()) else {
+            return graffiti_flag.ok_or_else(|| {
+                ApiError::ServerError(
+                    "No graffiti found, unable to return the process-wide default".to_string(),
+                )
+            });
+        };
+        Ok(graffiti)
     }
 }
 

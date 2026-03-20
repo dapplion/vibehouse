@@ -346,17 +346,14 @@ impl<T: BeaconChainTypes> LightClientServerCache<T> {
     ) -> Option<LightClientFinalityUpdate<T::EthSpec>> {
         if let Some(latest_finality_update) = self.get_latest_finality_update() {
             let latest_broadcasted_finality_update = self.get_latest_broadcasted_finality_update();
-            match latest_broadcasted_finality_update {
-                Some(latest_broadcasted_finality_update) => {
-                    if latest_broadcasted_finality_update != latest_finality_update {
-                        self.set_latest_broadcasted_finality_update(latest_finality_update.clone());
-                        return Some(latest_finality_update);
-                    }
-                }
-                None => {
+            if let Some(latest_broadcasted_finality_update) = latest_broadcasted_finality_update {
+                if latest_broadcasted_finality_update != latest_finality_update {
                     self.set_latest_broadcasted_finality_update(latest_finality_update.clone());
                     return Some(latest_finality_update);
                 }
+            } else {
+                self.set_latest_broadcasted_finality_update(latest_finality_update.clone());
+                return Some(latest_finality_update);
             }
         }
 
@@ -402,19 +399,15 @@ impl<T: BeaconChainTypes> LightClientServerCache<T> {
         if let Some(latest_optimistic_update) = self.get_latest_optimistic_update() {
             let latest_broadcasted_optimistic_update =
                 self.get_latest_broadcasted_optimistic_update();
-            match latest_broadcasted_optimistic_update {
-                Some(latest_broadcasted_optimistic_update) => {
-                    if latest_broadcasted_optimistic_update != latest_optimistic_update {
-                        self.set_latest_broadcasted_optimistic_update(
-                            latest_optimistic_update.clone(),
-                        );
-                        return Some(latest_optimistic_update);
-                    }
-                }
-                None => {
+            if let Some(latest_broadcasted_optimistic_update) = latest_broadcasted_optimistic_update
+            {
+                if latest_broadcasted_optimistic_update != latest_optimistic_update {
                     self.set_latest_broadcasted_optimistic_update(latest_optimistic_update.clone());
                     return Some(latest_optimistic_update);
                 }
+            } else {
+                self.set_latest_broadcasted_optimistic_update(latest_optimistic_update.clone());
+                return Some(latest_optimistic_update);
             }
         }
 

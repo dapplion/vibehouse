@@ -515,23 +515,22 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> SyncCommitteeService<S
 
         for (duty_slot, sync_committee_period) in duty_slots {
             debug!(%duty_slot, %slot, "Fetching subscription duties");
-            match self
+            if let Some(duties) = self
                 .duties_service
                 .sync_duties
                 .get_duties_for_slot::<S::E>(duty_slot, spec)
             {
-                Some(duties) => subscriptions.extend(subscriptions_from_sync_duties(
+                subscriptions.extend(subscriptions_from_sync_duties(
                     duties.duties,
                     sync_committee_period,
                     spec,
-                )),
-                None => {
-                    debug!(
-                        slot = %duty_slot,
-                        "No duties for subscription"
-                    );
-                    all_succeeded = false;
-                }
+                ))
+            } else {
+                debug!(
+                    slot = %duty_slot,
+                    "No duties for subscription"
+                );
+                all_succeeded = false;
             }
         }
 

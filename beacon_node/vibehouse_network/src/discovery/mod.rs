@@ -955,9 +955,8 @@ impl<E: EthSpec> Discovery<E> {
 
                         if mapped_results.is_empty() {
                             return None;
-                        } else {
-                            return Some(mapped_results);
                         }
+                        return Some(mapped_results);
                     }
                     Err(e) => {
                         warn!(?subnets_searched_for, error = %e,"Grouped subnet discovery query failed");

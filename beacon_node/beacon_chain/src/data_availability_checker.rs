@@ -737,60 +737,57 @@ async fn availability_cache_maintenance_service<T: BeaconChainTypes>(
 ) {
     let epoch_duration = chain.slot_clock.slot_duration() * T::EthSpec::slots_per_epoch() as u32;
     loop {
-        match chain
+        if let Some(duration) = chain
             .slot_clock
             .duration_to_next_epoch(T::EthSpec::slots_per_epoch())
         {
-            Some(duration) => {
-                // this service should run 3/4 of the way through the epoch
-                let additional_delay = (epoch_duration * 3) / 4;
-                tokio::time::sleep(duration + additional_delay).await;
+            // this service should run 3/4 of the way through the epoch
+            let additional_delay = (epoch_duration * 3) / 4;
+            tokio::time::sleep(duration + additional_delay).await;
 
-                let Some(deneb_fork_epoch) = chain.spec.deneb_fork_epoch else {
-                    // shutdown service if deneb fork epoch not set
-                    break;
-                };
+            let Some(deneb_fork_epoch) = chain.spec.deneb_fork_epoch else {
+                // shutdown service if deneb fork epoch not set
+                break;
+            };
 
-                debug!("Availability cache maintenance service firing");
-                let Some(current_epoch) = chain
-                    .slot_clock
-                    .now()
-                    .map(|slot| slot.epoch(T::EthSpec::slots_per_epoch()))
-                else {
-                    continue;
-                };
+            debug!("Availability cache maintenance service firing");
+            let Some(current_epoch) = chain
+                .slot_clock
+                .now()
+                .map(|slot| slot.epoch(T::EthSpec::slots_per_epoch()))
+            else {
+                continue;
+            };
 
-                if current_epoch < deneb_fork_epoch {
-                    // we are not in deneb yet
-                    continue;
-                }
-
-                let finalized_epoch = chain
-                    .canonical_head
-                    .fork_choice_read_lock()
-                    .finalized_checkpoint()
-                    .epoch;
-
-                let Some(min_epochs_for_blobs) = chain
-                    .spec
-                    .min_epoch_data_availability_boundary(current_epoch)
-                else {
-                    // Shutdown service if deneb fork epoch not set. Unreachable as the same check is performed above.
-                    break;
-                };
-
-                // any data belonging to an epoch before this should be pruned
-                let cutoff_epoch = std::cmp::max(finalized_epoch + 1, min_epochs_for_blobs);
-
-                if let Err(e) = overflow_cache.do_maintenance(cutoff_epoch) {
-                    error!(error = ?e,"Failed to maintain availability cache");
-                }
+            if current_epoch < deneb_fork_epoch {
+                // we are not in deneb yet
+                continue;
             }
-            None => {
-                error!("Failed to read slot clock");
-                // If we can't read the slot clock, just wait another slot.
-                tokio::time::sleep(chain.slot_clock.slot_duration()).await;
+
+            let finalized_epoch = chain
+                .canonical_head
+                .fork_choice_read_lock()
+                .finalized_checkpoint()
+                .epoch;
+
+            let Some(min_epochs_for_blobs) = chain
+                .spec
+                .min_epoch_data_availability_boundary(current_epoch)
+            else {
+                // Shutdown service if deneb fork epoch not set. Unreachable as the same check is performed above.
+                break;
+            };
+
+            // any data belonging to an epoch before this should be pruned
+            let cutoff_epoch = std::cmp::max(finalized_epoch + 1, min_epochs_for_blobs);
+
+            if let Err(e) = overflow_cache.do_maintenance(cutoff_epoch) {
+                error!(error = ?e,"Failed to maintain availability cache");
             }
+        } else {
+            error!("Failed to read slot clock");
+            // If we can't read the slot clock, just wait another slot.
+            tokio::time::sleep(chain.slot_clock.slot_duration()).await;
         }
     }
 }

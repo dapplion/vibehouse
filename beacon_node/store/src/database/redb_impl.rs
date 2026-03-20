@@ -114,21 +114,18 @@ impl<E: EthSpec> Redb<E> {
 
         let result = table.get(key)?;
 
-        match result {
-            Some(access_guard) => {
-                let value = access_guard.value().to_vec();
-                metrics::inc_counter_vec_by(
-                    &metrics::DISK_DB_READ_BYTES,
-                    &[col.into()],
-                    value.len() as u64,
-                );
-                metrics::stop_timer(timer);
-                Ok(Some(value))
-            }
-            None => {
-                metrics::stop_timer(timer);
-                Ok(None)
-            }
+        if let Some(access_guard) = result {
+            let value = access_guard.value().to_vec();
+            metrics::inc_counter_vec_by(
+                &metrics::DISK_DB_READ_BYTES,
+                &[col.into()],
+                value.len() as u64,
+            );
+            metrics::stop_timer(timer);
+            Ok(Some(value))
+        } else {
+            metrics::stop_timer(timer);
+            Ok(None)
         }
     }
 

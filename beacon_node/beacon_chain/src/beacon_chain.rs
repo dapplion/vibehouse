@@ -8344,24 +8344,21 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
             // Iterate backwards through block roots from the given state. If first slot of the epoch is a skip-slot,
             // this will return the root of the closest prior non-skipped slot.
-            match self.root_at_slot_from_state(slot, beacon_block_root, state)? {
-                Some(root) => {
-                    if root != wss_checkpoint.root {
-                        crit!(
-                            weak_subjectivity_root = ?wss_checkpoint.root,
-                            finalized_checkpoint_root = ?finalized_checkpoint.root,
-                             "Root found at the specified checkpoint differs"
-                        );
-                        return Err(BeaconChainError::WeakSubjectivtyVerificationFailure);
-                    }
-                }
-                None => {
+            if let Some(root) = self.root_at_slot_from_state(slot, beacon_block_root, state)? {
+                if root != wss_checkpoint.root {
                     crit!(
-                        wss_checkpoint_slot = ?slot,
-                        "The root at the start slot of the given epoch could not be found"
+                        weak_subjectivity_root = ?wss_checkpoint.root,
+                        finalized_checkpoint_root = ?finalized_checkpoint.root,
+                         "Root found at the specified checkpoint differs"
                     );
                     return Err(BeaconChainError::WeakSubjectivtyVerificationFailure);
                 }
+            } else {
+                crit!(
+                    wss_checkpoint_slot = ?slot,
+                    "The root at the start slot of the given epoch could not be found"
+                );
+                return Err(BeaconChainError::WeakSubjectivtyVerificationFailure);
             }
         }
         Ok(())

@@ -1546,18 +1546,20 @@ impl<T: BeaconChainTypes> SyncManager<T> {
                         self.update_sync_state();
                     }
                     RangeRequestId::BackfillSync { batch_id } => {
-                        match self.backfill_sync.inject_error(
-                            &mut self.network,
-                            batch_id,
-                            &peer_id,
-                            range_request_id.id,
-                            e,
-                        ) {
-                            Ok(_) => {}
-                            Err(_) => {
-                                self.network.remove_backfill_range_components();
-                                self.update_sync_state();
-                            }
+                        if self
+                            .backfill_sync
+                            .inject_error(
+                                &mut self.network,
+                                batch_id,
+                                &peer_id,
+                                range_request_id.id,
+                                e,
+                            )
+                            .is_ok()
+                        {
+                        } else {
+                            self.network.remove_backfill_range_components();
+                            self.update_sync_state();
                         }
                     }
                 },

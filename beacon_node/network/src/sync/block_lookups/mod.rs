@@ -582,10 +582,9 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
                     // Therefore if all components are processed and we still receive `MissingComponents`
                     // it indicates an internal bug.
                     return Err(LookupRequestError::MissingComponentsAfterAllProcessed);
-                } else {
-                    // Continue request, potentially request blobs
-                    Action::Retry
                 }
+                // Continue request, potentially request blobs
+                Action::Retry
             }
             BlockProcessingResult::Err(BlockError::DuplicateImportStatusUnknown(..)) => {
                 // This is unreachable because RPC blocks do not undergo gossip verification, and

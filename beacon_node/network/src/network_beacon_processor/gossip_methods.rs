@@ -4145,47 +4145,39 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             return;
         }
 
-        match head_state.proposer_lookahead() {
-            Ok(proposer_lookahead) => {
-                // Index into the next epoch's portion of the lookahead
-                let slots_per_epoch = T::EthSpec::slots_per_epoch() as usize;
-                let index =
-                    slots_per_epoch.saturating_add(proposal_slot.as_usize() % slots_per_epoch);
-                let is_proposer = matches!(
-                    proposer_lookahead.get(index),
-                    Some(&expected_proposer) if expected_proposer == validator_index
-                );
-                if !is_proposer {
-                    debug!(
-                        %proposal_slot,
-                        %validator_index,
-                        "Rejecting proposer preferences: validator is not the proposer for this slot"
-                    );
-                    self.propagate_validation_result(
-                        message_id,
-                        peer_id,
-                        MessageAcceptance::Reject,
-                    );
-                    self.gossip_penalize_peer(
-                        peer_id,
-                        PeerAction::LowToleranceError,
-                        "proposer_preferences_wrong_proposer",
-                    );
-                    return;
-                }
-            }
-            Err(_) => {
-                // Head state is pre-Fulu — proposer_lookahead not available yet.
-                // Ignore rather than reject: this is a timing race at the fork boundary,
-                // not a malicious message. The signature check below still prevents spam.
+        if let Ok(proposer_lookahead) = head_state.proposer_lookahead() {
+            // Index into the next epoch's portion of the lookahead
+            let slots_per_epoch = T::EthSpec::slots_per_epoch() as usize;
+            let index = slots_per_epoch.saturating_add(proposal_slot.as_usize() % slots_per_epoch);
+            let is_proposer = matches!(
+                proposer_lookahead.get(index),
+                Some(&expected_proposer) if expected_proposer == validator_index
+            );
+            if !is_proposer {
                 debug!(
                     %proposal_slot,
                     %validator_index,
-                    "Ignoring proposer preferences: head state is pre-Fulu, no proposer_lookahead"
+                    "Rejecting proposer preferences: validator is not the proposer for this slot"
                 );
-                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::LowToleranceError,
+                    "proposer_preferences_wrong_proposer",
+                );
                 return;
             }
+        } else {
+            // Head state is pre-Fulu — proposer_lookahead not available yet.
+            // Ignore rather than reject: this is a timing race at the fork boundary,
+            // not a malicious message. The signature check below still prevents spam.
+            debug!(
+                %proposal_slot,
+                %validator_index,
+                "Ignoring proposer preferences: head state is pre-Fulu, no proposer_lookahead"
+            );
+            self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+            return;
         }
 
         // [IGNORE] first valid message for this validator+slot
@@ -4397,20 +4389,19 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         let block_root = verified_proof.block_root();
 
         // Look up the slot from fork choice — ExecutionProof has no slot field.
-        let slot = match self
+        let slot = if let Some(block) = self
             .chain
             .canonical_head
             .fork_choice_read_lock()
             .get_block(&block_root)
         {
-            Some(block) => block.slot,
-            None => {
-                debug!(
-                    %block_root,
-                    "Cannot import execution proof: block root no longer in fork choice"
-                );
-                return;
-            }
+            block.slot
+        } else {
+            debug!(
+                %block_root,
+                "Cannot import execution proof: block root no longer in fork choice"
+            );
+            return;
         };
 
         let result = self

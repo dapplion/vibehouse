@@ -52,9 +52,8 @@ impl ForkChoiceSignalTx {
                 current: *current_slot,
                 latest: slot,
             });
-        } else {
-            *current_slot = slot;
         }
+        *current_slot = slot;
 
         // We use `notify_all` because there may be multiple block proposals waiting simultaneously.
         // Usually there'll be 0-1.

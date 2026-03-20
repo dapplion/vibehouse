@@ -2038,23 +2038,22 @@ async fn get_blob_sidecars<T: BeaconChainTypes>(
                 .fork_name(&chain.spec)
                 .map_err(inconsistent_fork_rejection)?;
 
-            match accept {
-                Some(api_types::Accept::Ssz) => axum::http::Response::builder()
+            if let Some(api_types::Accept::Ssz) = accept {
+                axum::http::Response::builder()
                     .status(200)
                     .body(axum::body::Body::from(
                         blob_sidecar_list_filtered.as_ssz_bytes(),
                     ))
                     .map(|res| add_ssz_content_type_header(res.into_response()))
-                    .map_err(|e| ApiError::server_error(format!("failed to create response: {e}"))),
-                _ => {
-                    let res = execution_optimistic_finalized_beacon_response(
-                        ResponseIncludesVersion::Yes(fork_name),
-                        execution_optimistic,
-                        finalized,
-                        &blob_sidecar_list_filtered,
-                    )?;
-                    Ok(Json(res).into_response())
-                }
+                    .map_err(|e| ApiError::server_error(format!("failed to create response: {e}")))
+            } else {
+                let res = execution_optimistic_finalized_beacon_response(
+                    ResponseIncludesVersion::Yes(fork_name),
+                    execution_optimistic,
+                    finalized,
+                    &blob_sidecar_list_filtered,
+                )?;
+                Ok(Json(res).into_response())
             }
             .map(|resp| add_consensus_version_header(resp, fork_name))
         })
@@ -2075,21 +2074,20 @@ async fn get_blobs<T: BeaconChainTypes>(
         .blocking_response_task(Priority::P1, move || {
             let response = block_id.get_blobs_by_versioned_hashes(versioned_hashes, &chain)?;
 
-            match accept {
-                Some(api_types::Accept::Ssz) => axum::http::Response::builder()
+            if let Some(api_types::Accept::Ssz) = accept {
+                axum::http::Response::builder()
                     .status(200)
                     .body(axum::body::Body::from(response.data.as_ssz_bytes()))
                     .map(|res| add_ssz_content_type_header(res.into_response()))
-                    .map_err(|e| ApiError::server_error(format!("failed to create response: {e}"))),
-                _ => {
-                    let res = execution_optimistic_finalized_beacon_response(
-                        ResponseIncludesVersion::No,
-                        response.metadata.execution_optimistic.unwrap_or(false),
-                        response.metadata.finalized.unwrap_or(false),
-                        response.data,
-                    )?;
-                    Ok(Json(res).into_response())
-                }
+                    .map_err(|e| ApiError::server_error(format!("failed to create response: {e}")))
+            } else {
+                let res = execution_optimistic_finalized_beacon_response(
+                    ResponseIncludesVersion::No,
+                    response.metadata.execution_optimistic.unwrap_or(false),
+                    response.metadata.finalized.unwrap_or(false),
+                    response.data,
+                )?;
+                Ok(Json(res).into_response())
             }
         })
         .await
@@ -3051,21 +3049,20 @@ async fn get_debug_data_column_sidecars<T: BeaconChainTypes>(
             let (data_columns, fork_name, execution_optimistic, finalized) =
                 block_id.get_data_columns(indices, &chain)?;
 
-            match accept {
-                Some(api_types::Accept::Ssz) => Response::builder()
+            if let Some(api_types::Accept::Ssz) = accept {
+                Response::builder()
                     .status(200)
                     .body(data_columns.as_ssz_bytes().into())
                     .map(add_ssz_content_type_header)
-                    .map_err(|e| ApiError::server_error(format!("failed to create response: {e}"))),
-                _ => {
-                    let res = execution_optimistic_finalized_beacon_response(
-                        ResponseIncludesVersion::Yes(fork_name),
-                        execution_optimistic,
-                        finalized,
-                        &data_columns,
-                    )?;
-                    Ok(Json(res).into_response())
-                }
+                    .map_err(|e| ApiError::server_error(format!("failed to create response: {e}")))
+            } else {
+                let res = execution_optimistic_finalized_beacon_response(
+                    ResponseIncludesVersion::Yes(fork_name),
+                    execution_optimistic,
+                    finalized,
+                    &data_columns,
+                )?;
+                Ok(Json(res).into_response())
             }
             .map(|resp| add_consensus_version_header(resp, fork_name))
         })
@@ -4047,9 +4044,8 @@ async fn post_validator_register_validator<T: BeaconChainTypes>(
                         if let eth2::Error::ServerMessage(message) = e {
                             if message.code == StatusCode::BAD_REQUEST.as_u16() {
                                 return ApiError::bad_request(message.message);
-                            } else {
-                                return ApiError::server_error(message.message);
                             }
+                            return ApiError::server_error(message.message);
                         }
                         ApiError::server_error(format!("{e:?}"))
                     })

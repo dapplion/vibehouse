@@ -601,11 +601,10 @@ impl<T: BeaconChainTypes> BeaconBlockStreamer<T> {
 
             if sender.send((root, result)).is_err() {
                 break;
-            } else {
-                n_sent += 1;
-                if successful {
-                    n_success += 1;
-                }
+            }
+            n_sent += 1;
+            if successful {
+                n_success += 1;
             }
         }
 

@@ -697,15 +697,14 @@ async fn init_from_beacon_node<E: EthSpec>(
                 "Initialized beacon node connections"
             );
             break;
-        } else {
-            warn!(
-                retry_in = format!("{} seconds", RETRY_DELAY.as_secs()),
-                total = num_total,
-                available = num_available,
-                "Unable to connect to a beacon node"
-            );
-            sleep(RETRY_DELAY).await;
         }
+        warn!(
+            retry_in = format!("{} seconds", RETRY_DELAY.as_secs()),
+            total = num_total,
+            available = num_available,
+            "Unable to connect to a beacon node"
+        );
+        sleep(RETRY_DELAY).await;
     }
 
     let genesis = loop {

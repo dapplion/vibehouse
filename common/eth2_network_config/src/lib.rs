@@ -411,16 +411,15 @@ async fn download_genesis_state(
                 // Check the server response against our local checksum.
                 if Sha256::digest(bytes.as_ref())[..] == checksum[..] {
                     return Ok(bytes.into());
-                } else {
-                    warn!(
-                        server = &redacted_url,
-                        timeout = ?timeout,
-                        "Genesis state download failed"
-                    );
-                    errors.push(format!(
-                        "Response from {redacted_url} did not match local checksum"
-                    ));
                 }
+                warn!(
+                    server = &redacted_url,
+                    timeout = ?timeout,
+                    "Genesis state download failed"
+                );
+                errors.push(format!(
+                    "Response from {redacted_url} did not match local checksum"
+                ));
             }
             Err(e) => errors.push(PrettyReqwestError::from(e).to_string()),
         }

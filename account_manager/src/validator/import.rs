@@ -167,34 +167,30 @@ pub fn cli_run(matches: &ArgMatches, validator_dir: PathBuf) -> Result<(), Strin
                 eprintln!("Reuse previous password.");
                 if check_password_on_keystore(&keystore, &password)? {
                     break Some(password);
-                } else {
-                    eprintln!("Reused password incorrect. Retry!");
-                    previous_password = None;
-                    continue;
                 }
+                eprintln!("Reused password incorrect. Retry!");
+                previous_password = None;
+                continue;
             }
             eprintln!();
             eprintln!("{PASSWORD_PROMPT}");
 
-            let password = match keystore_password_path.as_ref() {
-                Some(path) => {
-                    let password_from_file: Zeroizing<String> = fs::read_to_string(path)
-                        .map_err(|e| format!("Unable to read {path:?}: {e:?}"))?
-                        .into();
-                    password_from_file
-                        .trim_end_matches(['\r', '\n'])
-                        .to_string()
-                        .into()
+            let password = if let Some(path) = keystore_password_path.as_ref() {
+                let password_from_file: Zeroizing<String> = fs::read_to_string(path)
+                    .map_err(|e| format!("Unable to read {path:?}: {e:?}"))?
+                    .into();
+                password_from_file
+                    .trim_end_matches(['\r', '\n'])
+                    .to_string()
+                    .into()
+            } else {
+                let password_from_user = read_password_from_user(stdin_inputs)?;
+                if password_from_user.is_empty() {
+                    eprintln!("Continuing without password.");
+                    sleep(Duration::from_secs(1)); // Provides nicer UX.
+                    break None;
                 }
-                None => {
-                    let password_from_user = read_password_from_user(stdin_inputs)?;
-                    if password_from_user.is_empty() {
-                        eprintln!("Continuing without password.");
-                        sleep(Duration::from_secs(1)); // Provides nicer UX.
-                        break None;
-                    }
-                    password_from_user
-                }
+                password_from_user
             };
 
             // Check if the password unlocks the keystore

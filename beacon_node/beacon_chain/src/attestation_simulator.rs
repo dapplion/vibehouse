@@ -32,28 +32,25 @@ async fn attestation_simulator_service<T: BeaconChainTypes>(
     let additional_delay = slot_duration / 3;
 
     loop {
-        match chain.slot_clock.duration_to_next_slot() {
-            Some(duration) => {
-                sleep(duration + additional_delay).await;
+        if let Some(duration) = chain.slot_clock.duration_to_next_slot() {
+            sleep(duration + additional_delay).await;
 
-                debug!("Simulating unagg. attestation production");
+            debug!("Simulating unagg. attestation production");
 
-                // Run the task in the executor
-                let inner_chain = chain.clone();
-                executor.spawn(
-                    async move {
-                        if let Ok(current_slot) = inner_chain.slot() {
-                            produce_unaggregated_attestation(inner_chain, current_slot);
-                        }
-                    },
-                    "attestation_simulator_service",
-                );
-            }
-            None => {
-                error!("Failed to read slot clock");
-                // If we can't read the slot clock, just wait another slot.
-                sleep(slot_duration).await;
-            }
+            // Run the task in the executor
+            let inner_chain = chain.clone();
+            executor.spawn(
+                async move {
+                    if let Ok(current_slot) = inner_chain.slot() {
+                        produce_unaggregated_attestation(inner_chain, current_slot);
+                    }
+                },
+                "attestation_simulator_service",
+            );
+        } else {
+            error!("Failed to read slot clock");
+            // If we can't read the slot clock, just wait another slot.
+            sleep(slot_duration).await;
         }
     }
 }

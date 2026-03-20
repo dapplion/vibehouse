@@ -561,32 +561,29 @@ impl<T: BeaconChainTypes> SubnetService<T> {
         // Check if we already have this subscription. If we do, optionally update the timeout of
         // when we need the subscription, otherwise leave as is.
         // If this is a new subscription simply add it to our mapping and subscribe.
-        match self.subscriptions.deadline(&subnet) {
-            Some(current_end_slot_time) => {
-                // We are already subscribed. Check if we need to extend the subscription.
-                if current_end_slot_time
-                    .checked_duration_since(Instant::now())
-                    .unwrap_or(Duration::from_secs(0))
-                    < time_to_subscription_end
-                {
-                    self.subscriptions
-                        .update_timeout(&subnet, time_to_subscription_end);
-                }
-            }
-            None => {
-                // This is a new subscription. Add with the corresponding timeout and send the
-                // notification.
+        if let Some(current_end_slot_time) = self.subscriptions.deadline(&subnet) {
+            // We are already subscribed. Check if we need to extend the subscription.
+            if current_end_slot_time
+                .checked_duration_since(Instant::now())
+                .unwrap_or(Duration::from_secs(0))
+                < time_to_subscription_end
+            {
                 self.subscriptions
-                    .insert_at(subnet, time_to_subscription_end);
-
-                // Inform of the subscription.
-                debug!(
-                    ?subnet,
-                    %end_slot,
-                    "Subscribing to subnet"
-                );
-                self.queue_event(SubnetServiceMessage::Subscribe(subnet));
+                    .update_timeout(&subnet, time_to_subscription_end);
             }
+        } else {
+            // This is a new subscription. Add with the corresponding timeout and send the
+            // notification.
+            self.subscriptions
+                .insert_at(subnet, time_to_subscription_end);
+
+            // Inform of the subscription.
+            debug!(
+                ?subnet,
+                %end_slot,
+                "Subscribing to subnet"
+            );
+            self.queue_event(SubnetServiceMessage::Subscribe(subnet));
         }
         Ok(())
     }

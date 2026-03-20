@@ -383,12 +383,11 @@ pub fn reconstruct_blobs<E: EthSpec>(
             .to_string()
     })?;
 
-    let blob_indices: Vec<usize> = match blob_indices_opt {
-        Some(indices) => indices.into_iter().map(|i| i as usize).collect(),
-        None => {
-            let num_of_blobs = kzg_commitments.len();
-            (0..num_of_blobs).collect()
-        }
+    let blob_indices: Vec<usize> = if let Some(indices) = blob_indices_opt {
+        indices.into_iter().map(|i| i as usize).collect()
+    } else {
+        let num_of_blobs = kzg_commitments.len();
+        (0..num_of_blobs).collect()
     };
 
     let blob_sidecars = blob_indices

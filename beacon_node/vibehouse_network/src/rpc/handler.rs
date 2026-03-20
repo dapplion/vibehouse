@@ -387,9 +387,8 @@ where
             return Poll::Ready(ConnectionHandlerEvent::NotifyBehaviour(
                 self.events_out.remove(0),
             ));
-        } else {
-            self.events_out.shrink_to_fit();
         }
+        self.events_out.shrink_to_fit();
 
         // Check if we are shutting down, and if the timer ran out
         if let HandlerState::ShuttingDown(delay) = &mut self.state {
@@ -446,12 +445,11 @@ where
                 return Poll::Ready(ConnectionHandlerEvent::NotifyBehaviour(HandlerEvent::Err(
                     outbound_err,
                 )));
-            } else {
-                crit!(
-                    peer_id = %self.peer_id,
-                    connection_id = %self.connection_id,
-                    stream_id = ?outbound_id.get_ref(), "timed out substream not in the books");
             }
+            crit!(
+                peer_id = %self.peer_id,
+                connection_id = %self.connection_id,
+                stream_id = ?outbound_id.get_ref(), "timed out substream not in the books");
         }
 
         // when deactivated, close all streams
@@ -756,15 +754,14 @@ where
                                     error: RPCError::IncompleteStream,
                                 }),
                             ));
-                        } else {
-                            // return an end of stream result
-                            return Poll::Ready(ConnectionHandlerEvent::NotifyBehaviour(
-                                HandlerEvent::Ok(RPCReceived::EndOfStream(
-                                    request_id,
-                                    request.stream_termination(),
-                                )),
-                            ));
                         }
+                        // return an end of stream result
+                        return Poll::Ready(ConnectionHandlerEvent::NotifyBehaviour(
+                            HandlerEvent::Ok(RPCReceived::EndOfStream(
+                                request_id,
+                                request.stream_termination(),
+                            )),
+                        ));
                     }
                     Poll::Pending => {
                         entry.get_mut().state =
@@ -1138,9 +1135,8 @@ async fn send_message_to_inbound_substream<E: EthSpec>(
             // result of closing the substream.
             if let Err(e) = send_result {
                 return Err(e);
-            } else {
-                return close_result;
             }
+            return close_result;
         }
         // Everything worked as expected return the result.
         send_result.map(|_| (substream, false))

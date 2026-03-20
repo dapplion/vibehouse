@@ -8,12 +8,11 @@ pub fn read_wallet_name_from_cli(
     wallet_name: Option<String>,
     stdin_inputs: bool,
 ) -> Result<String, String> {
-    match wallet_name {
-        Some(name) => Ok(name),
-        None => {
-            eprintln!("{WALLET_NAME_PROMPT}");
+    if let Some(name) = wallet_name {
+        Ok(name)
+    } else {
+        eprintln!("{WALLET_NAME_PROMPT}");
 
-            read_input_from_user(stdin_inputs)
-        }
+        read_input_from_user(stdin_inputs)
     }
 }

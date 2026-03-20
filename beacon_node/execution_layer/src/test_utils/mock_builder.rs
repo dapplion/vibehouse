@@ -404,12 +404,11 @@ impl<E: EthSpec> MockBuilder<E> {
         sk: Option<&[u8]>,
     ) -> Self {
         let builder_sk = if let Some(sk_bytes) = sk {
-            match SecretKey::deserialize(sk_bytes) {
-                Ok(sk) => sk,
-                Err(_) => {
-                    error!("Invalid sk_bytes provided, generating random secret key");
-                    SecretKey::random()
-                }
+            if let Ok(sk) = SecretKey::deserialize(sk_bytes) {
+                sk
+            } else {
+                error!("Invalid sk_bytes provided, generating random secret key");
+                SecretKey::random()
             }
         } else {
             SecretKey::deserialize(&hex::decode(DEFAULT_BUILDER_PRIVATE_KEY).unwrap()).unwrap()
@@ -567,12 +566,11 @@ impl<E: EthSpec> MockBuilder<E> {
             guard.remove(&parent_hash)
         };
 
-        let payload_parameters = match payload_parameters {
-            Some(params) => params,
-            None => {
-                warn!("Payload params not cached for parent_hash {}", parent_hash);
-                self.get_payload_params(slot, None, pubkey, None).await?
-            }
+        let payload_parameters = if let Some(params) = payload_parameters {
+            params
+        } else {
+            warn!("Payload params not cached for parent_hash {}", parent_hash);
+            self.get_payload_params(slot, None, pubkey, None).await?
         };
 
         info!("Got payload params");
@@ -742,30 +740,29 @@ impl<E: EthSpec> MockBuilder<E> {
                             let proposers_cache = self.proposers_cache.read();
                             proposers_cache.get(&epoch).cloned()
                         };
-                        match proposers_opt {
-                            Some(proposers) => proposers
+                        if let Some(proposers) = proposers_opt {
+                            proposers
                                 .get(position_in_slot as usize)
                                 .expect("position in slot is max epoch size")
-                                .clone(),
-                            None => {
-                                // make a call to the beacon api and populate the cache
-                                let duties: Vec<_> = self
-                                    .beacon_client
-                                    .get_validator_duties_proposer(epoch)
-                                    .await
-                                    .map_err(|e| {
-                                        format!(
-                                            "Failed to get proposer duties for epoch: {epoch}, {e:?}"
-                                        )
-                                    })?
-                                    .data;
-                                let proposer_data = duties
-                                    .get(position_in_slot as usize)
-                                    .expect("position in slot is max epoch size")
-                                    .clone();
-                                self.proposers_cache.write().insert(epoch, duties);
-                                proposer_data
-                            }
+                                .clone()
+                        } else {
+                            // make a call to the beacon api and populate the cache
+                            let duties: Vec<_> = self
+                                .beacon_client
+                                .get_validator_duties_proposer(epoch)
+                                .await
+                                .map_err(|e| {
+                                    format!(
+                                        "Failed to get proposer duties for epoch: {epoch}, {e:?}"
+                                    )
+                                })?
+                                .data;
+                            let proposer_data = duties
+                                .get(position_in_slot as usize)
+                                .expect("position in slot is max epoch size")
+                                .clone();
+                            self.proposers_cache.write().insert(epoch, duties);
+                            proposer_data
                         }
                     };
                     self.prepare_execution_layer_internal(
@@ -870,18 +867,17 @@ impl<E: EthSpec> MockBuilder<E> {
             .block_hash();
 
         let (fee_recipient, proposer_gas_limit) =
-            match self.val_registration_cache.read().get(&pubkey) {
-                Some(cached_data) => (
+            if let Some(cached_data) = self.val_registration_cache.read().get(&pubkey) {
+                (
                     cached_data.message.fee_recipient,
                     cached_data.message.gas_limit,
-                ),
-                None => {
-                    warn!(
-                        "Validator not registered {}, using default fee recipient and gas limits",
-                        pubkey
-                    );
-                    (DEFAULT_FEE_RECIPIENT, DEFAULT_GAS_LIMIT)
-                }
+                )
+            } else {
+                warn!(
+                    "Validator not registered {}, using default fee recipient and gas limits",
+                    pubkey
+                );
+                (DEFAULT_FEE_RECIPIENT, DEFAULT_GAS_LIMIT)
             };
         let slots_since_genesis = slot.as_u64() - self.spec.genesis_slot.as_u64();
 

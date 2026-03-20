@@ -1054,49 +1054,46 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
             return None;
         };
 
-        match envelope {
-            Some(env) => {
-                let block_root = env.message.beacon_block_root;
-                if batch.expected_roots.contains(&block_root) {
-                    batch.received_envelopes.insert(block_root, env);
-                } else {
-                    warn!(
-                        ?block_root,
-                        "Received envelope for unexpected block root in batch"
-                    );
-                }
-                None
+        if let Some(env) = envelope {
+            let block_root = env.message.beacon_block_root;
+            if batch.expected_roots.contains(&block_root) {
+                batch.received_envelopes.insert(block_root, env);
+            } else {
+                warn!(
+                    ?block_root,
+                    "Received envelope for unexpected block root in batch"
+                );
             }
-            None => {
-                // Stream terminated — attach envelopes to blocks and return
-                let mut batch = self.pending_envelope_batches.remove(&id.id)?;
+            None
+        } else {
+            // Stream terminated — attach envelopes to blocks and return
+            let mut batch = self.pending_envelope_batches.remove(&id.id)?;
 
-                for block in &mut batch.blocks {
-                    if let Some(env) = batch.received_envelopes.remove(&block.block_root()) {
-                        block.set_envelope(env);
-                    }
+            for block in &mut batch.blocks {
+                if let Some(env) = batch.received_envelopes.remove(&block.block_root()) {
+                    block.set_envelope(env);
                 }
-
-                let missing: usize = batch
-                    .expected_roots
-                    .iter()
-                    .filter(|r| {
-                        !batch
-                            .blocks
-                            .iter()
-                            .any(|b| b.block_root() == **r && b.envelope().is_some())
-                    })
-                    .count();
-
-                if missing > 0 {
-                    warn!(
-                        count = missing,
-                        "Missing envelopes in range sync batch — blocks may fail state root check"
-                    );
-                }
-
-                Some((batch.blocks, batch.parent_request_id, batch.peer_group))
             }
+
+            let missing: usize = batch
+                .expected_roots
+                .iter()
+                .filter(|r| {
+                    !batch
+                        .blocks
+                        .iter()
+                        .any(|b| b.block_root() == **r && b.envelope().is_some())
+                })
+                .count();
+
+            if missing > 0 {
+                warn!(
+                    count = missing,
+                    "Missing envelopes in range sync batch — blocks may fail state root check"
+                );
+            }
+
+            Some((batch.blocks, batch.parent_request_id, batch.peer_group))
         }
     }
 

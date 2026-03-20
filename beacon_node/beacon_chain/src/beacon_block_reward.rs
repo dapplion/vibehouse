@@ -186,15 +186,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         for attestation in block.body().attestations() {
             let processing_epoch_end = if attestation.data().target.epoch == epoch {
-                let next_epoch_end = match &mut next_epoch_end {
-                    Some(next_epoch_end) => next_epoch_end,
-                    None => {
-                        let state = self.state_at_slot(
-                            epoch.safe_add(1)?.end_slot(T::EthSpec::slots_per_epoch()),
-                            StateSkipConfig::WithoutStateRoots,
-                        )?;
-                        next_epoch_end.get_or_insert(state)
-                    }
+                let next_epoch_end = if let Some(next_epoch_end) = &mut next_epoch_end {
+                    next_epoch_end
+                } else {
+                    let state = self.state_at_slot(
+                        epoch.safe_add(1)?.end_slot(T::EthSpec::slots_per_epoch()),
+                        StateSkipConfig::WithoutStateRoots,
+                    )?;
+                    next_epoch_end.get_or_insert(state)
                 };
 
                 // If the next epoch end is no longer phase0, no proposer rewards are awarded, as Altair epoch boundry
@@ -205,15 +204,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
                 next_epoch_end
             } else if attestation.data().target.epoch == epoch.safe_sub(1)? {
-                match &mut current_epoch_end {
-                    Some(current_epoch_end) => current_epoch_end,
-                    None => {
-                        let state = self.state_at_slot(
-                            epoch.end_slot(T::EthSpec::slots_per_epoch()),
-                            StateSkipConfig::WithoutStateRoots,
-                        )?;
-                        current_epoch_end.get_or_insert(state)
-                    }
+                if let Some(current_epoch_end) = &mut current_epoch_end {
+                    current_epoch_end
+                } else {
+                    let state = self.state_at_slot(
+                        epoch.end_slot(T::EthSpec::slots_per_epoch()),
+                        StateSkipConfig::WithoutStateRoots,
+                    )?;
+                    current_epoch_end.get_or_insert(state)
                 }
             } else {
                 return Err(BeaconChainError::BlockRewardAttestationError);

@@ -100,9 +100,8 @@ impl<E: EthSpec> NetworkBehaviour for PeerManager<E> {
 
         if !self.events.is_empty() {
             return Poll::Ready(ToSwarm::GenerateEvent(self.events.remove(0)));
-        } else {
-            self.events.shrink_to_fit();
         }
+        self.events.shrink_to_fit();
 
         if let Some(enr) = self.peers_to_dial.pop() {
             self.inject_peer_connection(&enr.peer_id(), ConnectingType::Dialing, Some(enr.clone()));

@@ -323,21 +323,17 @@ impl ValidatorDefinitions {
                 ))
                 .filter(|path| path.exists());
 
-                let voting_public_key = match keystore.public_key() {
-                    Some(pubkey) => {
-                        if known_pubkeys.contains(&pubkey) {
-                            return None;
-                        } else {
-                            pubkey
-                        }
-                    }
-                    None => {
-                        error!(
-                            keystore = ?voting_keystore_path,
-                            "Invalid keystore public key"
-                        );
+                let voting_public_key = if let Some(pubkey) = keystore.public_key() {
+                    if known_pubkeys.contains(&pubkey) {
                         return None;
                     }
+                    pubkey
+                } else {
+                    error!(
+                        keystore = ?voting_keystore_path,
+                        "Invalid keystore public key"
+                    );
+                    return None;
                 };
 
                 Some(ValidatorDefinition {

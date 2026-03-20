@@ -1131,13 +1131,13 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             req.count
         };
 
-        let data_availability_boundary_slot = match self.chain.data_availability_boundary() {
-            Some(boundary) => boundary.start_slot(T::EthSpec::slots_per_epoch()),
-            None => {
+        let data_availability_boundary_slot =
+            if let Some(boundary) = self.chain.data_availability_boundary() {
+                boundary.start_slot(T::EthSpec::slots_per_epoch())
+            } else {
                 debug!("Deneb fork is disabled");
                 return Err((RpcErrorResponse::InvalidRequest, "Deneb fork is disabled"));
-            }
-        };
+            };
 
         let oldest_blob_slot = self
             .chain
@@ -1282,12 +1282,11 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         let request_start_slot = Slot::from(req.start_slot);
 
         let column_data_availability_boundary_slot =
-            match self.chain.column_data_availability_boundary() {
-                Some(boundary) => boundary.start_slot(T::EthSpec::slots_per_epoch()),
-                None => {
-                    debug!("Fulu fork is disabled");
-                    return Err((RpcErrorResponse::InvalidRequest, "Fulu fork is disabled"));
-                }
+            if let Some(boundary) = self.chain.column_data_availability_boundary() {
+                boundary.start_slot(T::EthSpec::slots_per_epoch())
+            } else {
+                debug!("Fulu fork is disabled");
+                return Err((RpcErrorResponse::InvalidRequest, "Fulu fork is disabled"));
             };
 
         let earliest_custodied_data_column_slot =

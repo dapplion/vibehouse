@@ -90,13 +90,12 @@ pub fn spawn_notifier<T: BeaconChainTypes>(
             //
             // Keep remeasuring the offset rather than using an interval, so that we can correct
             // for system time clock adjustments.
-            let wait = match beacon_chain.slot_clock.duration_to_next_slot() {
-                Some(duration) => duration + slot_duration / 2,
-                None => {
-                    warn!("Unable to read current slot");
-                    sleep(slot_duration).await;
-                    continue;
-                }
+            let wait = if let Some(duration) = beacon_chain.slot_clock.duration_to_next_slot() {
+                duration + slot_duration / 2
+            } else {
+                warn!("Unable to read current slot");
+                sleep(slot_duration).await;
+                continue;
             };
             sleep(wait).await;
 

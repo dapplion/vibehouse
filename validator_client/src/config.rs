@@ -219,16 +219,16 @@ impl Config {
                 return Err(format!(
                     "Your graffiti is too long! {GRAFFITI_BYTES_LEN} bytes maximum!"
                 ));
-            } else {
-                let mut graffiti = [0; 32];
-
-                // Copy the provided bytes over.
-                //
-                // Panic-free because `graffiti_bytes.len()` <= `GRAFFITI_BYTES_LEN`.
-                graffiti[..graffiti_bytes.len()].copy_from_slice(graffiti_bytes);
-
-                config.graffiti = Some(graffiti.into());
             }
+
+            let mut graffiti = [0; 32];
+
+            // Copy the provided bytes over.
+            //
+            // Panic-free because `graffiti_bytes.len()` <= `GRAFFITI_BYTES_LEN`.
+            graffiti[..graffiti_bytes.len()].copy_from_slice(graffiti_bytes);
+
+            config.graffiti = Some(graffiti.into());
         }
 
         if let Some(input_fee_recipient) = validator_client_config.suggested_fee_recipient {

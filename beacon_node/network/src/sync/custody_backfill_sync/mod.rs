@@ -748,47 +748,40 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
                 }
             }
             CustodyBatchProcessResult::Error { peer_action } => {
-                match peer_action {
+                if let Some(peer_action) = peer_action {
                     // Faulty failure
-                    Some(peer_action) => {
-                        match batch.processing_completed(BatchProcessingResult::FaultyFailure) {
-                            Err(e) => {
-                                // Batch was in the wrong state
-                                self.fail_sync(CustodyBackfillError::BatchInvalidState(
-                                    batch_id, e.0,
-                                ))
+                    match batch.processing_completed(BatchProcessingResult::FaultyFailure) {
+                        Err(e) => {
+                            // Batch was in the wrong state
+                            self.fail_sync(CustodyBackfillError::BatchInvalidState(batch_id, e.0))
                                 .map(|_| ProcessResult::Successful)
-                            }
-                            Ok(BatchOperationOutcome::Failed { blacklist: _ }) => {
-                                warn!(
-                                    score_adjustment = ?peer_action,
-                                    batch_epoch = %batch_id,
-                                    "Custody backfill batch failed to download. Penalizing peers"
-                                );
-                                self.fail_sync(CustodyBackfillError::BatchProcessingFailed(
-                                    batch_id,
-                                ))
+                        }
+                        Ok(BatchOperationOutcome::Failed { blacklist: _ }) => {
+                            warn!(
+                                score_adjustment = ?peer_action,
+                                batch_epoch = %batch_id,
+                                "Custody backfill batch failed to download. Penalizing peers"
+                            );
+                            self.fail_sync(CustodyBackfillError::BatchProcessingFailed(batch_id))
                                 .map(|_| ProcessResult::Successful)
-                            }
+                        }
 
-                            Ok(BatchOperationOutcome::Continue) => {
-                                self.advance_custody_backfill_sync(batch_id);
-                                // Handle this invalid batch, that is within the re-process retries limit.
-                                self.handle_invalid_batch(network, batch_id)
-                                    .map(|_| ProcessResult::Successful)
-                            }
+                        Ok(BatchOperationOutcome::Continue) => {
+                            self.advance_custody_backfill_sync(batch_id);
+                            // Handle this invalid batch, that is within the re-process retries limit.
+                            self.handle_invalid_batch(network, batch_id)
+                                .map(|_| ProcessResult::Successful)
                         }
                     }
+                } else {
                     // Non faulty failure
-                    None => {
-                        if let Err(e) =
-                            batch.processing_completed(BatchProcessingResult::NonFaultyFailure)
-                        {
-                            self.fail_sync(CustodyBackfillError::BatchInvalidState(batch_id, e.0))?;
-                        }
-                        self.send_batch(network, batch_id)?;
-                        Ok(ProcessResult::Successful)
+                    if let Err(e) =
+                        batch.processing_completed(BatchProcessingResult::NonFaultyFailure)
+                    {
+                        self.fail_sync(CustodyBackfillError::BatchInvalidState(batch_id, e.0))?;
                     }
+                    self.send_batch(network, batch_id)?;
+                    Ok(ProcessResult::Successful)
                 }
             }
         }

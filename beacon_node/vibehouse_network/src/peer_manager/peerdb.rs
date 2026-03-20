@@ -622,58 +622,55 @@ impl<E: EthSpec> PeerDB<E> {
     ) -> ScoreUpdateResult {
         metrics::inc_counter_vec(&metrics::REPORT_PEER_MSGS, &[msg]);
 
-        match self.peers.get_mut(peer_id) {
-            Some(info) => {
-                let previous_state = info.score_state();
-                info.apply_peer_action_to_score(action);
-                metrics::inc_counter_vec(
-                    &metrics::PEER_ACTION_EVENTS_PER_CLIENT,
-                    &[info.client().kind.as_ref(), action.as_ref(), source.into()],
-                );
-                let result = Self::handle_score_transition(previous_state, peer_id, info);
-                if previous_state == info.score_state() {
-                    debug!(
-                        %msg,
-                        %peer_id,
-                        score = %info.score(),
-                        "Peer score adjusted"
-                    );
-                }
-                match result {
-                    ScoreTransitionResult::Banned => {
-                        // The peer was banned as a result of this action.
-                        self.update_connection_state(peer_id, NewConnectionState::Banned)
-                            .into()
-                    }
-                    ScoreTransitionResult::Disconnected => {
-                        // The peer needs to be disconnected
-
-                        // Update the state
-                        self.update_connection_state(
-                            peer_id,
-                            NewConnectionState::Disconnecting { to_ban: false },
-                        );
-                        ScoreUpdateResult::Disconnect
-                    }
-                    ScoreTransitionResult::NoAction => ScoreUpdateResult::NoAction,
-                    ScoreTransitionResult::Unbanned => {
-                        error!(
-                            %msg,
-                            %peer_id,
-                            "Report peer action lead to an unbanning"
-                        );
-                        ScoreUpdateResult::NoAction
-                    }
-                }
-            }
-            None => {
+        if let Some(info) = self.peers.get_mut(peer_id) {
+            let previous_state = info.score_state();
+            info.apply_peer_action_to_score(action);
+            metrics::inc_counter_vec(
+                &metrics::PEER_ACTION_EVENTS_PER_CLIENT,
+                &[info.client().kind.as_ref(), action.as_ref(), source.into()],
+            );
+            let result = Self::handle_score_transition(previous_state, peer_id, info);
+            if previous_state == info.score_state() {
                 debug!(
                     %msg,
                     %peer_id,
-                    "Reporting a peer that doesn't exist"
+                    score = %info.score(),
+                    "Peer score adjusted"
                 );
-                ScoreUpdateResult::NoAction
             }
+            match result {
+                ScoreTransitionResult::Banned => {
+                    // The peer was banned as a result of this action.
+                    self.update_connection_state(peer_id, NewConnectionState::Banned)
+                        .into()
+                }
+                ScoreTransitionResult::Disconnected => {
+                    // The peer needs to be disconnected
+
+                    // Update the state
+                    self.update_connection_state(
+                        peer_id,
+                        NewConnectionState::Disconnecting { to_ban: false },
+                    );
+                    ScoreUpdateResult::Disconnect
+                }
+                ScoreTransitionResult::NoAction => ScoreUpdateResult::NoAction,
+                ScoreTransitionResult::Unbanned => {
+                    error!(
+                        %msg,
+                        %peer_id,
+                        "Report peer action lead to an unbanning"
+                    );
+                    ScoreUpdateResult::NoAction
+                }
+            }
+        } else {
+            debug!(
+                %msg,
+                %peer_id,
+                "Reporting a peer that doesn't exist"
+            );
+            ScoreUpdateResult::NoAction
         }
     }
 
@@ -866,13 +863,11 @@ impl<E: EthSpec> PeerDB<E> {
 
         // Ban the peer if the score is not already low enough.
         if matches!(new_state, NewConnectionState::Banned) {
-            match info.score_state() {
-                ScoreState::Banned => {}
-                _ => {
-                    // If score isn't low enough to ban, this function has been called incorrectly.
-                    error!(%peer_id, "Banning a peer with a good score");
-                    info.apply_peer_action_to_score(score::PeerAction::Fatal);
-                }
+            if info.score_state() == ScoreState::Banned {
+            } else {
+                // If score isn't low enough to ban, this function has been called incorrectly.
+                error!(%peer_id, "Banning a peer with a good score");
+                info.apply_peer_action_to_score(score::PeerAction::Fatal);
             }
         }
 

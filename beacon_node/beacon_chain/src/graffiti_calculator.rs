@@ -189,35 +189,34 @@ async fn engine_version_cache_refresh_service<T: BeaconChainTypes>(
     let partial_firing_delay =
         epoch_duration * ENGINE_VERSION_CACHE_REFRESH_EPOCH_MULTIPLE.saturating_sub(1);
     loop {
-        match slot_clock.duration_to_next_epoch(T::EthSpec::slots_per_epoch()) {
-            Some(duration_to_next_epoch) => {
-                let firing_delay = partial_firing_delay + duration_to_next_epoch + epoch_delay;
-                tokio::time::sleep(firing_delay).await;
+        if let Some(duration_to_next_epoch) =
+            slot_clock.duration_to_next_epoch(T::EthSpec::slots_per_epoch())
+        {
+            let firing_delay = partial_firing_delay + duration_to_next_epoch + epoch_delay;
+            tokio::time::sleep(firing_delay).await;
 
-                debug!("Engine version cache refresh service firing");
+            debug!("Engine version cache refresh service firing");
 
-                match execution_layer.get_engine_version(None).await {
-                    Err(e) => warn!( error = ?e, "Failed to populate engine version cache"),
-                    Ok(versions) => {
-                        if versions.is_empty() {
-                            // Empty array indicates the EL doesn't support the method
-                            debug!(
-                                "EL does not support {} method. Sleeping twice as long before retry",
-                                ENGINE_GET_CLIENT_VERSION_V1
-                            );
-                            tokio::time::sleep(
-                                epoch_duration * ENGINE_VERSION_CACHE_REFRESH_EPOCH_MULTIPLE,
-                            )
-                            .await;
-                        }
+            match execution_layer.get_engine_version(None).await {
+                Err(e) => warn!( error = ?e, "Failed to populate engine version cache"),
+                Ok(versions) => {
+                    if versions.is_empty() {
+                        // Empty array indicates the EL doesn't support the method
+                        debug!(
+                            "EL does not support {} method. Sleeping twice as long before retry",
+                            ENGINE_GET_CLIENT_VERSION_V1
+                        );
+                        tokio::time::sleep(
+                            epoch_duration * ENGINE_VERSION_CACHE_REFRESH_EPOCH_MULTIPLE,
+                        )
+                        .await;
                     }
                 }
             }
-            None => {
-                error!("Failed to read slot clock");
-                // If we can't read the slot clock, just wait another slot.
-                tokio::time::sleep(slot_clock.slot_duration()).await;
-            }
+        } else {
+            error!("Failed to read slot clock");
+            // If we can't read the slot clock, just wait another slot.
+            tokio::time::sleep(slot_clock.slot_duration()).await;
         }
     }
 }

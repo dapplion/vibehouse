@@ -344,12 +344,11 @@ impl SlashingDatabase {
             if existing_block.signing_root == signing_root {
                 // Same slot and same hash -> we're re-broadcasting a previously signed block
                 return Ok(Safe::SameData);
-            } else {
-                // Same epoch but not the same hash -> it's a DoubleBlockProposal
-                return Err(NotSafe::InvalidBlock(InvalidBlock::DoubleBlockProposal(
-                    existing_block,
-                )));
             }
+            // Same epoch but not the same hash -> it's a DoubleBlockProposal
+            return Err(NotSafe::InvalidBlock(InvalidBlock::DoubleBlockProposal(
+                existing_block,
+            )));
         }
 
         let min_slot = txn
@@ -408,12 +407,11 @@ impl SlashingDatabase {
             // know that it is safe, and can return immediately.
             if existing_attestation.signing_root == att_signing_root {
                 return Ok(Safe::SameData);
-            // Otherwise if the hashes are different, this is a double vote.
-            } else {
-                return Err(NotSafe::InvalidAttestation(InvalidAttestation::DoubleVote(
-                    existing_attestation,
-                )));
+                // Otherwise if the hashes are different, this is a double vote.
             }
+            return Err(NotSafe::InvalidAttestation(InvalidAttestation::DoubleVote(
+                existing_attestation,
+            )));
         }
 
         // Check that no previous vote is surrounding `attestation`.

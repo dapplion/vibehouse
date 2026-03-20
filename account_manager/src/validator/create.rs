@@ -279,16 +279,14 @@ pub fn read_wallet_password_from_cli(
     password_file_path: Option<PathBuf>,
     stdin_inputs: bool,
 ) -> Result<PlainText, String> {
-    match password_file_path {
-        Some(path) => fs::read(&path)
+    if let Some(path) = password_file_path {
+        fs::read(&path)
             .map_err(|e| format!("Unable to read {path:?}: {e:?}"))
-            .map(|bytes| strip_off_newlines(bytes).into()),
-        None => {
-            eprintln!();
-            eprintln!("{WALLET_PASSWORD_PROMPT}");
-            let password =
-                PlainText::from(read_password_from_user(stdin_inputs)?.as_bytes().to_vec());
-            Ok(password)
-        }
+            .map(|bytes| strip_off_newlines(bytes).into())
+    } else {
+        eprintln!();
+        eprintln!("{WALLET_PASSWORD_PROMPT}");
+        let password = PlainText::from(read_password_from_user(stdin_inputs)?.as_bytes().to_vec());
+        Ok(password)
     }
 }

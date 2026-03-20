@@ -32,37 +32,33 @@ async fn proposer_prep_service<T: BeaconChainTypes>(
     let slot_duration = chain.slot_clock.slot_duration();
 
     loop {
-        match chain.slot_clock.duration_to_next_slot() {
-            Some(duration) => {
-                let additional_delay =
-                    slot_duration.saturating_sub(chain.config.prepare_payload_lookahead);
-                sleep(duration + additional_delay).await;
+        if let Some(duration) = chain.slot_clock.duration_to_next_slot() {
+            let additional_delay =
+                slot_duration.saturating_sub(chain.config.prepare_payload_lookahead);
+            sleep(duration + additional_delay).await;
 
-                debug!("Proposer prepare routine firing");
+            debug!("Proposer prepare routine firing");
 
-                let inner_chain = chain.clone();
-                executor.spawn(
-                    async move {
-                        if let Ok(current_slot) = inner_chain.slot() {
-                            if let Err(e) = inner_chain.prepare_beacon_proposer(current_slot).await
-                            {
-                                error!(
-                                    error = ?e,
-                                    "Proposer prepare routine failed"
-                                );
-                            }
-                        } else {
-                            debug!("No slot for proposer prepare routine");
+            let inner_chain = chain.clone();
+            executor.spawn(
+                async move {
+                    if let Ok(current_slot) = inner_chain.slot() {
+                        if let Err(e) = inner_chain.prepare_beacon_proposer(current_slot).await {
+                            error!(
+                                error = ?e,
+                                "Proposer prepare routine failed"
+                            );
                         }
-                    },
-                    "proposer_prep_update",
-                );
-            }
-            None => {
-                error!("Failed to read slot clock");
-                // If we can't read the slot clock, just wait another slot.
-                sleep(slot_duration).await;
-            }
+                    } else {
+                        debug!("No slot for proposer prepare routine");
+                    }
+                },
+                "proposer_prep_update",
+            );
+        } else {
+            error!("Failed to read slot clock");
+            // If we can't read the slot clock, just wait another slot.
+            sleep(slot_duration).await;
         }
     }
 }

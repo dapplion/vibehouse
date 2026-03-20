@@ -235,9 +235,8 @@ pub fn read_new_wallet_password_from_cli(
                         PlainText::from(read_password_from_user(stdin_inputs)?.as_bytes().to_vec());
                     if retyped_password == password {
                         break Ok(password);
-                    } else {
-                        eprintln!("Passwords do not match.");
                     }
+                    eprintln!("Passwords do not match.");
                 }
                 Err(message) => eprintln!("{message}"),
             }

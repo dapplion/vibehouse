@@ -471,50 +471,47 @@ impl<T: BeaconChainTypes> ChainCollection<T> {
             &mut self.head_chains
         };
 
-        match collection
+        if let Some((&id, chain)) = collection
             .iter_mut()
             .find(|(_, chain)| chain.has_same_target(target_head_slot, target_head_root))
         {
-            Some((&id, chain)) => {
-                debug!(peer_id = %peer, ?sync_type, id, "Adding peer to known chain");
-                debug_assert_eq!(chain.target_head_root, target_head_root);
-                debug_assert_eq!(chain.target_head_slot, target_head_slot);
-                if let Err(remove_reason) = chain.add_peer(network, peer) {
-                    if remove_reason.is_critical() {
-                        crit!(id, reason = ?remove_reason, "Chain removed after adding peer");
-                    } else {
-                        error!(id, reason = ?remove_reason, "Chain removed after adding peer");
-                    }
-                    let is_syncing = chain.is_syncing();
-                    collection.remove(&id);
-                    self.on_chain_removed(&id, is_syncing, sync_type);
+            debug!(peer_id = %peer, ?sync_type, id, "Adding peer to known chain");
+            debug_assert_eq!(chain.target_head_root, target_head_root);
+            debug_assert_eq!(chain.target_head_slot, target_head_slot);
+            if let Err(remove_reason) = chain.add_peer(network, peer) {
+                if remove_reason.is_critical() {
+                    crit!(id, reason = ?remove_reason, "Chain removed after adding peer");
+                } else {
+                    error!(id, reason = ?remove_reason, "Chain removed after adding peer");
                 }
+                let is_syncing = chain.is_syncing();
+                collection.remove(&id);
+                self.on_chain_removed(&id, is_syncing, sync_type);
             }
-            None => {
-                let peer_rpr = peer.to_string();
-                let id = network.next_id();
-                let new_chain = SyncingChain::new(
-                    id,
-                    start_epoch,
-                    target_head_slot,
-                    target_head_root,
-                    peer,
-                    sync_type.into(),
-                );
+        } else {
+            let peer_rpr = peer.to_string();
+            let id = network.next_id();
+            let new_chain = SyncingChain::new(
+                id,
+                start_epoch,
+                target_head_slot,
+                target_head_root,
+                peer,
+                sync_type.into(),
+            );
 
-                debug!(
-                    peer_id = peer_rpr,
-                    ?sync_type,
-                    id,
-                    %start_epoch,
-                    %target_head_slot,
-                    ?target_head_root,
-                    "New chain added to sync"
-                );
-                collection.insert(id, new_chain);
-                metrics::inc_counter_vec(&metrics::SYNCING_CHAINS_ADDED, &[sync_type.as_str()]);
-                self.update_metrics();
-            }
+            debug!(
+                peer_id = peer_rpr,
+                ?sync_type,
+                id,
+                %start_epoch,
+                %target_head_slot,
+                ?target_head_root,
+                "New chain added to sync"
+            );
+            collection.insert(id, new_chain);
+            metrics::inc_counter_vec(&metrics::SYNCING_CHAINS_ADDED, &[sync_type.as_str()]);
+            self.update_metrics();
         }
     }
 
