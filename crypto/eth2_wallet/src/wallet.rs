@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
 pub use uuid::Uuid;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     KeystoreError(KeystoreError),
     PathExhausted,
@@ -119,7 +119,7 @@ impl<'a> WalletBuilder<'a> {
     }
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Wallet {
     json: JsonWallet,

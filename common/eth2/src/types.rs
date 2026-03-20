@@ -27,7 +27,7 @@ pub use types::*;
 use crate::vibehouse::BlockReward;
 
 /// An API error serializable to JSON.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Error {
     Indexed(IndexedErrorMessage),
@@ -35,7 +35,7 @@ pub enum Error {
 }
 
 /// An API error serializable to JSON.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ErrorMessage {
     pub code: u16,
     pub message: String,
@@ -44,7 +44,7 @@ pub struct ErrorMessage {
 }
 
 /// An indexed API error serializable to JSON.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IndexedErrorMessage {
     pub code: u16,
     pub message: String,
@@ -52,7 +52,7 @@ pub struct IndexedErrorMessage {
 }
 
 /// A single failure in an index of API errors, serializable to JSON.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Failure {
     pub index: u64,
     pub message: String,
@@ -68,7 +68,7 @@ impl Failure {
 }
 
 /// The version of a single API endpoint, e.g. the `v1` in `/eth/v1/beacon/blocks`.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EndpointVersion(pub u64);
 
 impl FromStr for EndpointVersion {
@@ -91,7 +91,7 @@ impl std::fmt::Display for EndpointVersion {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GenesisData {
     #[serde(with = "serde_utils::quoted_u64")]
     pub genesis_time: u64,
@@ -100,7 +100,7 @@ pub struct GenesisData {
     pub genesis_fork_version: [u8; 4],
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum BlockId {
     Head,
     Genesis,
@@ -148,7 +148,7 @@ impl fmt::Display for BlockId {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum StateId {
     Head,
     Genesis,
@@ -196,7 +196,7 @@ impl fmt::Display for StateId {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(bound = "T: Serialize + serde::de::DeserializeOwned")]
 pub struct DutiesResponse<T: Serialize + serde::de::DeserializeOwned> {
     pub dependent_root: Hash256,
@@ -204,14 +204,14 @@ pub struct DutiesResponse<T: Serialize + serde::de::DeserializeOwned> {
     pub data: T,
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(bound = "T: Serialize + serde::de::DeserializeOwned")]
 pub struct ExecutionOptimisticResponse<T: Serialize + serde::de::DeserializeOwned> {
     pub execution_optimistic: Option<bool>,
     pub data: T,
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(bound = "T: Serialize + serde::de::DeserializeOwned")]
 pub struct ExecutionOptimisticFinalizedResponse<T: Serialize + serde::de::DeserializeOwned> {
     pub execution_optimistic: Option<bool>,
@@ -219,7 +219,7 @@ pub struct ExecutionOptimisticFinalizedResponse<T: Serialize + serde::de::Deseri
     pub data: T,
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(bound = "T: Serialize + serde::de::DeserializeOwned")]
 pub struct GenericResponse<T: Serialize + serde::de::DeserializeOwned> {
     pub data: T,
@@ -255,7 +255,7 @@ impl<T: Serialize + serde::de::DeserializeOwned> GenericResponse<T> {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize)]
 #[serde(bound = "T: Serialize")]
 pub struct GenericResponseRef<'a, T: Serialize> {
     pub data: &'a T,
@@ -267,7 +267,7 @@ impl<'a, T: Serialize> From<&'a T> for GenericResponseRef<'a, T> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RootData {
     pub root: Hash256,
 }
@@ -278,7 +278,7 @@ impl From<Hash256> for RootData {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FinalityCheckpointsData {
     pub previous_justified: Checkpoint,
     pub current_justified: Checkpoint,
@@ -332,7 +332,7 @@ impl From<ValidatorId> for String {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ValidatorData {
     #[serde(with = "serde_utils::quoted_u64")]
     pub index: u64,
@@ -342,7 +342,7 @@ pub struct ValidatorData {
     pub validator: Validator,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ValidatorBalanceData {
     #[serde(with = "serde_utils::quoted_u64")]
     pub index: u64,
@@ -350,7 +350,7 @@ pub struct ValidatorBalanceData {
     pub balance: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Encode, Decode)]
 pub struct ValidatorIdentityData {
     #[serde(with = "serde_utils::quoted_u64")]
     pub index: u64,
@@ -529,7 +529,7 @@ pub struct ValidatorsRequestBody {
     pub statuses: Option<Vec<ValidatorStatus>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CommitteeData {
     #[serde(with = "serde_utils::quoted_u64")]
     pub index: u64,
@@ -538,19 +538,19 @@ pub struct CommitteeData {
     pub validators: Vec<u64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SyncCommitteeByValidatorIndices {
     #[serde(with = "serde_utils::quoted_u64_vec")]
     pub validators: Vec<u64>,
     pub validator_aggregates: Vec<SyncSubcommittee>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RandaoMix {
     pub randao: Hash256,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct SyncSubcommittee {
     #[serde(with = "serde_utils::quoted_u64_vec")]
@@ -576,7 +576,7 @@ pub struct BlockHeaderData {
     pub header: BlockHeaderAndSignature,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DepositContractData {
     #[serde(with = "serde_utils::quoted_u64")]
     pub chain_id: u64,
@@ -584,7 +584,7 @@ pub struct DepositContractData {
     pub address: Address,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChainHeadData {
     pub slot: Slot,
     pub root: Hash256,
@@ -592,7 +592,7 @@ pub struct ChainHeadData {
     pub execution_optimistic: Option<bool>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IdentityData {
     pub peer_id: String,
     pub enr: Enr<CombinedKey>,
@@ -603,9 +603,9 @@ pub struct IdentityData {
 
 #[superstruct(
     variants(V2, V3),
-    variant_attributes(derive(Clone, Debug, PartialEq, Serialize, Deserialize))
+    variant_attributes(derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize))
 )]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub struct MetaData {
     #[serde(with = "serde_utils::quoted_u64")]
@@ -617,12 +617,12 @@ pub struct MetaData {
     pub custody_group_count: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VersionData {
     pub version: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SyncingData {
     pub is_syncing: bool,
     pub is_optimistic: bool,
@@ -636,7 +636,7 @@ pub struct ExpectedWithdrawalsQuery {
     pub proposal_slot: Option<Slot>,
 }
 
-#[derive(Clone, PartialEq, Debug, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Deserialize)]
 #[serde(try_from = "String", bound = "T: FromStr")]
 pub struct QueryVec<T: FromStr> {
     values: Vec<T>,
@@ -746,7 +746,7 @@ pub struct ValidatorIndexDataRef<'a>(
     #[serde(serialize_with = "serde_utils::quoted_u64_vec::serialize")] pub &'a [u64],
 );
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AttesterData {
     pub pubkey: PublicKeyBytes,
     #[serde(with = "serde_utils::quoted_u64")]
@@ -781,7 +781,7 @@ impl AttesterData {
 ///
 /// Tells the validator client which slot it needs to produce a payload attestation for,
 /// and its position within the PTC committee (for aggregation_bits).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PtcDutyData {
     pub pubkey: PublicKeyBytes,
     #[serde(with = "serde_utils::quoted_u64")]
@@ -792,7 +792,7 @@ pub struct PtcDutyData {
     pub ptc_committee_index: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProposerData {
     pub pubkey: PublicKeyBytes,
     #[serde(with = "serde_utils::quoted_u64")]
@@ -905,7 +905,7 @@ pub struct PeersQuery {
     pub direction: Option<Vec<PeerDirection>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PeerData {
     pub peer_id: String,
     pub enr: Option<String>,
@@ -914,18 +914,18 @@ pub struct PeerData {
     pub direction: PeerDirection,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PeersData {
     pub data: Vec<PeerData>,
     pub meta: PeersMetaData,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PeersMetaData {
     pub count: u64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PeerState {
     Connected,
@@ -959,7 +959,7 @@ impl fmt::Display for PeerState {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PeerDirection {
     Inbound,
@@ -987,7 +987,7 @@ impl fmt::Display for PeerDirection {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PeerCount {
     #[serde(with = "serde_utils::quoted_u64")]
     pub connected: u64,
@@ -999,7 +999,7 @@ pub struct PeerCount {
     pub disconnecting: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BeaconCommitteeSelection {
     #[serde(with = "serde_utils::quoted_u64")]
     pub validator_index: u64,
@@ -1007,7 +1007,7 @@ pub struct BeaconCommitteeSelection {
     pub selection_proof: Signature,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SyncCommitteeSelection {
     #[serde(with = "serde_utils::quoted_u64")]
     pub validator_index: u64,
@@ -1018,14 +1018,14 @@ pub struct SyncCommitteeSelection {
 }
 // --------- Server Sent Event Types -----------
 
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct SseBlock {
     pub slot: Slot,
     pub block: Hash256,
     pub execution_optimistic: bool,
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct SseBlobSidecar {
     pub block_root: Hash256,
     #[serde(with = "serde_utils::quoted_u64")]
@@ -1047,7 +1047,7 @@ impl SseBlobSidecar {
     }
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct SseDataColumnSidecar {
     pub block_root: Hash256,
     #[serde(with = "serde_utils::quoted_u64")]
@@ -1079,7 +1079,7 @@ impl SseDataColumnSidecar {
     }
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct SseExecutionBid {
     pub slot: Slot,
     pub block: Hash256,
@@ -1090,7 +1090,7 @@ pub struct SseExecutionBid {
     pub value: u64,
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct SseExecutionPayload {
     pub slot: Slot,
     pub beacon_block_root: Hash256,
@@ -1099,7 +1099,7 @@ pub struct SseExecutionPayload {
     pub block_hash: Hash256,
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct SsePayloadAttestation {
     pub slot: Slot,
     pub beacon_block_root: Hash256,
@@ -1107,7 +1107,7 @@ pub struct SsePayloadAttestation {
     pub blob_data_available: bool,
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct SseExecutionProof {
     pub block_root: Hash256,
     pub block_hash: Hash256,
@@ -1117,7 +1117,7 @@ pub struct SseExecutionProof {
     pub version: u64,
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct ExecutionProofStatus {
     pub block_root: Hash256,
     #[serde(with = "serde_utils::quoted_u64_vec")]
@@ -1127,7 +1127,7 @@ pub struct ExecutionProofStatus {
     pub is_fully_proven: bool,
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct SseFinalizedCheckpoint {
     pub block: Hash256,
     pub state: Hash256,
@@ -1135,7 +1135,7 @@ pub struct SseFinalizedCheckpoint {
     pub execution_optimistic: bool,
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct SseHead {
     pub slot: Slot,
     pub block: Hash256,
@@ -1146,12 +1146,12 @@ pub struct SseHead {
     pub execution_optimistic: bool,
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct BlockGossip {
     pub slot: Slot,
     pub block: Hash256,
 }
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct SseChainReorg {
     pub slot: Slot,
     #[serde(with = "serde_utils::quoted_u64")]
@@ -1164,7 +1164,7 @@ pub struct SseChainReorg {
     pub execution_optimistic: bool,
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct SseLateHead {
     pub slot: Slot,
     pub block: Hash256,
@@ -1200,7 +1200,7 @@ pub struct SsePayloadAttributes {
     pub parent_beacon_block_root: Hash256,
 }
 
-#[derive(PartialEq, Debug, Deserialize, Serialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Clone)]
 pub struct SseExtendedPayloadAttributesGeneric<T> {
     pub proposal_slot: Slot,
     #[serde(with = "serde_utils::quoted_u64")]
@@ -1447,7 +1447,7 @@ pub struct EventQuery {
     pub topics: Vec<EventTopic>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EventTopic {
     Head,
@@ -1541,7 +1541,7 @@ impl fmt::Display for EventTopic {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Accept {
     Json,
     Ssz,
@@ -1616,7 +1616,7 @@ impl FromStr for Accept {
     }
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct StandardLivenessResponseData {
     #[serde(with = "serde_utils::quoted_u64")]
     pub index: u64,
@@ -1642,7 +1642,7 @@ pub struct LivenessRequestData {
     pub indices: Vec<u64>,
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct LivenessResponseData {
     #[serde(with = "serde_utils::quoted_u64")]
     pub index: u64,
@@ -1650,7 +1650,7 @@ pub struct LivenessResponseData {
     pub is_live: bool,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ForkChoice {
     pub justified_checkpoint: Checkpoint,
     pub finalized_checkpoint: Checkpoint,
@@ -4144,7 +4144,9 @@ pub enum ContentType {
     Ssz,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Encode, Decode, TestRandom)]
+#[derive(
+    Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, Encode, Decode, TestRandom,
+)]
 #[serde(bound = "E: EthSpec")]
 pub struct BlobsBundle<E: EthSpec> {
     pub commitments: KzgCommitments<E>,
@@ -4154,7 +4156,7 @@ pub struct BlobsBundle<E: EthSpec> {
 }
 
 /// Details about the rewards paid to sync committee members for attesting headers
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct SyncCommitteeReward {
     #[serde(with = "serde_utils::quoted_u64")]
     pub validator_index: u64,
@@ -4164,7 +4166,7 @@ pub struct SyncCommitteeReward {
 }
 
 /// Details about the rewards for a single block
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct StandardBlockReward {
     /// proposer of the block, the proposer index who receives these rewards
     #[serde(with = "serde_utils::quoted_u64")]

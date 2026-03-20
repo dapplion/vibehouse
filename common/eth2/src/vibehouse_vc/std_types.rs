@@ -5,26 +5,26 @@ use zeroize::Zeroizing;
 
 pub use eip_3076::Interchange;
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct GetFeeRecipientResponse {
     pub pubkey: PublicKeyBytes,
     #[serde(with = "serde_utils::address_hex")]
     pub ethaddress: Address,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct GetGasLimitResponse {
     pub pubkey: PublicKeyBytes,
     #[serde(with = "serde_utils::quoted_u64")]
     pub gas_limit: u64,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct AuthResponse {
     pub token_path: String,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct ListKeystoresResponse {
     pub data: Vec<SingleKeystoreResponse>,
 }
@@ -56,7 +56,7 @@ impl std::ops::Deref for KeystoreJsonStr {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct InterchangeJsonStr(#[serde(with = "serde_utils::json_str")] pub Interchange);
 
@@ -118,12 +118,12 @@ pub enum DeleteKeystoreStatus {
     Error,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct ListRemotekeysResponse {
     pub data: Vec<SingleListRemotekeysResponse>,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct SingleListRemotekeysResponse {
     pub pubkey: PublicKeyBytes,
     pub url: String,
@@ -136,7 +136,7 @@ pub struct ImportRemotekeysRequest {
     pub remote_keys: Vec<SingleImportRemotekeysRequest>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct SingleImportRemotekeysRequest {
     pub pubkey: PublicKeyBytes,
     pub url: String,

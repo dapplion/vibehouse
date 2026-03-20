@@ -275,7 +275,7 @@ impl<T> From<ContextError> for BlockOperationError<T> {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum HeaderInvalid {
     ProposalSignatureInvalid,
     StateSlotMismatch,
@@ -294,7 +294,7 @@ pub enum HeaderInvalid {
     ProposerSlashed(u64),
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ProposerSlashingInvalid {
     /// The proposer index is not a known validator.
     ProposerUnknown(u64),
@@ -331,7 +331,7 @@ pub enum AttesterSlashingInvalid {
 }
 
 /// Describes why an object is invalid.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum AttestationInvalid {
     /// Committee index exceeds number of committees in that slot.
     BadCommitteeIndex,
@@ -386,7 +386,7 @@ impl From<BlockOperationError<IndexedAttestationInvalid>>
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum IndexedAttestationInvalid {
     /// The number of indices is 0.
     IndicesEmpty,
@@ -398,7 +398,7 @@ pub enum IndexedAttestationInvalid {
     BadSignature,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum DepositInvalid {
     /// The signature (proof-of-possession) does not match the given pubkey.
     BadSignature,
@@ -441,7 +441,7 @@ pub enum ExitInvalid {
     BuilderPendingWithdrawalInQueue(u64),
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum BlsExecutionChangeInvalid {
     /// The specified validator is not in the state's validator registry.
     ValidatorUnknown(u64),
@@ -453,13 +453,13 @@ pub enum BlsExecutionChangeInvalid {
     BadSignature,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum SyncAggregateInvalid {
     /// The signature is invalid.
     SignatureInvalid,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum PayloadAttestationInvalid {
     /// Attestation is for the wrong slot
     WrongSlot { expected: Slot, actual: Slot },

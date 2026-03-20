@@ -387,7 +387,7 @@ pub struct ProposerKey {
     head_block_root: Hash256,
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct Proposer {
     validator_index: u64,
     payload_attributes: PayloadAttributes,
@@ -400,7 +400,7 @@ pub struct BuilderParams {
     pub chain_health: ChainHealth,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum ChainHealth {
     Healthy,
     Unhealthy(FailedCondition),
@@ -408,7 +408,7 @@ pub enum ChainHealth {
     PreMerge,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum FailedCondition {
     Skips,
     SkipsPerEpoch,

@@ -12,7 +12,7 @@ use ssz_types::typenum::Unsigned;
 use std::cmp;
 
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Clone, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct SyncSelectionProof(Signature);
 

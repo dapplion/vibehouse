@@ -37,7 +37,7 @@ use types::{
 // When set to true, cache any states fetched from the db.
 pub const CACHE_STATE_IN_TESTS: bool = true;
 
-#[derive(Default, Debug, PartialEq, Clone, Deserialize, Decode)]
+#[derive(Default, Debug, PartialEq, Eq, Clone, Deserialize, Decode)]
 #[serde(deny_unknown_fields)]
 pub struct PowBlock {
     pub block_hash: ExecutionBlockHash,
@@ -45,14 +45,14 @@ pub struct PowBlock {
     pub total_difficulty: Uint256,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Head {
     slot: Slot,
     root: Hash256,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ShouldOverrideFcu {
     validator_is_connected: bool,

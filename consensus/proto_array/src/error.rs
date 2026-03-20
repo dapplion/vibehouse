@@ -1,7 +1,7 @@
 use safe_arith::ArithError;
 use types::{Checkpoint, Epoch, ExecutionBlockHash, Hash256, Slot};
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Error {
     FinalizedNodeUnknown(Hash256),
     JustifiedNodeUnknown(Hash256),
@@ -55,7 +55,7 @@ impl From<ArithError> for Error {
     }
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct InvalidBestNodeInfo {
     pub current_slot: Slot,
     pub start_root: Hash256,

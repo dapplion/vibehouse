@@ -1716,7 +1716,7 @@ impl Default for ChainSpec {
 }
 
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "UPPERCASE")]
 pub struct BlobParameters {
     pub epoch: Epoch,

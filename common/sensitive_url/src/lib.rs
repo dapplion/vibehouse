@@ -17,7 +17,7 @@ impl fmt::Display for SensitiveError {
 }
 
 // Wrapper around Url which provides a custom `Display` implementation to protect user secrets.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct SensitiveUrl {
     pub full: Url,
     pub redacted: String,

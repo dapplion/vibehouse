@@ -11,7 +11,7 @@ use types::execution_requests::{
 };
 use types::{Blob, FixedVector, KzgProof, Unsigned};
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonRequestBody<'a> {
     pub jsonrpc: &'a str,
@@ -20,13 +20,13 @@ pub struct JsonRequestBody<'a> {
     pub id: serde_json::Value,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JsonError {
     pub code: i64,
     pub message: String,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonResponseBody {
     pub jsonrpc: String,
@@ -37,7 +37,7 @@ pub struct JsonResponseBody {
     pub id: serde_json::Value,
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct TransparentJsonPayloadId(#[serde(with = "serde_utils::bytes_8_hex")] pub PayloadId);
 
@@ -57,7 +57,7 @@ impl From<TransparentJsonPayloadId> for PayloadId {
 pub type JsonPayloadIdRequest = TransparentJsonPayloadId;
 
 /// On the response, expect without the object wrapper (non-transparent).
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonPayloadIdResponse {
     #[serde(with = "serde_utils::bytes_8_hex")]
@@ -67,7 +67,7 @@ pub struct JsonPayloadIdResponse {
 #[superstruct(
     variants(Bellatrix, Capella, Deneb, Electra, Fulu, Gloas),
     variant_attributes(
-        derive(Debug, PartialEq, Default, Serialize, Deserialize,),
+        derive(Debug, PartialEq, Eq, Default, Serialize, Deserialize,),
         serde(bound = "E: EthSpec", rename_all = "camelCase"),
     ),
     cast_error(ty = "Error", expr = "Error::IncorrectStateVariant"),
@@ -474,7 +474,7 @@ pub enum RequestsError {
 ///
 /// Array of ssz-encoded requests list encoded as hex bytes prefixed
 /// with a `RequestType`
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct JsonExecutionRequests(pub Vec<String>);
 
@@ -664,7 +664,7 @@ impl<E: EthSpec> TryFrom<JsonGetPayloadResponse<E>> for GetPayloadResponse<E> {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonWithdrawal {
     #[serde(with = "serde_utils::u64_hex_be")]
@@ -698,7 +698,7 @@ impl From<JsonWithdrawal> for Withdrawal {
         }
     }
 }
-#[derive(Debug, PartialEq, Clone, RlpEncodable)]
+#[derive(Debug, PartialEq, Eq, Clone, RlpEncodable)]
 pub struct EncodableJsonWithdrawal<'a> {
     pub index: u64,
     pub validator_index: u64,
@@ -720,13 +720,13 @@ impl<'a> From<&'a JsonWithdrawal> for EncodableJsonWithdrawal<'a> {
 #[superstruct(
     variants(V1, V2, V3),
     variant_attributes(
-        derive(Debug, Clone, PartialEq, Serialize, Deserialize),
+        derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize),
         serde(rename_all = "camelCase")
     ),
     cast_error(ty = "Error", expr = "Error::IncorrectStateVariant"),
     partial_getter_error(ty = "Error", expr = "Error::IncorrectStateVariant")
 )]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub struct JsonPayloadAttributes {
     #[serde(with = "serde_utils::u64_hex_be")]
@@ -790,7 +790,7 @@ impl From<JsonPayloadAttributes> for PayloadAttributes {
     }
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(bound = "E: EthSpec", rename_all = "camelCase")]
 pub struct JsonBlobsBundleV1<E: EthSpec> {
     pub commitments: KzgCommitments<E>,
@@ -821,11 +821,11 @@ impl<E: EthSpec> From<JsonBlobsBundleV1<E>> for BlobsBundle<E> {
 #[superstruct(
     variants(V1, V2),
     variant_attributes(
-        derive(Debug, Clone, PartialEq, Serialize, Deserialize),
+        derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize),
         serde(bound = "E: EthSpec", rename_all = "camelCase")
     )
 )]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlobAndProof<E: EthSpec> {
     #[serde(with = "ssz_types::serde_utils::hex_fixed_vec")]
     pub blob: Blob<E>,
@@ -837,7 +837,7 @@ pub struct BlobAndProof<E: EthSpec> {
     pub proofs: KzgProofs<E>,
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonForkchoiceStateV1 {
     pub head_block_hash: ExecutionBlockHash,
@@ -881,7 +881,7 @@ impl From<JsonForkchoiceStateV1> for ForkchoiceState {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, EnumString)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum JsonPayloadStatusV1Status {
@@ -892,7 +892,7 @@ pub enum JsonPayloadStatusV1Status {
     InvalidBlockHash,
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonPayloadStatusV1 {
     pub status: JsonPayloadStatusV1Status,
@@ -957,7 +957,7 @@ impl From<JsonPayloadStatusV1> for PayloadStatusV1 {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonForkchoiceUpdatedV1Response {
     pub payload_status: JsonPayloadStatusV1,
@@ -1028,7 +1028,7 @@ impl<E: EthSpec> From<ExecutionPayloadBodyV1<E>> for JsonExecutionPayloadBodyV1<
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TransitionConfigurationV1 {
     #[serde(with = "serde_utils::u256_hex_be")]

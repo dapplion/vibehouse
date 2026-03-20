@@ -136,7 +136,7 @@ type HttpServer = (SocketAddr, Box<dyn Future<Output = ()> + Send + Unpin>);
 pub type ExecutionOptimistic = bool;
 
 /// Configuration used when serving the HTTP server over TLS.
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Clone, Serialize, Deserialize)]
 pub struct TlsConfig {
     pub cert: PathBuf,
     pub key: PathBuf,
@@ -174,7 +174,7 @@ mod serde_axum_status_code {
 }
 
 /// Configuration for the HTTP server.
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub enabled: bool,
     pub listen_addr: IpAddr,

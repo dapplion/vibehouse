@@ -16,7 +16,7 @@ type AttestationKeyRoot = Hash256;
 type SyncDataRoot = Hash256;
 
 /// Post-Electra, we need a new key for Attestations that includes the committee index
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AttestationKey {
     data_root: Hash256,
     committee_index: Option<CommitteeIndex>,
@@ -132,7 +132,7 @@ const SLOTS_RETAINED: usize = 3;
 const MAX_ATTESTATIONS_PER_SLOT: usize = 16_384;
 
 /// Returned upon successfully inserting an item into the pool.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum InsertOutcome {
     /// The item had not been seen before and was added to the pool.
     NewItemInserted { committee_index: usize },
@@ -144,7 +144,7 @@ pub enum InsertOutcome {
     SignatureAggregated { committee_index: usize },
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// The given `data.slot` was too low to be stored. No changes were made.
     SlotTooLow {

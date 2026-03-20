@@ -5,7 +5,7 @@
 use parking_lot::{Condvar, Mutex};
 use std::sync::Arc;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Error {
     SenderDropped,
 }

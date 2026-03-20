@@ -1,7 +1,7 @@
 use crate::*;
 use safe_arith::{ArithError, SafeArith};
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Error {
     EpochTooLow { base: Epoch, other: Epoch },
     EpochTooHigh { base: Epoch, other: Epoch },
@@ -19,7 +19,7 @@ impl From<ArithError> for Error {
 ///
 /// Spec v0.12.1
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum RelativeEpoch {
     /// The prior epoch.
     Previous,

@@ -16,6 +16,7 @@ use tree_hash_derive::TreeHash;
 #[derive(
     Debug,
     PartialEq,
+    Eq,
     Hash,
     Clone,
     Copy,

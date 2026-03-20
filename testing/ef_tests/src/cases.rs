@@ -91,7 +91,7 @@ pub use transition::TransitionTest;
 /// 2. `handler.run()` for tests that are already on existing forks, but with new test vectors for
 ///    the feature. In this case the `handler.is_enabled_for_feature` will need to be implemented
 ///    to return `true` for the feature in order for the feature test vector to be tested.
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum FeatureName {
     // Placeholder for future feature-gated forks
     // Add new feature-gated forks here before they are incorporated into a main fork

@@ -1,7 +1,7 @@
 use safe_arith::{ArithError, SafeArith};
 use types::{BeaconState, EthSpec};
 
-#[derive(Debug, PartialEq, Clone, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct JustifiedBalances {
     /// The effective balances for every validator in a given justified state.
     ///

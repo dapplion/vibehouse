@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 /// one of these structs.
 ///
 /// <https://github.com/ethereum/eth2.0-specs/blob/dev/presets/mainnet/phase0.yaml>
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub struct BasePreset {
     #[serde(with = "serde_utils::quoted_u64")]
@@ -117,7 +117,7 @@ impl BasePreset {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub struct AltairPreset {
     #[serde(with = "serde_utils::quoted_u64")]
@@ -147,7 +147,7 @@ impl AltairPreset {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub struct BellatrixPreset {
     #[serde(with = "serde_utils::quoted_u64")]
@@ -181,7 +181,7 @@ impl BellatrixPreset {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub struct CapellaPreset {
     #[serde(with = "serde_utils::quoted_u64")]
@@ -202,7 +202,7 @@ impl CapellaPreset {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub struct DenebPreset {
     #[serde(with = "serde_utils::quoted_u64")]
@@ -223,7 +223,7 @@ impl DenebPreset {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub struct ElectraPreset {
     #[serde(with = "serde_utils::quoted_u64")]
@@ -291,7 +291,7 @@ impl ElectraPreset {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub struct FuluPreset {
     #[serde(with = "serde_utils::quoted_u64")]
@@ -319,7 +319,7 @@ impl FuluPreset {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub struct GloasPreset {
     #[serde(with = "serde_utils::quoted_u64")]

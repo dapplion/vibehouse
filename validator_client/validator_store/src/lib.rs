@@ -212,7 +212,7 @@ pub enum SignedBlock<E: EthSpec> {
 
 /// A wrapper around `PublicKeyBytes` which encodes information about the status of a validator
 /// pubkey with regards to doppelganger protection.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum DoppelgangerStatus {
     /// Doppelganger protection has approved this for signing.
     ///

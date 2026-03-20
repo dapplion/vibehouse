@@ -34,7 +34,7 @@ pub const MOD_R_L: usize = 48;
 #[zeroize(drop)]
 pub struct DerivedKey(ZeroizeHash);
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     EmptySeed,
 }

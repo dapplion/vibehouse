@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// To allow serde to encode/decode byte arrays from HEX ASCII strings.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(try_from = "String", into = "String")]
 pub struct HexBytes(Vec<u8>);
 

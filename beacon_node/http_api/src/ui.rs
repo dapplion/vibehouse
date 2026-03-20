@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ValidatorCountResponse {
     pub active_ongoing: u64,
     pub active_exiting: u64,
@@ -73,13 +73,13 @@ pub fn get_validator_count<T: BeaconChainTypes>(
     })
 }
 
-#[derive(PartialEq, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Serialize, Deserialize)]
 pub struct ValidatorInfoRequestData {
     #[serde(with = "serde_utils::quoted_u64_vec")]
     indices: Vec<u64>,
 }
 
-#[derive(PartialEq, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Serialize, Deserialize)]
 pub struct ValidatorInfoValues {
     #[serde(with = "serde_utils::quoted_u64")]
     epoch: u64,
@@ -87,12 +87,12 @@ pub struct ValidatorInfoValues {
     total_balance: u64,
 }
 
-#[derive(PartialEq, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Serialize, Deserialize)]
 pub struct ValidatorInfo {
     info: Vec<ValidatorInfoValues>,
 }
 
-#[derive(PartialEq, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Serialize, Deserialize)]
 pub struct ValidatorInfoResponse {
     validators: HashMap<String, ValidatorInfo>,
 }
@@ -148,7 +148,7 @@ pub fn get_validator_info<T: BeaconChainTypes>(
     Ok(ValidatorInfoResponse { validators })
 }
 
-#[derive(PartialEq, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Serialize, Deserialize)]
 pub struct ValidatorMetricsRequestData {
     indices: Vec<u64>,
 }

@@ -181,7 +181,7 @@ pub enum WhenSlotSkipped {
     Prev,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum AvailabilityProcessingStatus {
     MissingComponents(Slot, Hash256),
     Imported(Hash256),

@@ -153,7 +153,7 @@ pub struct SyncingChain<T: BeaconChainTypes> {
     span: Span,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum ChainSyncingState {
     /// The chain is not being synced.
     Stopped,

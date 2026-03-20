@@ -59,7 +59,7 @@ pub struct DiskConfig {
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Display, EnumString, VariantNames,
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display, EnumString, VariantNames,
 )]
 #[strum(serialize_all = "lowercase")]
 pub enum DatabaseBackend {
@@ -72,7 +72,7 @@ pub enum DatabaseBackend {
     Disabled,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum DatabaseBackendOverride {
     Success(DatabaseBackend),
     Failure(PathBuf),

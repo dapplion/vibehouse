@@ -8,7 +8,7 @@ type BuilderIdx = usize;
 /// Unlike the validator `PubkeyCache`, builder indices can be reused when exited builders
 /// are replaced. The `insert` method handles both new builders and index reuse.
 #[allow(clippy::len_without_is_empty)]
-#[derive(Debug, PartialEq, Clone, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct BuilderPubkeyCache {
     map: HashTrieMap<PublicKeyBytes, BuilderIdx>,
 }

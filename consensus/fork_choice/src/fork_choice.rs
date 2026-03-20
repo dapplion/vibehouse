@@ -227,7 +227,7 @@ impl<T> From<proto_array::Error> for Error<T> {
 /// Indicates if a block has been verified by an execution payload.
 ///
 /// There is no variant for "invalid", since such a block should never be added to fork choice.
-#[derive(Clone, Copy, Debug, PartialEq, Encode, Decode)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 #[ssz(enum_behaviour = "tag")]
 pub enum PayloadVerificationStatus {
     /// An EL has declared the execution payload to be valid.
@@ -274,7 +274,7 @@ fn compute_start_slot_at_epoch<E: EthSpec>(epoch: Epoch) -> Slot {
 
 /// Used for queuing attestations from the current slot. Only contains the minimum necessary
 /// information about the attestation.
-#[derive(Clone, PartialEq, Encode, Decode)]
+#[derive(Clone, PartialEq, Eq, Encode, Decode)]
 pub struct QueuedAttestation {
     slot: Slot,
     attesting_indices: Vec<u64>,
@@ -337,7 +337,7 @@ pub struct ForkchoiceUpdateParameters {
     pub finalized_hash: Option<ExecutionBlockHash>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ForkChoiceView {
     pub head_block_root: Hash256,
     pub justified_checkpoint: Checkpoint,

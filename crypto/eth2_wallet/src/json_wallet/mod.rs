@@ -7,7 +7,7 @@ pub use eth2_keystore::json_keystore::{
 };
 pub use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct JsonWallet {
     pub crypto: Crypto,
@@ -20,7 +20,7 @@ pub struct JsonWallet {
 }
 
 /// Version for `JsonWallet`.
-#[derive(Debug, Clone, PartialEq, Serialize_repr, Deserialize_repr)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
 #[repr(u8)]
 pub enum Version {
     V1 = 1,
@@ -33,7 +33,7 @@ impl Version {
 }
 
 /// Used for ensuring that serde only decodes valid checksum functions.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(try_from = "String", into = "String")]
 pub enum TypeField {
     Hd,

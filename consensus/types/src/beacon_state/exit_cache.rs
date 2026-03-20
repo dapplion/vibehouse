@@ -3,7 +3,7 @@ use safe_arith::SafeArith;
 use std::cmp::Ordering;
 
 /// Map from exit epoch to the number of validators with that exit epoch.
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct ExitCache {
     /// True if the cache has been initialized.
     initialized: bool,

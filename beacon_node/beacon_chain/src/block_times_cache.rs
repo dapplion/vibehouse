@@ -99,7 +99,7 @@ impl BlockDelays {
 
 // If the block was received via gossip, we can record the client type of the peer which sent us
 // the block.
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BlockPeerInfo {
     pub id: Option<String>,
     pub client: Option<String>,

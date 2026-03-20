@@ -7,7 +7,7 @@ use super::hex_bytes::HexBytes;
 use serde::{Deserialize, Serialize};
 
 /// Used for ensuring that serde only decodes valid cipher functions.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(try_from = "String", into = "String")]
 pub enum CipherFunction {
     Aes128Ctr,
@@ -33,7 +33,7 @@ impl TryFrom<String> for CipherFunction {
 }
 
 /// Cipher module representation.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CipherModule {
     pub function: CipherFunction,
@@ -42,13 +42,13 @@ pub struct CipherModule {
 }
 
 /// Parameters for AES128 with ctr mode.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Aes128Ctr {
     pub iv: HexBytes,
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(untagged, deny_unknown_fields)]
 pub enum Cipher {
     Aes128Ctr(Aes128Ctr),

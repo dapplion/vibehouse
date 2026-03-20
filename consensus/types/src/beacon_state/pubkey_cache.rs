@@ -4,7 +4,7 @@ use rpds::HashTrieMapSync as HashTrieMap;
 type ValidatorIndex = usize;
 
 #[allow(clippy::len_without_is_empty)]
-#[derive(Debug, PartialEq, Clone, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct PubkeyCache {
     /// Maintain the number of keys added to the map. It is not sufficient to just use the
     /// HashTrieMap len, as it does not increase when duplicate keys are added. Duplicate keys are

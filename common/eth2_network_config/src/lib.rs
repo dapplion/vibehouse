@@ -46,7 +46,7 @@ pub const DEFAULT_HARDCODED_NETWORK: &str = "mainnet";
 
 /// A simple slice-or-vec enum to avoid cloning the beacon state bytes in the
 /// binary whilst also supporting loading them from a file at runtime.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum GenesisStateBytes {
     Slice(&'static [u8]),
     Vec(Vec<u8>),

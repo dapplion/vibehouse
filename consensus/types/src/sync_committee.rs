@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use test_random_derive::TestRandom;
 use tree_hash_derive::TreeHash;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     ArithError(ArithError),
     InvalidSubcommitteeRange {
@@ -30,7 +30,9 @@ impl From<ArithError> for Error {
     derive(arbitrary::Arbitrary),
     arbitrary(bound = "E: EthSpec")
 )]
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, TestRandom)]
+#[derive(
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, TestRandom,
+)]
 #[serde(bound = "E: EthSpec")]
 #[context_deserialize(ForkName)]
 pub struct SyncCommittee<E: EthSpec> {

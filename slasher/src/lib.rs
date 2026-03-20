@@ -43,7 +43,7 @@ pub enum AttesterSlashingStatus<E: EthSpec> {
     SurroundedByExisting(Box<IndexedAttestation<E>>),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ProposerSlashingStatus {
     NotSlashable,
     DoubleVote(Box<ProposerSlashing>),

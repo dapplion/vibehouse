@@ -108,7 +108,7 @@ pub struct Context<T: SlotClock, E> {
 }
 
 /// Configuration for the HTTP server.
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub enabled: bool,
     pub listen_addr: IpAddr,

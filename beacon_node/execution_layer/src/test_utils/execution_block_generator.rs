@@ -108,7 +108,7 @@ impl<E: EthSpec> Block<E> {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, TreeHash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TreeHash)]
 #[serde(rename_all = "camelCase")]
 pub struct PoWBlock {
     pub block_number: u64,

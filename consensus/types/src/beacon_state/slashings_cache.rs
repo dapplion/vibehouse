@@ -5,7 +5,7 @@ use rpds::HashTrieSetSync as HashTrieSet;
 
 /// Persistent (cheap to clone) cache of all slashed validator indices.
 #[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct SlashingsCache {
     latest_block_slot: Option<Slot>,
     #[cfg_attr(feature = "arbitrary", arbitrary(default))]

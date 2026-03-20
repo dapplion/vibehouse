@@ -186,7 +186,7 @@ impl<E: EthSpec> SubsetItem for &SyncCommitteeContribution<E> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ObserveOutcome {
     /// This item is a non-strict subset of an already known item.
     Subset,
@@ -194,7 +194,7 @@ pub enum ObserveOutcome {
     New,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     SlotTooLow {
         slot: Slot,

@@ -91,7 +91,7 @@ impl Eth2Config {
 }
 
 /// Describes how a genesis state may be obtained.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum GenesisStateSource {
     /// The genesis state for this network is not yet known.
     Unknown,
@@ -124,7 +124,7 @@ pub enum GenesisStateSource {
 ///
 /// Used by the `eth2_network_config` crate to initialize the network directories during build and
 /// access them at runtime.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Eth2NetArchiveAndDirectory<'a> {
     pub name: &'a str,
     pub config_dir: &'a str,
@@ -147,7 +147,7 @@ impl Eth2NetArchiveAndDirectory<'_> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HardcodedNet {
     pub name: &'static str,
     pub config_dir: &'static str,

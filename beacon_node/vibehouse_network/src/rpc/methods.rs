@@ -65,9 +65,9 @@ impl Display for ErrorType {
 /// The STATUS request/response handshake message.
 #[superstruct(
     variants(V1, V2),
-    variant_attributes(derive(Encode, Decode, Clone, Debug, PartialEq),)
+    variant_attributes(derive(Encode, Decode, Clone, Debug, PartialEq, Eq),)
 )]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StatusMessage {
     /// The fork version of the chain we are broadcasting.
     pub fork_digest: [u8; 4],
@@ -123,7 +123,7 @@ impl StatusMessage {
 }
 
 /// The PING request/response message.
-#[derive(Encode, Decode, Copy, Clone, Debug, PartialEq)]
+#[derive(Encode, Decode, Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Ping {
     /// The metadata sequence number.
     pub data: u64,
@@ -132,9 +132,9 @@ pub struct Ping {
 /// The METADATA request structure.
 #[superstruct(
     variants(V1, V2, V3),
-    variant_attributes(derive(Clone, Debug, PartialEq, Serialize),)
+    variant_attributes(derive(Clone, Debug, PartialEq, Eq, Serialize),)
 )]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MetadataRequest<E: EthSpec> {
     _phantom_data: PhantomData<E>,
 }
@@ -163,11 +163,11 @@ impl<E: EthSpec> MetadataRequest<E> {
 #[superstruct(
     variants(V1, V2, V3),
     variant_attributes(
-        derive(Encode, Decode, Clone, Debug, PartialEq, Serialize),
+        derive(Encode, Decode, Clone, Debug, PartialEq, Eq, Serialize),
         serde(bound = "E: EthSpec", deny_unknown_fields),
     )
 )]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(bound = "E: EthSpec")]
 pub struct MetaData<E: EthSpec> {
     /// A sequential counter indicating when data gets modified.
@@ -247,7 +247,7 @@ impl<E: EthSpec> MetaData<E> {
 /// Note: any unknown `u64::into(n)` will resolve to `Goodbye::Unknown` for any unknown `n`,
 /// however `GoodbyeReason::Unknown.into()` will go into `0_u64`. Therefore de-serializing then
 /// re-serializing may not return the same bytes.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GoodbyeReason {
     /// This node has shutdown.
     ClientShutdown = 1,
@@ -335,9 +335,9 @@ impl ssz::Decode for GoodbyeReason {
 /// Request a number of beacon block roots from a peer.
 #[superstruct(
     variants(V1, V2),
-    variant_attributes(derive(Encode, Decode, Clone, Debug, PartialEq))
+    variant_attributes(derive(Encode, Decode, Clone, Debug, PartialEq, Eq))
 )]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlocksByRangeRequest {
     /// The starting slot to request blocks.
     pub start_slot: u64,
@@ -358,7 +358,7 @@ impl BlocksByRangeRequest {
 }
 
 /// Request a number of beacon blobs from a peer.
-#[derive(Encode, Decode, Clone, Debug, PartialEq)]
+#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
 pub struct BlobsByRangeRequest {
     /// The starting slot to request blobs.
     pub start_slot: u64,
@@ -375,7 +375,7 @@ impl BlobsByRangeRequest {
 }
 
 /// Request a number of beacon data columns from a peer.
-#[derive(Encode, Decode, Clone, Debug, PartialEq)]
+#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
 pub struct DataColumnsByRangeRequest {
     /// The starting slot to request data columns.
     pub start_slot: u64,
@@ -414,9 +414,9 @@ impl DataColumnsByRangeRequest {
 /// Request a number of beacon block roots from a peer.
 #[superstruct(
     variants(V1, V2),
-    variant_attributes(derive(Encode, Decode, Clone, Debug, PartialEq))
+    variant_attributes(derive(Encode, Decode, Clone, Debug, PartialEq, Eq))
 )]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OldBlocksByRangeRequest {
     /// The starting slot to request blocks.
     pub start_slot: u64,
@@ -473,8 +473,11 @@ impl From<BlocksByRangeRequest> for OldBlocksByRangeRequest {
 }
 
 /// Request a number of beacon block bodies from a peer.
-#[superstruct(variants(V1, V2), variant_attributes(derive(Clone, Debug, PartialEq)))]
-#[derive(Clone, Debug, PartialEq)]
+#[superstruct(
+    variants(V1, V2),
+    variant_attributes(derive(Clone, Debug, PartialEq, Eq))
+)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlocksByRootRequest {
     /// The list of beacon block bodies being requested.
     pub block_roots: RuntimeVariableList<Hash256>,
@@ -501,7 +504,7 @@ impl BlocksByRootRequest {
 }
 
 /// Request a number of beacon blocks and blobs from a peer.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlobsByRootRequest {
     /// The list of beacon block roots being requested.
     pub blob_ids: RuntimeVariableList<BlobIdentifier>,
@@ -541,7 +544,7 @@ impl<E: EthSpec> DataColumnsByRootRequest<E> {
 }
 
 /// Request a number of execution payload envelopes from a peer by block root.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExecutionPayloadEnvelopesByRootRequest {
     /// The list of beacon block roots for which envelopes are requested.
     pub block_roots: RuntimeVariableList<Hash256>,
@@ -556,7 +559,7 @@ impl ExecutionPayloadEnvelopesByRootRequest {
 }
 
 /// Request a number of beacon data columns from a peer.
-#[derive(Encode, Decode, Clone, Debug, PartialEq)]
+#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
 pub struct LightClientUpdatesByRangeRequest {
     /// The starting period to request light client updates.
     pub start_period: u64,
@@ -633,7 +636,7 @@ pub enum RpcSuccessResponse<E: EthSpec> {
 }
 
 /// Indicates which response is being terminated by a stream termination response.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResponseTermination {
     /// Blocks by range stream termination.
     BlocksByRange,
@@ -691,13 +694,13 @@ pub enum RpcResponse<E: EthSpec> {
 }
 
 /// Request a light_client_bootstrap for light_clients peers.
-#[derive(Encode, Decode, Clone, Debug, PartialEq)]
+#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
 pub struct LightClientBootstrapRequest {
     pub root: Hash256,
 }
 
 /// The code assigned to an erroneous `RPCResponse`.
-#[derive(Debug, Clone, Copy, PartialEq, IntoStaticStr)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, IntoStaticStr)]
 #[strum(serialize_all = "snake_case")]
 pub enum RpcErrorResponse {
     RateLimited,

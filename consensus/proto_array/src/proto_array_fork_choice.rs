@@ -21,7 +21,7 @@ use types::{
 
 pub const DEFAULT_PRUNE_THRESHOLD: usize = 256;
 
-#[derive(Default, Debug, PartialEq, Clone, Encode, Decode)]
+#[derive(Default, Debug, PartialEq, Eq, Clone, Encode, Decode)]
 pub struct VoteTracker {
     current_root: Hash256,
     next_root: Hash256,
@@ -52,7 +52,7 @@ struct GloasForkChoiceNode {
 }
 
 /// Represents the verification status of an execution payload.
-#[derive(Clone, Copy, Debug, PartialEq, Encode, Decode, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode, Serialize, Deserialize)]
 #[ssz(enum_behaviour = "union")]
 pub enum ExecutionStatus {
     /// An EL has determined that the payload is valid.
@@ -165,7 +165,7 @@ impl fmt::Display for ExecutionStatus {
 /// A block that is to be applied to the fork choice.
 ///
 /// A simplified version of `types::BeaconBlock`.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Block {
     pub slot: Slot,
     pub root: Hash256,
@@ -258,7 +258,7 @@ impl Block {
 ///
 /// E.g., a `get` or `insert` to an out-of-bounds element will cause the Vec to grow (using
 /// Default) to the smallest size required to fulfill the request.
-#[derive(Default, Clone, Debug, PartialEq)]
+#[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct ElasticList<T>(pub Vec<T>);
 
 impl<T> ElasticList<T>
@@ -302,7 +302,7 @@ pub struct ProposerHeadInfo {
 ///
 /// This type intentionally does not implement `Debug` so that callers are forced to handle the
 /// enum.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProposerHeadError<T> {
     DoNotReOrg(DoNotReOrg),
     Error(T),
@@ -339,7 +339,7 @@ impl<T1> ProposerHeadError<T1> {
 /// Reasons why a re-org should not be attempted.
 ///
 /// This type intentionally does not implement `Debug` so that the `Display` impl must be used.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DoNotReOrg {
     MissingHeadOrParentNode,
     MissingHeadFinalizedCheckpoint,

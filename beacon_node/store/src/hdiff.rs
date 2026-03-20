@@ -119,9 +119,9 @@ pub struct HDiffBuffer {
 ///   state from Apr 2023 (570k indexes), and a 92kB diff size.
 #[superstruct(
     variants(V0),
-    variant_attributes(derive(Debug, PartialEq, Encode, Decode))
+    variant_attributes(derive(Debug, PartialEq, Eq, Encode, Decode))
 )]
-#[derive(Debug, PartialEq, Encode, Decode)]
+#[derive(Debug, PartialEq, Eq, Encode, Decode)]
 #[ssz(enum_behaviour = "union")]
 pub struct HDiff {
     state_diff: BytesDiff,
@@ -148,22 +148,22 @@ pub struct HDiff {
     historical_summaries: AppendOnlyDiff<HistoricalSummary>,
 }
 
-#[derive(Debug, PartialEq, Encode, Decode)]
+#[derive(Debug, PartialEq, Eq, Encode, Decode)]
 pub struct BytesDiff {
     bytes: Vec<u8>,
 }
 
-#[derive(Debug, PartialEq, Encode, Decode)]
+#[derive(Debug, PartialEq, Eq, Encode, Decode)]
 pub struct CompressedU64Diff {
     bytes: Vec<u8>,
 }
 
-#[derive(Debug, PartialEq, Encode, Decode)]
+#[derive(Debug, PartialEq, Eq, Encode, Decode)]
 pub struct ValidatorsDiff {
     bytes: Vec<u8>,
 }
 
-#[derive(Debug, PartialEq, Encode, Decode)]
+#[derive(Debug, PartialEq, Eq, Encode, Decode)]
 pub struct AppendOnlyDiff<T: Encode + Decode> {
     values: Vec<T>,
 }

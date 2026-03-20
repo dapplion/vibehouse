@@ -17,7 +17,7 @@ const MINIMAL: &str = "minimal";
 pub const GNOSIS: &str = "gnosis";
 
 /// Used to identify one of the `EthSpec` instances defined here.
-#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum EthSpecId {
     Mainnet,

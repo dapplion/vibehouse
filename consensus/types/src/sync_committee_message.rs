@@ -11,7 +11,9 @@ use tree_hash_derive::TreeHash;
 
 /// The data upon which a `SyncCommitteeContribution` is based.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Encode, Decode, TreeHash, TestRandom)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Encode, Decode, TreeHash, TestRandom,
+)]
 #[context_deserialize(ForkName)]
 pub struct SyncCommitteeMessage {
     pub slot: Slot,

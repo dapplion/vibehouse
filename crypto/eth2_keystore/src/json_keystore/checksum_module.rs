@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 /// Used for ensuring that serde only decodes valid checksum functions.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(try_from = "String", into = "String")]
 pub enum ChecksumFunction {
     Sha256,
@@ -34,7 +34,7 @@ impl TryFrom<String> for ChecksumFunction {
 }
 
 /// Used for ensuring serde only decodes an empty map.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(try_from = "Value", into = "Value")]
 pub struct EmptyMap;
 
@@ -56,7 +56,7 @@ impl TryFrom<Value> for EmptyMap {
 }
 
 /// Checksum module for `Keystore`.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ChecksumModule {
     pub function: ChecksumFunction,
@@ -64,7 +64,7 @@ pub struct ChecksumModule {
     pub message: HexBytes,
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct Sha256Checksum(String);
 
 impl Sha256Checksum {

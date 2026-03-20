@@ -33,7 +33,7 @@ four_byte_option_impl!(four_byte_option_hash256, Hash256);
 /// The results of validators voting during an epoch.
 ///
 /// Provides information about the current and previous epochs.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GlobalValidatorInclusionData {
     /// The total effective balance of all active validators during the _current_ epoch.
     pub current_epoch_active_gwei: u64,
@@ -48,7 +48,7 @@ pub struct GlobalValidatorInclusionData {
     pub previous_epoch_head_attesting_gwei: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ValidatorInclusionData {
     /// True if the validator has been slashed, ever.
     pub is_slashed: bool,
@@ -142,7 +142,7 @@ pub struct SystemHealth {
 }
 
 /// Process specific health
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProcessHealth {
     /// The pid of this process.
     pub pid: u32,

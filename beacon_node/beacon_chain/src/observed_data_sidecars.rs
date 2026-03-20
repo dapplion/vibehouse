@@ -9,7 +9,7 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 use types::{BlobSidecar, ChainSpec, DataColumnSidecar, EthSpec, Slot};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// The slot of the provided `ObservableDataSidecar` is prior to finalization and should not have been provided
     /// to this function. This is an internal error.

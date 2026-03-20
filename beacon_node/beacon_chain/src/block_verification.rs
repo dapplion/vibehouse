@@ -544,7 +544,7 @@ impl From<ArithError> for BlockError {
 }
 
 /// Stores information about verifying a payload against an execution engine.
-#[derive(Debug, PartialEq, Clone, Encode, Decode)]
+#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode)]
 pub struct PayloadVerificationOutcome {
     pub payload_verification_status: PayloadVerificationStatus,
     pub is_valid_merge_transition_block: bool,

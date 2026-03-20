@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use types::Epoch;
 
-#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct AttestationPerformanceStatistics {
     pub active: bool,
     pub head: bool,
@@ -12,7 +12,7 @@ pub struct AttestationPerformanceStatistics {
     pub delay: Option<u64>,
 }
 
-#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct AttestationPerformance {
     pub index: u64,
     pub epochs: HashMap<u64, AttestationPerformanceStatistics>,
@@ -32,7 +32,7 @@ impl AttestationPerformance {
 }
 
 /// Query parameters for the `/vibehouse/analysis/attestation_performance` endpoint.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct AttestationPerformanceQuery {
     pub start_epoch: Epoch,
     pub end_epoch: Epoch,

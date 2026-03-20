@@ -130,7 +130,7 @@ impl<T> Errors<T> {
 }
 
 /// Reasons why a candidate might not be ready.
-#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 pub enum CandidateError {
     PreGenesis,
     Uninitialized,
@@ -755,7 +755,7 @@ async fn sort_nodes_by_health(nodes: &mut Vec<CandidateBeaconNode>) {
 }
 
 /// Serves as a cue for `BeaconNodeFallback` to tell which requests need to be broadcasted.
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize, VariantNames, ValueEnum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize, VariantNames, ValueEnum)]
 #[strum(serialize_all = "kebab-case")]
 pub enum ApiTopic {
     None,

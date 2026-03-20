@@ -40,7 +40,7 @@ const NO_VALIDATORS_MSG: &str = "No validators present on source validator clien
 
 const UPLOAD_RETRY_WAIT: Duration = Duration::from_secs(5);
 
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum PasswordSource {
     /// Reads the password from the user via the terminal.
     Interactive { stdin_inputs: bool },
@@ -203,14 +203,14 @@ pub fn cli_app() -> Command {
         )
 }
 
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum Validators {
     All,
     Count(usize),
     Specific(Vec<PublicKeyBytes>),
 }
 
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct MoveConfig {
     pub src_vc_url: SensitiveUrl,
     pub src_vc_token_path: PathBuf,

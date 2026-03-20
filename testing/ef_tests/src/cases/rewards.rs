@@ -15,7 +15,7 @@ use state_processing::{
 };
 use types::BeaconState;
 
-#[derive(Debug, Clone, PartialEq, Decode, Encode, CompareFields)]
+#[derive(Debug, Clone, PartialEq, Eq, Decode, Encode, CompareFields)]
 pub struct Deltas {
     #[compare_fields(as_slice)]
     rewards: Vec<u64>,
@@ -27,7 +27,7 @@ pub struct Deltas {
 // for encoding the union selector.
 four_byte_option_impl!(four_byte_option_deltas, Deltas);
 
-#[derive(Debug, Clone, PartialEq, Decode, Encode, CompareFields)]
+#[derive(Debug, Clone, PartialEq, Eq, Decode, Encode, CompareFields)]
 pub struct AllDeltas {
     source_deltas: Deltas,
     target_deltas: Deltas,
@@ -37,7 +37,7 @@ pub struct AllDeltas {
     inactivity_penalty_deltas: Deltas,
 }
 
-#[derive(Debug, Clone, PartialEq, CompareFields)]
+#[derive(Debug, Clone, PartialEq, Eq, CompareFields)]
 pub struct TotalDeltas {
     deltas: Vec<i64>,
 }

@@ -94,7 +94,7 @@ pub fn cli_app() -> Command {
         )
 }
 
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct ExitConfig {
     pub vc_url: SensitiveUrl,
     pub vc_token_path: PathBuf,

@@ -44,7 +44,7 @@ pub enum NotSafe {
 }
 
 /// The attestation or block is safe to sign, and will not cause the signer to be slashed.
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum Safe {
     /// Casting the exact same data (block or attestation) twice is never slashable.
     SameData,

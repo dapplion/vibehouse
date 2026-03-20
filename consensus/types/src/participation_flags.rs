@@ -5,7 +5,7 @@ use ssz::{Decode, DecodeError, Encode};
 use test_random_derive::TestRandom;
 use tree_hash::{PackedEncoding, TreeHash, TreeHashType};
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Deserialize, Serialize, TestRandom)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, TestRandom)]
 #[serde(transparent)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct ParticipationFlags {

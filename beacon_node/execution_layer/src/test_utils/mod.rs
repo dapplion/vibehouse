@@ -543,7 +543,7 @@ impl From<std::io::Error> for Error {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StaticNewPayloadResponse {
     status: PayloadStatusV1,
     should_import: bool,
@@ -597,7 +597,7 @@ impl<E: EthSpec> Context<E> {
 }
 
 /// Configuration for the HTTP server.
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub listen_addr: Ipv4Addr,
     pub listen_port: u16,

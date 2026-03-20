@@ -11,7 +11,7 @@ pub trait ForkVersionDecode: Sized {
 /// The metadata of type M should be set to `EmptyMetadata` if you don't care about adding fields other than
 /// version. If you *do* care about adding other fields you can mix in any type that implements
 /// `Deserialize`.
-#[derive(Debug, PartialEq, Clone, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize)]
 pub struct ForkVersionedResponse<T, M = EmptyMetadata> {
     pub version: ForkName,
     #[serde(flatten)]
@@ -23,7 +23,7 @@ pub struct ForkVersionedResponse<T, M = EmptyMetadata> {
 /// The metadata of type M should be set to `EmptyMetadata` if you don't care about adding fields other than
 /// version. If you *do* care about adding other fields you can mix in any type that implements
 /// `Deserialize`.
-#[derive(Debug, PartialEq, Clone, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize)]
 pub struct UnversionedResponse<T, M = EmptyMetadata> {
     #[serde(flatten)]
     pub metadata: M,
@@ -64,14 +64,14 @@ impl<T, M> BeaconResponse<T, M> {
 ///
 /// Unfortunately the braces are semantically significant, i.e. `struct EmptyMetadata;` does not
 /// work.
-#[derive(Debug, PartialEq, Clone, Default, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Default, Deserialize, Serialize)]
 pub struct EmptyMetadata {}
 
 /// Fork versioned response with extra information about finalization & optimistic execution.
 pub type ExecutionOptimisticFinalizedBeaconResponse<T> =
     BeaconResponse<T, ExecutionOptimisticFinalizedMetadata>;
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct ExecutionOptimisticFinalizedMetadata {
     pub execution_optimistic: Option<bool>,
     pub finalized: Option<bool>,

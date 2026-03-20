@@ -163,7 +163,7 @@ pub fn cli_app() -> Command {
         )
 }
 
-#[derive(Clone, PartialEq, Serialize, Deserialize, Educe)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Educe)]
 #[educe(Debug)]
 pub struct ImportConfig {
     pub validators_file_path: Option<PathBuf>,

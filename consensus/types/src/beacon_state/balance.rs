@@ -6,7 +6,7 @@ use safe_arith::{ArithError, SafeArith};
 ///
 /// This is an effort to ensure the `EFFECTIVE_BALANCE_INCREMENT` minimum is always respected.
 #[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
-#[derive(PartialEq, Debug, Clone, Copy)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub struct Balance {
     raw: u64,
     minimum: u64,

@@ -54,7 +54,7 @@ struct LivenessResponses {
 pub const DEFAULT_REMAINING_DETECTION_EPOCHS: u64 = 1;
 
 /// Store the per-validator status of doppelganger checking.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct DoppelgangerState {
     /// The next epoch for which the validator should be checked for liveness.
     ///

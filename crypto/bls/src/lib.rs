@@ -50,7 +50,7 @@ use blst::BLST_ERROR as BlstError;
 pub type Hash256 = fixed_bytes::Hash256;
 pub use fixed_bytes::FixedBytesExtended;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Error {
     /// An error was raised from the Supranational BLST BLS library.
     #[cfg(feature = "supranational")]

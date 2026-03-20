@@ -13,7 +13,7 @@ pub use crate::rayon_pool_provider::RayonPoolType;
 pub use tokio::task::JoinHandle;
 
 /// Provides a reason when Vibehouse is shut down.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ShutdownReason {
     /// The node shut down successfully.
     Success(&'static str),

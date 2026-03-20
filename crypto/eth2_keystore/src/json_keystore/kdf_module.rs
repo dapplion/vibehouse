@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 
 /// KDF module representation.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct KdfModule {
     pub function: KdfFunction,
@@ -19,7 +19,7 @@ pub struct KdfModule {
 }
 
 /// Used for ensuring serde only decodes an empty string.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(try_from = "String", into = "String")]
 pub struct EmptyString;
 
@@ -40,7 +40,7 @@ impl TryFrom<String> for EmptyString {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(untagged, deny_unknown_fields)]
 pub enum Kdf {
     Scrypt(Scrypt),
@@ -57,7 +57,7 @@ impl Kdf {
 }
 
 /// PRF for use in `pbkdf2`.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, Default)]
 pub enum Prf {
     #[serde(rename = "hmac-sha256")]
     #[default]
@@ -74,7 +74,7 @@ impl Prf {
 }
 
 /// Parameters for `pbkdf2` key derivation.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Pbkdf2 {
     pub c: u32,
@@ -84,7 +84,7 @@ pub struct Pbkdf2 {
 }
 
 /// Used for ensuring that serde only decodes valid KDF functions.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(try_from = "String", into = "String")]
 pub enum KdfFunction {
     Scrypt,
@@ -113,7 +113,7 @@ impl TryFrom<String> for KdfFunction {
 }
 
 /// Parameters for `scrypt` key derivation.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Scrypt {
     pub dklen: u32,

@@ -11,13 +11,13 @@ pub struct UniqueAttestation {
     pub committee_index: Committee,
     pub committee_position: CommitteePosition,
 }
-#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct ProposerInfo {
     pub validator_index: ValidatorIndex,
     pub graffiti: String,
 }
 
-#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct BlockPackingEfficiency {
     pub slot: Slot,
     pub block_hash: Hash256,
@@ -27,7 +27,7 @@ pub struct BlockPackingEfficiency {
     pub prior_skip_slots: u64,
 }
 
-#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct BlockPackingEfficiencyQuery {
     pub start_epoch: Epoch,
     pub end_epoch: Epoch,

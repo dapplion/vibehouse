@@ -19,7 +19,7 @@ use types::{
     ExecutionPayloadFulu, ExecutionPayloadGloas, ExecutionPayloadHeader,
 };
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum CheckCaches {
     Yes,
     No,

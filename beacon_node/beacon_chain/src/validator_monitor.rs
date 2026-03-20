@@ -52,7 +52,7 @@ pub const MISSED_BLOCK_LAG_SLOTS: usize = 4;
 /// is only populated for the current and the previous epoch.
 pub const MISSED_BLOCK_LOOKBACK_EPOCHS: u64 = 1;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 // Initial configuration values for the `ValidatorMonitor`.
 pub struct ValidatorMonitorConfig {
     pub auto_register: bool,

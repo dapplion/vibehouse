@@ -30,7 +30,7 @@ pub enum MerkleTree {
     Zero(usize),
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum MerkleTreeError {
     // Trying to push in a leaf
     LeafReached,
@@ -56,7 +56,7 @@ pub enum MerkleTreeError {
     PleaseNotifyTheDevs,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum InvalidSnapshot {
     // Branch hashes are empty but deposits are not
     EmptyBranchWithNonZeroDeposits(usize),

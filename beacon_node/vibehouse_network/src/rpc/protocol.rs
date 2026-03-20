@@ -305,7 +305,7 @@ pub enum Encoding {
 }
 
 /// All valid protocol name and version combinations.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SupportedProtocol {
     StatusV1,
     StatusV2,
@@ -475,7 +475,7 @@ impl<E: EthSpec> UpgradeInfo for RPCProtocol<E> {
 }
 
 /// Represents the ssz length bounds for RPC messages.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct RpcLimits {
     pub min: usize,
     pub max: usize,

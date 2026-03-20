@@ -61,7 +61,7 @@ pub const HASH_SIZE: usize = 32;
 /// The default iteraction count, `c`, for PBKDF2.
 pub const DEFAULT_PBKDF2_C: u32 = 262_144;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     InvalidSecretKeyLen { len: usize, expected: usize },
     InvalidPassword,
@@ -148,7 +148,7 @@ impl<'a> KeystoreBuilder<'a> {
 /// Provides a BLS keystore as defined in [EIP-2335](https://eips.ethereum.org/EIPS/eip-2335).
 ///
 /// Use `KeystoreBuilder` to create a new keystore.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Keystore {
     json: JsonKeystore,

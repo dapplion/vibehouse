@@ -30,7 +30,7 @@ pub enum SyncState {
     Stalled,
 }
 
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Clone, Serialize, Deserialize)]
 /// The state of the backfill sync.
 pub enum BackFillState {
     /// The sync is partially completed and currently paused.
@@ -43,7 +43,7 @@ pub enum BackFillState {
     Failed,
 }
 
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Clone, Serialize, Deserialize)]
 /// The state of the custody backfill sync.
 pub enum CustodyBackFillState {
     /// We are currently backfilling custody columns.

@@ -8,7 +8,7 @@ use std::path::PathBuf;
 pub use types::*;
 use zeroize::Zeroizing;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ValidatorData {
     pub enabled: bool,
     pub description: String,
@@ -160,13 +160,13 @@ pub struct Web3SignerValidatorRequest {
     pub prefer_builder_proposals: Option<bool>,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct UpdateFeeRecipientRequest {
     #[serde(with = "serde_utils::address_hex")]
     pub ethaddress: Address,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct UpdateGasLimitRequest {
     #[serde(with = "serde_utils::quoted_u64")]
     pub gas_limit: u64,

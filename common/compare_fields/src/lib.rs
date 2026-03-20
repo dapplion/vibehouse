@@ -85,7 +85,7 @@
 use itertools::{EitherOrBoth, Itertools};
 use std::fmt::Debug;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Comparison {
     Child(FieldComparison),
     Parent {
@@ -165,7 +165,7 @@ impl Comparison {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct FieldComparison {
     pub field_name: String,
     pub equal: bool,
