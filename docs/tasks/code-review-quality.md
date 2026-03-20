@@ -2735,3 +2735,18 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
 
 No actionable work found. All priorities 1-6 complete. Codebase stable.
+
+### Run 2003 (2026-03-20)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since March 15. Open Gloas PRs unchanged: #4843 (Variable PTC deadline — updated today), #4979/#5020/#4992 (PTC lookbehind — three competing approaches), #4747 (Fast Confirmation Rule), #5023 (block root filenames + comptests), #5022 (on_payload_attestation block check), #5008 (field name fix — doc-only). None merged, none actionable.
+- **Spec PR #5001 (parent_block_root in bid key)**: Confirmed already implemented — `ObservedExecutionBids.highest_bid_values` uses `(Slot, ExecutionBlockHash, Hash256)` key with full test coverage including cross-fork isolation.
+- **Spec PR #5002 (self-build signature wording)**: Doc-only change, no code impact.
+- **Spec PR #4940 (Gloas fork choice tests)**: Already included in test vectors. All 9 fork choice tests pass including `on_execution_payload`.
+- **Fork choice spec PR #4898 (remove pending from tiebreaker)**: Confirmed our `get_payload_tiebreaker` already doesn't special-case PENDING — compliant with proposed change.
+- **CI**: Latest run (wildcard import commit) — 5/6 jobs passed (check+clippy+fmt ✓, ef-tests ✓, http_api ✓, network+op_pool ✓), beacon_chain and unit tests in progress. Nightly: 3 consecutive days green.
+- **Clippy**: zero warnings across entire workspace. Zero compiler warnings in release mode.
+- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
+
+No actionable work found. All priorities 1-6 complete. Codebase stable.
