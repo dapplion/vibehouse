@@ -12,7 +12,6 @@ clap_utils = { workspace = true }
 eth2_network_config = { workspace = true }
 ethereum_ssz = { workspace = true }
 hex = { workspace = true }
-vibehouse_network = { workspace = true }
 logging = { workspace = true }
 network_utils = { workspace = true }
 serde = { workspace = true }
@@ -20,3 +19,4 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 types = { workspace = true }
+vibehouse_network = { workspace = true }

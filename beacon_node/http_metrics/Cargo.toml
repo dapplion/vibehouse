@@ -9,8 +9,6 @@ edition = { workspace = true }
 axum = { workspace = true }
 beacon_chain = { workspace = true }
 health_metrics = { workspace = true }
-vibehouse_network = { workspace = true }
-vibehouse_version = { workspace = true }
 logging = { workspace = true }
 malloc_utils = { workspace = true }
 metrics = { workspace = true }
@@ -21,6 +19,8 @@ store = { workspace = true }
 tokio = { workspace = true }
 tower-http = { workspace = true }
 tracing = { workspace = true }
+vibehouse_network = { workspace = true }
+vibehouse_version = { workspace = true }
 
 [dev-dependencies]
 logging = { workspace = true }

@@ -34,5 +34,3 @@ test_random_derive = { path = "../../common/test_random_derive" }
 types = { workspace = true }
 zeroize = { workspace = true }
 
-[dev-dependencies]
-tokio = { workspace = true }

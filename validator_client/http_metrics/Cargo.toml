@@ -7,8 +7,6 @@ authors = ["Sigma Prime <contact@sigmaprime.io>"]
 [dependencies]
 axum = { workspace = true }
 health_metrics = { workspace = true }
-vibehouse_validator_store = { workspace = true }
-vibehouse_version = { workspace = true }
 logging = { workspace = true }
 malloc_utils = { workspace = true }
 metrics = { workspace = true }
@@ -21,3 +19,5 @@ tracing = { workspace = true }
 types = { workspace = true }
 validator_metrics = { workspace = true }
 validator_services = { workspace = true }
+vibehouse_validator_store = { workspace = true }
+vibehouse_version = { workspace = true }

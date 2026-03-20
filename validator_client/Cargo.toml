@@ -22,7 +22,6 @@ fdlimit = "0.3.0"
 graffiti_file = { workspace = true }
 hyper = { workspace = true }
 initialized_validators = { workspace = true }
-vibehouse_validator_store = { workspace = true }
 metrics = { workspace = true }
 monitoring_api = { workspace = true }
 parking_lot = { workspace = true }
@@ -39,3 +38,4 @@ validator_http_metrics = { workspace = true }
 validator_metrics = { workspace = true }
 validator_services = { workspace = true }
 validator_store = { workspace = true }
+vibehouse_validator_store = { workspace = true }

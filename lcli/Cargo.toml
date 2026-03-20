@@ -26,8 +26,6 @@ eth2_wallet = { workspace = true }
 ethereum_ssz = { workspace = true }
 execution_layer = { workspace = true }
 hex = { workspace = true }
-vibehouse_network = { workspace = true }
-vibehouse_version = { workspace = true }
 network_utils = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true }
@@ -41,6 +39,8 @@ tracing-subscriber = { workspace = true }
 tree_hash = { workspace = true }
 types = { workspace = true }
 validator_dir = { workspace = true }
+vibehouse_network = { workspace = true }
+vibehouse_version = { workspace = true }
 
 [target.'cfg(not(target_os = "windows"))'.dependencies]
 malloc_utils = { workspace = true, features = ["jemalloc"] }

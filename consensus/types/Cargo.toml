@@ -72,7 +72,6 @@ tree_hash_derive = { workspace = true }
 beacon_chain = { workspace = true }
 criterion = { workspace = true }
 pastey = { workspace = true }
-state_processing = { workspace = true }
 tokio = { workspace = true }
 
 [[bench]]

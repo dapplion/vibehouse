@@ -15,7 +15,6 @@ eth2_keystore = { workspace = true }
 eth2_network_config = { workspace = true }
 futures = { workspace = true }
 initialized_validators = { workspace = true }
-vibehouse_validator_store = { workspace = true }
 logging = { workspace = true }
 parking_lot = { workspace = true }
 reqwest = { workspace = true }
@@ -30,4 +29,5 @@ tokio = { workspace = true }
 types = { workspace = true }
 url = { workspace = true }
 validator_store = { workspace = true }
+vibehouse_validator_store = { workspace = true }
 zip = { workspace = true }
