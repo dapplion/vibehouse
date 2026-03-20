@@ -4,7 +4,7 @@
 //! These functions are not in the specification, however they're defined here to reduce code
 //! duplication and protect against some easy-to-make mistakes when performing state advances.
 
-use crate::*;
+use crate::per_slot_processing::{self, per_slot_processing};
 use types::{BeaconState, ChainSpec, EthSpec, FixedBytesExtended, Hash256, Slot};
 
 #[derive(Debug, PartialEq)]
