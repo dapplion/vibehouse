@@ -2809,3 +2809,14 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
 
 No actionable work found. All priorities 1-6 complete. Codebase stable.
+
+### Run 2010 (2026-03-20)
+
+**Wildcard import cleanup — 3 files.**
+
+- Replaced `use types::*` with explicit imports in `get_attesting_indices.rs` (3 submodules) and `verify_deposit.rs`
+- Replaced `use metrics::*` with explicit imports in `malloc_utils/glibc.rs`
+- Skipped files where test modules use `super::*` (would break test compilation)
+- **Spec**: v1.7.0-alpha.3 still latest. Only 1 PR merged since alpha.3 (#5005, test-only). No new actionable changes.
+- **CI**: green, clippy clean, 1026/1026 state_processing tests pass.
+- Remaining non-test wildcard imports: ~5 (typenum re-export, macro-generated bls code, ef_tests type_name — all intentional/idiomatic)
