@@ -656,7 +656,7 @@ fn test_tcp_blocks_by_range_chunked_rpc_terminates_correctly() {
                         }
                     }
                     futures::future::Either::Right((_, _)) => {} // The timeout hit, send messages if required
-                    _ => continue,
+                    futures::future::Either::Left(_) => continue,
                 }
 
                 // if we need to send messages send them here. This will happen after a delay
@@ -1381,7 +1381,7 @@ fn test_tcp_blocks_by_root_chunked_rpc_terminates_correctly() {
                         }
                     }
                     futures::future::Either::Right((_, _)) => {} // The timeout hit, send messages if required
-                    _ => continue,
+                    futures::future::Either::Left(_) => continue,
                 }
 
                 // if we need to send messages send them here. This will happen after a delay

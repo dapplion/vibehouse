@@ -148,7 +148,7 @@ mod tests {
                 assert!(!base.aggregation_bits.get(1).unwrap());
                 assert_eq!(base.data, sa.data);
             }
-            _ => panic!("Expected Base attestation"),
+            Attestation::Electra(_) => panic!("Expected Base attestation"),
         }
     }
 
@@ -165,7 +165,7 @@ mod tests {
                 assert!(!electra.committee_bits.get(0).unwrap());
                 assert_eq!(electra.data, sa.data);
             }
-            _ => panic!("Expected Electra attestation"),
+            Attestation::Base(_) => panic!("Expected Electra attestation"),
         }
     }
 
@@ -179,7 +179,7 @@ mod tests {
                 assert!(electra.aggregation_bits.get(1).unwrap());
                 assert!(electra.committee_bits.get(1).unwrap());
             }
-            _ => panic!("Expected Electra attestation for Gloas fork"),
+            Attestation::Base(_) => panic!("Expected Electra attestation for Gloas fork"),
         }
     }
 
@@ -211,7 +211,7 @@ mod tests {
                 assert!(base.aggregation_bits.get(2).unwrap());
                 assert!(!base.aggregation_bits.get(0).unwrap());
             }
-            _ => panic!("Expected Base attestation"),
+            Attestation::Electra(_) => panic!("Expected Base attestation"),
         }
     }
 
@@ -227,7 +227,7 @@ mod tests {
                 assert!(electra.aggregation_bits.get(0).unwrap());
                 assert!(electra.committee_bits.get(1).unwrap());
             }
-            _ => panic!("Expected Electra attestation"),
+            Attestation::Base(_) => panic!("Expected Electra attestation"),
         }
     }
 
@@ -261,7 +261,7 @@ mod tests {
                 assert!(!base.aggregation_bits.get(1).unwrap());
                 assert!(!base.aggregation_bits.get(2).unwrap());
             }
-            _ => panic!("Expected Base attestation"),
+            Attestation::Electra(_) => panic!("Expected Base attestation"),
         }
     }
 
@@ -276,7 +276,7 @@ mod tests {
                 assert!(!base.aggregation_bits.get(1).unwrap());
                 assert!(base.aggregation_bits.get(2).unwrap());
             }
-            _ => panic!("Expected Base attestation"),
+            Attestation::Electra(_) => panic!("Expected Base attestation"),
         }
     }
 
@@ -290,7 +290,7 @@ mod tests {
                 assert_eq!(base.aggregation_bits.len(), 1);
                 assert!(base.aggregation_bits.get(0).unwrap());
             }
-            _ => panic!("Expected Base attestation"),
+            Attestation::Electra(_) => panic!("Expected Base attestation"),
         }
     }
 
@@ -314,7 +314,7 @@ mod tests {
                 assert_eq!(electra.data.beacon_block_root, Hash256::repeat_byte(0xaa));
                 assert_eq!(electra.data.target.epoch, Epoch::new(1));
             }
-            _ => panic!("Expected Electra attestation"),
+            Attestation::Base(_) => panic!("Expected Electra attestation"),
         }
     }
 }

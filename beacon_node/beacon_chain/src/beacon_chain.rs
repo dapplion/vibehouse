@@ -193,7 +193,7 @@ impl TryInto<SignedBeaconBlockHash> for AvailabilityProcessingStatus {
     fn try_into(self) -> Result<SignedBeaconBlockHash, Self::Error> {
         match self {
             AvailabilityProcessingStatus::Imported(hash) => Ok(hash.into()),
-            _ => Err(()),
+            AvailabilityProcessingStatus::MissingComponents(..) => Err(()),
         }
     }
 }
@@ -204,7 +204,7 @@ impl TryInto<Hash256> for AvailabilityProcessingStatus {
     fn try_into(self) -> Result<Hash256, Self::Error> {
         match self {
             AvailabilityProcessingStatus::Imported(hash) => Ok(hash),
-            _ => Err(()),
+            AvailabilityProcessingStatus::MissingComponents(..) => Err(()),
         }
     }
 }
@@ -6831,7 +6831,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                                 BlockProposalContents::PayloadAndBlobs { requests, .. } => requests
                                     .clone()
                                     .ok_or(BlockProductionError::MissingExecutionRequests)?,
-                                _ => {
+                                BlockProposalContents::Payload { .. } => {
                                     return Err(BlockProductionError::MissingExecutionRequests);
                                 }
                             };

@@ -162,7 +162,7 @@ mod tests {
                 assert_eq!(fvr.version, ForkName::Deneb);
                 assert_eq!(fvr.data, 42u64);
             }
-            _ => panic!("expected ForkVersioned"),
+            BeaconResponse::Unversioned(_) => panic!("expected ForkVersioned"),
         }
     }
 
@@ -173,7 +173,7 @@ mod tests {
             BeaconResponse::Unversioned(ur) => {
                 assert_eq!(ur.data, "hello");
             }
-            _ => panic!("expected Unversioned"),
+            BeaconResponse::ForkVersioned(_) => panic!("expected Unversioned"),
         }
     }
 
@@ -193,7 +193,7 @@ mod tests {
                 assert_eq!(fvr.metadata.execution_optimistic, Some(true));
                 assert_eq!(fvr.metadata.finalized, Some(false));
             }
-            _ => panic!("expected ForkVersioned"),
+            BeaconResponse::Unversioned(_) => panic!("expected ForkVersioned"),
         }
     }
 
@@ -212,7 +212,7 @@ mod tests {
                 assert_eq!(ur.metadata.execution_optimistic, Some(false));
                 assert_eq!(ur.metadata.finalized, Some(true));
             }
-            _ => panic!("expected Unversioned"),
+            BeaconResponse::ForkVersioned(_) => panic!("expected Unversioned"),
         }
     }
 

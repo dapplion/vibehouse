@@ -981,7 +981,7 @@ mod tests {
                 assert_eq!(k, key.as_slice().to_vec());
                 assert_eq!(v, item.as_store_bytes());
             }
-            _ => panic!("expected PutKeyValue"),
+            KeyValueStoreOp::DeleteKey(..) => panic!("expected PutKeyValue"),
         }
     }
 }

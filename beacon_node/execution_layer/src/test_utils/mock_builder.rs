@@ -681,7 +681,9 @@ impl<E: EthSpec> MockBuilder<E> {
                     ForkName::Base | ForkName::Altair => return Err("invalid fork".to_string()),
                 }
             }
-            _ => panic!("just requested full payload, cannot get blinded"),
+            crate::GetPayloadResponseType::Blinded(_) => {
+                panic!("just requested full payload, cannot get blinded")
+            }
         };
 
         if self.apply_operations {

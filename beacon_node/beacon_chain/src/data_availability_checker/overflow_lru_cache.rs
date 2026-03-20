@@ -92,7 +92,7 @@ impl<E: EthSpec> PendingComponents<E> {
     fn get_diet_block(&self) -> Option<&DietAvailabilityPendingExecutedBlock<E>> {
         self.block.as_ref().and_then(|block| match block {
             CachedBlock::Executed(block) => Some(block.as_ref()),
-            _ => None,
+            CachedBlock::PreExecution(..) => None,
         })
     }
 

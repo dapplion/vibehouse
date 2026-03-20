@@ -238,7 +238,7 @@ mod tests {
         assert!(!c.not_equal());
         match &c {
             Comparison::Child(fc) => assert_eq!(fc.field_name, "field"),
-            _ => panic!("expected Child variant"),
+            Comparison::Parent { .. } => panic!("expected Child variant"),
         }
     }
 
@@ -275,7 +275,7 @@ mod tests {
         assert!(c.equal());
         match &c {
             Comparison::Parent { children, .. } => assert_eq!(children.len(), 3),
-            _ => panic!("expected Parent"),
+            Comparison::Child(_) => panic!("expected Parent"),
         }
     }
 
@@ -291,7 +291,7 @@ mod tests {
                 assert!(!children[1].equal());
                 assert!(children[2].equal());
             }
-            _ => panic!("expected Parent"),
+            Comparison::Child(_) => panic!("expected Parent"),
         }
     }
 
@@ -308,7 +308,7 @@ mod tests {
                 assert!(children[1].equal());
                 assert!(!children[2].equal()); // None vs Some(3)
             }
-            _ => panic!("expected Parent"),
+            Comparison::Child(_) => panic!("expected Parent"),
         }
     }
 
@@ -325,7 +325,7 @@ mod tests {
                 assert!(!children[1].equal());
                 assert!(!children[2].equal());
             }
-            _ => panic!("expected Parent"),
+            Comparison::Child(_) => panic!("expected Parent"),
         }
     }
 
@@ -337,7 +337,7 @@ mod tests {
         assert!(c.equal());
         match &c {
             Comparison::Parent { children, .. } => assert!(children.is_empty()),
-            _ => panic!("expected Parent"),
+            Comparison::Child(_) => panic!("expected Parent"),
         }
     }
 
@@ -354,7 +354,7 @@ mod tests {
                 assert_eq!(children.len(), 1);
                 assert_eq!(children[0].field_name, "1");
             }
-            _ => panic!("expected Parent"),
+            Comparison::Child(_) => panic!("expected Parent"),
         }
     }
 

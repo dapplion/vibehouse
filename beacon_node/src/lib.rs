@@ -103,7 +103,7 @@ impl<E: EthSpec> ProductionBeaconNode<E> {
                         "Slasher backend override failed"
                     );
                 }
-                _ => {}
+                DatabaseBackendOverride::Noop => {}
             }
             let slasher = Arc::new(
                 Slasher::open(slasher_config, spec)

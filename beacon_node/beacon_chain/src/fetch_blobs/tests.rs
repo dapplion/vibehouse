@@ -239,7 +239,7 @@ mod get_blobs_v2 {
                 .into_iter()
                 .map(|blob_and_proof| match blob_and_proof {
                     BlobAndProof::V2(inner) => inner,
-                    _ => panic!("BlobAndProofV2 not expected"),
+                    BlobAndProof::V1(_) => panic!("BlobAndProofV2 not expected"),
                 })
                 .collect()
         });
@@ -511,7 +511,7 @@ mod get_blobs_v1 {
             .map(|blob_and_proof_opt| {
                 blob_and_proof_opt.map(|blob_and_proof| match blob_and_proof {
                     BlobAndProof::V1(inner) => inner,
-                    _ => panic!("BlobAndProofV1 not expected"),
+                    BlobAndProof::V2(_) => panic!("BlobAndProofV1 not expected"),
                 })
             })
             .collect();

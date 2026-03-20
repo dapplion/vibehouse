@@ -1573,7 +1573,9 @@ mod tests {
                     crate::AttestationRefMut::Electra(att) => {
                         att.data.slot = Slot::new(99);
                     }
-                    _ => panic!("Gloas attestations_mut should yield Electra variant"),
+                    crate::AttestationRefMut::Base(_) => {
+                        panic!("Gloas attestations_mut should yield Electra variant")
+                    }
                 }
             }
 

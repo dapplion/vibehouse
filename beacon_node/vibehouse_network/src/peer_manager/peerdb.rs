@@ -194,7 +194,7 @@ impl<E: EthSpec> PeerDB<E> {
         if let Some(peer) = self.peers.get(peer_id) {
             match peer.score_state() {
                 ScoreState::Banned | ScoreState::ForcedDisconnect => true,
-                _ => self.ip_is_banned(peer).is_some(),
+                ScoreState::Healthy => self.ip_is_banned(peer).is_some(),
             }
         } else {
             false
