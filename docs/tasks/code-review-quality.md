@@ -2214,3 +2214,25 @@ Key areas:
 Also fixed 2 `redundant_pattern_matching` lints (replaced `if let Err(_) =` with `.is_err()` / `if let Ok(_) =` with `.is_ok()`).
 
 Net reduction of ~121 lines. Spec v1.7.0-alpha.3 still latest — no new releases. 1651 targeted tests pass. lint-full passes. Committed `95d3a4124`.
+
+### Run 1958 (2026-03-20)
+
+**Replaced wildcard match arms with explicit variant names across 12 files** (`clippy::match_wildcard_for_single_variants`):
+
+Fixed 34 instances where `_ =>` matched only a single remaining variant. Replacing with the explicit variant name makes code more maintainable — if a new variant is added later, the compiler will flag these match arms for review instead of silently catching them.
+
+Files changed:
+1. **common/compare_fields** (7 fixes) — `Comparison::Parent`/`Child` explicit arms in test assertions
+2. **beacon_chain/beacon_chain.rs** (3 fixes) — `AvailabilityProcessingStatus::MissingComponents`, `BlockProposalContents::Payload`
+3. **beacon_chain/single_attestation.rs** (10 fixes) — `Attestation::Base`/`Electra` explicit arms in tests
+4. **beacon_chain/overflow_lru_cache.rs** (1 fix) — `CachedBlock::PreExecution`
+5. **beacon_chain/fetch_blobs/tests.rs** (2 fixes) — `BlobAndProof::V1`/`V2`
+6. **beacon_node/src/lib.rs** (1 fix) — `DatabaseBackendOverride::Noop`
+7. **vibehouse_network/peerdb.rs** (1 fix) — `ScoreState::Healthy`
+8. **vibehouse_network/rpc_tests.rs** (2 fixes) — `futures::future::Either::Left`
+9. **execution_layer/mock_builder.rs** (1 fix) — `GetPayloadResponseType::Blinded`
+10. **store/lib.rs** (1 fix) — `KeyValueStoreOp::DeleteKey`
+11. **types/beacon_block_body.rs** (1 fix) — `AttestationRefMut::Base`
+12. **http_api/version.rs** (4 fixes) — `BeaconResponse::Unversioned`/`ForkVersioned`
+
+Spec v1.7.0-alpha.3 still latest — no new releases. 1352 targeted tests pass. lint passes. Committed `da8e134f6`.
