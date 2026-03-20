@@ -2129,3 +2129,19 @@ Also fixed 1 `redundant_field_names` lint (`{ info: info }` → `{ info }`) intr
 4. **`needless_continue`** (10 files, 14 fixes): Removed redundant `continue` at end of loop bodies or in trailing else branches — files: eth2/lib.rs, beacon_node_fallback, attestation_service, duties_service (3), notifier_service, payload_attestation_service, beacon_chain (2), gloas_verification, block_sidecar_coupling, sync_committees, http_api/lib.rs
 
 4991/5000 workspace tests pass (8 web3signer timeouts = external service, 1 skip). lint-full passes. Committed `005ec55d5`.
+
+### Run 1953 (2026-03-20)
+
+**Replaced eager evaluation with lazy evaluation in `.ok_or()`, `.unwrap_or()`, `.map_or()` across 35 files** (`clippy::or_fun_call`): Changed 60 call sites where function calls (format!, .to_string(), constructor calls) were eagerly evaluated inside `.ok_or()` / `.unwrap_or()` / `.map_or()` to use their lazy counterparts `.ok_or_else(|| ...)` / `.unwrap_or_else(|| ...)` / `.map_or_else(|| ..., ...)`. This avoids unnecessary allocations on the happy path.
+
+Key areas:
+1. **kzg_utils.rs** (8 fixes) — KzgError constructors and format! strings now lazy
+2. **handle_rpc.rs** (4 fixes) — mock EL error tuple construction deferred
+3. **publish_blocks.rs** (4 fixes) — API error constructors deferred
+4. **custody.rs** (4 fixes) — lookup error constructors deferred
+5. **checks.rs** (5 fixes) — simulator error constructors deferred
+6. **Remaining** (35 fixes across consensus, http_api, network, validator_client, account_manager, lcli, logging, etc.)
+
+Also checked spec status: v1.7.0-alpha.3 still latest. Open PRs #5022 (block known check for payload attestations — already implemented in our code), #5020 (PTC lookbehind), #4992 (cached PTCs) — none merged.
+
+2005 targeted tests pass (proto_array, fork_choice, state_processing, store, logging, kzg, validator_services, eth2, builder_client, account_manager, slashing_protection, database_manager, beacon_processor). lint-full passes. Committed `faae677d1`.
