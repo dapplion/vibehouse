@@ -14,6 +14,7 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 - rewards/inactivity_scores tests running across all forks (was missing)
 - 3 altair proposer_boost tests now pass (were skipped, sigp/lighthouse#8689 — fixed by implementing PR #4807)
 - Spec tracked to v1.7.0-alpha.3 (updated from alpha.2)
+- Post-alpha.3 spec PRs audited (run 2009): #5001 (parent_block_root in bid key) already implemented, #4940 (fork choice on_execution_payload tests) already passing, #5002/#5005 doc/test-only
 
 ### Tasks
 - [x] Audit spec test runner — understand download, cache, run flow
@@ -1943,5 +1944,12 @@ Repeated spec tracking checks, all stable. Key facts from this period:
 - **Build**: zero clippy warnings. Zero compilation warnings. cargo audit: 1 advisory (rsa/Marvin Attack, no fix available — transitive via jsonwebtoken), 5 unmaintained crate warnings (all transitive, not actionable).
 - **Tests**: 4991/4995 passed (4 web3signer failures due to no Java on VPS — infrastructure, not code).
 - **Code quality**: all remaining `#[allow(dead_code)]` annotations are legitimate (error enum Debug fields, feature-gated code, API completeness). All TODOs tracked in #36, blocked on external deps or non-critical.
+- All stable. No action needed.
+
+### Run 2009 (2026-03-20) — spec tracking + full verification
+- **Spec**: v1.7.0-alpha.3 still latest release. Post-alpha.3 merged PRs audited: #5001 (parent_block_root in bid filtering key) — already compliant, #4940 (new fork choice on_execution_payload tests) — already passing, #5002 (wording clarification) — no code impact, #5005 (test fixture fix) — already handled.
+- **EF tests**: 79/79 real crypto, 139/139 fake crypto. All 9 fork choice categories pass including on_execution_payload.
+- **Build**: zero clippy warnings, zero build warnings.
+- **Production code quality**: zero unwrap() in consensus-critical hot paths (per_block_processing, per_epoch_processing, fork_choice, block_verification, attestation_verification).
 - All stable. No action needed.
 
