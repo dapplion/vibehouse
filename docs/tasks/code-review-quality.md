@@ -2837,3 +2837,14 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - All tests pass (1304/1304 in affected crates). Clippy clean. Full lint-full clean. Pushed.
 - **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since March 15.
 - **CI**: green on previous commit. New commit pushed.
+
+### Run 2012 (2026-03-20)
+
+**Wildcard import cleanup — consensus/types/ complete.**
+
+- Replaced `use crate::*;` with explicit imports across all 31 files in `consensus/types/src/` that had wildcard crate imports.
+- Added `#[cfg(test)]` imports for test-only types (`MainnetEthSpec`, `MinimalEthSpec`, `EmptyBlock`, `FixedBytesExtended`, `EthSpec`) so test modules using `use super::*;` still compile.
+- Key issues fixed: `map_fork_name`/`map_fork_name_with` macros need explicit import in Rust 2024 edition, `FixedBytesExtended` trait needed for `Hash256::zero()`/`from_low_u64_be()`, `EmptyBlock` trait needed for `BeaconBlock::empty()`.
+- All 1085 types tests pass. Full workspace compiles. Full lint clean. Pushed.
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since March 15.
+- **CI**: new commit pushed, awaiting CI.
