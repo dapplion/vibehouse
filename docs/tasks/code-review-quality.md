@@ -2145,3 +2145,19 @@ Key areas:
 Also checked spec status: v1.7.0-alpha.3 still latest. Open PRs #5022 (block known check for payload attestations — already implemented in our code), #5020 (PTC lookbehind), #4992 (cached PTCs) — none merged.
 
 2005 targeted tests pass (proto_array, fork_choice, state_processing, store, logging, kzg, validator_services, eth2, builder_client, account_manager, slashing_protection, database_manager, beacon_processor). lint-full passes. Committed `faae677d1`.
+
+### Run 1954 (2026-03-20)
+
+**Removed 107 unnecessary semicolons across 67 files** (`clippy::unnecessary_semicolon`): Used `cargo clippy --fix` to remove trailing semicolons after blocks/closures where the semicolon serves no purpose. This is a pure style cleanup — no behavioral changes.
+
+Key areas:
+1. **Beacon chain** (12 files) — beacon_chain.rs, block_verification.rs, attestation_verification.rs, validator_monitor, state_advance_timer, etc.
+2. **Network** (8 files) — gossip_methods.rs, sync modules, subnet_service, network_context
+3. **HTTP API** (5 files) — publish_blocks, publish_attestations, sync_committees, block_id, task_spawner
+4. **Validator client** (6 files) — initialized_validators, duties_service, http_api, main
+5. **vibehouse_network** (5 files) — peer_manager, rpc handler, service
+6. **Remaining** (31 files across consensus, crypto, common, testing, boot_node, lcli, etc.)
+
+Also audited spec status: v1.7.0-alpha.3 still latest release. Merged PRs #5001 (parent_block_root in bid filtering key — already implemented in our `ObservedExecutionBids`) and #5002 (wording clarification — no code changes needed) are both covered.
+
+1690 targeted tests pass (proto_array, fork_choice, state_processing, store, logging, merkle_proof, pretty_reqwest_error, eip_3076, validator_dir, metrics). lint-full passes. Committed `a403bd9dc`.
