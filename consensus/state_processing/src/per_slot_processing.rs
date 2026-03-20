@@ -6,7 +6,10 @@ use crate::{per_epoch_processing::EpochProcessingSummary, *};
 use safe_arith::{ArithError, SafeArith};
 use ssz_types::typenum::Unsigned;
 use tracing::instrument;
-use types::*;
+use types::{
+    BeaconState, BeaconStateError, ChainSpec, EthSpec, FixedBytesExtended, Hash256,
+    InconsistentFork,
+};
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
@@ -164,10 +167,10 @@ mod gloas_per_slot_tests {
     use ssz_types::BitVector;
     use std::sync::Arc;
     use types::{
-        BeaconBlockHeader, BeaconStateGloas, BuilderPendingPayment, CACHED_EPOCHS, Checkpoint,
-        CommitteeCache, Epoch, ExecutionBlockHash, ExecutionPayloadBid, ExitCache, FixedVector,
-        Fork, Hash256, List, MinimalEthSpec, ProgressiveBalancesCache, PubkeyCache, PublicKeyBytes,
-        SlashingsCache, SyncCommittee, Unsigned, Vector,
+        BeaconBlockHeader, BeaconStateGloas, BuilderPendingPayment, BuilderPubkeyCache,
+        CACHED_EPOCHS, Checkpoint, CommitteeCache, Epoch, ExecutionBlockHash, ExecutionPayloadBid,
+        ExitCache, FixedVector, Fork, Hash256, List, MinimalEthSpec, ProgressiveBalancesCache,
+        PubkeyCache, PublicKeyBytes, SlashingsCache, Slot, SyncCommittee, Unsigned, Vector,
     };
 
     type E = MinimalEthSpec;

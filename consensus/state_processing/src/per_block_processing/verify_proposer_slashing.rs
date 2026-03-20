@@ -1,7 +1,7 @@
 use super::errors::{BlockOperationError, ProposerSlashingInvalid as Invalid};
 use super::signature_sets::{get_pubkey_from_state, proposer_slashing_signature_set};
 use crate::VerifySignatures;
-use types::*;
+use types::{BeaconState, ChainSpec, EthSpec, ProposerSlashing};
 
 type Result<T> = std::result::Result<T, BlockOperationError<Invalid>>;
 
@@ -67,7 +67,10 @@ pub fn verify_proposer_slashing<E: EthSpec>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use types::{BeaconBlockHeader, ForkName, MinimalEthSpec, Signature, SignedBeaconBlockHeader};
+    use types::{
+        BeaconBlockHeader, Epoch, FixedBytesExtended, FixedVector, ForkName, Hash256, List,
+        MinimalEthSpec, Signature, SignedBeaconBlockHeader, Slot, Unsigned, Validator, Vector,
+    };
 
     type E = MinimalEthSpec;
 

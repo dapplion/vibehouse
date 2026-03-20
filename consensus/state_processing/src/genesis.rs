@@ -10,7 +10,10 @@ use crate::upgrade::{
 use safe_arith::{ArithError, SafeArith};
 use std::sync::Arc;
 use tree_hash::TreeHash;
-use types::*;
+use types::{
+    BeaconState, ChainSpec, DEPOSIT_TREE_DEPTH, Deposit, Epoch, Error, Eth1Data, EthSpec,
+    ExecutionPayloadHeader, FixedBytesExtended, Hash256,
+};
 
 /// Initialize a `BeaconState` from genesis data.
 pub fn initialize_beacon_state_from_eth1<E: EthSpec>(
@@ -233,8 +236,8 @@ pub fn eth2_genesis_time(eth1_timestamp: u64, spec: &ChainSpec) -> Result<u64, A
 mod gloas_genesis_tests {
     use super::*;
     use types::{
-        ExecutionBlockHash, ExecutionPayloadHeaderGloas, ForkName, MinimalEthSpec,
-        test_utils::generate_deterministic_keypairs,
+        DepositData, ExecutionBlockHash, ExecutionPayloadHeaderGloas, FixedVector, ForkName,
+        MinimalEthSpec, Signature, Slot, test_utils::generate_deterministic_keypairs,
     };
 
     type E = MinimalEthSpec;

@@ -3,7 +3,7 @@ use super::errors::{AttestationInvalid as Invalid, BlockOperationError};
 use crate::ConsensusContext;
 use crate::per_block_processing::is_valid_indexed_attestation;
 use safe_arith::SafeArith;
-use types::*;
+use types::{AttestationRef, BeaconState, ChainSpec, EthSpec, IndexedAttestationRef};
 
 type Result<T> = std::result::Result<T, BlockOperationError<Invalid>>;
 
@@ -140,11 +140,12 @@ mod tests {
     use ssz_types::BitVector;
     use std::sync::Arc;
     use types::{
-        BeaconBlockHeader, BeaconStateFulu, BeaconStateGloas, BuilderPendingPayment, CACHED_EPOCHS,
-        Checkpoint, CommitteeCache, Epoch, ExecutionBlockHash, ExecutionPayloadBid,
-        ExecutionPayloadHeaderFulu, ExitCache, FixedVector, Fork, Hash256, List, MinimalEthSpec,
-        ProgressiveBalancesCache, PubkeyCache, PublicKeyBytes, SlashingsCache, SyncCommittee,
-        Unsigned, Vector,
+        Attestation, AttestationData, BeaconBlockHeader, BeaconState, BeaconStateFulu,
+        BeaconStateGloas, BuilderPendingPayment, CACHED_EPOCHS, ChainSpec, Checkpoint,
+        CommitteeCache, Epoch, EthSpec, ExecutionBlockHash, ExecutionPayloadBid,
+        ExecutionPayloadHeaderFulu, ExitCache, FixedBytesExtended, FixedVector, Fork, Hash256,
+        List, MinimalEthSpec, ProgressiveBalancesCache, PubkeyCache, PublicKeyBytes,
+        SlashingsCache, Slot, SyncCommittee, Unsigned, Vector, beacon_state::BuilderPubkeyCache,
     };
 
     type E = MinimalEthSpec;

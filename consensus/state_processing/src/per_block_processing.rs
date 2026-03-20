@@ -5,7 +5,18 @@ use safe_arith::{ArithError, SafeArith, SafeArithIter};
 use signature_sets::{block_proposal_signature_set, get_pubkey_from_state, randao_signature_set};
 use std::borrow::Cow;
 use tree_hash::TreeHash;
-use types::*;
+use types::{
+    AbstractExecPayload, Address, AttestationRef, AttesterSlashingRef, BeaconBlockBodyRef,
+    BeaconBlockHeader, BeaconBlockRef, BeaconState, BeaconStateError, Builder, ChainSpec,
+    ConsolidationRequest, Deposit, DepositData, DepositRequest, Epoch, Error, Eth1Data, EthSpec,
+    ExecPayload, ExecutionPayloadHeader, ExecutionPayloadHeaderRefMut, FixedVector, ForkName,
+    Hash256, List, PendingAttestation, PendingConsolidation, PendingDeposit,
+    PendingPartialWithdrawal, ProposerSlashing, PublicKeyBytes, RelativeEpoch, SignedBeaconBlock,
+    SignedBlsToExecutionChange, SignedVoluntaryExit, Slot, Unsigned, Withdrawal, WithdrawalRequest,
+    Withdrawals, is_progressive_balances_enabled,
+};
+#[cfg(test)]
+use types::{BeaconBlockGloas, BuilderPubkeyCache, Domain, Signature, SignedRoot, VoluntaryExit};
 
 pub use self::verify_attester_slashing::{
     get_slashable_indices, get_slashable_indices_modular, verify_attester_slashing,

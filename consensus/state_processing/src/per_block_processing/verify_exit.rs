@@ -7,7 +7,7 @@ use crate::per_block_processing::{
 use safe_arith::SafeArith;
 use std::borrow::Cow;
 use types::consts::gloas::BUILDER_INDEX_FLAG;
-use types::*;
+use types::{BeaconState, ChainSpec, Epoch, EthSpec, PublicKey, SignedVoluntaryExit};
 
 type Result<T> = std::result::Result<T, BlockOperationError<ExitInvalid>>;
 
@@ -179,11 +179,12 @@ mod tests {
     use std::sync::Arc;
     use tree_hash::TreeHash;
     use types::{
-        BeaconState, BeaconStateGloas, BitVector, Builder, BuilderPendingPayment,
-        BuilderPendingWithdrawal, Checkpoint, EpochCache, Eth1Data, ExecutionBlockHash,
-        ExecutionPayloadBid, ExitCache, ForkName, MinimalEthSpec, PendingPartialWithdrawal,
-        ProgressiveBalancesCache, PubkeyCache, SlashingsCache, SyncCommittee, Validator,
-        beacon_state::BuilderPubkeyCache,
+        Address, BeaconBlockHeader, BeaconStateGloas, BitVector, Builder, BuilderPendingPayment,
+        BuilderPendingWithdrawal, Checkpoint, Epoch, EpochCache, Eth1Data, EthSpec,
+        ExecutionBlockHash, ExecutionPayloadBid, ExitCache, FixedBytesExtended, FixedVector, Fork,
+        ForkName, Hash256, List, MinimalEthSpec, PendingPartialWithdrawal,
+        ProgressiveBalancesCache, PubkeyCache, Signature, SlashingsCache, SyncCommittee, Unsigned,
+        Validator, Vector, VoluntaryExit, beacon_state::BuilderPubkeyCache,
     };
 
     type E = MinimalEthSpec;

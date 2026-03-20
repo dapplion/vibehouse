@@ -1,6 +1,6 @@
 use integer_sqrt::IntegerSquareRoot;
 use safe_arith::{ArithError, SafeArith};
-use types::*;
+use types::{ChainSpec, Error};
 
 /// This type exists to avoid confusing `total_active_balance` with `base_reward_per_increment`,
 /// since they are used in close proximity and the same type (`u64`).
@@ -50,7 +50,7 @@ fn get_base_reward_per_increment(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use types::MinimalEthSpec;
+    use types::{EthSpec, MinimalEthSpec};
 
     type E = MinimalEthSpec;
 

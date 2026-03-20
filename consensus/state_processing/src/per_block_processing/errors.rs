@@ -4,7 +4,10 @@ use crate::envelope_processing::EnvelopeProcessingError;
 use merkle_proof::MerkleTreeError;
 use safe_arith::ArithError;
 use ssz::DecodeError;
-use types::*;
+use types::{
+    BeaconStateError, Checkpoint, Epoch, EpochCacheError, ExecutionBlockHash, Hash256,
+    InconsistentFork, Slot,
+};
 
 /// The error returned from the `per_block_processing` function. Indicates that a block is either
 /// invalid, or we were unable to determine its validity (we encountered an unexpected error).

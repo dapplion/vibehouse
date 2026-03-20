@@ -2,7 +2,7 @@ use super::errors::{BlockOperationError, IndexedAttestationInvalid as Invalid};
 use super::signature_sets::{get_pubkey_from_state, indexed_attestation_signature_set};
 use crate::VerifySignatures;
 use itertools::Itertools;
-use types::*;
+use types::{BeaconState, ChainSpec, EthSpec, IndexedAttestationRef};
 
 type Result<T> = std::result::Result<T, BlockOperationError<Invalid>>;
 
@@ -57,8 +57,9 @@ pub fn is_valid_indexed_attestation<E: EthSpec>(
 mod tests {
     use super::*;
     use types::{
-        AggregateSignature, AttestationData, Checkpoint, ForkName, IndexedAttestationElectra,
-        MinimalEthSpec,
+        AggregateSignature, AttestationData, Checkpoint, Epoch, FixedBytesExtended, FixedVector,
+        ForkName, Hash256, IndexedAttestation, IndexedAttestationElectra, List, MinimalEthSpec,
+        Slot, Unsigned, VariableList, Vector,
     };
 
     type E = MinimalEthSpec;

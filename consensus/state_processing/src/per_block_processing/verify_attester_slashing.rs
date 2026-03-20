@@ -2,7 +2,7 @@ use super::errors::{AttesterSlashingInvalid as Invalid, BlockOperationError};
 use super::is_valid_indexed_attestation::is_valid_indexed_attestation;
 use crate::per_block_processing::VerifySignatures;
 use std::collections::BTreeSet;
-use types::*;
+use types::{AttesterSlashingRef, BeaconState, ChainSpec, EthSpec, Validator};
 
 type Result<T> = std::result::Result<T, BlockOperationError<Invalid>>;
 
@@ -98,8 +98,10 @@ mod tests {
     use super::*;
     use crate::per_block_processing::VerifySignatures;
     use types::{
-        AggregateSignature, AttestationData, AttesterSlashingElectra, Checkpoint, ForkName,
-        IndexedAttestationElectra, MinimalEthSpec,
+        AggregateSignature, AttestationData, AttesterSlashing, AttesterSlashingElectra,
+        BeaconState, ChainSpec, Checkpoint, Epoch, EthSpec, FixedBytesExtended, FixedVector,
+        ForkName, Hash256, IndexedAttestationElectra, List, MinimalEthSpec, Slot, Unsigned,
+        Validator, VariableList, Vector,
     };
 
     type E = MinimalEthSpec;

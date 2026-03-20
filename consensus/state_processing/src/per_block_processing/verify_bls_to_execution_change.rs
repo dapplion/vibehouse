@@ -2,7 +2,7 @@ use super::errors::{BlockOperationError, BlsExecutionChangeInvalid as Invalid};
 use crate::VerifySignatures;
 use crate::per_block_processing::signature_sets::bls_execution_change_signature_set;
 use ethereum_hashing::hash_fixed;
-use types::*;
+use types::{BeaconState, ChainSpec, EthSpec, SignedBlsToExecutionChange};
 
 type Result<T> = std::result::Result<T, BlockOperationError<Invalid>>;
 
@@ -60,9 +60,11 @@ mod tests {
     use bls::PublicKeyBytes;
     use std::sync::Arc;
     use types::{
-        BeaconState, BeaconStateGloas, BitVector, BuilderPendingPayment, Checkpoint, EpochCache,
-        Eth1Data, ExecutionBlockHash, ExecutionPayloadBid, ExitCache, ForkName, MinimalEthSpec,
-        ProgressiveBalancesCache, PubkeyCache, SlashingsCache, SyncCommittee,
+        Address, BeaconBlockHeader, BeaconStateGloas, BitVector, BlsToExecutionChange,
+        BuilderPendingPayment, Checkpoint, Epoch, EpochCache, Eth1Data, EthSpec,
+        ExecutionBlockHash, ExecutionPayloadBid, ExitCache, FixedBytesExtended, FixedVector, Fork,
+        ForkName, Hash256, List, MinimalEthSpec, ProgressiveBalancesCache, PubkeyCache, Signature,
+        SlashingsCache, SyncCommittee, Unsigned, Validator, Vector,
         beacon_state::BuilderPubkeyCache,
     };
 
