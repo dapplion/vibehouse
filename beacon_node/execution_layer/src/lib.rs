@@ -716,9 +716,9 @@ impl<E: EthSpec> ExecutionLayer<E> {
                                     "Failed to clean proposer preparation cache"
                                 );
                             })
-                            .unwrap_or(())
+                            .unwrap_or(());
                     } else {
-                        error!("Failed to get current epoch from slot clock")
+                        error!("Failed to get current epoch from slot clock");
                     }
                 } else {
                     error!("Failed to read slot clock");

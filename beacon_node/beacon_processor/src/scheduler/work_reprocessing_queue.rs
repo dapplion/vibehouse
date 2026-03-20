@@ -732,9 +732,9 @@ impl<S: SlotClock> ReprocessQueue<S> {
 
                             // Send the work
                             if self.ready_work_tx.try_send(work).is_ok() {
-                                trace!("reprocessing light client update sent")
+                                trace!("reprocessing light client update sent");
                             } else {
-                                error!("Failed to send scheduled light client update")
+                                error!("Failed to send scheduled light client update");
                             }
                         } else {
                             // There is a mismatch between the light client update ids registered for this

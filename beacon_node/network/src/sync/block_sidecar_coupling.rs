@@ -189,7 +189,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
                 column_peers,
                 attempt: _,
             } => {
-                for (request, columns) in failed_column_requests.into_iter() {
+                for (request, columns) in failed_column_requests {
                     requests.insert(request, ByRangeRequest::Active(request));
                     column_peers.insert(request, columns);
                 }
@@ -356,7 +356,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
         // included) for a skipped slot is not permitted.
         let mut responses = Vec::with_capacity(blocks.len());
         let mut blob_iter = blobs.into_iter().peekable();
-        for block in blocks.into_iter() {
+        for block in blocks {
             let max_blobs_per_block = spec.max_blobs_per_block(block.epoch()) as usize;
             let mut blob_list = Vec::with_capacity(max_blobs_per_block);
             while {

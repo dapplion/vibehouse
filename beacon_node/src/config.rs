@@ -1200,7 +1200,7 @@ pub fn set_network_config(
         let mut multiaddrs: Vec<Multiaddr> = vec![];
         for addr in boot_enr_str.split(',') {
             if let Ok(enr) = addr.parse() {
-                enrs.push(enr)
+                enrs.push(enr);
             } else {
                 // parsing as ENR failed, try as Multiaddr
                 let multi: Multiaddr = addr

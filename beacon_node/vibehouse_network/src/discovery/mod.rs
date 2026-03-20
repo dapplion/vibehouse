@@ -879,7 +879,7 @@ impl<E: EthSpec> Discovery<E> {
                             ?subnets_searched_for,
                             "Grouped subnet discovery query yielded no results."
                         );
-                        for query in queries.iter() {
+                        for query in &queries {
                             self.add_subnet_query(query.subnet, query.min_ttl, query.retries + 1);
                         }
                     }
@@ -898,7 +898,7 @@ impl<E: EthSpec> Discovery<E> {
                         }
 
                         // Map each subnet query's min_ttl to the set of ENR's returned for that subnet.
-                        for query in queries.iter() {
+                        for query in &queries {
                             let query_str = match query.subnet {
                                 Subnet::Attestation(_) => "attestation",
                                 Subnet::SyncCommittee(_) => "sync_committee",

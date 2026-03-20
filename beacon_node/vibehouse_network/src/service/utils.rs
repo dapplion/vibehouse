@@ -121,14 +121,14 @@ pub fn load_private_key(config: &NetworkConfig) -> Keypair {
                 }
             }
         } else {
-            debug!("Could not read network key file as string, trying binary format")
+            debug!("Could not read network key file as string, trying binary format");
         }
 
         // If hex parsing failed or file couldn't be read as string, try binary format
         if let Ok(mut network_key_file) = File::open(network_key_f.clone()) {
             let mut key_bytes: Vec<u8> = Vec::with_capacity(36);
             if network_key_file.read_to_end(&mut key_bytes).is_err() {
-                debug!("Could not read network key file")
+                debug!("Could not read network key file");
             } else {
                 // only accept secp256k1 keys for now
                 if let Ok(secret_key) = secp256k1::SecretKey::try_from_bytes(&mut key_bytes) {

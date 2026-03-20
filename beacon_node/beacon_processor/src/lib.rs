@@ -1196,7 +1196,7 @@ impl<E: EthSpec> BeaconProcessor<E> {
                                                     process_batch_opt = Some(process_batch);
                                                 }
                                             } else {
-                                                error!("Invalid item in attestation queue")
+                                                error!("Invalid item in attestation queue");
                                             }
                                         }
                                     }

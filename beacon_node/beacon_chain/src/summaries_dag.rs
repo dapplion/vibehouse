@@ -74,7 +74,7 @@ impl StateSummariesDAG {
         let mut state_summaries_by_block_root = HashMap::<_, BTreeMap<_, _>>::new();
         let mut child_state_roots = HashMap::<_, Vec<_>>::new();
 
-        for (state_root, summary) in state_summaries.into_iter() {
+        for (state_root, summary) in state_summaries {
             let summaries = state_summaries_by_block_root
                 .entry(summary.latest_block_root)
                 .or_default();

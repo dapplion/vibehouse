@@ -938,9 +938,9 @@ impl<T: BeaconChainTypes> Drop for NetworkService<T> {
             error!(
                 error = ?e,
                 "Failed to persist DHT on drop"
-            )
+            );
         } else {
-            info!("Saved DHT state")
+            info!("Saved DHT state");
         }
         info!("Network service shutdown");
     }

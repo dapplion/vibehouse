@@ -241,7 +241,7 @@ pub async fn build_node_pair(
     if let Ok(()) = sender.testing_dial(receiver_multiaddr.clone()) {
         debug!(address = ?receiver_multiaddr, "Sender dialed receiver");
     } else {
-        error!("Dialing failed")
+        error!("Dialing failed");
     }
     (sender, receiver)
 }

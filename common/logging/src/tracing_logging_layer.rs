@@ -268,7 +268,7 @@ fn build_log_json(
         log_map.insert(key.clone(), parsed_span_val);
     }
 
-    for (key, val) in visitor.fields.clone().into_iter() {
+    for (key, val) in visitor.fields.clone() {
         let cleaned_value = if val.starts_with('\"') && val.ends_with('\"') && val.len() >= 2 {
             &val[1..val.len() - 1]
         } else {

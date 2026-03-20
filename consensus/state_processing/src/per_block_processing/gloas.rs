@@ -6928,7 +6928,7 @@ mod tests {
         let mut bid = make_builder_bid(&state, &spec, 0);
 
         let max_blobs = spec.max_blobs_per_block(state.current_epoch()) as usize;
-        let commitments: Vec<_> = (0..max_blobs + 1)
+        let commitments: Vec<_> = (0..=max_blobs)
             .map(|_| types::KzgCommitment::empty_for_testing())
             .collect();
         bid.message.blob_kzg_commitments = ssz_types::VariableList::new(commitments).unwrap();

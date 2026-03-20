@@ -1041,7 +1041,7 @@ impl TestRig {
     ) -> (SignedBeaconBlock<E>, Vec<BlobSidecar<E>>) {
         let (mut block, mut blobs) = self.rand_block_and_blobs(num_blobs);
         *block.message_mut().parent_root_mut() = parent_root;
-        for blob in blobs.iter_mut() {
+        for blob in &mut blobs {
             blob.signed_block_header = block.signed_block_header();
         }
         (block, blobs)
@@ -1621,7 +1621,7 @@ fn test_parent_lookup_too_deep_grow_tip() {
     let peer_id = rig.new_connected_peer();
     let tip = blocks.last().unwrap().clone();
 
-    for block in blocks.into_iter() {
+    for block in blocks {
         let block_root = block.canonical_root();
         rig.trigger_unknown_block_from_attestation(block_root, peer_id);
         let id = rig.expect_block_parent_request(block_root);

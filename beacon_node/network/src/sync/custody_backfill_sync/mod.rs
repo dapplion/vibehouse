@@ -884,7 +884,7 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
             .batches
             .split_off(&(validating_epoch + CUSTODY_BACKFILL_EPOCHS_PER_BATCH));
 
-        for (id, batch) in removed_batches.into_iter() {
+        for (id, batch) in removed_batches {
             self.validated_batches = self.validated_batches.saturating_add(1);
             match batch.state() {
                 BatchState::Downloading(..)

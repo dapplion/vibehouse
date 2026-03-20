@@ -524,7 +524,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> SyncCommitteeService<S
                     duties.duties,
                     sync_committee_period,
                     spec,
-                ))
+                ));
             } else {
                 debug!(
                     slot = %duty_slot,

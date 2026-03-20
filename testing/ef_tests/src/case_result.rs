@@ -66,7 +66,7 @@ where
                 .filter(Comparison::not_equal)
                 .collect();
 
-            for f in mismatching_fields.iter_mut() {
+            for f in &mut mismatching_fields {
                 f.retain_children(FieldComparison::not_equal);
             }
 

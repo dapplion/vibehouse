@@ -1490,7 +1490,7 @@ mod tests {
 
         use std::collections::BTreeMap;
         let mut peer_list = BTreeMap::new();
-        for id in 0..MAX_DC_PEERS + 1 {
+        for id in 0..=MAX_DC_PEERS {
             let new_peer = PeerId::random();
             pdb.connect_ingoing(&new_peer, "/ip4/0.0.0.0".parse().unwrap(), None);
             peer_list.insert(id, new_peer);
@@ -1571,7 +1571,7 @@ mod tests {
     fn test_disconnected_are_bounded() {
         let mut pdb = get_db();
 
-        for _ in 0..MAX_DC_PEERS + 1 {
+        for _ in 0..=MAX_DC_PEERS {
             let p = PeerId::random();
             pdb.connect_ingoing(&p, "/ip4/0.0.0.0".parse().unwrap(), None);
         }
@@ -1590,7 +1590,7 @@ mod tests {
     fn test_banned_are_bounded() {
         let mut pdb = get_db();
 
-        for _ in 0..MAX_BANNED_PEERS + 1 {
+        for _ in 0..=MAX_BANNED_PEERS {
             let p = PeerId::random();
             pdb.connect_ingoing(&p, "/ip4/0.0.0.0".parse().unwrap(), None);
         }
@@ -1998,7 +1998,7 @@ mod tests {
         let p4 = connect_peer_with_ips(&mut pdb, vec![ip5, ip4]);
         let p5 = connect_peer_with_ips(&mut pdb, vec![ip5]);
 
-        for p in &peers[..BANNED_PEERS_PER_IP_THRESHOLD + 1] {
+        for p in &peers[..=BANNED_PEERS_PER_IP_THRESHOLD] {
             let _ = pdb.report_peer(p, PeerAction::Fatal, ReportSource::PeerManager, "");
             pdb.inject_disconnect(p);
         }
@@ -2059,7 +2059,7 @@ mod tests {
         let ip2: IpAddr = Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8).into();
 
         let mut peers = Vec::new();
-        for _ in 0..BANNED_PEERS_PER_IP_THRESHOLD + 1 {
+        for _ in 0..=BANNED_PEERS_PER_IP_THRESHOLD {
             peers.push(connect_peer_with_ips(&mut pdb, vec![ip1]));
         }
 

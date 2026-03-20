@@ -238,7 +238,7 @@ mod test {
     fn check_cache_get(cache: &ValidatorPubkeyCache<T>, keypairs: &[Keypair]) {
         let validator_count = keypairs.len();
 
-        for i in 0..validator_count + 1 {
+        for i in 0..=validator_count {
             if i < validator_count {
                 let pubkey = cache.get(i).expect("pubkey should be present");
                 assert_eq!(pubkey, &keypairs[i].pk, "pubkey should match cache");
