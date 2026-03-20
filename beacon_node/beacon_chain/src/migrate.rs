@@ -150,8 +150,8 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
         };
         Self {
             db,
-            tx_thread,
             prev_migration,
+            tx_thread,
         }
     }
 

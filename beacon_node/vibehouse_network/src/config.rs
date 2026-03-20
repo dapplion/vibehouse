@@ -624,7 +624,7 @@ mod tests {
 
     #[test]
     fn ipv4_not_global_loopback() {
-        assert!(!is_global_ipv4(&Ipv4Addr::new(127, 0, 0, 1)));
+        assert!(!is_global_ipv4(&Ipv4Addr::LOCALHOST));
     }
 
     #[test]
@@ -634,7 +634,7 @@ mod tests {
 
     #[test]
     fn ipv4_not_global_broadcast() {
-        assert!(!is_global_ipv4(&Ipv4Addr::new(255, 255, 255, 255)));
+        assert!(!is_global_ipv4(&Ipv4Addr::BROADCAST));
     }
 
     #[test]
@@ -659,7 +659,7 @@ mod tests {
 
     #[test]
     fn ipv4_not_global_zero_network() {
-        assert!(!is_global_ipv4(&Ipv4Addr::new(0, 0, 0, 0)));
+        assert!(!is_global_ipv4(&Ipv4Addr::UNSPECIFIED));
         assert!(!is_global_ipv4(&Ipv4Addr::new(0, 1, 2, 3)));
     }
 

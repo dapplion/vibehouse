@@ -54,7 +54,7 @@ async fn new_state<E: EthSpec>(validator_count: usize, slot: Slot) -> BeaconStat
 }
 
 #[tokio::test]
-#[should_panic]
+#[should_panic(expected = "InsufficientValidators")]
 async fn fails_without_validators() {
     new_state::<MinimalEthSpec>(0, Slot::new(0)).await;
 }

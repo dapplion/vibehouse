@@ -665,7 +665,7 @@ mod tests {
                 k
             })
             .collect();
-        keys.sort();
+        keys.sort_unstable();
 
         for k in &keys {
             store.put_bytes(col, k, &[k[0]]).unwrap();

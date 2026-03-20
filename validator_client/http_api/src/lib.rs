@@ -131,7 +131,7 @@ impl Default for Config {
             .join(PK_FILENAME);
         Self {
             enabled: false,
-            listen_addr: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+            listen_addr: IpAddr::V4(Ipv4Addr::LOCALHOST),
             listen_port: 5062,
             allow_origin: None,
             allow_keystore_export: false,

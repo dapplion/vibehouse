@@ -449,13 +449,13 @@ impl<E: EthSpec> Network<E> {
         );
         let behaviour = {
             Behaviour {
-                gossipsub,
+                connection_limits,
+                peer_manager,
                 eth2_rpc,
                 discovery,
                 identify,
-                peer_manager,
-                connection_limits,
                 upnp,
+                gossipsub,
             }
         };
 

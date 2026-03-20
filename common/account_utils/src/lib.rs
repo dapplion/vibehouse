@@ -277,7 +277,7 @@ mod test {
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "Please use at least")]
     fn test_password_too_short() {
         is_password_sufficiently_complex(b"TestPass").unwrap();
     }

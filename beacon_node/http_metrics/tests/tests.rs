@@ -17,7 +17,7 @@ async fn returns_200_ok() {
         let context = Arc::new(Context {
             config: Config {
                 enabled: true,
-                listen_addr: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+                listen_addr: IpAddr::V4(Ipv4Addr::LOCALHOST),
                 listen_port: 0,
                 allow_origin: None,
                 allocator_metrics_enabled: true,

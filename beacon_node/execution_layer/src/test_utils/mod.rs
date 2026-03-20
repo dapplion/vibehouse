@@ -606,7 +606,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            listen_addr: Ipv4Addr::new(127, 0, 0, 1),
+            listen_addr: Ipv4Addr::LOCALHOST,
             listen_port: 0,
         }
     }

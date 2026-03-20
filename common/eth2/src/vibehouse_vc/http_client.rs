@@ -438,9 +438,9 @@ impl ValidatorClientHttpClient {
                 enabled,
                 gas_limit,
                 builder_proposals,
+                graffiti,
                 builder_boost_factor,
                 prefer_builder_proposals,
-                graffiti,
             },
         )
         .await

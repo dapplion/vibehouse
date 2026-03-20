@@ -178,7 +178,7 @@ impl ApiTester {
     pub fn default_http_config() -> HttpConfig {
         HttpConfig {
             enabled: true,
-            listen_addr: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+            listen_addr: IpAddr::V4(Ipv4Addr::LOCALHOST),
             listen_port: 0,
             allow_origin: None,
             allow_keystore_export: true,

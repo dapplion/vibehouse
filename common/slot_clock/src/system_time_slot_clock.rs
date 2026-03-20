@@ -112,13 +112,13 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "cannot have a < 1ms slot duration")]
     fn zero_seconds() {
         SystemTimeSlotClock::new(Slot::new(0), Duration::from_secs(0), Duration::from_secs(0));
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "cannot have a < 1ms slot duration")]
     fn zero_millis() {
         SystemTimeSlotClock::new(
             Slot::new(0),
@@ -128,7 +128,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "cannot have a < 1ms slot duration")]
     fn less_than_one_millis() {
         SystemTimeSlotClock::new(
             Slot::new(0),

@@ -136,8 +136,8 @@ impl<Engine: GenericExecutionEngine> TestRig<Engine> {
             };
             let execution_layer = ExecutionLayer::from_config(config, executor.clone()).unwrap();
             ExecutionPair {
-                execution_engine,
                 execution_layer,
+                execution_engine,
             }
         };
 
@@ -154,8 +154,8 @@ impl<Engine: GenericExecutionEngine> TestRig<Engine> {
             };
             let execution_layer = ExecutionLayer::from_config(config, executor).unwrap();
             ExecutionPair {
-                execution_engine,
                 execution_layer,
+                execution_engine,
             }
         };
 

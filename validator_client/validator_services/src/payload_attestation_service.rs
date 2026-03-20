@@ -753,7 +753,7 @@ mod produce_tests {
 
         // All 3 validators signed
         let mut signed_indices = signed.lock().unwrap().clone();
-        signed_indices.sort();
+        signed_indices.sort_unstable();
         assert_eq!(signed_indices, vec![10u64, 11, 12]);
     }
 
@@ -1007,7 +1007,7 @@ mod produce_tests {
 
         // Validators 20 and 22 signed successfully, 21 was attempted but failed
         let mut signed_indices = signed.lock().unwrap().clone();
-        signed_indices.sort();
+        signed_indices.sort_unstable();
         assert_eq!(
             signed_indices,
             vec![20u64, 21, 22],

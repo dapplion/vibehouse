@@ -109,7 +109,7 @@ mod tests {
 
     fn v4_addr() -> ListenAddr<Ipv4Addr> {
         ListenAddr {
-            addr: Ipv4Addr::new(127, 0, 0, 1),
+            addr: Ipv4Addr::LOCALHOST,
             disc_port: 9000,
             quic_port: 9001,
             tcp_port: 9002,
@@ -131,30 +131,21 @@ mod tests {
     fn v4_discovery_socket_addr() {
         let addr = v4_addr();
         let sa = addr.discovery_socket_addr();
-        assert_eq!(
-            sa,
-            SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9000)
-        );
+        assert_eq!(sa, SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 9000));
     }
 
     #[test]
     fn v4_quic_socket_addr() {
         let addr = v4_addr();
         let sa = addr.quic_socket_addr();
-        assert_eq!(
-            sa,
-            SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9001)
-        );
+        assert_eq!(sa, SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 9001));
     }
 
     #[test]
     fn v4_tcp_socket_addr() {
         let addr = v4_addr();
         let sa = addr.tcp_socket_addr();
-        assert_eq!(
-            sa,
-            SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9002)
-        );
+        assert_eq!(sa, SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 9002));
     }
 
     #[test]
