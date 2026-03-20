@@ -2600,3 +2600,15 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **Pedantic clippy status**: All actionable categories fixed. Remaining are bulk categories not worth the churn: `# Errors` docs (1564), `must_use` (1176), doc backticks (1008), cast truncation (517), pass by value (306), `# Panics` docs (216), wildcard imports (177).
 - **CI**: All jobs green. Nightly and spec-test-version-check passed.
 - **Verification**: 999/999 beacon_chain tests, network + http_api tests pass (failures were missing FORK_NAME env — pre-existing), full workspace clippy clean, cargo fmt clean, pre-push lint-full passes.
+
+### Run 1991 (2026-03-20)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since #5005 (March 15). Open Gloas PRs: #4979 (PTC lookbehind — heze fork, updated today), #4747 (Fast Confirmation Rule, updated today), #5023 (block root filenames), #4992 (cached PTCs — heze). None actionable for current Gloas.
+- **Spec PR audit**: #5001 (parent_block_root in bid filtering key) — already implemented (our `highest_bid_values` map uses `(Slot, ExecutionBlockHash, Hash256)` key). #5002 (self-build wording) — doc-only. #4892 (remove impossible branch in forkchoice) — already implemented (our `is_supporting_vote_gloas_at_slot` uses `==` not `<=`).
+- **CI**: check+clippy+fmt and ef-tests passed. Other jobs in progress.
+- **Clippy status**: suspicious=0, nursery bulk categories only (use_self 2107, missing_const_for_fn 584, option_if_let_else 136). needless_pass_by_ref_mut has ~30 instances across pre-existing code — not worth the risk in consensus paths.
+- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority.
+
+No actionable work found. All priorities 1-6 complete. Codebase stable.
