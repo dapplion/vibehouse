@@ -2236,3 +2236,21 @@ Files changed:
 12. **http_api/version.rs** (4 fixes) — `BeaconResponse::Unversioned`/`ForkVersioned`
 
 Spec v1.7.0-alpha.3 still latest — no new releases. 1352 targeted tests pass. lint passes. Committed `da8e134f6`.
+
+### Run 1959 (2026-03-20)
+
+**Applied `ignored_unit_patterns` and `if_not_else` pedantic clippy fixes across 72 files**:
+
+1. **`ignored_unit_patterns`** (~40 fixes): Replaced `Ok(_)` with `Ok(())`, `Err(_)` with `Err(())`, `Poll::Ready(_)` with `Poll::Ready(())`, etc. — makes the unit type explicit instead of using a wildcard, improving readability and catching accidental value drops.
+
+2. **`if_not_else`** (~32 fixes): Reordered `if !condition { A } else { B }` to `if condition { B } else { A }` — removes negation from the condition, making the positive case come first for better readability.
+
+Key areas:
+1. **Beacon chain** (8 files) — block_verification, attestation_verification, attestation_rewards, graffiti_calculator, etc.
+2. **Network** (10 files) — sync modules, subnet_service, rpc_methods, network_service, backfill_sync, custody_backfill_sync
+3. **vibehouse_network** (5 files) — peer_manager, discovery, rpc handler, service
+4. **HTTP API** (2 files) — extractors, lib
+5. **Store** (2 files) — reconstruct, hdiff
+6. **Remaining** (45 files across common, consensus, testing, validator_client, account_manager, etc.)
+
+Spec v1.7.0-alpha.3 still latest — no new releases. 4991 workspace tests pass (8 web3signer timeouts = external). 1593 targeted consensus tests pass. lint-full passes. Committed `10004d8a8`.
