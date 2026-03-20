@@ -2568,3 +2568,14 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since #5005 (March 15). Open Gloas PRs unchanged.
 - **CI**: All jobs green. Nightly and spec-test-version-check passed.
 - **Verification**: targeted tests passed (types, account_utils, slot_clock), full workspace clippy clean, cargo fmt clean, make lint clean, pre-push lint-full passes.
+
+### Run 1988 (2026-03-20)
+
+**Pedantic clippy fix: 3 lint categories across 6 files.**
+
+- `needless_raw_string_hashes` (8 instances, 2 files): removed unnecessary `#` from `r#"..."#` raw string literals — chain_spec.rs (7 YAML test strings), fork_name.rs (1 ASCII art block). None contain double quotes.
+- `semicolon_if_nothing_returned` (7 instances, 3 files): added trailing `;` to `assert!` macros used in statement position — lookups.rs (5), interchange_test.rs (1), results.rs (1).
+- `checked_conversions` (1 instance, 1 file): `number <= usize::MAX as u64` → `usize::try_from(number).is_ok()` in engine_api/http.rs.
+- **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since #5005 (March 15). Open Gloas PRs unchanged.
+- **CI**: All jobs green. Nightly and spec-test-version-check passed.
+- **Verification**: 92/92 targeted tests passed (types chain_spec, slashing_protection), all 3 lint categories clean, cargo fmt clean, pre-push lint passes.
