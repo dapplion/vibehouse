@@ -2178,3 +2178,19 @@ Key areas:
 Also cleaned disk: removed 14.5GB debug incremental cache that caused disk-full during pre-push lint hook.
 
 4991 workspace tests pass (8 web3signer timeouts = external service). lint-full passes. Committed `ba7ac3f2c`.
+
+### Run 1956 (2026-03-20)
+
+**Added underscore separators to 99 numeric literals across 33 files** (`clippy::unreadable_literal`): Applied underscore digit grouping to all numeric literals >= 5 digits for readability:
+
+- **Decimal**: groups of 3 (e.g., `1606824000` → `1_606_824_000`)
+- **Hex**: groups of 4 (e.g., `0xDEADBEEF0BAD5EED` → `0xDEAD_BEEF_0BAD_5EED`)
+- **Float**: appropriate grouping (e.g., `42.123456` → `42.123_456`)
+
+Key areas:
+1. **chain_spec.rs** (28 changes) — epoch numbers, timestamps, limits (fork epochs, genesis times, registry limits)
+2. **block_hash.rs** (15 changes) — hex constants in Keccak256 block hash tests
+3. **eth2_keystore** (10 changes) — PBKDF2/scrypt parameters and test vectors
+4. **Remaining** (46 changes across execution_layer, beacon_chain, network, store, crypto, common, etc.)
+
+Spec v1.7.0-alpha.3 still latest — no new consensus-specs releases. Merged PRs #5001 and #5002 already covered. 2967 targeted tests pass. Zero clippy warnings. lint-full passes. Committed `419c90810`.
