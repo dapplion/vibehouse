@@ -3042,3 +3042,16 @@ No actionable code changes. Codebase stable.
 - **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request. #28 (ZK proofs) done.
 
 No actionable code changes. All priorities 1-6 complete. Codebase stable.
+
+### Run 2031 (2026-03-21)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since #5005 (March 15). Tracked open PRs: #4843 (Variable PTC deadline — 1 approval), #4979 (PTC lookbehind — 0 approvals), #4992 (cached PTCs — 1 approval), #5022 (on_payload_attestation block check — 0 approvals), #5023 (block root filenames — 0 approvals). None close to merging.
+- **CI**: Latest commit (fork boundary test) — all 7 jobs green. Nightly: 4 consecutive days green (March 18-21).
+- **Build**: `cargo check --release` clean.
+- **Prep branches**: `cached-ptc` branch is 1 commit ahead of main, ready for spec PR #4992. 5 task doc commits behind — trivial, no rebase needed.
+- **Spec PR analysis**: Reviewed #4843 (Variable PTC deadline) and #4992 (cached PTCs) in detail. Both are significant changes. #4843 renames `payload_present`→`payload_timely`, adds size-dependent PTC deadline, touches ~46 files. #4992 adds `previous_ptc`/`current_ptc` to BeaconState, already prepped in `cached-ptc` branch.
+- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
+
+No actionable code changes. All priorities 1-6 complete. Codebase stable.
