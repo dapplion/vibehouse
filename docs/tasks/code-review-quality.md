@@ -2519,3 +2519,14 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **Dependencies**: No new crate updates available.
 
 No actionable work found. All priorities 1-6 complete. Codebase stable.
+
+### Run 1984 (2026-03-20)
+
+**Pedantic clippy fix: used_underscore_binding — 7 files.**
+
+- Fixed underscore-prefixed bindings that are actually used, across 7 files. The `_` prefix convention means "intentionally unused" — these were misusing it.
+- Files: logging (2 — tracing layers), eth2_wallet_manager (locked_wallet.rs), store (historic_state_cache.rs), beacon_chain (beacon_chain.rs, blob_verification.rs, state_lru_cache.rs).
+- Skipped: types/beacon_block_body.rs and light_client_header.rs (superstruct macro-generated `_phantom` fields), slashing_database.rs (test-only), validator_monitor.rs tests (48 warnings, test code).
+- **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since #5005 (March 15). Open Gloas PRs unchanged.
+- **CI**: All jobs green. Nightly and spec-test-version-check passed.
+- **Verification**: 263/263 targeted tests passed, full workspace clippy clean, cargo fmt clean, pre-push lint-full passes.
