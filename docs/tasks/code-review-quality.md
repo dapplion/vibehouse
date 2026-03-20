@@ -2295,3 +2295,14 @@ Spec v1.7.0-alpha.3 still latest — no new releases or Gloas-relevant merges. 2
 Note: 39 `expl_impl_clone_on_copy` warnings remain — all originate from the `superstruct` proc macro (not fixable in our code).
 
 Spec v1.7.0-alpha.3 still latest — no new releases. 2127 targeted tests pass + 69 EF SSZ static tests. lint-full passes. Committed `b2e1067b4`.
+
+### Run 1963 (2026-03-20)
+
+**Applied 2 pedantic clippy fixes across 17 files**:
+
+1. **`enum_glob_use`** (10 files, 17 fixes): Replaced `use EnumType::*` with explicit variant imports — makes dependencies clear, catches new variants at compile time instead of silently matching them
+2. **`default_trait_access`** (7 files, ~13 fixes): Replaced `Default::default()` with concrete type names (`Hash256::default()`, `Slot::default()`, `FixedVector::default()`, `VariableList::default()`) — makes the type explicit for readability
+
+Note: ~109 `default_trait_access` warnings remain in superstruct-generated code (e.g., `execution_payload_header.rs:149` expands to 6 variant-specific warnings) and scattered non-types crates. The superstruct ones are unfixable in our code. Remaining pedantic lints (~5000+) are dominated by `missing_errors_doc` (1564), `must_use_candidate` (1306), `doc_markdown` (1015), `cast_possible_truncation` (631) — all noise-level lints not worth fixing.
+
+Spec v1.7.0-alpha.3 still latest — no new releases. Recent merged spec PRs: #5005 (test fix), #5002 (wording). Notable open PRs: #5022 (block known check in on_payload_attestation_message), #5020/#4992 (PTC lookbehind/cached PTCs), #5008 (field name fix). PR #5001 (parent_block_root in bid filtering) already implemented correctly. 1500 targeted tests + 69 EF SSZ static tests pass. lint-full passes. Committed `f131ef6f5`.
