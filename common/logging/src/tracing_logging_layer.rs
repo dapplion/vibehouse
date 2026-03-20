@@ -28,7 +28,7 @@ impl LoggingLayer {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         non_blocking_writer: NonBlocking,
-        _guard: WorkerGuard,
+        guard: WorkerGuard,
         disable_log_timestamp: bool,
         log_color: bool,
         log_format: Option<String>,
@@ -36,7 +36,7 @@ impl LoggingLayer {
     ) -> Self {
         Self {
             non_blocking_writer,
-            _guard,
+            _guard: guard,
             disable_log_timestamp,
             log_color,
             log_format,

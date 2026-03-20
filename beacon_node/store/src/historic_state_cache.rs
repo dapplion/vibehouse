@@ -41,12 +41,12 @@ impl<E: EthSpec> HistoricStateCache<E> {
             Some(buffer_ref.clone())
         } else if let Some(state) = self.states.get(&slot) {
             let buffer = HDiffBuffer::from_state(state.clone());
-            let _timer = metrics::start_timer_vec(
+            let timer = metrics::start_timer_vec(
                 &metrics::BEACON_HDIFF_BUFFER_CLONE_TIME,
                 metrics::COLD_METRIC,
             );
             let cloned = buffer.clone();
-            drop(_timer);
+            drop(timer);
             self.hdiff_buffers.put(slot, cloned);
             Some(buffer)
         } else {

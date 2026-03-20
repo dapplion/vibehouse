@@ -5110,7 +5110,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     /// in fork choice so the head can advance past it.
     pub async fn check_gossip_execution_proof_availability_and_import(
         self: &Arc<Self>,
-        _slot: Slot,
+        slot: Slot,
         block_root: Hash256,
         proof: VerifiedExecutionProof<T>,
     ) -> Result<AvailabilityProcessingStatus, BlockError> {
@@ -5144,7 +5144,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             }
 
             return Ok(AvailabilityProcessingStatus::MissingComponents(
-                _slot, block_root,
+                slot, block_root,
             ));
         }
 
@@ -5154,7 +5154,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .data_availability_checker
             .put_gossip_verified_execution_proofs(block_root, vec![(subnet_id, inner)])?;
 
-        self.process_availability(_slot, availability, || Ok(()))
+        self.process_availability(slot, availability, || Ok(()))
             .await
     }
 

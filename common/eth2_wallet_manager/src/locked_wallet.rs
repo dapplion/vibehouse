@@ -50,12 +50,12 @@ impl LockedWallet {
             return Err(Error::MissingWalletDir(wallet_dir));
         }
 
-        let _lockfile = Lockfile::new(wallet_dir.join(LOCK_FILE))?;
+        let lockfile = Lockfile::new(wallet_dir.join(LOCK_FILE))?;
 
         Ok(Self {
             wallet: read(&wallet_dir, uuid)?,
             wallet_dir,
-            _lockfile,
+            _lockfile: lockfile,
         })
     }
 

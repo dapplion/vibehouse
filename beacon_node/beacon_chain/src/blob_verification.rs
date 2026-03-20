@@ -462,11 +462,11 @@ pub fn validate_blob_sidecar_for_gossip<T: BeaconChainTypes, O: ObservationStrat
     }
 
     // Verify the inclusion proof in the sidecar
-    let _timer = metrics::start_timer(&metrics::BLOB_SIDECAR_INCLUSION_PROOF_VERIFICATION);
+    let timer = metrics::start_timer(&metrics::BLOB_SIDECAR_INCLUSION_PROOF_VERIFICATION);
     if !blob_sidecar.verify_blob_sidecar_inclusion_proof() {
         return Err(GossipBlobError::InvalidInclusionProof);
     }
-    drop(_timer);
+    drop(timer);
 
     let fork_choice = chain.canonical_head.fork_choice_read_lock();
 

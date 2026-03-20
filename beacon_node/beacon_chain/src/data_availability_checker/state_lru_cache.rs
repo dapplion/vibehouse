@@ -97,11 +97,11 @@ impl<T: BeaconChainTypes> StateLRUCache<T> {
     /// This method will first check the cache and if the state is not found
     /// it will reconstruct the state by loading the parent state from disk and
     /// replaying the block.
-    #[instrument(skip_all, parent = _span, level = "debug")]
+    #[instrument(skip_all, parent = span, level = "debug")]
     pub fn recover_pending_executed_block(
         &self,
         diet_executed_block: DietAvailabilityPendingExecutedBlock<T::EthSpec>,
-        _span: &Span,
+        span: &Span,
     ) -> Result<AvailabilityPendingExecutedBlock<T::EthSpec>, AvailabilityCheckError> {
         // Keep the state in the cache to prevent reconstruction in race conditions
         let state = if let Some(state) = self.states.write().get(&diet_executed_block.state_root) {

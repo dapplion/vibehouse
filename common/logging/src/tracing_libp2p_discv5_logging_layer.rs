@@ -101,14 +101,14 @@ pub fn create_libp2p_discv5_tracing_layer(
             }
         };
 
-        let (libp2p_non_blocking_writer, _libp2p_guard) = NonBlocking::new(libp2p_writer);
-        let (discv5_non_blocking_writer, _discv5_guard) = NonBlocking::new(discv5_writer);
+        let (libp2p_non_blocking_writer, libp2p_guard) = NonBlocking::new(libp2p_writer);
+        let (discv5_non_blocking_writer, discv5_guard) = NonBlocking::new(discv5_writer);
 
         Some(Libp2pDiscv5TracingLayer {
             libp2p_non_blocking_writer,
-            _libp2p_guard,
+            _libp2p_guard: libp2p_guard,
             discv5_non_blocking_writer,
-            _discv5_guard,
+            _discv5_guard: discv5_guard,
         })
     } else {
         None
