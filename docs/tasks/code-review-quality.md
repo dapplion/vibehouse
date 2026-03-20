@@ -3020,3 +3020,15 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
 
 No actionable code changes. All priorities 1-6 complete. Codebase stable.
+
+### Run 2029 (2026-03-21)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. Verified PR #5001 (parent_block_root in bid filtering key, merged March 12) — already implemented correctly in `observed_execution_bids.rs`. PR #5002 (wording only). All tracked Gloas PRs remain OPEN: #4843, #4992, #4979, #5022, #5023, #5020, #5008.
+- **CI**: All green. Nightly March 17 failure (`finalized_sync_not_enough_custody_peers_on_start`) was a known flaky assertion already fixed — `expect_empty_network()` removed in subsequent commit. March 18-20 nightlies all green.
+- **Wildcard imports**: Audited remaining 126 `use *` across 113 files. All are idiomatic (`rayon::prelude::*`, `futures::prelude::*`, `std::io::prelude::*`, `super::*` in test modules) — no cleanup needed.
+- **TODOs**: Only 6 remain in production code, all reference #36 (blocked/non-critical).
+- **GitHub issues**: No new issues. No new spec releases.
+
+No actionable code changes. Codebase stable.
