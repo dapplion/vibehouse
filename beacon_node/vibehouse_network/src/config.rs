@@ -526,8 +526,8 @@ pub fn gossipsub_config(
 fn is_global_ipv4(addr: &Ipv4Addr) -> bool {
     // check if this address is 192.0.0.9 or 192.0.0.10. These addresses are the only two
     // globally routable addresses in the 192.0.0.0/24 range.
-    if u32::from_be_bytes(addr.octets()) == 0xc0000009
-        || u32::from_be_bytes(addr.octets()) == 0xc000000a
+    if u32::from_be_bytes(addr.octets()) == 0xc000_0009
+        || u32::from_be_bytes(addr.octets()) == 0xc000_000a
     {
         return true;
     }

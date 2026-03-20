@@ -235,14 +235,14 @@ mod tests {
         let pbr = Hash256::from_low_u64_be(11);
         let rr = Hash256::from_low_u64_be(12);
         header.withdrawals_root = Some(wr);
-        header.blob_gas_used = Some(131072);
+        header.blob_gas_used = Some(131_072);
         header.excess_blob_gas = Some(0);
         header.parent_beacon_block_root = Some(pbr);
         header.requests_root = Some(rr);
 
         let encodable = EncodableExecutionBlockHeader::from(&header);
         assert_eq!(encodable.withdrawals_root, Some(wr.as_slice()));
-        assert_eq!(encodable.blob_gas_used, Some(131072));
+        assert_eq!(encodable.blob_gas_used, Some(131_072));
         assert_eq!(encodable.excess_blob_gas, Some(0));
         assert_eq!(encodable.parent_beacon_block_root, Some(pbr.as_slice()));
         assert_eq!(encodable.requests_root, Some(rr.as_slice()));

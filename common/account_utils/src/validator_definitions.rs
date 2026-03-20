@@ -638,7 +638,7 @@ mod tests {
         "#;
 
         let def: ValidatorDefinition = serde_yaml::from_str(valid_gas_limit).unwrap();
-        assert_eq!(def.gas_limit, Some(35000000));
+        assert_eq!(def.gas_limit, Some(35_000_000));
     }
 
     #[test]

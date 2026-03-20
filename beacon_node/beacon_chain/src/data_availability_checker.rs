@@ -950,7 +950,7 @@ mod test {
     fn should_exclude_rpc_columns_not_required_for_sampling() {
         // SETUP
         let spec = Arc::new(ForkName::Fulu.make_genesis_spec(E::default_spec()));
-        let mut rng = StdRng::seed_from_u64(0xDEADBEEF0BAD5EEDu64);
+        let mut rng = StdRng::seed_from_u64(0xDEAD_BEEF_0BAD_5EED_u64);
 
         let da_checker = new_da_checker(spec.clone());
         let custody_context = &da_checker.custody_context;
@@ -1028,7 +1028,7 @@ mod test {
     fn should_exclude_gossip_columns_not_required_for_sampling() {
         // SETUP
         let spec = Arc::new(ForkName::Fulu.make_genesis_spec(E::default_spec()));
-        let mut rng = StdRng::seed_from_u64(0xDEADBEEF0BAD5EEDu64);
+        let mut rng = StdRng::seed_from_u64(0xDEAD_BEEF_0BAD_5EED_u64);
 
         let da_checker = new_da_checker(spec.clone());
         let custody_context = &da_checker.custody_context;
@@ -1103,7 +1103,7 @@ mod test {
     #[test]
     fn verify_kzg_for_rpc_blocks_should_not_truncate_data_columns() {
         let spec = Arc::new(ForkName::Fulu.make_genesis_spec(E::default_spec()));
-        let mut rng = StdRng::seed_from_u64(0xDEADBEEF0BAD5EEDu64);
+        let mut rng = StdRng::seed_from_u64(0xDEAD_BEEF_0BAD_5EED_u64);
         let da_checker = new_da_checker(spec.clone());
 
         // GIVEN multiple RPC blocks with data columns totalling more than 128
@@ -1150,7 +1150,7 @@ mod test {
     fn should_exclude_reconstructed_columns_not_required_for_sampling() {
         // SETUP
         let spec = Arc::new(ForkName::Fulu.make_genesis_spec(E::default_spec()));
-        let mut rng = StdRng::seed_from_u64(0xDEADBEEF0BAD5EEDu64);
+        let mut rng = StdRng::seed_from_u64(0xDEAD_BEEF_0BAD_5EED_u64);
 
         let da_checker = new_da_checker(spec.clone());
         let custody_context = &da_checker.custody_context;

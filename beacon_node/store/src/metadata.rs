@@ -291,10 +291,10 @@ mod tests {
 
     #[test]
     fn compaction_timestamp_store_roundtrip() {
-        let ts = CompactionTimestamp(1710000000);
+        let ts = CompactionTimestamp(1_710_000_000);
         let bytes = ts.as_store_bytes();
         let decoded = CompactionTimestamp::from_store_bytes(&bytes).unwrap();
-        assert_eq!(decoded.0, 1710000000);
+        assert_eq!(decoded.0, 1_710_000_000);
     }
 
     #[test]

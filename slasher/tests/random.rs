@@ -266,5 +266,5 @@ fn no_crash_blocks_example1() {
 #[test]
 fn no_crash_aug_24() {
     let (_tempdir, db) = make_db();
-    random_test(13519442335106054152, db, TestConfig::default());
+    random_test(13_519_442_335_106_054_152, db, TestConfig::default());
 }

@@ -30,7 +30,7 @@ async fn blob_sidecar_event_on_process_gossip_blob() {
 
     // build and process a gossip verified blob
     let kzg = harness.chain.kzg.as_ref();
-    let mut rng = StdRng::seed_from_u64(0xDEADBEEF0BAD5EEDu64);
+    let mut rng = StdRng::seed_from_u64(0xDEAD_BEEF_0BAD_5EED_u64);
     let sidecar = BlobSidecar::random_valid(&mut rng, kzg)
         .map(Arc::new)
         .unwrap();
@@ -63,7 +63,7 @@ async fn data_column_sidecar_event_on_process_gossip_data_column() {
     let mut data_column_event_receiver = event_handler.subscribe_data_column_sidecar();
 
     // build and process a gossip verified data column
-    let mut rng = StdRng::seed_from_u64(0xDEADBEEF0BAD5EEDu64);
+    let mut rng = StdRng::seed_from_u64(0xDEAD_BEEF_0BAD_5EED_u64);
     let sidecar = {
         // DA checker only accepts sampling columns, so we need to create one with a sampling index.
         let mut random_sidecar = DataColumnSidecarFulu::random_for_test(&mut rng);

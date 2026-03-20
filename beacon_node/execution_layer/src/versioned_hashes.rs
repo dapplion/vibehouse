@@ -89,7 +89,7 @@ mod test {
             TxLegacy {
                 chain_id: Some(0x01),
                 nonce: 0x15,
-                gas_price: 0x4a817c800,
+                gas_price: 0x0004_a817_c800,
                 to: TxKind::Call(..),
                 ..
             }

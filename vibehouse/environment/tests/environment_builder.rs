@@ -38,7 +38,7 @@ mod setup_eth2_config {
                     .eth2_config
                     .spec
                     .min_genesis_active_validator_count,
-                100000 // see testnet_dir/config.yaml
+                100_000 // see testnet_dir/config.yaml
             );
             assert_eq!(
                 environment.eth2_config.spec.inactivity_score_bias,

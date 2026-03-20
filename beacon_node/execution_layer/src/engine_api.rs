@@ -1423,10 +1423,10 @@ mod tests {
     fn execution_block_serde_roundtrip() {
         let block = ExecutionBlock {
             block_hash: ExecutionBlockHash::repeat_byte(0x11),
-            block_number: 123456,
+            block_number: 123_456,
             parent_hash: ExecutionBlockHash::repeat_byte(0x22),
             total_difficulty: Some(Uint256::from(999u64)),
-            timestamp: 1700000000,
+            timestamp: 1_700_000_000,
         };
         let json = serde_json::to_string(&block).unwrap();
         let decoded: ExecutionBlock = serde_json::from_str(&json).unwrap();

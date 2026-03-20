@@ -289,7 +289,7 @@ mod tests {
                 block_hash: ExecutionBlockHash::repeat_byte(0xcc),
                 fee_recipient: Address::repeat_byte(0x11),
                 gas_limit: 30_000_000,
-                timestamp: 1700000000,
+                timestamp: 1_700_000_000,
                 ..Default::default()
             },
             ..Default::default()
@@ -334,7 +334,7 @@ mod tests {
             Address::repeat_byte(0x11)
         );
         assert_eq!(reconstructed.payload.gas_limit, 30_000_000);
-        assert_eq!(reconstructed.payload.timestamp, 1700000000);
+        assert_eq!(reconstructed.payload.timestamp, 1_700_000_000);
 
         // Withdrawals populated (not empty)
         assert_eq!(reconstructed.payload.withdrawals.len(), 2);

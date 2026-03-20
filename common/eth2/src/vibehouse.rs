@@ -554,7 +554,7 @@ mod tests {
                 amount: 32_000_000_000,
                 signature: types::SignatureBytes::empty(),
             },
-            block_number: 12345678,
+            block_number: 12_345_678,
             index: 42,
             signature_is_valid: true,
         };

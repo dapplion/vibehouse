@@ -1374,7 +1374,7 @@ mod pending_components_tests {
     );
 
     pub fn pre_setup() -> Setup<E> {
-        let mut rng = StdRng::seed_from_u64(0xDEADBEEF0BAD5EEDu64);
+        let mut rng = StdRng::seed_from_u64(0xDEAD_BEEF_0BAD_5EED_u64);
         let spec = test_spec::<E>();
         let (block, blobs_vec) =
             generate_rand_block_and_blobs::<E>(ForkName::Deneb, NumBlobs::Random, &mut rng, &spec);

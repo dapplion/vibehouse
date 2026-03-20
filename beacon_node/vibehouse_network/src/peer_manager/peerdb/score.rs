@@ -693,7 +693,7 @@ mod tests {
     #[test]
     fn score_display_format() {
         let mut score = Score::default();
-        score.test_add(42.123456);
+        score.test_add(42.123_456);
         let display = format!("{score}");
         assert_eq!(display, "42.12");
     }

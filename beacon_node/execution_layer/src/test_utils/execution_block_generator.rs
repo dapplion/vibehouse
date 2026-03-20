@@ -162,7 +162,7 @@ pub struct ExecutionBlockGenerator<E: EthSpec> {
 fn make_rng() -> Arc<Mutex<StdRng>> {
     // Nondeterminism in tests is a highly undesirable thing.  Seed the RNG to some arbitrary
     // but fixed value for reproducibility.
-    Arc::new(Mutex::new(StdRng::seed_from_u64(0xDEADBEEF0BAD5EEDu64)))
+    Arc::new(Mutex::new(StdRng::seed_from_u64(0xDEAD_BEEF_0BAD_5EED_u64)))
 }
 
 impl<E: EthSpec> ExecutionBlockGenerator<E> {

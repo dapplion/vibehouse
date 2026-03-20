@@ -950,7 +950,7 @@ mod tests {
 
     #[test]
     fn compressed_u64_vs_bytes_diff() {
-        let x_values = vec![99u64, 55, 123, 6834857, 0, 12];
+        let x_values = vec![99u64, 55, 123, 6_834_857, 0, 12];
         let y_values = vec![98u64, 55, 312, 1, 1, 2, 4, 5];
         let config = &StoreConfig::default();
 
@@ -1019,7 +1019,7 @@ mod tests {
     // before this test is updated.
     #[test]
     fn hdiff_version_stability() {
-        let mut rng = SmallRng::seed_from_u64(0xffeeccdd00aa);
+        let mut rng = SmallRng::seed_from_u64(0xffee_ccdd_00aa);
 
         let pre_balances = vec![32_000_000_000, 16_000_000_000, 0];
         let post_balances = vec![31_000_000_000, 17_000_000, 0, 0];

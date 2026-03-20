@@ -1,6 +1,6 @@
 /// This value is an application index of 0 with the bitmask applied (so it's equivalent to the bit mask).
 /// Little endian hex: 0x00000001, Binary: 1000000000000000000000000
-pub const APPLICATION_DOMAIN_BUILDER: u32 = 16777216;
+pub const APPLICATION_DOMAIN_BUILDER: u32 = 16_777_216;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum ApplicationDomain {
@@ -22,7 +22,7 @@ mod tests {
     #[test]
     fn builder_domain_constant_value() {
         // APPLICATION_DOMAIN_BUILDER = 0x01000000 in little-endian = 16777216
-        assert_eq!(APPLICATION_DOMAIN_BUILDER, 16777216);
+        assert_eq!(APPLICATION_DOMAIN_BUILDER, 16_777_216);
         assert_eq!(APPLICATION_DOMAIN_BUILDER, 1u32 << 24);
     }
 

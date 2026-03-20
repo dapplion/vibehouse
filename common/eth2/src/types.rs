@@ -2290,7 +2290,7 @@ mod tests {
     #[test]
     fn genesis_data_serde_roundtrip() {
         let data = GenesisData {
-            genesis_time: 1606824023,
+            genesis_time: 1_606_824_023,
             genesis_validators_root: Hash256::from_low_u64_be(1),
             genesis_fork_version: [0, 0, 0, 1],
         };

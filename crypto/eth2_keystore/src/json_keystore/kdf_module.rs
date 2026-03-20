@@ -127,7 +127,7 @@ impl Scrypt {
     pub fn default_scrypt(salt: Vec<u8>) -> Self {
         Self {
             dklen: DKLEN,
-            n: 262144,
+            n: 262_144,
             p: 1,
             r: 8,
             salt: salt.into(),
@@ -194,7 +194,7 @@ mod tests {
     #[test]
     fn kdf_function_accessor_pbkdf2() {
         let kdf = Kdf::Pbkdf2(Pbkdf2 {
-            c: 262144,
+            c: 262_144,
             dklen: 32,
             prf: Prf::HmacSha256,
             salt: vec![0u8; 32].into(),
@@ -215,7 +215,7 @@ mod tests {
         let salt = vec![1u8; 32];
         let s = Scrypt::default_scrypt(salt.clone());
         assert_eq!(s.dklen, DKLEN);
-        assert_eq!(s.n, 262144);
+        assert_eq!(s.n, 262_144);
         assert_eq!(s.p, 1);
         assert_eq!(s.r, 8);
         assert_eq!(s.salt.as_bytes(), &salt[..]);

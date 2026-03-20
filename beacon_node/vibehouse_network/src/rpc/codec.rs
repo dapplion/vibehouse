@@ -1020,7 +1020,7 @@ mod tests {
             BeaconBlockBellatrix::empty(spec);
 
         let tx = VariableList::from(vec![0; 1024]);
-        let txs = VariableList::from(std::iter::repeat_n(tx, 100000).collect::<Vec<_>>());
+        let txs = VariableList::from(std::iter::repeat_n(tx, 100_000).collect::<Vec<_>>());
 
         block.body.execution_payload.execution_payload.transactions = txs;
 
@@ -2097,10 +2097,10 @@ mod tests {
         // Full altair block is 157916 bytes uncompressed. `max_compressed_len` is 32 + 157916 + 157916/6 = 184267.
         let block_message_bytes = altair_block(&fork_context.spec).as_ssz_bytes();
 
-        assert_eq!(block_message_bytes.len(), 157916);
+        assert_eq!(block_message_bytes.len(), 157_916);
         assert_eq!(
             snap::raw::max_compress_len(block_message_bytes.len()),
-            184267
+            184_267
         );
 
         let mut uvi_codec: Uvi<usize> = Uvi::default();

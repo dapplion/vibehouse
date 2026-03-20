@@ -1243,7 +1243,7 @@ mod tests {
         ));
 
         {
-            let mut rng = StdRng::seed_from_u64(0xDEADBEEF0BAD5EEDu64);
+            let mut rng = StdRng::seed_from_u64(0xDEAD_BEEF_0BAD_5EED_u64);
             let peer_id = network_globals
                 .peers
                 .write()

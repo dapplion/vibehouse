@@ -311,7 +311,7 @@ mod tests {
         let err = GossipExecutionProofError::ProofDataEmpty;
         let _ = format!("{err:?}");
 
-        let err = GossipExecutionProofError::ProofDataTooLarge { size: 9999999 };
+        let err = GossipExecutionProofError::ProofDataTooLarge { size: 9_999_999 };
         let _ = format!("{err:?}");
 
         let err = GossipExecutionProofError::UnknownBlockRoot {

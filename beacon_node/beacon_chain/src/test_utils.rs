@@ -171,7 +171,7 @@ pub enum RelativeSyncCommittee {
 fn make_rng() -> Mutex<StdRng> {
     // Nondeterminism in tests is a highly undesirable thing.  Seed the RNG to some arbitrary
     // but fixed value for reproducibility.
-    Mutex::new(StdRng::seed_from_u64(0x0DDB1A5E5BAD5EEDu64))
+    Mutex::new(StdRng::seed_from_u64(0x0DDB_1A5E_5BAD_5EED_u64))
 }
 
 pub fn fork_name_from_env() -> Option<ForkName> {

@@ -301,7 +301,7 @@ mod tests {
     fn get_gas_limit_response_quoted() {
         let resp = GetGasLimitResponse {
             pubkey: PublicKeyBytes::empty(),
-            gas_limit: 30000000,
+            gas_limit: 30_000_000,
         };
         let json = serde_json::to_string(&resp).unwrap();
         assert!(json.contains("\"30000000\""));

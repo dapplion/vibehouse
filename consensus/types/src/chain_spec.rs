@@ -1038,7 +1038,7 @@ impl ChainSpec {
             churn_limit_quotient: 65_536,
             shuffle_round_count: 90,
             min_genesis_active_validator_count: 16_384,
-            min_genesis_time: 1606824000, // Dec 1, 2020
+            min_genesis_time: 1_606_824_000, // Dec 1, 2020
             hysteresis_quotient: 4,
             hysteresis_downward_multiplier: 1,
             hysteresis_upward_multiplier: 5,
@@ -1074,7 +1074,7 @@ impl ChainSpec {
             /*
              * Time parameters
              */
-            genesis_delay: 604800, // 7 days
+            genesis_delay: 604_800, // 7 days
             seconds_per_slot: 12,
             slot_duration_ms: 12000,
             min_attestation_inclusion_delay: 1,
@@ -1167,7 +1167,7 @@ impl ChainSpec {
                 .expect("pow does not overflow"),
             proportional_slashing_multiplier_bellatrix: 3,
             bellatrix_fork_version: [0x02, 0x00, 0x00, 0x00],
-            bellatrix_fork_epoch: Some(Epoch::new(144896)),
+            bellatrix_fork_epoch: Some(Epoch::new(144_896)),
             terminal_total_difficulty: "58750000000000000000000"
                 .parse()
                 .expect("terminal_total_difficulty is a valid integer"),
@@ -1178,20 +1178,20 @@ impl ChainSpec {
              * Capella hard fork params
              */
             capella_fork_version: [0x03, 00, 00, 00],
-            capella_fork_epoch: Some(Epoch::new(194048)),
+            capella_fork_epoch: Some(Epoch::new(194_048)),
             max_validators_per_withdrawals_sweep: 16384,
 
             /*
              * Deneb hard fork params
              */
             deneb_fork_version: [0x04, 0x00, 0x00, 0x00],
-            deneb_fork_epoch: Some(Epoch::new(269568)),
+            deneb_fork_epoch: Some(Epoch::new(269_568)),
 
             /*
              * Electra hard fork params
              */
             electra_fork_version: [0x05, 00, 00, 00],
-            electra_fork_epoch: Some(Epoch::new(364032)),
+            electra_fork_epoch: Some(Epoch::new(364_032)),
             unset_deposit_requests_start_index: u64::MAX,
             full_exit_request_amount: 0,
             min_activation_balance: option_wrapper(|| {
@@ -1221,13 +1221,13 @@ impl ChainSpec {
              * Fulu hard fork params
              */
             fulu_fork_version: [0x06, 0x00, 0x00, 0x00],
-            fulu_fork_epoch: Some(Epoch::new(411392)),
+            fulu_fork_epoch: Some(Epoch::new(411_392)),
             custody_requirement: 4,
             number_of_custody_groups: 128,
             data_column_sidecar_subnet_count: 128,
             samples_per_slot: 8,
             validator_custody_requirement: 8,
-            balance_per_additional_custody_group: 32000000000,
+            balance_per_additional_custody_group: 32_000_000_000,
 
             /*
              * Gloas hard fork params
@@ -1246,8 +1246,8 @@ impl ChainSpec {
             max_builders_per_withdrawals_sweep: 16384,
             ptc_size: 512,
             max_payload_attestations: 4,
-            builder_registry_limit: 1099511627776,      // 2^40
-            builder_pending_withdrawals_limit: 1048576, // 2^20
+            builder_registry_limit: 1_099_511_627_776, // 2^40
+            builder_pending_withdrawals_limit: 1_048_576, // 2^20
             domain_beacon_builder: 11,
             domain_ptc_attester: 12,
             domain_proposer_preferences: 13,
@@ -1300,11 +1300,11 @@ impl ChainSpec {
              */
             blob_schedule: BlobSchedule::new(vec![
                 BlobParameters {
-                    epoch: Epoch::new(412672),
+                    epoch: Epoch::new(412_672),
                     max_blobs_per_block: 15,
                 },
                 BlobParameters {
-                    epoch: Epoch::new(419072),
+                    epoch: Epoch::new(419_072),
                     max_blobs_per_block: 21,
                 },
             ]),
@@ -1341,7 +1341,7 @@ impl ChainSpec {
             churn_limit_quotient: 32,
             shuffle_round_count: 10,
             min_genesis_active_validator_count: 64,
-            min_genesis_time: 1578009600,
+            min_genesis_time: 1_578_009_600,
             eth1_follow_distance: 16,
             genesis_fork_version: [0x00, 0x00, 0x00, 0x01],
             shard_committee_period: 64,
@@ -1429,7 +1429,7 @@ impl ChainSpec {
             churn_limit_quotient: 4_096,
             shuffle_round_count: 90,
             min_genesis_active_validator_count: 4_096,
-            min_genesis_time: 1638968400, // Dec 8, 2020
+            min_genesis_time: 1_638_968_400, // Dec 8, 2020
             hysteresis_quotient: 4,
             hysteresis_downward_multiplier: 1,
             hysteresis_upward_multiplier: 5,
@@ -1558,7 +1558,7 @@ impl ChainSpec {
                 .expect("pow does not overflow"),
             proportional_slashing_multiplier_bellatrix: 3,
             bellatrix_fork_version: [0x02, 0x00, 0x00, 0x64],
-            bellatrix_fork_epoch: Some(Epoch::new(385536)),
+            bellatrix_fork_epoch: Some(Epoch::new(385_536)),
             terminal_total_difficulty: "8626000000000000000000058750000000000000000000"
                 .parse()
                 .expect("terminal_total_difficulty is a valid integer"),
@@ -1569,20 +1569,20 @@ impl ChainSpec {
              * Capella hard fork params
              */
             capella_fork_version: [0x03, 0x00, 0x00, 0x64],
-            capella_fork_epoch: Some(Epoch::new(648704)),
+            capella_fork_epoch: Some(Epoch::new(648_704)),
             max_validators_per_withdrawals_sweep: 8192,
 
             /*
              * Deneb hard fork params
              */
             deneb_fork_version: [0x04, 0x00, 0x00, 0x64],
-            deneb_fork_epoch: Some(Epoch::new(889856)),
+            deneb_fork_epoch: Some(Epoch::new(889_856)),
 
             /*
              * Electra hard fork params
              */
             electra_fork_version: [0x05, 0x00, 0x00, 0x64],
-            electra_fork_epoch: Some(Epoch::new(1337856)),
+            electra_fork_epoch: Some(Epoch::new(1_337_856)),
             unset_deposit_requests_start_index: u64::MAX,
             full_exit_request_amount: 0,
             min_activation_balance: option_wrapper(|| {
@@ -1617,7 +1617,7 @@ impl ChainSpec {
             data_column_sidecar_subnet_count: 128,
             samples_per_slot: 8,
             validator_custody_requirement: 8,
-            balance_per_additional_custody_group: 32000000000,
+            balance_per_additional_custody_group: 32_000_000_000,
 
             /*
              * Gloas hard fork params
@@ -1636,8 +1636,8 @@ impl ChainSpec {
             max_builders_per_withdrawals_sweep: 16384,
             ptc_size: 512,
             max_payload_attestations: 4,
-            builder_registry_limit: 1099511627776,      // 2^40
-            builder_pending_withdrawals_limit: 1048576, // 2^20
+            builder_registry_limit: 1_099_511_627_776, // 2^40
+            builder_pending_withdrawals_limit: 1_048_576, // 2^20
             domain_beacon_builder: 11,
             domain_ptc_attester: 12,
             domain_proposer_preferences: 13,
@@ -2128,10 +2128,10 @@ fn default_gloas_fork_version() -> [u8; 4] {
 /// Taken from <https://github.com/ethereum/consensus-specs/blob/d5e4828aecafaf1c57ef67a5f23c4ae7b08c5137/configs/mainnet.yaml#L15-L16>
 const fn default_terminal_total_difficulty() -> Uint256 {
     Uint256::from_limbs([
-        18446744073709550592,
-        18446744073709551615,
-        18446744073709551615,
-        18446744073709551615,
+        18_446_744_073_709_550_592,
+        18_446_744_073_709_551_615,
+        18_446_744_073_709_551_615,
+        18_446_744_073_709_551_615,
     ])
 }
 
@@ -2195,7 +2195,7 @@ const fn default_gas_limit_adjustment_factor() -> u64 {
 }
 
 const fn default_max_payload_size() -> u64 {
-    10485760
+    10_485_760
 }
 
 const fn default_min_epochs_for_block_requests() -> u64 {
@@ -2297,7 +2297,7 @@ const fn default_validator_custody_requirement() -> u64 {
 }
 
 const fn default_balance_per_additional_custody_group() -> u64 {
-    32000000000
+    32_000_000_000
 }
 
 const fn default_min_epochs_for_data_column_sidecars_requests() -> u64 {
@@ -3346,7 +3346,7 @@ mod yaml_tests {
         assert_eq!(spec.max_blobs_per_block(Epoch::new(1583)), 9);
         assert_eq!(spec.max_blobs_per_block(Epoch::new(1584)), 20);
         assert_eq!(
-            spec.max_blobs_per_block(Epoch::new(18446744073709551615)),
+            spec.max_blobs_per_block(Epoch::new(18_446_744_073_709_551_615)),
             20
         );
 

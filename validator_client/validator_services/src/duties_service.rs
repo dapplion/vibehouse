@@ -1842,7 +1842,7 @@ mod test {
             Slot::new(33),
             Slot::new(47),
             Slot::new(99),
-            Slot::new(1002003),
+            Slot::new(1_002_003),
         ] {
             let subscription_slots = SubscriptionSlots::new(duty_slot, current_slot);
 

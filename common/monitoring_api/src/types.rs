@@ -205,7 +205,7 @@ mod tests {
             disk_node_writes_total: 2000,
             network_node_bytes_total_received: 5000,
             network_node_bytes_total_transmit: 3000,
-            misc_node_boot_ts_seconds: 1700000000,
+            misc_node_boot_ts_seconds: 1_700_000_000,
             misc_os: "linux".to_string(),
         }
     }

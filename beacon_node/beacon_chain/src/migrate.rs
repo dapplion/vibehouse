@@ -13,7 +13,7 @@ use tracing::{debug, error, info, warn};
 use types::{BeaconState, BeaconStateHash, Checkpoint, Epoch, EthSpec, Hash256, Slot};
 
 /// Compact at least this frequently, finalization permitting (7 days).
-const MAX_COMPACTION_PERIOD_SECONDS: u64 = 604800;
+const MAX_COMPACTION_PERIOD_SECONDS: u64 = 604_800;
 /// Compact at *most* this frequently, to prevent over-compaction during sync (2 hours).
 const MIN_COMPACTION_PERIOD_SECONDS: u64 = 7200;
 /// Compact after a large finality gap, if we respect `MIN_COMPACTION_PERIOD_SECONDS`.

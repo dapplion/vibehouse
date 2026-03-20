@@ -641,7 +641,7 @@ mod tests {
         assert_eq!(log2_int(16), 4);
         assert_eq!(log2_int(256), 8);
         assert_eq!(log2_int(1024), 10);
-        assert_eq!(log2_int(262144), 18);
+        assert_eq!(log2_int(262_144), 18);
     }
 
     #[test]
@@ -838,7 +838,7 @@ mod tests {
 
     #[test]
     fn validate_scrypt_valid() {
-        assert!(validate_parameters(&make_scrypt(262144, 8, 1, DKLEN, SALT_SIZE)).is_ok());
+        assert!(validate_parameters(&make_scrypt(262_144, 8, 1, DKLEN, SALT_SIZE)).is_ok());
     }
 
     #[test]
@@ -868,7 +868,7 @@ mod tests {
     #[test]
     fn validate_scrypt_r_zero() {
         assert_eq!(
-            validate_parameters(&make_scrypt(262144, 0, 1, DKLEN, SALT_SIZE)),
+            validate_parameters(&make_scrypt(262_144, 0, 1, DKLEN, SALT_SIZE)),
             Err(Error::InvalidScryptParam)
         );
     }
@@ -876,7 +876,7 @@ mod tests {
     #[test]
     fn validate_scrypt_p_zero() {
         assert_eq!(
-            validate_parameters(&make_scrypt(262144, 8, 0, DKLEN, SALT_SIZE)),
+            validate_parameters(&make_scrypt(262_144, 8, 0, DKLEN, SALT_SIZE)),
             Err(Error::InvalidScryptParam)
         );
     }
@@ -884,7 +884,7 @@ mod tests {
     #[test]
     fn validate_scrypt_wrong_dklen() {
         assert_eq!(
-            validate_parameters(&make_scrypt(262144, 8, 1, 16, SALT_SIZE)),
+            validate_parameters(&make_scrypt(262_144, 8, 1, 16, SALT_SIZE)),
             Err(Error::InvalidScryptParam)
         );
     }
@@ -892,7 +892,7 @@ mod tests {
     #[test]
     fn validate_scrypt_empty_salt() {
         assert_eq!(
-            validate_parameters(&make_scrypt(262144, 8, 1, DKLEN, 0)),
+            validate_parameters(&make_scrypt(262_144, 8, 1, DKLEN, 0)),
             Err(Error::InvalidSaltLength)
         );
     }

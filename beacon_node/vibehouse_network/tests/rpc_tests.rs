@@ -47,7 +47,7 @@ fn bellatrix_block_small(spec: &ChainSpec) -> BeaconBlock<E> {
 fn bellatrix_block_large(spec: &ChainSpec) -> BeaconBlock<E> {
     let mut block = BeaconBlockBellatrix::<E>::empty(spec);
     let tx = VariableList::from(vec![0; 1024]);
-    let txs = VariableList::from(std::iter::repeat_n(tx, 100000).collect::<Vec<_>>());
+    let txs = VariableList::from(std::iter::repeat_n(tx, 100_000).collect::<Vec<_>>());
 
     block.body.execution_payload.execution_payload.transactions = txs;
 
