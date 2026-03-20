@@ -1,7 +1,11 @@
 use crate::application_domain::{APPLICATION_DOMAIN_BUILDER, ApplicationDomain};
 use crate::blob_sidecar::BlobIdentifier;
 use crate::data_column_sidecar::DataColumnsByRootIdentifier;
-use crate::*;
+use crate::{
+    Address, BeaconState, DataColumnSubnetId, EnrForkId, Epoch, EthSpec, EthSpecId,
+    ExecutionBlockHash, FixedBytesExtended, Fork, ForkData, ForkName, Hash256, MainnetEthSpec,
+    RuntimeVariableList, Slot, Uint256, VariableList,
+};
 use educe::Educe;
 use ethereum_hashing::hash_fixed;
 use int_to_bytes::int_to_bytes4;
@@ -2754,6 +2758,9 @@ where
 {
     f()
 }
+
+#[cfg(test)]
+use crate::MinimalEthSpec;
 
 #[cfg(test)]
 mod tests {

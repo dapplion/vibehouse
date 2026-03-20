@@ -1,6 +1,18 @@
 use crate::beacon_block_body::{BLOB_KZG_COMMITMENTS_INDEX, format_kzg_commitments};
 use crate::test_utils::TestRandom;
-use crate::*;
+use crate::{
+    AbstractExecPayload, BeaconBlock, BeaconBlockAltair, BeaconBlockBase, BeaconBlockBellatrix,
+    BeaconBlockBodyBellatrix, BeaconBlockBodyCapella, BeaconBlockBodyDeneb, BeaconBlockBodyElectra,
+    BeaconBlockBodyFulu, BeaconBlockCapella, BeaconBlockDeneb, BeaconBlockElectra, BeaconBlockFulu,
+    BeaconBlockGloas, BeaconBlockHeader, BeaconBlockRef, BeaconBlockRefMut, BlindedPayload,
+    BlindedPayloadBellatrix, BlindedPayloadCapella, BlindedPayloadDeneb, BlindedPayloadElectra,
+    BlindedPayloadFulu, ChainSpec, ContextDeserialize, Domain, Epoch, Error, EthSpec,
+    ExecutionPayload, ExecutionPayloadBellatrix, ExecutionPayloadCapella, ExecutionPayloadDeneb,
+    ExecutionPayloadElectra, ExecutionPayloadFulu, FixedVector, Fork, ForkName, ForkVersionDecode,
+    FullPayload, FullPayloadBellatrix, FullPayloadCapella, FullPayloadDeneb, FullPayloadElectra,
+    FullPayloadFulu, Hash256, InconsistentFork, PublicKey, Signature, SignedBeaconBlockHeader,
+    SignedRoot, SigningData, Slot, map_fork_name, map_fork_name_with,
+};
 use educe::Educe;
 use merkle_proof::MerkleTree;
 use serde::{Deserialize, Deserializer, Serialize};
@@ -866,6 +878,9 @@ pub mod ssz_tagged_signed_beacon_block_arc {
         }
     }
 }
+
+#[cfg(test)]
+use crate::{ExecutionPayloadGloas, MainnetEthSpec, beacon_block::EmptyBlock};
 
 #[cfg(test)]
 mod test {

@@ -1,5 +1,5 @@
 use crate::test_utils::TestRandom;
-use crate::*;
+use crate::{ForkName, Hash256, PublicKeyBytes, SignedRoot, context_deserialize};
 
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};

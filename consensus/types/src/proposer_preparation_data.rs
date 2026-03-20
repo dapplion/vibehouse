@@ -1,4 +1,4 @@
-use crate::*;
+use crate::Address;
 use serde::{Deserialize, Serialize};
 
 /// A proposer preparation, created when a validator prepares the beacon node for potential proposers
@@ -12,6 +12,9 @@ pub struct ProposerPreparationData {
     #[serde(with = "serde_utils::address_hex")]
     pub fee_recipient: Address,
 }
+
+#[cfg(test)]
+use crate::FixedBytesExtended;
 
 #[cfg(test)]
 mod tests {

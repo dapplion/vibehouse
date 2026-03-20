@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{CommitteeIndex, Slot};
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 

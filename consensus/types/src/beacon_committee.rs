@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{CommitteeIndex, Slot};
 
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct BeaconCommittee<'a> {

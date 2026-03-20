@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{CommitteeIndex, Slot};
 use serde::{Deserialize, Serialize};
 
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]

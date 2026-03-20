@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{Address, ChainSpec, Hash256, PublicKey};
 use bls::get_withdrawal_credentials;
 
 pub struct WithdrawalCredentials(Hash256);
@@ -23,6 +23,9 @@ impl From<WithdrawalCredentials> for Hash256 {
         withdrawal_credentials.0
     }
 }
+
+#[cfg(test)]
+use crate::{EthSpec, MainnetEthSpec};
 
 #[cfg(test)]
 mod test {

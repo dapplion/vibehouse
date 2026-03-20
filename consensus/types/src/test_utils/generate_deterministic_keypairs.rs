@@ -1,4 +1,4 @@
-use crate::*;
+use crate::Keypair;
 use eth2_interop_keypairs::{keypair, keypairs_from_yaml_file};
 use rayon::prelude::*;
 use std::path::PathBuf;

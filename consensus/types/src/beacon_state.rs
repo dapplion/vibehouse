@@ -1,9 +1,20 @@
 use self::committee_cache::get_active_validator_indices;
-use crate::ContextDeserialize;
-use crate::FixedBytesExtended;
 use crate::historical_summary::HistoricalSummary;
 use crate::test_utils::TestRandom;
-use crate::*;
+use crate::{
+    AggregatePublicKey, AttestationDuty, BeaconBlock, BeaconBlockHeader, BeaconCommittee,
+    BeaconStateError, BitVector, Builder, BuilderIndex, BuilderPendingPayment,
+    BuilderPendingWithdrawal, ChainSpec, Checkpoint, CommitteeIndex, ContextDeserialize, Domain,
+    Epoch, EpochCache, EpochCacheError, Eth1Data, ExecutionBlockHash, ExecutionPayloadBid,
+    ExecutionPayloadHeaderBellatrix, ExecutionPayloadHeaderCapella, ExecutionPayloadHeaderDeneb,
+    ExecutionPayloadHeaderElectra, ExecutionPayloadHeaderFulu, ExecutionPayloadHeaderRef,
+    ExecutionPayloadHeaderRefMut, FixedBytesExtended, FixedVector, Fork, ForkName,
+    ForkVersionDecode, Hash256, HistoricalBatch, InconsistentFork, ParticipationFlags,
+    PendingAttestation, PendingConsolidation, PendingDeposit, PendingPartialWithdrawal,
+    PublicKeyBytes, RelativeEpoch, RelativeEpochError, Signature, SignedBeaconBlockHash, Slot,
+    SyncCommittee, SyncDuty, Unsigned, Validator, Withdrawal, light_client_update, map_fork_name,
+    map_fork_name_with,
+};
 pub use builder_pubkey_cache::BuilderPubkeyCache;
 use compare_fields::CompareFields;
 use compare_fields_derive::CompareFields;
@@ -32,7 +43,7 @@ pub use crate::beacon_state::balance::Balance;
 pub use crate::beacon_state::exit_cache::ExitCache;
 pub use crate::beacon_state::progressive_balances_cache::*;
 pub use crate::beacon_state::slashings_cache::SlashingsCache;
-pub use eth_spec::*;
+pub use crate::eth_spec::*;
 pub use iter::BlockRootsIter;
 pub use milhouse::{List, Vector, interface::Interface};
 use tracing::instrument;

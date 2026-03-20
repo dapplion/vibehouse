@@ -1,4 +1,6 @@
-use crate::*;
+use super::Error;
+use crate::eth_spec::EthSpec;
+use crate::{BeaconState, Hash256, Slot};
 
 /// Returns an iterator across the past block roots of `state` in descending slot-order.
 ///

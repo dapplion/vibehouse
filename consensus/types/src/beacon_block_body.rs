@@ -1,5 +1,19 @@
+use crate::beacon_state::Error;
+use crate::eth_spec::EthSpec;
 use crate::test_utils::TestRandom;
-use crate::*;
+use crate::{
+    AbstractExecPayload, AttestationBase, AttestationElectra, AttestationRef, AttestationRefMut,
+    AttesterSlashingBase, AttesterSlashingElectra, AttesterSlashingRef, BlindedPayload,
+    BlindedPayloadBellatrix, BlindedPayloadCapella, BlindedPayloadDeneb, BlindedPayloadElectra,
+    BlindedPayloadFulu, ContextDeserialize, Deposit, Eth1Data, ExecutionPayload,
+    ExecutionPayloadBellatrix, ExecutionPayloadCapella, ExecutionPayloadDeneb,
+    ExecutionPayloadElectra, ExecutionPayloadFulu, ExecutionPayloadGloas, ExecutionRequests,
+    FixedVector, ForkName, FullPayload, FullPayloadBellatrix, FullPayloadCapella, FullPayloadDeneb,
+    FullPayloadElectra, FullPayloadFulu, Graffiti, Hash256, KzgCommitment, PayloadAttestation,
+    ProposerSlashing, Signature, SignedBlsToExecutionChange, SignedExecutionPayloadBid,
+    SignedVoluntaryExit, SyncAggregate, VariableList, context_deserialize, light_client_update,
+    map_fork_name, map_fork_name_with,
+};
 use educe::Educe;
 use merkle_proof::{MerkleTree, MerkleTreeError};
 use metastruct::metastruct;
@@ -1120,6 +1134,9 @@ pub fn format_kzg_commitments(commitments: &[KzgCommitment]) -> String {
     let surrounded_commitments = format!("[{commitments_joined}]");
     surrounded_commitments
 }
+
+#[cfg(test)]
+use crate::{MainnetEthSpec, beacon_block::EmptyBlock};
 
 #[cfg(test)]
 mod tests {

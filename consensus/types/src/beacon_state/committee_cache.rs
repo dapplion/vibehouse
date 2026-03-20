@@ -1,6 +1,11 @@
 #![allow(clippy::arithmetic_side_effects)]
 
-use crate::*;
+use super::Error;
+use crate::eth_spec::EthSpec;
+use crate::{
+    AttestationDuty, BeaconCommittee, BeaconState, ChainSpec, CommitteeIndex, Domain, Epoch, Slot,
+    Validator,
+};
 use core::num::NonZeroUsize;
 use educe::Educe;
 use safe_arith::SafeArith;

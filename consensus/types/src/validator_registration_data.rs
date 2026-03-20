@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{Address, ChainSpec, PublicKeyBytes, Signature, SignedRoot};
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use tree_hash_derive::TreeHash;
@@ -36,6 +36,9 @@ impl SignedValidatorRegistrationData {
             .unwrap_or(false)
     }
 }
+
+#[cfg(test)]
+use crate::{FixedBytesExtended, Hash256};
 
 #[cfg(test)]
 mod tests {

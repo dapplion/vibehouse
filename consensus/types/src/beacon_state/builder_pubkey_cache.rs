@@ -1,4 +1,4 @@
-use crate::*;
+use crate::PublicKeyBytes;
 use rpds::HashTrieMapSync as HashTrieMap;
 
 type BuilderIdx = usize;

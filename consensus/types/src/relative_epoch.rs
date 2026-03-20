@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{Epoch, Slot};
 use safe_arith::{ArithError, SafeArith};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

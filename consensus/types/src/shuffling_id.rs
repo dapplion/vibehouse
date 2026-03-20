@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{BeaconState, BeaconStateError, Epoch, EthSpec, Hash256, RelativeEpoch};
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use std::hash::Hash;
@@ -51,6 +51,9 @@ impl AttestationShufflingId {
         }
     }
 }
+
+#[cfg(test)]
+use crate::FixedBytesExtended;
 
 #[cfg(test)]
 mod tests {

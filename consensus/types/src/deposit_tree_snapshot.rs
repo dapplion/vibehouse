@@ -1,10 +1,10 @@
-use crate::*;
+use crate::test_utils::TestRandom;
+use crate::{DEPOSIT_TREE_DEPTH, FixedBytesExtended, Hash256};
 use ethereum_hashing::{ZERO_HASHES, hash32_concat};
 use int_to_bytes::int_to_bytes32;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use test_random_derive::TestRandom;
-use test_utils::TestRandom;
 
 #[derive(Encode, Decode, Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq, TestRandom)]
 pub struct FinalizedExecutionBlock {

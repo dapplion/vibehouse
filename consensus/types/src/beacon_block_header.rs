@@ -1,5 +1,9 @@
+use crate::eth_spec::EthSpec;
 use crate::test_utils::TestRandom;
-use crate::*;
+use crate::{
+    ChainSpec, Domain, Fork, ForkName, Hash256, SecretKey, SignedBeaconBlockHeader, SignedRoot,
+    Slot,
+};
 
 use context_deserialize::context_deserialize;
 use serde::{Deserialize, Serialize};

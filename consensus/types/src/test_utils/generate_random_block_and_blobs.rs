@@ -3,7 +3,10 @@ use rand::Rng;
 use kzg::{KzgCommitment, KzgProof};
 
 use crate::beacon_block_body::KzgCommitments;
-use crate::*;
+use crate::{
+    BeaconBlock, Blob, BlobSidecar, BlobsList, EthSpec, ForkName, FullPayload, KzgProofs,
+    Signature, SignedBeaconBlock, map_fork_name, map_fork_name_with,
+};
 
 use super::*;
 
@@ -68,6 +71,9 @@ pub fn generate_blobs<E: EthSpec>(n_blobs: usize) -> Result<BlobsBundle<E>, Stri
 
     Ok((commitments, proofs, blobs))
 }
+
+#[cfg(test)]
+use crate::{FixedVector, MainnetEthSpec};
 
 #[cfg(test)]
 mod test {

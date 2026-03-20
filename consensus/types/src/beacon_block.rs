@@ -1,6 +1,20 @@
 use crate::attestation::AttestationBase;
+use crate::beacon_state::Error;
+use crate::eth_spec::EthSpec;
+use crate::indexed_attestation::IndexedAttestationBase;
 use crate::test_utils::TestRandom;
-use crate::*;
+use crate::{
+    AbstractExecPayload, AggregateSignature, AttestationData, AttesterSlashingBase,
+    BeaconBlockBodyAltair, BeaconBlockBodyBase, BeaconBlockBodyBellatrix, BeaconBlockBodyCapella,
+    BeaconBlockBodyDeneb, BeaconBlockBodyElectra, BeaconBlockBodyFulu, BeaconBlockBodyGloas,
+    BeaconBlockBodyRef, BeaconBlockBodyRefMut, BeaconBlockHeader, BitList, BitVector,
+    BlindedPayload, ChainSpec, ContextDeserialize, Deposit, DepositData, Domain, Epoch, Eth1Data,
+    ExecutionPayload, ExecutionRequests, FixedBytesExtended, FixedVector, Fork, ForkName,
+    FullPayload, Graffiti, Hash256, InconsistentFork, ProposerSlashing, PublicKeyBytes, SecretKey,
+    Signature, SignatureBytes, SignedBeaconBlock, SignedBeaconBlockHeader,
+    SignedExecutionPayloadBid, SignedRoot, SignedVoluntaryExit, Slot, SyncAggregate, Unsigned,
+    VariableList, VoluntaryExit, map_fork_name, map_fork_name_with,
+};
 use educe::Educe;
 use serde::{Deserialize, Deserializer, Serialize};
 use ssz::{Decode, DecodeError};
@@ -11,8 +25,6 @@ use superstruct::superstruct;
 use test_random_derive::TestRandom;
 use tree_hash::TreeHash;
 use tree_hash_derive::TreeHash;
-
-use self::indexed_attestation::IndexedAttestationBase;
 
 /// A block of the `BeaconChain`.
 #[superstruct(
@@ -885,6 +897,9 @@ impl fmt::Display for BlockImportSource {
         }
     }
 }
+
+#[cfg(test)]
+use crate::MainnetEthSpec;
 
 #[cfg(test)]
 mod tests {

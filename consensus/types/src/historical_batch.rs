@@ -1,6 +1,5 @@
 use crate::test_utils::TestRandom;
-use crate::*;
-
+use crate::{EthSpec, ForkName, Hash256, Vector, context_deserialize};
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use test_random_derive::TestRandom;
@@ -22,6 +21,9 @@ pub struct HistoricalBatch<E: EthSpec> {
     #[test_random(default)]
     pub state_roots: Vector<Hash256, E::SlotsPerHistoricalRoot>,
 }
+
+#[cfg(test)]
+use crate::MainnetEthSpec;
 
 #[cfg(test)]
 mod tests {
