@@ -2498,3 +2498,13 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **Dependencies**: No new crate updates available.
 
 No actionable work found. All priorities 1-6 complete. Codebase stable.
+
+### Run 1982 (2026-03-20)
+
+**Pedantic clippy fix: unnecessary_debug_formatting — 29 files.**
+
+- Fixed 69 instances of `{:?}` (Debug formatting) used on `PathBuf`/`Path` types where `{}` with `.display()` is cleaner. Debug formatting wraps paths in quotes and escapes characters; Display formatting shows clean paths.
+- Files: account_manager (6), validator_client (3), validator_manager (3), common (4), testing (4), beacon_node (2), lcli (2), database_manager (1), eth2_network_config (2), wallet (2).
+- **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since #5005 (March 15). Open Gloas PRs: #5022 (on_payload_attestation check — we already have this), #4992 (cached PTCs — still open), #4843 (variable PTC deadline — still open).
+- **CI**: All jobs green. Nightly and spec-test-version-check passed.
+- **Verification**: 52/52 targeted tests, full workspace clippy clean, cargo fmt clean, pre-push lint-full passes.
