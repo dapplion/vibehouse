@@ -64,7 +64,7 @@ impl<E: EthSpec> Default for PeerInfo<E> {
         PeerInfo {
             score: Score::default(),
             client: Client::default(),
-            connection_status: Default::default(),
+            connection_status: PeerConnectionStatus::default(),
             listening_addresses: Vec::new(),
             seen_multiaddrs: HashSet::new(),
             subnets: HashSet::new(),

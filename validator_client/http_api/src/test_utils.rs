@@ -13,7 +13,9 @@ use eth2::{
 };
 use eth2_keystore::KeystoreBuilder;
 use initialized_validators::key_cache::{CACHE_FILENAME, KeyCache};
-use initialized_validators::{InitializedValidators, OnDecryptFailure};
+use initialized_validators::{
+    Config as InitializedValidatorsConfig, InitializedValidators, OnDecryptFailure,
+};
 use parking_lot::RwLock;
 use sensitive_url::SensitiveUrl;
 use slashing_protection::{SLASHING_PROTECTION_FILENAME, SlashingDatabase};
@@ -93,7 +95,7 @@ impl ApiTester {
         let initialized_validators = InitializedValidators::from_definitions(
             validator_defs,
             validator_dir.path().into(),
-            Default::default(),
+            InitializedValidatorsConfig::default(),
         )
         .await
         .unwrap();

@@ -2,6 +2,7 @@ use crate::api_error::ApiError;
 use beacon_chain::{BeaconChain, BeaconChainError, BeaconChainTypes, WhenSlotSkipped};
 use eth2::vibehouse::{BlockReward, BlockRewardsQuery};
 use lru::LruCache;
+use operation_pool::RewardCache;
 use state_processing::BlockReplayer;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
@@ -54,7 +55,7 @@ pub fn get_block_rewards<T: BeaconChainTypes>(
         .build_caches(&chain.spec)
         .map_err(ApiError::beacon_state_error)?;
 
-    let mut reward_cache = Default::default();
+    let mut reward_cache = RewardCache::default();
     let mut block_rewards = Vec::with_capacity(blocks.len());
 
     // Gloas ePBS: load envelopes for Gloas blocks so the replayer can apply
@@ -111,7 +112,7 @@ pub fn compute_block_rewards<T: BeaconChainTypes>(
 ) -> Result<Vec<BlockReward>, ApiError> {
     let mut block_rewards = Vec::with_capacity(blocks.len());
     let mut state_cache = LruCache::new(STATE_CACHE_SIZE);
-    let mut reward_cache = Default::default();
+    let mut reward_cache = RewardCache::default();
 
     for block in blocks {
         let parent_root = block.parent_root();

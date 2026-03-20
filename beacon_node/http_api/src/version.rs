@@ -9,6 +9,7 @@ use serde::Serialize;
 use types::{
     BeaconResponse, ForkName, ForkVersionedResponse, InconsistentFork, Uint256,
     UnversionedResponse,
+    beacon_response::EmptyMetadata,
     beacon_response::{
         ExecutionOptimisticFinalizedBeaconResponse, ExecutionOptimisticFinalizedMetadata,
     },
@@ -32,12 +33,12 @@ pub fn beacon_response<T: Serialize>(
         ResponseIncludesVersion::Yes(fork_name) => {
             BeaconResponse::ForkVersioned(ForkVersionedResponse {
                 version: fork_name,
-                metadata: Default::default(),
+                metadata: EmptyMetadata::default(),
                 data,
             })
         }
         ResponseIncludesVersion::No => BeaconResponse::Unversioned(UnversionedResponse {
-            metadata: Default::default(),
+            metadata: EmptyMetadata::default(),
             data,
         }),
     }

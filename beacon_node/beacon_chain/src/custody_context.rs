@@ -53,8 +53,8 @@ impl ValidatorRegistrations {
     /// backfill sync instead of column backfill.
     fn new(cgc_override: Option<u64>) -> Self {
         let mut registrations = ValidatorRegistrations {
-            validators: Default::default(),
-            epoch_validator_custody_requirements: Default::default(),
+            validators: HashMap::default(),
+            epoch_validator_custody_requirements: BTreeMap::default(),
         };
         if let Some(custody_count) = cgc_override {
             registrations

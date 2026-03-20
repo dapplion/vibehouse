@@ -4,7 +4,7 @@
 //! - UPnP
 
 use anyhow::{Context, Error, bail};
-use igd_next::{PortMappingProtocol, aio::tokio as igd};
+use igd_next::{PortMappingProtocol, SearchOptions, aio::tokio as igd};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 use tokio::time::sleep;
@@ -18,7 +18,7 @@ const MAPPING_TIMEOUT: u64 = MAPPING_DURATION as u64 / 2;
 
 /// Attempts to map Discovery external port mappings with UPnP.
 pub async fn construct_upnp_mappings(addr: Ipv4Addr, port: u16) -> Result<(), Error> {
-    let gateway = igd::search_gateway(Default::default())
+    let gateway = igd::search_gateway(SearchOptions::default())
         .await
         .context("Gateway does not support UPnP")?;
 

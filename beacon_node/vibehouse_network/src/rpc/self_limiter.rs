@@ -70,11 +70,11 @@ impl<Id: ReqId, E: EthSpec> SelfRateLimiter<Id, E> {
         };
 
         Ok(SelfRateLimiter {
-            active_requests: Default::default(),
-            delayed_requests: Default::default(),
-            next_peer_request: Default::default(),
+            active_requests: HashMap::default(),
+            delayed_requests: HashMap::default(),
+            next_peer_request: DelayQueue::default(),
             rate_limiter,
-            ready_requests: Default::default(),
+            ready_requests: SmallVec::default(),
         })
     }
 
