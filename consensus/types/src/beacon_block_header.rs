@@ -66,11 +66,11 @@ impl BeaconBlockHeader {
 
     pub fn empty() -> Self {
         Self {
-            body_root: Default::default(),
-            parent_root: Default::default(),
-            proposer_index: Default::default(),
-            slot: Default::default(),
-            state_root: Default::default(),
+            body_root: Hash256::default(),
+            parent_root: Hash256::default(),
+            proposer_index: u64::default(),
+            slot: Slot::default(),
+            state_root: Hash256::default(),
         }
     }
 }

@@ -168,7 +168,7 @@ impl<E: EthSpec> DataColumnSidecar<E> {
                 message: BeaconBlockHeader::empty(),
                 signature: Signature::empty(),
             },
-            kzg_commitments_inclusion_proof: Default::default(),
+            kzg_commitments_inclusion_proof: FixedVector::default(),
         }
         .as_ssz_bytes()
         .len()
@@ -189,7 +189,7 @@ impl<E: EthSpec> DataColumnSidecar<E> {
                 message: BeaconBlockHeader::empty(),
                 signature: Signature::empty(),
             },
-            kzg_commitments_inclusion_proof: Default::default(),
+            kzg_commitments_inclusion_proof: FixedVector::default(),
         }
         .as_ssz_bytes()
         .len()

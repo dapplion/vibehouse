@@ -1,4 +1,4 @@
-use crate::{EthSpec, ForkName, PayloadAttestationData, test_utils::TestRandom};
+use crate::{EthSpec, ForkName, Hash256, PayloadAttestationData, Slot, test_utils::TestRandom};
 use bls::AggregateSignature;
 use context_deserialize::context_deserialize;
 use educe::Educe;
@@ -46,8 +46,8 @@ impl<E: EthSpec> PayloadAttestation<E> {
         Self {
             aggregation_bits: BitVector::new(),
             data: PayloadAttestationData {
-                beacon_block_root: Default::default(),
-                slot: Default::default(),
+                beacon_block_root: Hash256::default(),
+                slot: Slot::default(),
                 payload_present: false,
                 blob_data_available: false,
             },

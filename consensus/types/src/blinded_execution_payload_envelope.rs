@@ -1,6 +1,6 @@
 use crate::{
     EthSpec, ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExecutionPayloadHeaderGloas,
-    ExecutionRequests, Hash256, Slot, Withdrawals,
+    ExecutionRequests, Hash256, Slot, VariableList, Withdrawals,
 };
 use educe::Educe;
 use serde::{Deserialize, Serialize};
@@ -86,7 +86,7 @@ impl<E: EthSpec> BlindedExecutionPayloadEnvelope<E> {
             extra_data: h.extra_data.clone(),
             base_fee_per_gas: h.base_fee_per_gas,
             block_hash: h.block_hash,
-            transactions: Default::default(),
+            transactions: VariableList::default(),
             withdrawals,
             blob_gas_used: h.blob_gas_used,
             excess_blob_gas: h.excess_blob_gas,

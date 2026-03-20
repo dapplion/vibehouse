@@ -205,7 +205,7 @@ impl<E: EthSpec> BlobSidecar<E> {
                 message: BeaconBlockHeader::empty(),
                 signature: Signature::empty(),
             },
-            kzg_commitment_inclusion_proof: Default::default(),
+            kzg_commitment_inclusion_proof: FixedVector::default(),
         }
     }
 

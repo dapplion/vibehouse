@@ -442,7 +442,11 @@ impl<S: SlotClock> ReprocessQueue<S> {
     }
 
     fn handle_message(&mut self, msg: InboundEvent) {
-        use ReprocessQueueMessage::*;
+        use ReprocessQueueMessage::{
+            BackfillSync, BlockImported, DelayColumnReconstruction, EarlyBlock,
+            NewLightClientOptimisticUpdate, RpcBlock, UnknownBlockAggregate,
+            UnknownBlockUnaggregate, UnknownLightClientOptimisticUpdate,
+        };
         match msg {
             // Some block has been indicated as "early" and should be processed when the
             // appropriate slot arrives.

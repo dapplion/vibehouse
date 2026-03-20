@@ -241,7 +241,7 @@ impl<'a, E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>
         end_slot: Option<Slot>,
         get_state: impl FnOnce() -> Result<(BeaconState<E>, Hash256)>,
     ) -> Result<Self> {
-        use HybridForwardsIterator::*;
+        use HybridForwardsIterator::{PostFinalizationLazy, PreFinalization};
 
         // First slot at which this field is *not* available in the freezer. i.e. all slots less
         // than this slot have their data available in the freezer.
@@ -287,7 +287,9 @@ impl<'a, E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>
     }
 
     fn do_next(&mut self) -> Result<Option<(Hash256, Slot)>> {
-        use HybridForwardsIterator::*;
+        use HybridForwardsIterator::{
+            Finished, PostFinalization, PostFinalizationLazy, PreFinalization,
+        };
 
         match self {
             PreFinalization {

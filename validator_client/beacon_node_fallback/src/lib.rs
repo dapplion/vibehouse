@@ -767,7 +767,7 @@ pub enum ApiTopic {
 
 impl ApiTopic {
     pub fn all() -> Vec<ApiTopic> {
-        use ApiTopic::*;
+        use ApiTopic::{Attestations, Blocks, Subscriptions, SyncCommittee};
         vec![Attestations, Blocks, Subscriptions, SyncCommittee]
     }
 }

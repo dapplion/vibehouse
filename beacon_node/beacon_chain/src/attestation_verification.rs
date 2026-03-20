@@ -423,7 +423,10 @@ fn process_slash_info<T: BeaconChainTypes>(
     slash_info: AttestationSlashInfo<T, Error>,
     chain: &BeaconChain<T>,
 ) -> Error {
-    use AttestationSlashInfo::*;
+    use AttestationSlashInfo::{
+        SignatureInvalid, SignatureNotChecked, SignatureNotCheckedIndexed,
+        SignatureNotCheckedSingle, SignatureValid,
+    };
 
     if let Some(slasher) = chain.slasher.as_ref() {
         let (indexed_attestation, check_signature, err) = match slash_info {
@@ -628,7 +631,7 @@ impl<'a, T: BeaconChainTypes> IndexedAggregatedAttestation<'a, T> {
         signed_aggregate: &'a SignedAggregateAndProof<T::EthSpec>,
         chain: &BeaconChain<T>,
     ) -> Result<Self, AttestationSlashInfo<'a, T, Error>> {
-        use AttestationSlashInfo::*;
+        use AttestationSlashInfo::SignatureNotChecked;
         let observed_attestation_key_root = match Self::verify_early_checks(signed_aggregate, chain)
         {
             Ok(root) => root,
@@ -802,7 +805,7 @@ impl<'a, T: BeaconChainTypes> VerifiedAggregatedAttestation<'a, T> {
         chain: &BeaconChain<T>,
         check_signature: CheckAttestationSignature,
     ) -> Result<Self, AttestationSlashInfo<'a, T, Error>> {
-        use AttestationSlashInfo::*;
+        use AttestationSlashInfo::{SignatureInvalid, SignatureValid};
 
         let IndexedAggregatedAttestation {
             signed_aggregate,
@@ -985,7 +988,7 @@ impl<'a, T: BeaconChainTypes> IndexedUnaggregatedAttestation<'a, T> {
         subnet_id: Option<SubnetId>,
         chain: &BeaconChain<T>,
     ) -> Result<Self, AttestationSlashInfo<'a, T, Error>> {
-        use AttestationSlashInfo::*;
+        use AttestationSlashInfo::{SignatureNotCheckedIndexed, SignatureNotCheckedSingle};
 
         if let Err(e) = Self::verify_early_checks(attestation, chain) {
             return Err(SignatureNotCheckedSingle(attestation, e));
@@ -1145,7 +1148,7 @@ impl<'a, T: BeaconChainTypes> VerifiedUnaggregatedAttestation<'a, T> {
         chain: &BeaconChain<T>,
         check_signature: CheckAttestationSignature,
     ) -> Result<Self, AttestationSlashInfo<'a, T, Error>> {
-        use AttestationSlashInfo::*;
+        use AttestationSlashInfo::{SignatureInvalid, SignatureValid};
 
         let IndexedUnaggregatedAttestation {
             attestation,

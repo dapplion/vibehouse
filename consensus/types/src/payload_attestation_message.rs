@@ -1,4 +1,4 @@
-use crate::{ForkName, PayloadAttestationData, test_utils::TestRandom};
+use crate::{ForkName, Hash256, PayloadAttestationData, Slot, test_utils::TestRandom};
 use bls::Signature;
 use context_deserialize::context_deserialize;
 use serde::{Deserialize, Serialize};
@@ -34,8 +34,8 @@ impl PayloadAttestationMessage {
         Self {
             validator_index: 0,
             data: PayloadAttestationData {
-                beacon_block_root: Default::default(),
-                slot: Default::default(),
+                beacon_block_root: Hash256::default(),
+                slot: Slot::default(),
                 payload_present: false,
                 blob_data_available: false,
             },

@@ -67,7 +67,7 @@ pub enum InvalidSnapshot {
 impl MerkleTree {
     /// Create a new Merkle tree from a list of leaves and a fixed depth.
     pub fn create(leaves: &[H256], depth: usize) -> Self {
-        use MerkleTree::*;
+        use MerkleTree::{Leaf, Node, Zero};
 
         if leaves.is_empty() {
             return Zero(depth);
@@ -99,7 +99,7 @@ impl MerkleTree {
     /// Push an element in the MerkleTree.
     /// MerkleTree and depth must be correct, as the algorithm expects valid data.
     pub fn push_leaf(&mut self, elem: H256, depth: usize) -> Result<(), MerkleTreeError> {
-        use MerkleTree::*;
+        use MerkleTree::{Finalized, Leaf, Node, Zero};
 
         if depth == 0 {
             return Err(MerkleTreeError::DepthTooSmall);

@@ -242,7 +242,7 @@ impl InitializedValidator {
                 voting_keystore_password_path,
                 voting_keystore_password,
             } => {
-                use std::collections::hash_map::Entry::*;
+                use std::collections::hash_map::Entry::{Occupied, Vacant};
                 let voting_keystore = match key_stores.entry(voting_keystore_path.clone()) {
                     Vacant(entry) => entry.insert(open_keystore(&voting_keystore_path)?),
                     Occupied(entry) => entry.into_mut(),
@@ -1124,7 +1124,7 @@ impl InitializedValidators {
                     voting_keystore_path,
                     ..
                 } => {
-                    use std::collections::hash_map::Entry::*;
+                    use std::collections::hash_map::Entry::{Occupied, Vacant};
                     let key_store = match key_stores.entry(voting_keystore_path.clone()) {
                         Vacant(entry) => entry.insert(open_keystore(voting_keystore_path)?),
                         Occupied(entry) => entry.into_mut(),

@@ -1,4 +1,4 @@
-use self::BlsSetting::*;
+use self::BlsSetting::{Flexible, Ignored, Required};
 use crate::error::Error;
 use serde_repr::Deserialize_repr;
 

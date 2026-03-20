@@ -3,7 +3,7 @@ use super::score::{PeerAction, Score, ScoreState};
 use super::sync_status::SyncStatus;
 use crate::discovery::Eth2Enr;
 use crate::{rpc::MetaData, types::Subnet};
-use PeerConnectionStatus::*;
+use PeerConnectionStatus::{Banned, Connected, Dialing, Disconnected, Disconnecting, Unknown};
 use discv5::Enr;
 use eth2::types::{PeerDirection, PeerState};
 use libp2p::core::multiaddr::{Multiaddr, Protocol};
