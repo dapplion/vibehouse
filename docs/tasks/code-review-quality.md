@@ -2887,3 +2887,15 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **Prep branches**: `cached-ptc` and `ptc-lookbehind` remain ready on origin for when spec PRs merge.
 
 No actionable work found. All priorities 1-6 complete. Codebase stable.
+
+### Run 2016 (2026-03-20)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since #5005 (March 15). Open Gloas PRs: #4747 (Fast Confirmation Rule — dirty/126 review comments, very active discussion), #4843 (Variable PTC deadline), #4979 (PTC lookbehind — blocked, 10 comments), #5022 (on_payload_attestation block check), #5020 (PTC lookbehind minimal), #4992 (cached PTCs), #4558 (cell dissemination), #5008 (field name fix). None merged.
+- **CI**: Latest commit (state_processing wildcard cleanup) — check+clippy+fmt+ef-tests passed, 4 integration jobs in progress. Nightly: 3 consecutive days green (March 18-20).
+- **Rebranding audit**: All Rust source files clean. Only legitimate external-peer references remain (ClientKind::Lighthouse for P2P peer identification, ClientCode::Lighthouse for EL engine API standard codes, 1 test mock string). API paths fully rebranded to vibehouse.
+- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
+- **Prep branches**: `cached-ptc` on origin for when spec PR #4992 merges.
+
+No actionable work found. All priorities 1-6 complete. Codebase stable.
