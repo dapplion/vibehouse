@@ -2899,3 +2899,13 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **Prep branches**: `cached-ptc` on origin for when spec PR #4992 merges.
 
 No actionable work found. All priorities 1-6 complete. Codebase stable.
+
+### Run 2017 (2026-03-20)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since #5005 (March 15). Most active open PRs: #4843 (Variable PTC deadline — updated today), #4979 (PTC lookbehind — updated today). Others unchanged: #5023, #5022, #5020, #4992, #5008, #4962, #4939, #4960, #4954. None merged, none actionable.
+- **CI**: Latest commit (state_processing wildcard cleanup) — check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, 3 integration jobs in progress. Prior commit all green.
+- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
+
+No actionable work found. All priorities 1-6 complete. Codebase stable.
