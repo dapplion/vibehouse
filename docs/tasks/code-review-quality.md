@@ -2281,3 +2281,17 @@ Spec v1.7.0-alpha.3 still latest — no new releases. 4991 workspace tests pass 
 3. **`semicolon_if_nothing_returned`** (10 files, 18 fixes): Added missing semicolons after expressions in blocks that return unit — makes the unit return explicit
 
 Spec v1.7.0-alpha.3 still latest — no new releases or Gloas-relevant merges. 2025 targeted tests pass (proto_array, fork_choice, state_processing, store, logging, beacon_processor, vibehouse_network) + 69 EF SSZ static tests. lint-full passes. Committed `d3ab34544`.
+
+### Run 1962 (2026-03-20)
+
+**Applied 5 pedantic clippy fixes across 36 files**:
+
+1. **`cast_lossless`** (12 files, ~15 fixes): Replaced `x as u64` with `u64::from(x)` for safe widening casts — uses the type system to guarantee losslessness instead of relying on `as`
+2. **`manual_assert`** (5 files, ~8 fixes): Replaced `if cond { panic!(...) }` with `assert!(!cond, ...)` — more idiomatic and clearer intent
+3. **`items_after_statements`** (11 files, ~25 fixes): Moved `use`, `const`, `struct`, and `fn` declarations before executable statements in their enclosing blocks — item declarations should come first for readability
+4. **`nonminimal_bool`** (1 file, 1 fix): Simplified `!(a && !b)` to `!a || b` in interchange_test.rs
+5. **`assertions_on_constants`** (1 file, 1 fix): Wrapped compile-time `assert!(!cfg!(windows))` in `const { }` block (execution_engine_integration)
+
+Note: 39 `expl_impl_clone_on_copy` warnings remain — all originate from the `superstruct` proc macro (not fixable in our code).
+
+Spec v1.7.0-alpha.3 still latest — no new releases. 2127 targeted tests pass + 69 EF SSZ static tests. lint-full passes. Committed `b2e1067b4`.
