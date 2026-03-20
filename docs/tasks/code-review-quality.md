@@ -2530,3 +2530,14 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since #5005 (March 15). Open Gloas PRs unchanged.
 - **CI**: All jobs green. Nightly and spec-test-version-check passed.
 - **Verification**: 263/263 targeted tests passed, full workspace clippy clean, cargo fmt clean, pre-push lint-full passes.
+
+### Run 1985 (2026-03-20)
+
+**Pedantic clippy fix: match_same_arms — 3 files.**
+
+- `gloas_verification.rs`: merged `New` and `Duplicate` arms that both do nothing (continue) into single `New | Duplicate` arm.
+- `codec.rs`: added `#[allow(clippy::match_same_arms)]` — variants call `.as_ssz_bytes()` but on different types (can't merge with `|`).
+- `beacon_processor/lib.rs`: added `#[allow(clippy::match_same_arms)]` — `DelayedImportBlock` (struct variant) can't merge with tuple variants via `|`.
+- **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since #5005 (March 15). Open Gloas PRs: #5023 (block root filenames, updated today), #4747 (Fast Confirmation Rule, updated today) — both still open.
+- **CI**: All jobs green. Nightly and spec-test-version-check passed.
+- **Verification**: 1414/1414 targeted tests passed (beacon_chain, beacon_processor, vibehouse_network), full workspace clippy clean, cargo fmt clean, pre-push lint-full passes.
