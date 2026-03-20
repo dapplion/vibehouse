@@ -221,3 +221,15 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - CI green, clippy clean, cargo audit unchanged (rsa advisory, no fix)
 - All post-alpha.3 commits audited: #5001 (parent_block_root in bid filter) already implemented, #4940 (fork choice tests) test runner ready
 - **No action needed. Will re-check next run.**
+
+### run 1989 (Mar 20) — routine spec check
+
+- No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
+- New open PR #5022 (add block-known check in on_payload_attestation_message) — we already handle this via `UnknownBeaconBlockRoot` error at fork_choice.rs:1430-1432
+- #5020 (PTC lookbehind minimal state change) — alternative to #4992, still open and under discussion
+- #4992 (cached PTCs in state) still open
+- Verified all 5 non-superstruct `unsafe` blocks are legitimate (libc FFI, blst crypto, env var at startup)
+- Zero production `.unwrap()` calls in consensus/ (state_processing, fork_choice, proto_array) — all in test code only
+- CI green: check+clippy+fmt passed, ef-tests passed, remaining jobs in progress
+- Zero clippy warnings (default lints)
+- **No action needed. Codebase healthy, spec current.**
