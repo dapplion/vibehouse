@@ -55,10 +55,7 @@ pub fn be_private_key(validator_index: usize) -> [u8; PRIVATE_KEY_BYTES] {
 /// Return a public and private keypair for a given `validator_index`.
 pub fn keypair(validator_index: usize) -> Keypair {
     let sk = SecretKey::deserialize(&be_private_key(validator_index)).unwrap_or_else(|_| {
-        panic!(
-            "Should build valid private key for validator index {}",
-            validator_index
-        )
+        panic!("Should build valid private key for validator index {validator_index}")
     });
 
     Keypair::from_components(sk.public_key(), sk)
@@ -87,14 +84,14 @@ impl TryInto<Keypair> for YamlKeypair {
             let mut bytes = vec![0; PRIVATE_KEY_BYTES - privkey.len()];
             bytes.extend_from_slice(&privkey);
             SecretKey::deserialize(&bytes)
-                .map_err(|e| format!("Failed to decode bytes into secret key: {:?}", e))?
+                .map_err(|e| format!("Failed to decode bytes into secret key: {e:?}"))?
         };
 
         let pk = {
             let mut bytes = vec![0; PUBLIC_KEY_BYTES - pubkey.len()];
             bytes.extend_from_slice(&pubkey);
             PublicKey::deserialize(&bytes)
-                .map_err(|e| format!("Failed to decode bytes into public key: {:?}", e))?
+                .map_err(|e| format!("Failed to decode bytes into public key: {e:?}"))?
         };
 
         Ok(Keypair::from_components(pk, sk))
@@ -108,7 +105,7 @@ fn string_to_bytes(string: &str) -> Result<Vec<u8>, String> {
         string
     };
 
-    hex::decode(string).map_err(|e| format!("Unable to decode public or private key: {}", e))
+    hex::decode(string).map_err(|e| format!("Unable to decode public or private key: {e}"))
 }
 
 /// Loads keypairs from a YAML encoded file.
@@ -116,10 +113,10 @@ fn string_to_bytes(string: &str) -> Result<Vec<u8>, String> {
 /// Uses this as reference:
 /// <https://github.com/ethereum/eth2.0-pm/blob/9a9dbcd95e2b8e10287797bd768014ab3d842e99/interop/mocked_start/keygen_10_validators.yaml>
 pub fn keypairs_from_yaml_file(path: PathBuf) -> Result<Vec<Keypair>, String> {
-    let file = File::open(path).map_err(|e| format!("Unable to open YAML key file: {}", e))?;
+    let file = File::open(path).map_err(|e| format!("Unable to open YAML key file: {e}"))?;
 
     serde_yaml::from_reader::<_, Vec<YamlKeypair>>(file)
-        .map_err(|e| format!("Could not parse YAML: {:?}", e))?
+        .map_err(|e| format!("Could not parse YAML: {e:?}"))?
         .into_iter()
         .map(TryInto::try_into)
         .collect::<Result<Vec<_>, String>>()
@@ -224,8 +221,8 @@ mod tests {
         let pubkey_hex = hex::encode(expected.pk.serialize());
 
         let yaml_kp = YamlKeypair {
-            privkey: format!("0x{}", privkey_hex),
-            pubkey: format!("0x{}", pubkey_hex),
+            privkey: format!("0x{privkey_hex}"),
+            pubkey: format!("0x{pubkey_hex}"),
         };
         let result: Result<Keypair, String> = yaml_kp.try_into();
         assert!(result.is_ok());

@@ -291,7 +291,7 @@ mod test {
         let new_payload_request = NewPayloadRequest::try_from(beacon_block.to_ref())
             .expect("should create new payload request");
         let verification_result = new_payload_request.perform_optimistic_sync_verifications();
-        println!("verification_result: {:?}", verification_result);
+        println!("verification_result: {verification_result:?}");
         let got_expected_result = match verification_result {
             Err(Error::BlockHashMismatch {
                 computed, payload, ..
@@ -335,7 +335,7 @@ mod test {
         let new_payload_request = NewPayloadRequest::try_from(beacon_block.to_ref())
             .expect("should create new payload request");
         let verification_result = new_payload_request.perform_optimistic_sync_verifications();
-        println!("verification_result: {:?}", verification_result);
+        println!("verification_result: {verification_result:?}");
 
         let got_expected_result = match verification_result {
             Err(Error::VerifyingVersionedHashes(VersionedHashError::VersionHashMismatch {
@@ -368,8 +368,7 @@ mod test {
 
         assert!(
             matches!(result, Err(BeaconStateError::IncorrectStateVariant)),
-            "Gloas block should reject NewPayloadRequest conversion: {:?}",
-            result,
+            "Gloas block should reject NewPayloadRequest conversion: {result:?}",
         );
     }
 
@@ -385,8 +384,7 @@ mod test {
 
         assert!(
             matches!(result, Err(BeaconStateError::IncorrectStateVariant)),
-            "Gloas ExecutionPayloadRef should reject NewPayloadRequest conversion: {:?}",
-            result,
+            "Gloas ExecutionPayloadRef should reject NewPayloadRequest conversion: {result:?}",
         );
     }
 

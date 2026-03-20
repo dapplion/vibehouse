@@ -713,7 +713,7 @@ mod tests {
             }
             Ok(()) => {}
             Err(e) => {
-                panic!("fix_envelope_state_root: unexpected error: {:?}", e);
+                panic!("fix_envelope_state_root: unexpected error: {e:?}");
             }
         }
     }
@@ -1947,11 +1947,10 @@ mod tests {
         match result {
             Ok(_) => panic!("non-anchor block should propagate envelope processing errors"),
             Err(err) => {
-                let err_str = format!("{:?}", err);
+                let err_str = format!("{err:?}");
                 assert!(
                     err_str.contains("EnvelopeProcessingError"),
-                    "error should be an EnvelopeProcessingError, got: {}",
-                    err_str
+                    "error should be an EnvelopeProcessingError, got: {err_str}"
                 );
             }
         }
@@ -2006,11 +2005,10 @@ mod tests {
         match result {
             Ok(_) => panic!("non-anchor block should propagate blinded envelope errors"),
             Err(err) => {
-                let err_str = format!("{:?}", err);
+                let err_str = format!("{err:?}");
                 assert!(
                     err_str.contains("EnvelopeProcessingError"),
-                    "error should be an EnvelopeProcessingError, got: {}",
-                    err_str
+                    "error should be an EnvelopeProcessingError, got: {err_str}"
                 );
             }
         }

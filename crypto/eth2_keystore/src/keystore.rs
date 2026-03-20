@@ -680,14 +680,14 @@ mod tests {
     fn control_chars_c1_range() {
         for code in 0x80u32..=0x9F {
             let c = char::from_u32(code).unwrap();
-            assert!(is_control_character(c), "0x{:02X} should be control", code);
+            assert!(is_control_character(c), "0x{code:02X} should be control");
         }
     }
 
     #[test]
     fn non_control_printable_ascii() {
         for c in ' '..='~' {
-            assert!(!is_control_character(c), "{:?} should not be control", c);
+            assert!(!is_control_character(c), "{c:?} should not be control");
         }
     }
 

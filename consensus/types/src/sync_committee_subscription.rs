@@ -96,7 +96,7 @@ mod tests {
             sync_committee_indices: vec![0],
             until_epoch: Epoch::new(5),
         };
-        let debug = format!("{:?}", sub);
+        let debug = format!("{sub:?}");
         assert!(debug.contains("SyncCommitteeSubscription"));
     }
 }

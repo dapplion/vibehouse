@@ -2625,8 +2625,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .map_err(Error::DBError)?
             .ok_or_else(|| {
                 Error::EnvelopeError(format!(
-                    "Missing beacon block {:?} for envelope processing",
-                    beacon_block_root
+                    "Missing beacon block {beacon_block_root:?} for envelope processing"
                 ))
             })?;
         let block_state_root = block.message().state_root();
@@ -2677,7 +2676,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             let payload_status = execution_layer
                 .notify_new_payload(new_payload_request)
                 .await
-                .map_err(|e| Error::EnvelopeError(format!("newPayload failed: {:?}", e)))?;
+                .map_err(|e| Error::EnvelopeError(format!("newPayload failed: {e:?}")))?;
 
             match payload_status {
                 PayloadStatus::Valid => {
@@ -2745,8 +2744,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .map_err(Error::DBError)?
             .ok_or_else(|| {
                 Error::EnvelopeError(format!(
-                    "Missing state {:?} for block {:?}",
-                    block_state_root, beacon_block_root
+                    "Missing state {block_state_root:?} for block {beacon_block_root:?}"
                 ))
             })?;
 
@@ -2846,8 +2844,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .map_err(Error::DBError)?
             .ok_or_else(|| {
                 Error::EnvelopeError(format!(
-                    "Missing beacon block {:?} for sync envelope processing",
-                    beacon_block_root
+                    "Missing beacon block {beacon_block_root:?} for sync envelope processing"
                 ))
             })?;
         let block_state_root = block.message().state_root();
@@ -2858,8 +2855,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .signed_execution_payload_bid()
             .map_err(|_| {
                 Error::EnvelopeError(format!(
-                    "Block {:?} is not a Gloas block (no bid)",
-                    beacon_block_root
+                    "Block {beacon_block_root:?} is not a Gloas block (no bid)"
                 ))
             })?;
 
@@ -2890,8 +2886,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .map_err(Error::DBError)?
             .ok_or_else(|| {
                 Error::EnvelopeError(format!(
-                    "Missing state {:?} for sync envelope block {:?}",
-                    block_state_root, beacon_block_root
+                    "Missing state {block_state_root:?} for sync envelope block {beacon_block_root:?}"
                 ))
             })?;
 
@@ -2956,7 +2951,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 .notify_new_payload(new_payload_request)
                 .await
                 .map_err(|e| {
-                    Error::EnvelopeError(format!("newPayload failed during sync: {:?}", e))
+                    Error::EnvelopeError(format!("newPayload failed during sync: {e:?}"))
                 })?;
 
             match payload_status {
@@ -2966,16 +2961,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     ref validation_error,
                 } => {
                     return Err(Error::EnvelopeError(format!(
-                        "Sync envelope payload invalid: lvh={:?}, err={:?}",
-                        latest_valid_hash, validation_error
+                        "Sync envelope payload invalid: lvh={latest_valid_hash:?}, err={validation_error:?}"
                     )));
                 }
                 PayloadStatus::InvalidBlockHash {
                     ref validation_error,
                 } => {
                     return Err(Error::EnvelopeError(format!(
-                        "Sync envelope invalid block hash: {:?}",
-                        validation_error
+                        "Sync envelope invalid block hash: {validation_error:?}"
                     )));
                 }
             }
@@ -3235,8 +3228,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .map_err(Error::DBError)?
             .ok_or_else(|| {
                 Error::EnvelopeError(format!(
-                    "Missing beacon block {:?} for self-build envelope processing",
-                    beacon_block_root
+                    "Missing beacon block {beacon_block_root:?} for self-build envelope processing"
                 ))
             })?;
 
@@ -3285,7 +3277,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             let payload_status = execution_layer
                 .notify_new_payload(new_payload_request)
                 .await
-                .map_err(|e| Error::EnvelopeError(format!("newPayload failed: {:?}", e)))?;
+                .map_err(|e| Error::EnvelopeError(format!("newPayload failed: {e:?}")))?;
 
             match payload_status {
                 PayloadStatus::Valid => {
@@ -3354,8 +3346,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .get_state(&state_root, Some(signed_envelope.message.slot), false)?
             .ok_or_else(|| {
                 Error::EnvelopeError(format!(
-                    "Missing post-block state {:?} for envelope state transition",
-                    state_root
+                    "Missing post-block state {state_root:?} for envelope state transition"
                 ))
             })?;
 
@@ -3589,7 +3580,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Verify using the same gossip verification path (move attestation — not used after)
         let verified = self
             .verify_payload_attestation_for_gossip(attestation)
-            .map_err(|e| Error::PayloadAttestationVerificationFailed(format!("{:?}", e)))?;
+            .map_err(|e| Error::PayloadAttestationVerificationFailed(format!("{e:?}")))?;
 
         // Insert into fork choice
         if let Err(e) = self.apply_payload_attestation_to_fork_choice(&verified) {
@@ -8731,7 +8722,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 .store
                 .get_blinded_block(&beacon_block_root)?
                 .ok_or_else(|| {
-                    Error::DBInconsistent(format!("Missing block {}", beacon_block_root))
+                    Error::DBInconsistent(format!("Missing block {beacon_block_root}"))
                 })?;
             let beacon_state_root = beacon_block.state_root();
 
@@ -8741,7 +8732,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 .store
                 .get_state(&beacon_state_root, Some(beacon_block.slot()), true)?
                 .ok_or_else(|| {
-                    Error::DBInconsistent(format!("Missing state {:?}", beacon_state_root))
+                    Error::DBInconsistent(format!("Missing state {beacon_state_root:?}"))
                 })?;
 
             // This beacon state might come from the freezer DB, which means it could have pending
@@ -9012,7 +9003,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         let genesis_block_hash = Hash256::zero();
         writeln!(output, "digraph beacon {{").unwrap();
-        writeln!(output, "\t_{:?}[label=\"zero\"];", genesis_block_hash).unwrap();
+        writeln!(output, "\t_{genesis_block_hash:?}[label=\"zero\"];").unwrap();
 
         // Canonical head needs to be processed first as otherwise finalized blocks aren't detected
         // properly.

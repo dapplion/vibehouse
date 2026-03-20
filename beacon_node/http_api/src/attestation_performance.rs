@@ -220,7 +220,7 @@ pub fn get_attestation_performance<T: BeaconChainTypes>(
 
         replayer = replayer
             .apply_blocks(blocks, None)
-            .map_err(|e| ApiError::server_error(format!("{:?}", e)))?;
+            .map_err(|e| ApiError::server_error(format!("{e:?}")))?;
     }
 
     drop(replayer);

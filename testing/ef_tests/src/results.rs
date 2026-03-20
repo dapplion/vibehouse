@@ -56,7 +56,7 @@ pub fn print_results(
             "Failure"
         }
     );
-    println!("Title: {}", handler_name);
+    println!("Title: {handler_name}");
     println!(
         "{} tests, {} failed, {} skipped (known failure), {} skipped (bls), {} passed. (See below for errors)",
         results.len(),

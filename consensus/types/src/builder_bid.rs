@@ -137,7 +137,7 @@ impl<'de, E: EthSpec> ContextDeserialize<'de, ForkName> for BuilderBid<E> {
         D: Deserializer<'de>,
     {
         let convert_err =
-            |e| serde::de::Error::custom(format!("BuilderBid failed to deserialize: {:?}", e));
+            |e| serde::de::Error::custom(format!("BuilderBid failed to deserialize: {e:?}"));
         Ok(match context {
             ForkName::Bellatrix => {
                 Self::Bellatrix(Deserialize::deserialize(deserializer).map_err(convert_err)?)
@@ -159,8 +159,7 @@ impl<'de, E: EthSpec> ContextDeserialize<'de, ForkName> for BuilderBid<E> {
             }
             ForkName::Base | ForkName::Altair => {
                 return Err(serde::de::Error::custom(format!(
-                    "BuilderBid failed to deserialize: unsupported fork '{}'",
-                    context
+                    "BuilderBid failed to deserialize: unsupported fork '{context}'"
                 )));
             }
         })

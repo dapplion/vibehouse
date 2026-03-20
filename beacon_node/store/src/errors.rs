@@ -305,6 +305,6 @@ mod tests {
     #[test]
     fn error_is_debug() {
         let err = Error::InvalidBytes;
-        let _ = format!("{:?}", err);
+        let _ = format!("{err:?}");
     }
 }

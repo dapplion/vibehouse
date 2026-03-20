@@ -147,7 +147,7 @@ mod tests {
     #[test]
     fn debug_format() {
         let reg = make_registration();
-        let debug = format!("{:?}", reg);
+        let debug = format!("{reg:?}");
         assert!(debug.contains("ValidatorRegistrationData"));
     }
 }

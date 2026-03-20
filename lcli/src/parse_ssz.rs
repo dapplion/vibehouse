@@ -23,7 +23,7 @@ impl FromStr for OutputFormat {
         match s {
             "json" => Ok(Self::Json),
             "yaml" => Ok(Self::Yaml),
-            _ => Err(format!("Invalid output format \"{}\"", s)),
+            _ => Err(format!("Invalid output format \"{s}\"")),
         }
     }
 }
@@ -47,9 +47,9 @@ pub fn run_parse_ssz<E: EthSpec>(
     } else {
         let mut bytes = vec![];
         let mut file =
-            File::open(filename).map_err(|e| format!("Unable to open {}: {}", filename, e))?;
+            File::open(filename).map_err(|e| format!("Unable to open {filename}: {e}"))?;
         file.read_to_end(&mut bytes)
-            .map_err(|e| format!("Unable to read {}: {}", filename, e))?;
+            .map_err(|e| format!("Unable to read {filename}: {e}"))?;
         bytes
     };
 
@@ -117,7 +117,7 @@ pub fn run_parse_ssz<E: EthSpec>(
             decode_and_print(&bytes, BeaconStateElectra::<E>::from_ssz_bytes, format)?;
         }
         "BlobSidecar" => decode_and_print(&bytes, BlobSidecar::<E>::from_ssz_bytes, format)?,
-        other => return Err(format!("Unknown type: {}", other)),
+        other => return Err(format!("Unknown type: {other}")),
     }
 
     Ok(())

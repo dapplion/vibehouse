@@ -58,10 +58,7 @@ pub async fn produce_block_v3<T: BeaconChainTypes>(
     }
 
     let randao_reveal = query.randao_reveal.decompress().map_err(|e| {
-        ApiError::bad_request(format!(
-            "randao reveal is not a valid BLS signature: {:?}",
-            e
-        ))
+        ApiError::bad_request(format!("randao reveal is not a valid BLS signature: {e:?}"))
     })?;
 
     let randao_verification = get_randao_verification(&query, randao_reveal.is_infinity())?;
@@ -81,7 +78,7 @@ pub async fn produce_block_v3<T: BeaconChainTypes>(
             BlockProductionVersion::V3,
         )
         .await
-        .map_err(|e| ApiError::bad_request(format!("failed to fetch a block: {:?}", e)))?;
+        .map_err(|e| ApiError::bad_request(format!("failed to fetch a block: {e:?}")))?;
 
     build_response_v3(chain, block_response_type, accept_header)
 }
@@ -116,7 +113,7 @@ pub fn build_response_v3<T: BeaconChainTypes>(
             .map(|res| add_execution_payload_blinded_header(res, execution_payload_blinded))
             .map(|res| add_execution_payload_value_header(res, execution_payload_value))
             .map(|res| add_consensus_block_value_header(res, consensus_block_value))
-            .map_err(|e| ApiError::server_error(format!("failed to create response: {}", e))),
+            .map_err(|e| ApiError::server_error(format!("failed to create response: {e}"))),
         _ => {
             let resp = axum::Json(ForkVersionedResponse {
                 version: fork_name,
@@ -146,10 +143,7 @@ pub async fn produce_blinded_block_v2<T: BeaconChainTypes>(
     }
 
     let randao_reveal = query.randao_reveal.decompress().map_err(|e| {
-        ApiError::bad_request(format!(
-            "randao reveal is not a valid BLS signature: {:?}",
-            e
-        ))
+        ApiError::bad_request(format!("randao reveal is not a valid BLS signature: {e:?}"))
     })?;
 
     let randao_verification = get_randao_verification(&query, randao_reveal.is_infinity())?;
@@ -186,10 +180,7 @@ pub async fn produce_block_v2<T: BeaconChainTypes>(
     }
 
     let randao_reveal = query.randao_reveal.decompress().map_err(|e| {
-        ApiError::bad_request(format!(
-            "randao reveal is not a valid BLS signature: {:?}",
-            e
-        ))
+        ApiError::bad_request(format!("randao reveal is not a valid BLS signature: {e:?}"))
     })?;
 
     let randao_verification = get_randao_verification(&query, randao_reveal.is_infinity())?;
@@ -226,7 +217,7 @@ pub fn build_response_v2<T: BeaconChainTypes>(
             .body(axum::body::Body::from(block_contents.as_ssz_bytes()))
             .map(|r| add_ssz_content_type_header(r.into_response()))
             .map(|res| add_consensus_version_header(res, fork_name))
-            .map_err(|e| ApiError::server_error(format!("failed to create response: {}", e))),
+            .map_err(|e| ApiError::server_error(format!("failed to create response: {e}"))),
         _ => Ok(axum::Json(beacon_response(
             ResponseIncludesVersion::Yes(fork_name),
             block_contents,

@@ -68,7 +68,7 @@ mod tests {
     #[test]
     fn debug_format() {
         let sub = make_sub(5, 2, true);
-        let debug = format!("{:?}", sub);
+        let debug = format!("{sub:?}");
         assert!(debug.contains("ValidatorSubscription"));
     }
 

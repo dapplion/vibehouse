@@ -98,10 +98,10 @@ pub fn run<E: EthSpec>(
                     client
                         .get_debug_beacon_states::<E>(state_id)
                         .await
-                        .map_err(|e| format!("Failed to download state: {:?}", e))
+                        .map_err(|e| format!("Failed to download state: {e:?}"))
                 })
-                .map_err(|e| format!("Failed to complete task: {:?}", e))?
-                .ok_or_else(|| format!("Unable to locate state at {:?}", state_id))?
+                .map_err(|e| format!("Failed to complete task: {e:?}"))?
+                .ok_or_else(|| format!("Unable to locate state at {state_id:?}"))?
                 .into_data();
             let state_root = match state_id {
                 StateId::Root(root) => Some(root),
@@ -118,14 +118,14 @@ pub fn run<E: EthSpec>(
 
     state
         .build_all_caches(spec)
-        .map_err(|e| format!("Unable to build caches: {:?}", e))?;
+        .map_err(|e| format!("Unable to build caches: {e:?}"))?;
 
     let state_root = if let Some(root) = cli_state_root.or(state_root) {
         root
     } else {
         state
             .update_tree_hash_cache()
-            .map_err(|e| format!("Unable to build THC: {:?}", e))?
+            .map_err(|e| format!("Unable to build THC: {e:?}"))?
     };
 
     for i in 0..runs {
@@ -135,10 +135,10 @@ pub fn run<E: EthSpec>(
 
         if partial {
             partial_state_advance(&mut state, Some(state_root), target_slot, spec)
-                .map_err(|e| format!("Unable to perform partial advance: {:?}", e))?;
+                .map_err(|e| format!("Unable to perform partial advance: {e:?}"))?;
         } else {
             complete_state_advance(&mut state, Some(state_root), target_slot, spec)
-                .map_err(|e| format!("Unable to perform complete advance: {:?}", e))?;
+                .map_err(|e| format!("Unable to perform complete advance: {e:?}"))?;
         }
 
         let duration = Instant::now().duration_since(start);
@@ -148,11 +148,11 @@ pub fn run<E: EthSpec>(
 
     if let (Some(post_state), Some(output_path)) = (post_state, output_path) {
         let mut output_file = File::create(output_path)
-            .map_err(|e| format!("Unable to create output file: {:?}", e))?;
+            .map_err(|e| format!("Unable to create output file: {e:?}"))?;
 
         output_file
             .write_all(&post_state.as_ssz_bytes())
-            .map_err(|e| format!("Unable to write to output file: {:?}", e))?;
+            .map_err(|e| format!("Unable to write to output file: {e:?}"))?;
     }
 
     Ok(())

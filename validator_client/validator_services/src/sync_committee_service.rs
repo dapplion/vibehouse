@@ -203,7 +203,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> SyncCommitteeService<S
                         Ok(Some(_)) => {
                             Err(format!("To sign sync committee messages for slot {slot} a non-optimistic head block is required"))
                         }
-                        Ok(None) => Err(format!("No block root found for slot {}", slot)),
+                        Ok(None) => Err(format!("No block root found for slot {slot}")),
                         Err(e) => Err(e.to_string()),
                     }
                 },
@@ -585,7 +585,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> SyncCommitteeService<S
 fn sync_period_of_slot<E: EthSpec>(slot: Slot, spec: &ChainSpec) -> Result<u64, String> {
     slot.epoch(E::slots_per_epoch())
         .sync_committee_period(spec)
-        .map_err(|e| format!("Error computing sync period: {:?}", e))
+        .map_err(|e| format!("Error computing sync period: {e:?}"))
 }
 
 fn subscriptions_from_sync_duties(

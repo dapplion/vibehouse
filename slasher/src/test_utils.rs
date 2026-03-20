@@ -101,8 +101,7 @@ pub fn slashed_validators_from_slashings(slashings: &HashSet<AttesterSlashing<E>
             let att2 = slashing.attestation_2();
             assert!(
                 att1.is_double_vote(att2) || att1.is_surround_vote(att2),
-                "invalid slashing: {:#?}",
-                slashing
+                "invalid slashing: {slashing:#?}"
             );
             let attesting_indices_1 = att1.attesting_indices_to_vec();
             let attesting_indices_2 = att2.attesting_indices_to_vec();

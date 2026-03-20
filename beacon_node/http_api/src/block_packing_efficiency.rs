@@ -252,8 +252,7 @@ pub fn get_block_packing_efficiency<T: BeaconChainTypes>(
     // Check query is valid.
     if start_epoch > end_epoch || start_epoch == 0 {
         return Err(ApiError::bad_request(format!(
-            "invalid start and end epochs: {}, {}",
-            start_epoch, end_epoch
+            "invalid start and end epochs: {start_epoch}, {end_epoch}"
         )));
     }
 
@@ -300,7 +299,7 @@ pub fn get_block_packing_efficiency<T: BeaconChainTypes>(
     // Initialize handler.
     let handler = Arc::new(Mutex::new(
         PackingEfficiencyHandler::new(prior_epoch, starting_state.clone(), spec)
-            .map_err(|e| ApiError::server_error(format!("{:?}", e)))?,
+            .map_err(|e| ApiError::server_error(format!("{e:?}")))?,
     ));
 
     let pre_slot_hook =
@@ -409,7 +408,7 @@ pub fn get_block_packing_efficiency<T: BeaconChainTypes>(
 
         replayer = replayer
             .apply_blocks(blocks, None)
-            .map_err(|e: PackingEfficiencyError| ApiError::server_error(format!("{:?}", e)))?;
+            .map_err(|e: PackingEfficiencyError| ApiError::server_error(format!("{e:?}")))?;
     }
 
     drop(replayer);

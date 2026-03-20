@@ -602,16 +602,14 @@ mod tests {
             assert_ne!(
                 state.validators().get(i).unwrap().exit_epoch,
                 spec.far_future_epoch,
-                "validator {} should be ejected",
-                i
+                "validator {i} should be ejected"
             );
         }
         for i in 4..8 {
             assert_eq!(
                 state.validators().get(i).unwrap().exit_epoch,
                 spec.far_future_epoch,
-                "validator {} should not be ejected",
-                i
+                "validator {i} should not be ejected"
             );
         }
     }

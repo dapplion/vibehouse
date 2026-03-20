@@ -59,13 +59,13 @@ pub fn process_execution_payload_bid<E: EthSpec>(
             .builders
             .get(builder_index as usize)
             .ok_or_else(|| BlockProcessingError::PayloadBidInvalid {
-                reason: format!("builder index {} does not exist", builder_index),
+                reason: format!("builder index {builder_index} does not exist"),
             })?;
 
         // Verify that the builder is active
         if !builder.is_active_at_finalized_epoch(finalized_epoch, spec) {
             return Err(BlockProcessingError::PayloadBidInvalid {
-                reason: format!("builder {} is not active", builder_index),
+                reason: format!("builder {builder_index} is not active"),
             });
         }
 
@@ -100,13 +100,13 @@ pub fn process_execution_payload_bid<E: EthSpec>(
 
             let pubkey = builder.pubkey.decompress().map_err(|_| {
                 BlockProcessingError::PayloadBidInvalid {
-                    reason: format!("failed to decompress builder {} pubkey", builder_index),
+                    reason: format!("failed to decompress builder {builder_index} pubkey"),
                 }
             })?;
 
             if !signed_bid.signature.verify(&pubkey, signing_root) {
                 return Err(BlockProcessingError::PayloadBidInvalid {
-                    reason: format!("invalid builder {} signature", builder_index),
+                    reason: format!("invalid builder {builder_index} signature"),
                 });
             }
         }
@@ -189,8 +189,7 @@ pub fn process_execution_payload_bid<E: EthSpec>(
             .get_mut(slot_index)
             .ok_or_else(|| BlockProcessingError::PayloadBidInvalid {
                 reason: format!(
-                    "slot index {} out of bounds for builder_pending_payments",
-                    slot_index
+                    "slot index {slot_index} out of bounds for builder_pending_payments"
                 ),
             })? = pending_payment;
     }
@@ -1687,8 +1686,7 @@ mod tests {
                 .unwrap();
             assert_eq!(
                 *payment, *expected,
-                "self-build bid should not modify payment slot {}",
-                i
+                "self-build bid should not modify payment slot {i}"
             );
         }
     }
@@ -1727,8 +1725,7 @@ mod tests {
                 Err(BlockProcessingError::PayloadBidInvalid { reason })
                     if reason.contains("not active")
             ),
-            "builder with deposit_epoch == finalized_epoch should be rejected: {:?}",
-            result
+            "builder with deposit_epoch == finalized_epoch should be rejected: {result:?}"
         );
     }
 
@@ -3189,9 +3186,7 @@ mod tests {
         for &idx in &ptc {
             assert!(
                 (idx as usize) < num_validators,
-                "PTC member index {} exceeds validator count {}",
-                idx,
-                num_validators
+                "PTC member index {idx} exceeds validator count {num_validators}"
             );
         }
     }
@@ -3363,7 +3358,7 @@ mod tests {
         // are selected — they should be distinct (different positions in the committee).
         let mut seen = std::collections::HashSet::new();
         for &idx in &ptc {
-            assert!((idx as usize) < 64, "index {} out of range", idx);
+            assert!((idx as usize) < 64, "index {idx} out of range");
             seen.insert(idx);
         }
         assert_eq!(
@@ -3408,7 +3403,7 @@ mod tests {
 
         // All PTC members should be valid validators regardless of duplicates
         for &idx in &ptc {
-            assert!((idx as usize) < 8, "index {} out of range", idx);
+            assert!((idx as usize) < 8, "index {idx} out of range");
         }
     }
 
@@ -3436,7 +3431,7 @@ mod tests {
         // The algorithm cycles through candidates with `i % total` and may need
         // multiple passes. Verify all selected members are valid.
         for &idx in &ptc1 {
-            assert!((idx as usize) < 16, "index {} out of range", idx);
+            assert!((idx as usize) < 16, "index {idx} out of range");
         }
     }
 
@@ -3458,8 +3453,7 @@ mod tests {
         for &idx in &ptc {
             assert!(
                 (idx as usize) < 128,
-                "PTC member {} exceeds validator count",
-                idx
+                "PTC member {idx} exceeds validator count"
             );
         }
 
@@ -3586,8 +3580,7 @@ mod tests {
                     PayloadAttestationInvalid::AttesterIndexOutOfBounds
                 ))
             ),
-            "no-bits attestation should fail even without sig check: {:?}",
-            result
+            "no-bits attestation should fail even without sig check: {result:?}"
         );
     }
 
@@ -3981,8 +3974,7 @@ mod tests {
                 let p = state_gloas.builder_pending_payments.get(i).unwrap();
                 assert_eq!(
                     p.withdrawal.amount, 0,
-                    "non-target index {} should be zero",
-                    i
+                    "non-target index {i} should be zero"
                 );
             }
         }
@@ -4313,8 +4305,7 @@ mod tests {
         let result = can_builder_cover_bid::<E>(&state, 99, 1_000_000_000, &spec);
         assert!(
             matches!(result, Err(BeaconStateError::UnknownBuilder(99))),
-            "unknown builder index should return error: {:?}",
-            result,
+            "unknown builder index should return error: {result:?}",
         );
     }
 
@@ -4504,8 +4495,7 @@ mod tests {
                 Err(BlockProcessingError::PayloadBidInvalid { reason })
                     if reason.contains("failed to decompress")
             ),
-            "expected decompression failure, got: {:?}",
-            result
+            "expected decompression failure, got: {result:?}"
         );
     }
 
@@ -4537,8 +4527,7 @@ mod tests {
                     builders_count: 1,
                 })
             ),
-            "expected WithdrawalBuilderIndexInvalid, got: {:?}",
-            result
+            "expected WithdrawalBuilderIndexInvalid, got: {result:?}"
         );
     }
 
@@ -4562,8 +4551,7 @@ mod tests {
                     builders_count: 1,
                 })
             ),
-            "expected WithdrawalBuilderIndexInvalid for stale sweep index, got: {:?}",
-            result
+            "expected WithdrawalBuilderIndexInvalid for stale sweep index, got: {result:?}"
         );
     }
 
@@ -4594,8 +4582,7 @@ mod tests {
                     builders_count: 1,
                 })
             ),
-            "expected WithdrawalBuilderIndexInvalid, got: {:?}",
-            result
+            "expected WithdrawalBuilderIndexInvalid, got: {result:?}"
         );
     }
 
@@ -4616,8 +4603,7 @@ mod tests {
                     builders_count: 1,
                 })
             ),
-            "expected WithdrawalBuilderIndexInvalid for stale sweep index, got: {:?}",
-            result
+            "expected WithdrawalBuilderIndexInvalid for stale sweep index, got: {result:?}"
         );
     }
 
@@ -4956,8 +4942,7 @@ mod tests {
                     BeaconStateError::NonExecutionAddressWithdrawalCredential
                 ))
             ),
-            "BLS-credential validator partial withdrawal should fail: {:?}",
-            result
+            "BLS-credential validator partial withdrawal should fail: {result:?}"
         );
     }
 
@@ -4994,8 +4979,7 @@ mod tests {
                     BeaconStateError::NonExecutionAddressWithdrawalCredential
                 ))
             ),
-            "read-only path should also reject BLS-credential partial withdrawal: {:?}",
-            result
+            "read-only path should also reject BLS-credential partial withdrawal: {result:?}"
         );
     }
 
@@ -5686,7 +5670,7 @@ mod tests {
         // Verify they decode back to the correct builder indices
         for (i, w) in builder_w.iter().enumerate() {
             let decoded = w.validator_index & !BUILDER_INDEX_FLAG;
-            assert_eq!(decoded, i as u64, "decoded builder index should be {}", i);
+            assert_eq!(decoded, i as u64, "decoded builder index should be {i}");
         }
     }
 
@@ -5862,14 +5846,13 @@ mod tests {
             "expected and actual withdrawal count must match"
         );
         for (i, (e, a)) in expected.iter().zip(actual.iter()).enumerate() {
-            assert_eq!(e.index, a.index, "withdrawal {} index mismatch", i);
+            assert_eq!(e.index, a.index, "withdrawal {i} index mismatch");
             assert_eq!(
                 e.validator_index, a.validator_index,
-                "withdrawal {} validator_index mismatch",
-                i
+                "withdrawal {i} validator_index mismatch"
             );
-            assert_eq!(e.amount, a.amount, "withdrawal {} amount mismatch", i);
-            assert_eq!(e.address, a.address, "withdrawal {} address mismatch", i);
+            assert_eq!(e.amount, a.amount, "withdrawal {i} amount mismatch");
+            assert_eq!(e.address, a.address, "withdrawal {i} address mismatch");
         }
 
         // Verify the expected contents:
@@ -6774,7 +6757,7 @@ mod tests {
             Ok(members) => {
                 assert_eq!(members.len(), E::ptc_size(), "PTC should have correct size");
                 for &idx in &members {
-                    assert!((idx as usize) < 8, "PTC member {} out of range", idx);
+                    assert!((idx as usize) < 8, "PTC member {idx} out of range");
                 }
             }
             Err(_) => {
@@ -6813,7 +6796,7 @@ mod tests {
                     // Expected: either decompression failure or signature mismatch
                 }
                 other => {
-                    panic!("unexpected error type: {:?}", other);
+                    panic!("unexpected error type: {other:?}");
                 }
             }
         }
@@ -6893,8 +6876,7 @@ mod tests {
         let result = process_withdrawals_gloas::<E>(&mut state, &spec);
         assert!(
             matches!(&result, Err(BlockProcessingError::ArithError(_))),
-            "withdrawal index overflow at u64::MAX should return ArithError, got: {:?}",
-            result
+            "withdrawal index overflow at u64::MAX should return ArithError, got: {result:?}"
         );
     }
 
@@ -6931,8 +6913,7 @@ mod tests {
         let result = process_withdrawals_gloas::<E>(&mut state, &spec);
         assert!(
             result.is_ok(),
-            "near-max withdrawal index should succeed: {:?}",
-            result
+            "near-max withdrawal index should succeed: {result:?}"
         );
 
         assert_eq!(
@@ -6972,8 +6953,7 @@ mod tests {
                 Err(BlockProcessingError::PayloadBidInvalid { reason })
                     if reason.contains("blob_kzg_commitments")
             ),
-            "max+1 blob commitments should be rejected: {:?}",
-            result
+            "max+1 blob commitments should be rejected: {result:?}"
         );
     }
 
@@ -7299,8 +7279,7 @@ mod tests {
                     PayloadAttestationInvalid::WrongBeaconBlockRoot
                 ))
             ),
-            "wrong block root should produce WrongBeaconBlockRoot error: {:?}",
-            result,
+            "wrong block root should produce WrongBeaconBlockRoot error: {result:?}",
         );
     }
 
@@ -7337,7 +7316,7 @@ mod tests {
                     "actual slot should be the attestation's data.slot"
                 );
             }
-            other => panic!("expected WrongSlot error, got {:?}", other),
+            other => panic!("expected WrongSlot error, got {other:?}"),
         }
     }
 
@@ -7394,8 +7373,7 @@ mod tests {
             assert_eq!(
                 p,
                 BuilderPendingPayment::default(),
-                "index {} should be default",
-                i
+                "index {i} should be default"
             );
         }
     }
@@ -7532,8 +7510,7 @@ mod tests {
             process_payload_attestation(&mut state, &attestation, VerifySignatures::False, &spec);
         assert!(
             result.is_ok(),
-            "attestation with correct slot should pass: {:?}",
-            result
+            "attestation with correct slot should pass: {result:?}"
         );
     }
 
@@ -7618,8 +7595,7 @@ mod tests {
                     builders_count: 1
                 })
             ),
-            "expected WithdrawalBuilderIndexInvalid, got {:?}",
-            result
+            "expected WithdrawalBuilderIndexInvalid, got {result:?}"
         );
     }
 
@@ -7651,8 +7627,7 @@ mod tests {
                     builders_count: 1,
                 })
             ),
-            "expected WithdrawalBuilderIndexInvalid for sweep OOB, got {:?}",
-            result
+            "expected WithdrawalBuilderIndexInvalid for sweep OOB, got {result:?}"
         );
     }
 
@@ -7683,8 +7658,7 @@ mod tests {
                     builders_count: 1,
                 })
             ),
-            "expected WithdrawalBuilderIndexInvalid, got {:?}",
-            result
+            "expected WithdrawalBuilderIndexInvalid, got {result:?}"
         );
     }
 
@@ -7823,8 +7797,7 @@ mod tests {
         let result = initiate_builder_exit::<E>(&mut state, 999, &spec);
         assert!(
             matches!(result, Err(BeaconStateError::UnknownBuilder(999))),
-            "expected UnknownBuilder(999), got {:?}",
-            result
+            "expected UnknownBuilder(999), got {result:?}"
         );
     }
 
@@ -8314,8 +8287,7 @@ mod tests {
             assert_ne!(
                 withdrawals.get(i).unwrap().validator_index & BUILDER_INDEX_FLAG,
                 0,
-                "withdrawal {} should be a builder withdrawal",
-                i
+                "withdrawal {i} should be a builder withdrawal"
             );
         }
 
@@ -8333,9 +8305,7 @@ mod tests {
         let validators_len = state.validators().len() as u64;
         assert!(
             next_idx < validators_len,
-            "next_withdrawal_validator_index {} should be < validators_len {}",
-            next_idx,
-            validators_len
+            "next_withdrawal_validator_index {next_idx} should be < validators_len {validators_len}"
         );
     }
 
@@ -8465,18 +8435,16 @@ mod tests {
             processed.len()
         );
         for (i, (exp, proc)) in expected.iter().zip(processed.iter()).enumerate() {
-            assert_eq!(exp.index, proc.index, "withdrawal {}: index mismatch", i);
+            assert_eq!(exp.index, proc.index, "withdrawal {i}: index mismatch");
             assert_eq!(
                 exp.validator_index, proc.validator_index,
-                "withdrawal {}: validator_index mismatch",
-                i
+                "withdrawal {i}: validator_index mismatch"
             );
             assert_eq!(
                 exp.address, proc.address,
-                "withdrawal {}: address mismatch",
-                i
+                "withdrawal {i}: address mismatch"
             );
-            assert_eq!(exp.amount, proc.amount, "withdrawal {}: amount mismatch", i);
+            assert_eq!(exp.amount, proc.amount, "withdrawal {i}: amount mismatch");
         }
     }
 
@@ -8639,13 +8607,12 @@ mod tests {
             "get_expected should match process_withdrawals count"
         );
         for (i, (exp, proc)) in expected.iter().zip(withdrawals.iter()).enumerate() {
-            assert_eq!(exp.index, proc.index, "withdrawal {}: index mismatch", i);
+            assert_eq!(exp.index, proc.index, "withdrawal {i}: index mismatch");
             assert_eq!(
                 exp.validator_index, proc.validator_index,
-                "withdrawal {}: validator_index mismatch",
-                i
+                "withdrawal {i}: validator_index mismatch"
             );
-            assert_eq!(exp.amount, proc.amount, "withdrawal {}: amount mismatch", i);
+            assert_eq!(exp.amount, proc.amount, "withdrawal {i}: amount mismatch");
         }
     }
 
@@ -8687,8 +8654,7 @@ mod tests {
                     PayloadAttestationInvalid::WrongBeaconBlockRoot
                 ))
             ),
-            "expected WrongBeaconBlockRoot, got {:?}",
-            result,
+            "expected WrongBeaconBlockRoot, got {result:?}",
         );
     }
 
@@ -8708,8 +8674,7 @@ mod tests {
                     PayloadAttestationInvalid::WrongSlot { .. }
                 ))
             ),
-            "expected WrongSlot, got {:?}",
-            result,
+            "expected WrongSlot, got {result:?}",
         );
     }
 
@@ -8728,8 +8693,7 @@ mod tests {
                     PayloadAttestationInvalid::WrongSlot { .. }
                 ))
             ),
-            "expected WrongSlot, got {:?}",
-            result,
+            "expected WrongSlot, got {result:?}",
         );
     }
 
@@ -8748,8 +8712,7 @@ mod tests {
                     PayloadAttestationInvalid::WrongSlot { .. }
                 ))
             ),
-            "expected WrongSlot, got {:?}",
-            result,
+            "expected WrongSlot, got {result:?}",
         );
     }
 
@@ -8768,8 +8731,7 @@ mod tests {
                     PayloadAttestationInvalid::WrongSlot { expected, actual }
                 )) if expected == state.slot() && actual == Slot::new(3)
             ),
-            "expected WrongSlot with correct expected/actual, got {:?}",
-            result,
+            "expected WrongSlot with correct expected/actual, got {result:?}",
         );
     }
 
@@ -8787,8 +8749,7 @@ mod tests {
                     PayloadAttestationInvalid::WrongBeaconBlockRoot
                 ))
             ),
-            "root check should fire before slot check, got {:?}",
-            result,
+            "root check should fire before slot check, got {result:?}",
         );
     }
 
@@ -8825,8 +8786,7 @@ mod tests {
         let result = process_withdrawals_gloas::<E>(&mut state, &spec);
         assert!(
             result.is_ok(),
-            "should succeed, skipping BLS validator: {:?}",
-            result
+            "should succeed, skipping BLS validator: {result:?}"
         );
 
         // Validator 0 should NOT appear in withdrawals
@@ -8898,8 +8858,7 @@ mod tests {
                     PayloadAttestationInvalid::WrongSlot { .. }
                 ))
             ),
-            "slot u64::MAX should trigger overflow → WrongSlot, got {:?}",
-            result,
+            "slot u64::MAX should trigger overflow → WrongSlot, got {result:?}",
         );
     }
 
@@ -8921,8 +8880,7 @@ mod tests {
         let result = process_payload_attestation(&mut state, &att, VerifySignatures::False, &spec);
         assert!(
             result.is_ok(),
-            "valid payload attestation should succeed, got {:?}",
-            result,
+            "valid payload attestation should succeed, got {result:?}",
         );
     }
 
@@ -8943,8 +8901,7 @@ mod tests {
         let result = process_payload_attestation(&mut state, &att, VerifySignatures::False, &spec);
         assert!(
             result.is_ok(),
-            "all-bits-set payload attestation should succeed, got {:?}",
-            result,
+            "all-bits-set payload attestation should succeed, got {result:?}",
         );
     }
 
@@ -8965,8 +8922,7 @@ mod tests {
                     PayloadAttestationInvalid::AttesterIndexOutOfBounds
                 ))
             ),
-            "empty aggregation bits should yield AttesterIndexOutOfBounds, got {:?}",
-            result,
+            "empty aggregation bits should yield AttesterIndexOutOfBounds, got {result:?}",
         );
     }
 
@@ -9122,8 +9078,7 @@ mod tests {
         let result = can_builder_cover_bid::<E>(&state, 999, 1_000_000_000, &spec);
         assert!(
             matches!(result, Err(BeaconStateError::UnknownBuilder(999))),
-            "should return UnknownBuilder for non-existent builder, got {:?}",
-            result,
+            "should return UnknownBuilder for non-existent builder, got {result:?}",
         );
     }
 
@@ -9210,8 +9165,7 @@ mod tests {
                     PayloadAttestationInvalid::NoActiveValidators,
                 ))
             ),
-            "empty validator set should trigger NoActiveValidators, got {:?}",
-            result,
+            "empty validator set should trigger NoActiveValidators, got {result:?}",
         );
     }
 }

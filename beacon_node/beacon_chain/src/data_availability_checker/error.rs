@@ -102,7 +102,7 @@ mod tests {
             Error::SlotClockError,
         ];
         for err in &internal_errors {
-            assert_eq!(err.category(), ErrorCategory::Internal, "{:?}", err);
+            assert_eq!(err.category(), ErrorCategory::Internal, "{err:?}");
         }
     }
 
@@ -113,7 +113,7 @@ mod tests {
             Error::DataColumnIndexInvalid(99),
         ];
         for err in &malicious_errors {
-            assert_eq!(err.category(), ErrorCategory::Malicious, "{:?}", err);
+            assert_eq!(err.category(), ErrorCategory::Malicious, "{err:?}");
         }
     }
 
@@ -152,7 +152,7 @@ mod tests {
     #[test]
     fn debug_format() {
         let err = Error::BlobIndexInvalid(42);
-        let dbg = format!("{:?}", err);
+        let dbg = format!("{err:?}");
         assert!(dbg.contains("BlobIndexInvalid"));
         assert!(dbg.contains("42"));
     }

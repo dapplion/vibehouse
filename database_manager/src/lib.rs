@@ -162,7 +162,7 @@ pub fn inspect_db<E: EthSpec>(
 
     if let InspectTarget::Values = inspect_config.target {
         fs::create_dir_all(base_path)
-            .map_err(|e| format!("Unable to create import directory: {:?}", e))?;
+            .map_err(|e| format!("Unable to create import directory: {e:?}"))?;
     }
 
     for res in sub_db
@@ -170,7 +170,7 @@ pub fn inspect_db<E: EthSpec>(
         .skip(skip)
         .take(limit)
     {
-        let (key, value) = res.map_err(|e| format!("{:?}", e))?;
+        let (key, value) = res.map_err(|e| format!("{e:?}"))?;
 
         match inspect_config.target {
             InspectTarget::ValueSizes => {
@@ -185,10 +185,7 @@ pub fn inspect_db<E: EthSpec>(
                 );
 
                 if numeric_key > prev_key + 1 {
-                    println!(
-                        "gap between keys {} and {} (offset: {})",
-                        prev_key, numeric_key, num_keys,
-                    );
+                    println!("gap between keys {prev_key} and {numeric_key} (offset: {num_keys})",);
                     found_gaps = true;
                 }
                 prev_key = numeric_key;
@@ -206,15 +203,15 @@ pub fn inspect_db<E: EthSpec>(
                     .truncate(true)
                     .write(true)
                     .open(&file_path)
-                    .map_err(|e| format!("Failed to open file: {:?}", e))
+                    .map_err(|e| format!("Failed to open file: {e:?}"))
                     .map(|mut file| {
                         file.write_all(&value)
-                            .map_err(|e| format!("Failed to write file: {:?}", e))
+                            .map_err(|e| format!("Failed to write file: {e:?}"))
                     });
                 if let Err(e) = write_result {
-                    println!("Error writing values to file {:?}: {:?}", file_path, e);
+                    println!("Error writing values to file {file_path:?}: {e:?}");
                 } else {
-                    println!("Successfully saved values to file: {:?}", file_path);
+                    println!("Successfully saved values to file: {file_path:?}");
                 }
             }
         }
@@ -226,8 +223,8 @@ pub fn inspect_db<E: EthSpec>(
         println!("No gaps found!");
     }
 
-    println!("Num keys: {}", num_keys);
-    println!("Total: {} bytes", total);
+    println!("Num keys: {num_keys}");
+    println!("Total: {total} bytes");
 
     Ok(())
 }
@@ -444,7 +441,7 @@ pub fn run<E: EthSpec>(
 ) -> Result<(), String> {
     let client_config = parse_client_config(cli_args, db_manager_config, &env)?;
     let context = env.core_context();
-    let format_err = |e| format!("Fatal error: {:?}", e);
+    let format_err = |e| format!("Fatal error: {e:?}");
 
     let get_genesis_state = || {
         let executor = env.core_context().executor;

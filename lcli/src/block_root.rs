@@ -77,12 +77,12 @@ pub fn run<E: EthSpec>(
                     let block = client
                         .get_beacon_blocks(block_id)
                         .await
-                        .map_err(|e| format!("Failed to download block: {:?}", e))?
-                        .ok_or_else(|| format!("Unable to locate block at {:?}", block_id))?
+                        .map_err(|e| format!("Failed to download block: {e:?}"))?
+                        .ok_or_else(|| format!("Unable to locate block at {block_id:?}"))?
                         .into_data();
                     Ok::<_, String>(block)
                 })
-                .map_err(|e| format!("Failed to complete task: {:?}", e))?
+                .map_err(|e| format!("Failed to complete task: {e:?}"))?
         }
         _ => return Err("must supply --block-path *or* --beacon-url".into()),
     };

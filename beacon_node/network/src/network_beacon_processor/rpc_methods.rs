@@ -691,7 +691,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                         error = ?e,
                         "Error getting LightClientBootstrap instance"
                     );
-                    Err((RpcErrorResponse::ResourceUnavailable, format!("{:?}", e)))
+                    Err((RpcErrorResponse::ResourceUnavailable, format!("{e:?}")))
                 }
             },
             Response::LightClientBootstrap,

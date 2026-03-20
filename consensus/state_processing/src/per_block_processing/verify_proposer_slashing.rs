@@ -250,8 +250,7 @@ mod tests {
                 err,
                 BlockOperationError::Invalid(Invalid::ProposalSlotMismatch(_, _))
             ),
-            "expected ProposalSlotMismatch, got {:?}",
-            err
+            "expected ProposalSlotMismatch, got {err:?}"
         );
     }
 

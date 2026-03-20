@@ -9,7 +9,7 @@ use types::Hash256;
 
 pub fn parse_point(point: &str) -> Result<Hash256, Error> {
     Hash256::from_str(&point[2..])
-        .map_err(|e| Error::FailedToParseTest(format!("Failed to parse point: {:?}", e)))
+        .map_err(|e| Error::FailedToParseTest(format!("Failed to parse point: {e:?}")))
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -49,7 +49,7 @@ impl<E: EthSpec> Case for KZGComputeKZGProof<E> {
         let kzg = get_kzg();
         let proof = parse_input(&self.input).and_then(|(blob, z)| {
             compute_kzg_proof::<E>(&kzg, &blob, z)
-                .map_err(|e| Error::InternalError(format!("Failed to compute kzg proof: {:?}", e)))
+                .map_err(|e| Error::InternalError(format!("Failed to compute kzg proof: {e:?}")))
         });
 
         let expected = self

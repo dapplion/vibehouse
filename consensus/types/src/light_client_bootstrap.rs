@@ -236,16 +236,12 @@ impl<'de, E: EthSpec> ContextDeserialize<'de, ForkName> for LightClientBootstrap
         D: Deserializer<'de>,
     {
         let convert_err = |e| {
-            serde::de::Error::custom(format!(
-                "LightClientBootstrap failed to deserialize: {:?}",
-                e
-            ))
+            serde::de::Error::custom(format!("LightClientBootstrap failed to deserialize: {e:?}"))
         };
         Ok(match context {
             ForkName::Base => {
                 return Err(serde::de::Error::custom(format!(
-                    "LightClientBootstrap failed to deserialize: unsupported fork '{}'",
-                    context
+                    "LightClientBootstrap failed to deserialize: unsupported fork '{context}'"
                 )));
             }
             ForkName::Altair | ForkName::Bellatrix => {

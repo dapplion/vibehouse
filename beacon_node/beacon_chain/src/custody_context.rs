@@ -640,22 +640,18 @@ mod tests {
         assert_eq!(
             custody_context.custody_group_count_at_head(spec),
             expected_new_cgc,
-            "cgc should increase from {} to {}",
-            persisted_cgc,
-            expected_new_cgc
+            "cgc should increase from {persisted_cgc} to {expected_new_cgc}"
         );
 
         // Verify CustodyCountChanged is returned with correct values
         let cgc_changed = custody_count_changed.expect("CustodyCountChanged should be returned");
         assert_eq!(
             cgc_changed.new_custody_group_count, expected_new_cgc,
-            "new_custody_group_count should be {}",
-            expected_new_cgc
+            "new_custody_group_count should be {expected_new_cgc}"
         );
         assert_eq!(
             cgc_changed.old_custody_group_count, persisted_cgc,
-            "old_custody_group_count should be {}",
-            persisted_cgc
+            "old_custody_group_count should be {persisted_cgc}"
         );
         assert_eq!(
             cgc_changed.effective_epoch,
@@ -673,14 +669,12 @@ mod tests {
         assert_eq!(
             custody_context.custody_group_count_at_epoch(head_epoch, spec),
             persisted_cgc,
-            "current epoch should still use old cgc ({})",
-            persisted_cgc
+            "current epoch should still use old cgc ({persisted_cgc})"
         );
         assert_eq!(
             custody_context.custody_group_count_at_epoch(head_epoch + 1, spec),
             expected_new_cgc,
-            "next epoch should use new cgc ({})",
-            expected_new_cgc
+            "next epoch should use new cgc ({expected_new_cgc})"
         );
     }
 
@@ -711,8 +705,7 @@ mod tests {
         assert_eq!(
             custody_context.custody_group_count_at_head(spec),
             persisted_cgc,
-            "cgc should remain at {} (reduction not supported)",
-            persisted_cgc
+            "cgc should remain at {persisted_cgc} (reduction not supported)"
         );
 
         // Verify no CustodyCountChanged is returned (no change occurred)

@@ -685,8 +685,7 @@ mod tests {
         let result = RpcBlock::new(None, block, Some(blobs));
         assert!(
             matches!(result, Err(AvailabilityCheckError::MissingBlobs)),
-            "expected MissingBlobs, got: {:?}",
-            result
+            "expected MissingBlobs, got: {result:?}"
         );
     }
 
@@ -703,8 +702,7 @@ mod tests {
                 result,
                 Err(AvailabilityCheckError::KzgCommitmentMismatch { .. })
             ),
-            "expected KzgCommitmentMismatch, got: {:?}",
-            result
+            "expected KzgCommitmentMismatch, got: {result:?}"
         );
     }
 

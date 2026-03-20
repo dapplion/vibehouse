@@ -402,8 +402,7 @@ fn duration_to_f64(duration: Duration) -> f64 {
 pub fn decimal_buckets(min_power: i32, max_power: i32) -> Result<Vec<f64>> {
     if max_power < min_power {
         return Err(Error::Msg(format!(
-            "decimal_buckets min_power needs to be <= max_power, given {} and {}",
-            min_power, max_power
+            "decimal_buckets min_power needs to be <= max_power, given {min_power} and {max_power}"
         )));
     }
 

@@ -99,7 +99,7 @@ fn read_line(line: &str) -> Result<(Option<PublicKeyBytes>, Graffiti), Error> {
             Ok((Some(pk), graffiti))
         }
     } else {
-        Err(Error::InvalidLine(format!("Missing delimiter: {}", line)))
+        Err(Error::InvalidLine(format!("Missing delimiter: {line}")))
     }
 }
 
@@ -159,7 +159,7 @@ mod tests {
         let file = File::create(&file_name).unwrap();
         let mut graffiti_file = LineWriter::new(file);
         graffiti_file
-            .write_all(format!("default: {}\n", DEFAULT_GRAFFITI).as_bytes())
+            .write_all(format!("default: {DEFAULT_GRAFFITI}\n").as_bytes())
             .unwrap();
         graffiti_file
             .write_all(format!("{}: {}\n", pk1.as_hex_string(), CUSTOM_GRAFFITI1).as_bytes())
@@ -211,7 +211,7 @@ mod tests {
 
     #[test]
     fn read_line_public_key() {
-        let line = format!("{}: custom", PK1);
+        let line = format!("{PK1}: custom");
         let (pk, graffiti) = read_line(&line).unwrap();
         assert!(pk.is_some(), "public key line should return Some");
         let expected_pk = PublicKeyBytes::deserialize(&hex::decode(&PK1[2..]).unwrap()).unwrap();
@@ -221,7 +221,7 @@ mod tests {
 
     #[test]
     fn read_line_empty_graffiti() {
-        let line = format!("{}:", PK1);
+        let line = format!("{PK1}:");
         let (pk, graffiti) = read_line(&line).unwrap();
         assert!(pk.is_some());
         assert_eq!(graffiti, GraffitiString::from_str("").unwrap().into());
@@ -230,7 +230,7 @@ mod tests {
     #[test]
     fn read_line_graffiti_with_colons() {
         // Graffiti containing colons (e.g., graffitiwall format)
-        let line = format!("{}: graffitiwall:720:641:#ffff00", PK1);
+        let line = format!("{PK1}: graffitiwall:720:641:#ffff00");
         let (pk, graffiti) = read_line(&line).unwrap();
         assert!(pk.is_some());
         assert_eq!(
@@ -321,7 +321,7 @@ mod tests {
         let temp = TempDir::new().unwrap();
         let file_path = temp.keep().join("graffiti.txt");
         // File with only specific key entries, no default
-        std::fs::write(&file_path, format!("{}: specific\n", PK1)).unwrap();
+        std::fs::write(&file_path, format!("{PK1}: specific\n")).unwrap();
         let mut gf = GraffitiFile::new(file_path);
         let random_pk = Keypair::random().pk.compress();
         let result = gf.load_graffiti(&random_pk).unwrap();

@@ -16,8 +16,7 @@ fn load_from_yaml() {
         assert_eq!(
             keypair.pk,
             reference_keypair(i).pk,
-            "Decoded key {} does not match generated key",
-            i
+            "Decoded key {i} does not match generated key"
         );
     });
 }

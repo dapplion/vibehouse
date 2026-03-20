@@ -58,8 +58,7 @@ impl<E: EthSpec> Case for KZGVerifyCellKZGProofBatch<E> {
                     Ok(_) => Ok(true),
                     Err((_, KzgError::KzgVerificationFailed)) => Ok(false),
                     Err(e) => Err(Error::InternalError(format!(
-                        "Failed to validate cells: {:?}",
-                        e
+                        "Failed to validate cells: {e:?}"
                     ))),
                 }
             });

@@ -185,7 +185,7 @@ impl Config {
                 .iter()
                 .map(|s| SensitiveUrl::parse(s))
                 .collect::<Result<_, _>>()
-                .map_err(|e| format!("Unable to parse beacon node URL: {:?}", e))?;
+                .map_err(|e| format!("Unable to parse beacon node URL: {e:?}"))?;
         }
 
         if let Some(proposer_nodes) = validator_client_config.proposer_nodes.as_ref() {
@@ -193,7 +193,7 @@ impl Config {
                 .iter()
                 .map(|s| SensitiveUrl::parse(s))
                 .collect::<Result<_, _>>()
-                .map_err(|e| format!("Unable to parse proposer node URL: {:?}", e))?;
+                .map_err(|e| format!("Unable to parse proposer node URL: {e:?}"))?;
         }
 
         config.disable_auto_discover = validator_client_config.disable_auto_discover;
@@ -205,7 +205,7 @@ impl Config {
             let mut graffiti_file = GraffitiFile::new(graffiti_file_path.into());
             graffiti_file
                 .read_graffiti_file()
-                .map_err(|e| format!("Error reading graffiti file: {:?}", e))?;
+                .map_err(|e| format!("Error reading graffiti file: {e:?}"))?;
             config.graffiti_file = Some(graffiti_file);
             info!(
                 path = graffiti_file_path.to_str(),
@@ -217,8 +217,7 @@ impl Config {
             let graffiti_bytes = input_graffiti.as_bytes();
             if graffiti_bytes.len() > GRAFFITI_BYTES_LEN {
                 return Err(format!(
-                    "Your graffiti is too long! {} bytes maximum!",
-                    GRAFFITI_BYTES_LEN
+                    "Your graffiti is too long! {GRAFFITI_BYTES_LEN} bytes maximum!"
                 ));
             } else {
                 let mut graffiti = [0; 32];

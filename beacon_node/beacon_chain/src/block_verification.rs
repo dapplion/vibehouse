@@ -490,7 +490,7 @@ impl From<InconsistentFork> for BlockError {
 
 impl std::fmt::Display for BlockError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -1644,7 +1644,7 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
          * invalid.
          */
 
-        write_state(&format!("state_pre_block_{}", block_root), &state);
+        write_state(&format!("state_pre_block_{block_root}"), &state);
         write_block(block.as_block(), block_root);
 
         let core_timer = metrics::start_timer(&metrics::BLOCK_PROCESSING_CORE);
@@ -1678,7 +1678,7 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
 
         metrics::stop_timer(state_root_timer);
 
-        write_state(&format!("state_post_block_{}", block_root), &state);
+        write_state(&format!("state_post_block_{block_root}"), &state);
 
         /*
          * Check to ensure the state root on the block matches the one we have calculated.

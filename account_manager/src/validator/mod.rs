@@ -47,7 +47,7 @@ pub fn cli_run<E: EthSpec>(matches: &ArgMatches, env: Environment<E>) -> Result<
     } else {
         parse_path_or_default_with_flag(matches, VALIDATOR_DIR_FLAG, DEFAULT_VALIDATOR_DIR)?
     };
-    eprintln!("validator-dir path: {:?}", validator_base_dir);
+    eprintln!("validator-dir path: {validator_base_dir:?}");
 
     match matches.subcommand() {
         Some((create::CMD, matches)) => create::cli_run::<E>(matches, env, validator_base_dir),
@@ -60,9 +60,8 @@ pub fn cli_run<E: EthSpec>(matches: &ArgMatches, env: Environment<E>) -> Result<
         }
         Some((exit::CMD, matches)) => exit::cli_run(matches, env),
         Some((unknown, _)) => Err(format!(
-            "{} does not have a {} command. See --help",
-            CMD, unknown
+            "{CMD} does not have a {unknown} command. See --help"
         )),
-        _ => Err(format!("No command provided for {}. See --help", CMD)),
+        _ => Err(format!("No command provided for {CMD}. See --help")),
     }
 }

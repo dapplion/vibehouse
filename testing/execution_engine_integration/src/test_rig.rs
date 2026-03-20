@@ -453,7 +453,7 @@ impl<Engine: GenericExecutionEngine> TestRig<Engine> {
                 .await
                 .unwrap()
                 .expect("receipt should exist");
-            assert!(receipt.status(), "Tx {:?} failed", tx_hash);
+            assert!(receipt.status(), "Tx {tx_hash:?} failed");
         }
 
         /*

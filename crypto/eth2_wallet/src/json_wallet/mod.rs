@@ -53,7 +53,7 @@ impl TryFrom<String> for TypeField {
     fn try_from(s: String) -> Result<Self, Self::Error> {
         match s.as_ref() {
             "hierarchical deterministic" => Ok(TypeField::Hd),
-            other => Err(format!("Unsupported type function: {}", other)),
+            other => Err(format!("Unsupported type function: {other}")),
         }
     }
 }

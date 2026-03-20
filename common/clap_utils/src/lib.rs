@@ -43,7 +43,7 @@ pub fn parse_testnet_dir(
 ) -> Result<Option<Eth2NetworkConfig>, String> {
     let path = parse_required::<PathBuf>(matches, name)?;
     Eth2NetworkConfig::load(path.clone())
-        .map_err(|e| format!("Unable to open testnet dir at {:?}: {}", path, e))
+        .map_err(|e| format!("Unable to open testnet dir at {path:?}: {e}"))
         .map(Some)
 }
 
@@ -68,11 +68,11 @@ pub fn parse_path_with_default_in_home_dir(
         || {
             dirs::home_dir()
                 .map(|home| home.join(default))
-                .ok_or_else(|| format!("Unable to locate home directory. Try specifying {}", name))
+                .ok_or_else(|| format!("Unable to locate home directory. Try specifying {name}"))
         },
         |dir| {
             dir.parse::<PathBuf>()
-                .map_err(|e| format!("Unable to parse {}: {}", name, e))
+                .map_err(|e| format!("Unable to parse {name}: {e}"))
         },
     )
 }
@@ -84,7 +84,7 @@ where
     T: FromStr,
     <T as FromStr>::Err: std::fmt::Display,
 {
-    parse_optional(matches, name)?.ok_or_else(|| format!("{} not specified", name))
+    parse_optional(matches, name)?.ok_or_else(|| format!("{name} not specified"))
 }
 
 /// Returns the value of `name` (if present) or an error if it does not parse successfully using
@@ -96,10 +96,10 @@ where
 {
     matches
         .try_get_one::<String>(name)
-        .map_err(|e| format!("Unable to parse {}: {}", name, e))?
+        .map_err(|e| format!("Unable to parse {name}: {e}"))?
         .map(|val| {
             val.parse()
-                .map_err(|e| format!("Unable to parse {}: {}", name, e))
+                .map_err(|e| format!("Unable to parse {name}: {e}"))
         })
         .transpose()
 }
@@ -112,7 +112,7 @@ pub fn parse_ssz_required<T: Decode>(
     matches: &ArgMatches,
     name: &'static str,
 ) -> Result<T, String> {
-    parse_ssz_optional(matches, name)?.ok_or_else(|| format!("{} not specified", name))
+    parse_ssz_optional(matches, name)?.ok_or_else(|| format!("{name} not specified"))
 }
 
 /// Returns the value of `name` (if present) or an error if it does not parse successfully using
@@ -128,12 +128,11 @@ pub fn parse_ssz_optional<T: Decode>(
         .map(|val| {
             if let Some(stripped) = val.strip_prefix("0x") {
                 let vec = hex::decode(stripped)
-                    .map_err(|e| format!("Unable to parse {} as hex: {:?}", name, e))?;
+                    .map_err(|e| format!("Unable to parse {name} as hex: {e:?}"))?;
 
-                T::from_ssz_bytes(&vec)
-                    .map_err(|e| format!("Unable to parse {} as SSZ: {:?}", name, e))
+                T::from_ssz_bytes(&vec).map_err(|e| format!("Unable to parse {name} as SSZ: {e:?}"))
             } else {
-                Err(format!("Unable to parse {}, must have 0x prefix", name))
+                Err(format!("Unable to parse {name}, must have 0x prefix"))
             }
         })
         .transpose()
@@ -151,16 +150,16 @@ where
 {
     if let Some(dump_path) = parse_optional::<PathBuf>(matches, "dump-config")? {
         let mut file = std::fs::File::create(dump_path)
-            .map_err(|e| format!("Failed to open file for writing config: {:?}", e))?;
+            .map_err(|e| format!("Failed to open file for writing config: {e:?}"))?;
         serde_json::to_writer(&mut file, &config)
-            .map_err(|e| format!("Error serializing config: {:?}", e))?;
+            .map_err(|e| format!("Error serializing config: {e:?}"))?;
     }
     if let Some(dump_path) = parse_optional::<PathBuf>(matches, "dump-chain-config")? {
         let chain_config = Config::from_chain_spec::<E>(spec);
         let mut file = std::fs::File::create(dump_path)
-            .map_err(|e| format!("Failed to open file for writing chain config: {:?}", e))?;
+            .map_err(|e| format!("Failed to open file for writing chain config: {e:?}"))?;
         serde_yaml::to_writer(&mut file, &chain_config)
-            .map_err(|e| format!("Error serializing config: {:?}", e))?;
+            .map_err(|e| format!("Error serializing config: {e:?}"))?;
     }
     Ok(())
 }

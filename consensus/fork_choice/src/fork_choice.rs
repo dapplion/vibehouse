@@ -2288,8 +2288,7 @@ mod tests {
                     err,
                     Error::InvalidExecutionBid(InvalidExecutionBid::UnknownBeaconBlockRoot { .. })
                 ),
-                "expected UnknownBeaconBlockRoot, got {:?}",
-                err
+                "expected UnknownBeaconBlockRoot, got {err:?}"
             );
         }
 
@@ -2307,8 +2306,7 @@ mod tests {
                     err,
                     Error::InvalidExecutionBid(InvalidExecutionBid::SlotMismatch { .. })
                 ),
-                "expected SlotMismatch, got {:?}",
-                err
+                "expected SlotMismatch, got {err:?}"
             );
         }
 
@@ -2442,8 +2440,7 @@ mod tests {
                     err,
                     Error::InvalidPayloadAttestation(InvalidPayloadAttestation::FutureSlot { .. })
                 ),
-                "expected FutureSlot, got {:?}",
-                err
+                "expected FutureSlot, got {err:?}"
             );
         }
 
@@ -2466,8 +2463,7 @@ mod tests {
                     err,
                     Error::InvalidPayloadAttestation(InvalidPayloadAttestation::TooOld { .. })
                 ),
-                "expected TooOld, got {:?}",
-                err
+                "expected TooOld, got {err:?}"
             );
         }
 
@@ -2489,8 +2485,7 @@ mod tests {
                         InvalidPayloadAttestation::UnknownBeaconBlockRoot { .. }
                     )
                 ),
-                "expected UnknownBeaconBlockRoot, got {:?}",
-                err
+                "expected UnknownBeaconBlockRoot, got {err:?}"
             );
         }
 
@@ -2710,8 +2705,7 @@ mod tests {
             let err = fc.on_execution_payload(unknown, hash).unwrap_err();
             assert!(
                 matches!(err, Error::MissingProtoArrayBlock(_)),
-                "expected MissingProtoArrayBlock, got {:?}",
-                err
+                "expected MissingProtoArrayBlock, got {err:?}"
             );
         }
 
@@ -3482,8 +3476,7 @@ mod tests {
                         index: 2
                     })
                 ),
-                "Expected InvalidCommitteeIndex, got {:?}",
-                err
+                "Expected InvalidCommitteeIndex, got {err:?}"
             );
         }
 
@@ -3517,8 +3510,7 @@ mod tests {
                     err,
                     Error::InvalidAttestation(InvalidAttestation::SameSlotNonZeroIndex { .. })
                 ),
-                "Expected SameSlotNonZeroIndex, got {:?}",
-                err
+                "Expected SameSlotNonZeroIndex, got {err:?}"
             );
         }
 
@@ -3553,8 +3545,7 @@ mod tests {
                     err,
                     Error::InvalidAttestation(InvalidAttestation::PayloadNotRevealed { .. })
                 ),
-                "Expected PayloadNotRevealed, got {:?}",
-                err
+                "Expected PayloadNotRevealed, got {err:?}"
             );
         }
 
@@ -4539,8 +4530,7 @@ mod tests {
                     err,
                     Error::InvalidPayloadAttestation(InvalidPayloadAttestation::TooOld { .. })
                 ),
-                "expected TooOld, got {:?}",
-                err
+                "expected TooOld, got {err:?}"
             );
         }
 
@@ -4667,8 +4657,7 @@ mod tests {
             let err = fc.on_execution_payload(unknown, hash).unwrap_err();
             assert!(
                 matches!(err, Error::MissingProtoArrayBlock(r) if r == unknown),
-                "expected MissingProtoArrayBlock for unknown root, got {:?}",
-                err
+                "expected MissingProtoArrayBlock for unknown root, got {err:?}"
             );
         }
 
@@ -4691,8 +4680,7 @@ mod tests {
                         block_slot,
                     }) if bid_slot == Slot::new(2) && block_slot == Slot::new(1)
                 ),
-                "expected SlotMismatch with correct slot values, got {:?}",
-                err
+                "expected SlotMismatch with correct slot values, got {err:?}"
             );
         }
 
@@ -4719,8 +4707,7 @@ mod tests {
                         current_slot,
                     }) if attestation_slot == Slot::new(5) && current_slot == Slot::new(3)
                 ),
-                "expected FutureSlot with correct values, got {:?}",
-                err
+                "expected FutureSlot with correct values, got {err:?}"
             );
         }
 
@@ -5497,8 +5484,7 @@ mod tests {
             let err = fc.on_valid_execution_payload(unknown).unwrap_err();
             assert!(
                 matches!(err, Error::FailedToProcessValidExecutionPayload(_)),
-                "expected FailedToProcessValidExecutionPayload, got {:?}",
-                err
+                "expected FailedToProcessValidExecutionPayload, got {err:?}"
             );
         }
 
@@ -5549,8 +5535,7 @@ mod tests {
                 .unwrap_err();
             assert!(
                 matches!(err, Error::FailedToProcessInvalidExecutionPayload(_)),
-                "expected FailedToProcessInvalidExecutionPayload, got {:?}",
-                err
+                "expected FailedToProcessInvalidExecutionPayload, got {err:?}"
             );
         }
 

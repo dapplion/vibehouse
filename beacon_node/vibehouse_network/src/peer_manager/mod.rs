@@ -1660,8 +1660,7 @@ impl<E: EthSpec> PeerManager<E> {
 
         get_custody_groups(node_id.raw(), custody_group_count, spec).map_err(|e| {
             format!(
-                "Error computing peer custody groups for node {} with cgc={}: {:?}",
-                node_id, custody_group_count, e
+                "Error computing peer custody groups for node {node_id} with cgc={custody_group_count}: {e:?}"
             )
         })
     }
@@ -2005,11 +2004,11 @@ mod tests {
         let peer3 = PeerId::random();
         let peer4 = PeerId::random();
 
-        println!("{}", peer0);
-        println!("{}", peer1);
-        println!("{}", peer2);
-        println!("{}", peer3);
-        println!("{}", peer4);
+        println!("{peer0}");
+        println!("{peer1}");
+        println!("{peer2}");
+        println!("{peer3}");
+        println!("{peer4}");
 
         peer_manager.inject_connect_ingoing(&peer0, "/ip4/0.0.0.0".parse().unwrap(), None);
         peer_manager.inject_connect_ingoing(&peer1, "/ip4/0.0.0.0".parse().unwrap(), None);
@@ -2103,7 +2102,7 @@ mod tests {
                 )
             })
         {
-            println!("{}", peer);
+            println!("{peer}");
             assert!(peers_should_have_removed.remove(peer));
         }
         // Ensure we removed all the peers
@@ -2181,7 +2180,7 @@ mod tests {
                 .peers
                 .write()
                 .add_subscription(&peer, Subnet::DataColumn(subnet.into()));
-            println!("{},{},{}", x, subnet, peer);
+            println!("{x},{subnet},{peer}");
             peers.push(peer);
         }
 
@@ -2212,14 +2211,14 @@ mod tests {
 
         for peer in &connected_peers {
             let position = peers.iter().position(|peer_id| peer_id == peer).unwrap();
-            println!("{},{}", position, peer);
+            println!("{position},{peer}");
         }
 
         println!();
 
         for peer in &connected_peers {
             let position = peers.iter().position(|peer_id| peer_id == peer).unwrap();
-            println!("{},{}", position, peer);
+            println!("{position},{peer}");
 
             if position < 15 {
                 let y = position % 4;
@@ -2292,14 +2291,14 @@ mod tests {
                 .unwrap()
                 .long_lived_subnets();
             for subnet in long_lived_subnets {
-                println!("Subnet: {:?}", subnet);
+                println!("Subnet: {subnet:?}");
                 peer_manager
                     .network_globals
                     .peers
                     .write()
                     .add_subscription(&peer, subnet);
             }
-            println!("{},{}", x, peer);
+            println!("{x},{peer}");
             peers.push(peer);
         }
 
@@ -2394,9 +2393,9 @@ mod tests {
                 .peer_info(&peer)
                 .unwrap()
                 .long_lived_subnets();
-            println!("{},{}", x, peer);
+            println!("{x},{peer}");
             for subnet in long_lived_subnets {
-                println!("Subnet: {:?}", subnet);
+                println!("Subnet: {subnet:?}");
                 peer_manager
                     .network_globals
                     .peers
@@ -2494,14 +2493,14 @@ mod tests {
                 .unwrap()
                 .long_lived_subnets();
             for subnet in long_lived_subnets {
-                println!("Subnet: {:?}", subnet);
+                println!("Subnet: {subnet:?}");
                 peer_manager
                     .network_globals
                     .peers
                     .write()
                     .add_subscription(&peer, subnet);
             }
-            println!("{},{}", peer_idx, peer);
+            println!("{peer_idx},{peer}");
             peers.push(peer);
         }
 
@@ -2524,7 +2523,7 @@ mod tests {
             .copied()
             .collect();
 
-        println!("Connected peers: {:?}", connected_peers);
+        println!("Connected peers: {connected_peers:?}");
         assert!(!connected_peers.contains(&peers[0]));
         assert!(!connected_peers.contains(&peers[5]));
         assert!(!connected_peers.contains(&peers[7]));
@@ -2637,9 +2636,9 @@ mod tests {
                 .peer_info(&peer)
                 .unwrap()
                 .long_lived_subnets();
-            println!("{},{}", peer_idx, peer);
+            println!("{peer_idx},{peer}");
             for subnet in long_lived_subnets {
-                println!("Subnet: {:?}", subnet);
+                println!("Subnet: {subnet:?}");
                 peer_manager
                     .network_globals
                     .peers
@@ -2811,7 +2810,7 @@ mod tests {
                 .unwrap()
                 .long_lived_subnets();
             for subnet in long_lived_subnets {
-                println!("Subnet: {:?}", subnet);
+                println!("Subnet: {subnet:?}");
                 peer_manager
                     .network_globals
                     .peers
@@ -3145,8 +3144,7 @@ mod tests {
             .collect();
         assert!(
             discovery_events.is_empty(),
-            "Should not generate discovery events when PeerDAS is disabled, but found: {:?}",
-            discovery_events
+            "Should not generate discovery events when PeerDAS is disabled, but found: {discovery_events:?}"
         );
 
         // Test 2: Add data column subscription - custody peer logic should run

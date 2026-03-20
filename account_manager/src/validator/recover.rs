@@ -89,7 +89,7 @@ pub fn cli_run(matches: &ArgMatches, validator_dir: PathBuf) -> Result<(), Strin
     let mnemonic_path: Option<PathBuf> = clap_utils::parse_optional(matches, MNEMONIC_FLAG)?;
     let stdin_inputs = cfg!(windows) || matches.get_flag(STDIN_INPUTS_FLAG);
 
-    eprintln!("secrets-dir path: {:?}", secrets_dir);
+    eprintln!("secrets-dir path: {secrets_dir:?}");
 
     create_dir_all(&validator_dir)
         .map_err(|e| format!("Could not create validator dir at {validator_dir:?}: {e:?}"))?;
@@ -113,15 +113,15 @@ pub fn cli_run(matches: &ArgMatches, validator_dir: PathBuf) -> Result<(), Strin
         let derive = |key_type: KeyType, password: &[u8]| -> Result<Keystore, String> {
             let (secret, path) =
                 recover_validator_secret_from_mnemonic(seed.as_bytes(), index, key_type)
-                    .map_err(|e| format!("Unable to recover validator keys: {:?}", e))?;
+                    .map_err(|e| format!("Unable to recover validator keys: {e:?}"))?;
 
             let keypair = keypair_from_secret(secret.as_bytes())
-                .map_err(|e| format!("Unable build keystore: {:?}", e))?;
+                .map_err(|e| format!("Unable build keystore: {e:?}"))?;
 
-            KeystoreBuilder::new(&keypair, password, format!("{}", path))
-                .map_err(|e| format!("Unable build keystore: {:?}", e))?
+            KeystoreBuilder::new(&keypair, password, format!("{path}"))
+                .map_err(|e| format!("Unable build keystore: {e:?}"))?
                 .build()
-                .map_err(|e| format!("Unable build keystore: {:?}", e))
+                .map_err(|e| format!("Unable build keystore: {e:?}"))
         };
 
         let keystores = ValidatorKeystores {
@@ -137,7 +137,7 @@ pub fn cli_run(matches: &ArgMatches, validator_dir: PathBuf) -> Result<(), Strin
             .withdrawal_keystore(keystores.withdrawal, withdrawal_password.as_bytes())
             .store_withdrawal_keystore(matches.get_flag(STORE_WITHDRAW_FLAG))
             .build()
-            .map_err(|e| format!("Unable to build validator directory: {:?}", e))?;
+            .map_err(|e| format!("Unable to build validator directory: {e:?}"))?;
 
         println!(
             "{}/{}\tIndex: {}\t0x{}",

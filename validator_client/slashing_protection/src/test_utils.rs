@@ -86,8 +86,7 @@ impl StreamTest<AttestationData> {
             assert_eq!(
                 slashing_db.check_and_insert_attestation(&test.pubkey, &test.data, test.domain),
                 test.expected,
-                "attestation {} not processed as expected",
-                i
+                "attestation {i} not processed as expected"
             );
         }
 
@@ -111,8 +110,7 @@ impl StreamTest<BeaconBlockHeader> {
             assert_eq!(
                 slashing_db.check_and_insert_block_proposal(&test.pubkey, &test.data, test.domain),
                 test.expected,
-                "attestation {} not processed as expected",
-                i
+                "attestation {i} not processed as expected"
             );
         }
 

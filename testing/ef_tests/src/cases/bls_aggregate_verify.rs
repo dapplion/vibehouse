@@ -28,7 +28,7 @@ impl Case for BlsAggregateVerify {
             .iter()
             .map(|message| {
                 let bytes = hex::decode(&message[2..])
-                    .map_err(|e| Error::FailedToParseTest(format!("{:?}", e)))?;
+                    .map_err(|e| Error::FailedToParseTest(format!("{e:?}")))?;
                 Ok(Hash256::from_slice(&bytes))
             })
             .collect::<Result<Vec<_>, _>>()?;
@@ -45,13 +45,13 @@ impl Case for BlsAggregateVerify {
             Err(bls::Error::InvalidInfinityPublicKey) if !self.output => {
                 return Ok(());
             }
-            Err(e) => return Err(Error::FailedToParseTest(format!("{:?}", e))),
+            Err(e) => return Err(Error::FailedToParseTest(format!("{e:?}"))),
         };
 
         let pubkey_refs = pubkeys.iter().collect::<Vec<_>>();
 
         let signature_bytes = hex::decode(&self.input.signature[2..])
-            .map_err(|e| Error::FailedToParseTest(format!("{:?}", e)))?;
+            .map_err(|e| Error::FailedToParseTest(format!("{e:?}")))?;
 
         let signature_valid = AggregateSignature::deserialize(&signature_bytes)
             .ok()

@@ -33,10 +33,7 @@ pub async fn construct_upnp_mappings(addr: Ipv4Addr, port: u16) -> Result<(), Er
     };
 
     if is_private {
-        bail!(
-            "Gateway's external address is a private address: {}",
-            external_address
-        );
+        bail!("Gateway's external address is a private address: {external_address}");
     }
 
     loop {
@@ -49,7 +46,7 @@ pub async fn construct_upnp_mappings(addr: Ipv4Addr, port: u16) -> Result<(), Er
                 "Vibehouse Discovery port",
             )
             .await
-            .with_context(|| format!("Could not UPnP map port: {} on the gateway", port))?;
+            .with_context(|| format!("Could not UPnP map port: {port} on the gateway"))?;
         debug!(%port,"Discovery UPnP port mapped");
         sleep(Duration::from_secs(MAPPING_TIMEOUT)).await;
     }

@@ -303,38 +303,38 @@ mod tests {
     fn test_error_variants() {
         // Ensure error type is Debug-printable
         let err = GossipExecutionProofError::InvalidSubnetId { received: 99 };
-        let _ = format!("{:?}", err);
+        let _ = format!("{err:?}");
 
         let err = GossipExecutionProofError::InvalidVersion { version: 0 };
-        let _ = format!("{:?}", err);
+        let _ = format!("{err:?}");
 
         let err = GossipExecutionProofError::ProofDataEmpty;
-        let _ = format!("{:?}", err);
+        let _ = format!("{err:?}");
 
         let err = GossipExecutionProofError::ProofDataTooLarge { size: 9999999 };
-        let _ = format!("{:?}", err);
+        let _ = format!("{err:?}");
 
         let err = GossipExecutionProofError::UnknownBlockRoot {
             block_root: Hash256::ZERO,
         };
-        let _ = format!("{:?}", err);
+        let _ = format!("{err:?}");
 
         let err = GossipExecutionProofError::InvalidProof {
             reason: "test".into(),
         };
-        let _ = format!("{:?}", err);
+        let _ = format!("{err:?}");
 
         let err = GossipExecutionProofError::InvalidProofData;
-        let _ = format!("{:?}", err);
+        let _ = format!("{err:?}");
 
         let err = GossipExecutionProofError::Sp1VerificationUnavailable;
-        let _ = format!("{:?}", err);
+        let _ = format!("{err:?}");
 
         let err = GossipExecutionProofError::PublicValuesBlockHashMismatch {
             expected: ExecutionBlockHash::zero(),
             got: ExecutionBlockHash::zero(),
         };
-        let _ = format!("{:?}", err);
+        let _ = format!("{err:?}");
     }
 
     #[test]

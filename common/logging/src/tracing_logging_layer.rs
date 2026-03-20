@@ -111,9 +111,9 @@ where
         let reset = "\x1b[0m";
         let location = if self.extra_info {
             if self.log_color {
-                format!("{}{}::{}:{}{}", gray, module, file, line, reset)
+                format!("{gray}{module}::{file}:{line}{reset}")
             } else {
-                format!("{}::{}:{}", module, file, line)
+                format!("{module}::{file}:{line}")
             }
         } else {
             String::new()
@@ -190,7 +190,7 @@ impl tracing_core::field::Visit for FieldVisitor {
                     self.message = value.to_string();
                 } else {
                     self.fields
-                        .push(("msg_id".to_string(), format!("\"{}\"", value)));
+                        .push(("msg_id".to_string(), format!("\"{value}\"")));
                 }
             }
             "error_type" if value == "crit" => {
@@ -198,13 +198,13 @@ impl tracing_core::field::Visit for FieldVisitor {
             }
             _ => {
                 self.fields
-                    .push((field.name().to_string(), format!("\"{}\"", value)));
+                    .push((field.name().to_string(), format!("\"{value}\"")));
             }
         }
     }
 
     fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
-        let string_value = format!("{:?}", value);
+        let string_value = format!("{value:?}");
         match field.name() {
             "message" => {
                 if self.message.is_empty() {
@@ -259,7 +259,7 @@ fn build_log_json(
     let line_number = meta
         .line()
         .map_or_else(|| "<unknown_line>".to_string(), |l| l.to_string());
-    let module_field = format!("{}:{}", module_path, line_number);
+    let module_field = format!("{module_path}:{line_number}");
     log_map.insert("module".to_string(), Value::String(module_field));
 
     // Avoid adding duplicate fields; prefer event fields when duplicates exist.
@@ -280,10 +280,10 @@ fn build_log_json(
     }
 
     let json_obj = Value::Object(log_map);
-    let output = format!("{}\n", json_obj);
+    let output = format!("{json_obj}\n");
 
     if let Err(e) = writer.write_all(output.as_bytes()) {
-        eprintln!("Failed to write log: {}", e);
+        eprintln!("Failed to write log: {e}");
     }
 }
 
@@ -308,9 +308,9 @@ fn build_log_text(
     };
 
     let level_str = if use_color {
-        format!("{}{}", color_level_str, pad)
+        format!("{color_level_str}{pad}")
     } else {
-        format!("{}{}", plain_level_str, pad)
+        format!("{plain_level_str}{pad}")
     };
 
     let message_len = visitor.message.len();
@@ -345,9 +345,9 @@ fn build_log_text(
         .filter_map(|(field_name, field_value)| {
             if added_field_names.insert(field_name) {
                 let formatted_field = if use_color {
-                    format!("{}{}{}: {}", bold_start, field_name, bold_end, field_value)
+                    format!("{bold_start}{field_name}{bold_end}: {field_value}")
                 } else {
-                    format!("{}: {}", field_name, field_value)
+                    format!("{field_name}: {field_value}")
                 };
                 Some(formatted_field)
             } else {
@@ -358,22 +358,19 @@ fn build_log_text(
         .join(", ");
 
     let full_message = if !formatted_fields.is_empty() {
-        format!("{}  {}", padded_message, formatted_fields)
+        format!("{padded_message}  {formatted_fields}")
     } else {
         padded_message
     };
 
     let message = if !location.is_empty() {
-        format!(
-            "{} {} {} {}\n",
-            timestamp, level_str, location, full_message
-        )
+        format!("{timestamp} {level_str} {location} {full_message}\n")
     } else {
-        format!("{} {} {}\n", timestamp, level_str, full_message)
+        format!("{timestamp} {level_str} {full_message}\n")
     };
 
     if let Err(e) = writer.write_all(message.as_bytes()) {
-        eprintln!("Failed to write log: {}", e);
+        eprintln!("Failed to write log: {e}");
     }
 }
 

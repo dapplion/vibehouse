@@ -107,7 +107,7 @@ impl TryFrom<String> for KdfFunction {
         match s.as_ref() {
             "scrypt" => Ok(KdfFunction::Scrypt),
             "pbkdf2" => Ok(KdfFunction::Pbkdf2),
-            other => Err(format!("Unsupported kdf function: {}", other)),
+            other => Err(format!("Unsupported kdf function: {other}")),
         }
     }
 }

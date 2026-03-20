@@ -162,7 +162,7 @@ mod tests {
         let decoded = ExecutionPayload::<E>::from_store_bytes(&bytes).unwrap();
         match decoded {
             ExecutionPayload::Gloas(p) => assert_eq!(p, inner),
-            other => panic!("expected Gloas, got {:?}", other),
+            other => panic!("expected Gloas, got {other:?}"),
         }
     }
 

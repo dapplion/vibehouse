@@ -330,7 +330,7 @@ impl<E: EthSpec> PeerScoreSettings<E> {
             self.max_committees_per_slot,
             self.target_committee_size,
         )
-        .map_err(|e| format!("Could not get committee count from spec: {:?}", e))?;
+        .map_err(|e| format!("Could not get committee count from spec: {e:?}"))?;
 
         let committees = committees_per_slot * E::slots_per_epoch() as usize;
 

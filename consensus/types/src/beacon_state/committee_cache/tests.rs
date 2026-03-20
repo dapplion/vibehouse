@@ -131,7 +131,7 @@ async fn shuffles_for_the_right_epoch() {
     for e in (0..=epoch.as_u64() + 1).map(Epoch::new) {
         let seed = state.get_seed(e, Domain::BeaconAttester, spec).unwrap();
         let cache = CommitteeCache::initialized(&state, e, spec)
-            .unwrap_or_else(|_| panic!("failed at epoch {}", e));
+            .unwrap_or_else(|_| panic!("failed at epoch {e}"));
         assert_eq!(cache.shuffling(), shuffling_with_seed(seed));
         assert_shuffling_positions_accurate(&cache);
     }

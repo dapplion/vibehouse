@@ -100,7 +100,7 @@ pub fn build_config(
 
     let random_path: u16 = rand::random();
     let path = TempBuilder::new()
-        .prefix(&format!("libp2p_test_{}", random_path))
+        .prefix(&format!("libp2p_test_{random_path}"))
         .tempdir()
         .unwrap();
 

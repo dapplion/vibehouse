@@ -11,7 +11,7 @@ use types::Blob;
 
 static KZG: LazyLock<Arc<Kzg>> = LazyLock::new(|| {
     let kzg = Kzg::new_from_trusted_setup(&get_trusted_setup())
-        .map_err(|e| Error::InternalError(format!("Failed to initialize kzg: {:?}", e)))
+        .map_err(|e| Error::InternalError(format!("Failed to initialize kzg: {e:?}")))
         .expect("failed to initialize kzg");
     Arc::new(kzg)
 });
@@ -39,48 +39,48 @@ pub fn parse_cells_and_proofs(
 
 pub fn parse_cell(cell: &str) -> Result<Cell, Error> {
     hex::decode(strip_0x(cell)?)
-        .map_err(|e| Error::FailedToParseTest(format!("Failed to parse cell: {:?}", e)))
+        .map_err(|e| Error::FailedToParseTest(format!("Failed to parse cell: {e:?}")))
         .and_then(|bytes| {
             bytes
                 .try_into()
-                .map_err(|e| Error::FailedToParseTest(format!("Failed to parse cell: {:?}", e)))
+                .map_err(|e| Error::FailedToParseTest(format!("Failed to parse cell: {e:?}")))
         })
 }
 
 pub fn parse_proof(proof: &str) -> Result<KzgProof, Error> {
     hex::decode(strip_0x(proof)?)
-        .map_err(|e| Error::FailedToParseTest(format!("Failed to parse proof: {:?}", e)))
+        .map_err(|e| Error::FailedToParseTest(format!("Failed to parse proof: {e:?}")))
         .and_then(|bytes| {
             bytes
                 .try_into()
-                .map_err(|e| Error::FailedToParseTest(format!("Failed to parse proof: {:?}", e)))
+                .map_err(|e| Error::FailedToParseTest(format!("Failed to parse proof: {e:?}")))
         })
         .map(KzgProof)
 }
 
 pub fn parse_commitment(commitment: &str) -> Result<KzgCommitment, Error> {
     hex::decode(strip_0x(commitment)?)
-        .map_err(|e| Error::FailedToParseTest(format!("Failed to parse commitment: {:?}", e)))
+        .map_err(|e| Error::FailedToParseTest(format!("Failed to parse commitment: {e:?}")))
         .and_then(|bytes| {
-            bytes.try_into().map_err(|e| {
-                Error::FailedToParseTest(format!("Failed to parse commitment: {:?}", e))
-            })
+            bytes
+                .try_into()
+                .map_err(|e| Error::FailedToParseTest(format!("Failed to parse commitment: {e:?}")))
         })
         .map(KzgCommitment)
 }
 
 pub fn parse_blob<E: EthSpec>(blob: &str) -> Result<Blob<E>, Error> {
     hex::decode(strip_0x(blob)?)
-        .map_err(|e| Error::FailedToParseTest(format!("Failed to parse blob: {:?}", e)))
+        .map_err(|e| Error::FailedToParseTest(format!("Failed to parse blob: {e:?}")))
         .and_then(|bytes| {
             Blob::<E>::new(bytes)
-                .map_err(|e| Error::FailedToParseTest(format!("Failed to parse blob: {:?}", e)))
+                .map_err(|e| Error::FailedToParseTest(format!("Failed to parse blob: {e:?}")))
         })
 }
 
 fn strip_0x(s: &str) -> Result<&str, Error> {
     s.strip_prefix("0x")
-        .ok_or_else(|| Error::FailedToParseTest(format!("Hex is missing 0x prefix: {}", s)))
+        .ok_or_else(|| Error::FailedToParseTest(format!("Hex is missing 0x prefix: {s}")))
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -125,8 +125,7 @@ impl<E: EthSpec> Case for KZGVerifyBlobKZGProof<E> {
                 Ok(_) => Ok(true),
                 Err(KzgError::KzgVerificationFailed) => Ok(false),
                 Err(e) => Err(Error::InternalError(format!(
-                    "Failed to validate blob: {:?}",
-                    e
+                    "Failed to validate blob: {e:?}"
                 ))),
             }
         });

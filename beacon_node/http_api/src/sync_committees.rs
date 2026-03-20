@@ -65,8 +65,7 @@ pub fn sync_committee_duties<T: BeaconChainTypes>(
             current_epoch,
             ..
         }) => ApiError::bad_request(format!(
-            "invalid epoch: {}, current epoch: {}",
-            request_epoch, current_epoch
+            "invalid epoch: {request_epoch}, current epoch: {current_epoch}"
         )),
         e => ApiError::unhandled_error(e),
     })?;
@@ -203,7 +202,7 @@ pub fn process_sync_committee_signatures<T: BeaconChainTypes>(
                     slot = %sync_committee_signature.slot,
                     "Unable to compute subnet positions for sync message"
                 );
-                failures.push(api_types::Failure::new(i, format!("Verification: {:?}", e)));
+                failures.push(api_types::Failure::new(i, format!("Verification: {e:?}")));
                 continue;
             }
         };
@@ -269,7 +268,7 @@ pub fn process_sync_committee_signatures<T: BeaconChainTypes>(
                         validator_index = sync_committee_signature.validator_index,
                         "Failure verifying sync committee signature for gossip"
                     );
-                    failures.push(api_types::Failure::new(i, format!("Verification: {:?}", e)));
+                    failures.push(api_types::Failure::new(i, format!("Verification: {e:?}")));
                 }
             }
         }
@@ -407,7 +406,7 @@ pub fn process_signed_contribution_and_proofs<T: BeaconChainTypes>(
                 );
                 failures.push(api_types::Failure::new(
                     index,
-                    format!("Verification: {:?}", e),
+                    format!("Verification: {e:?}"),
                 ));
             }
         }
@@ -421,7 +420,7 @@ pub fn process_signed_contribution_and_proofs<T: BeaconChainTypes>(
                 request_index = index,
                 "Could not add verified sync contribution to the inclusion pool"
             );
-            failures.push(api_types::Failure::new(index, format!("Op pool: {:?}", e)));
+            failures.push(api_types::Failure::new(index, format!("Op pool: {e:?}")));
         }
     }
 

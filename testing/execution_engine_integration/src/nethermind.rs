@@ -51,7 +51,7 @@ pub fn build(execution_clients_dir: &Path) {
     // Cleanup some disk space by removing nethermind's tests
     let tests_dir = execution_clients_dir.join("nethermind/src/tests");
     if let Err(e) = fs::remove_dir_all(tests_dir) {
-        eprintln!("Error while deleting folder: {}", e);
+        eprintln!("Error while deleting folder: {e}");
     }
 }
 
@@ -114,8 +114,7 @@ impl GenericExecutionEngine for NethermindEngine {
             .arg(http_port.to_string())
             .arg("--JsonRpc.AdditionalRpcUrls")
             .arg(format!(
-                "http://localhost:{}|http;ws|net;eth;subscribe;engine;web3;client",
-                http_auth_port
+                "http://localhost:{http_auth_port}|http;ws|net;eth;subscribe;engine;web3;client"
             ))
             .arg("--Network.DiscoveryPort")
             .arg(network_port.to_string())

@@ -29,11 +29,11 @@ fn get_epoch_processing_summary<E: EthSpec>(
     state: &mut BeaconState<E>,
     spec: &ChainSpec,
 ) -> Result<EpochProcessingSummary<E>, ApiError> {
-    process_epoch(state, spec).map_err(|e| ApiError::server_error(format!("{:?}", e)))
+    process_epoch(state, spec).map_err(|e| ApiError::server_error(format!("{e:?}")))
 }
 
 fn convert_cache_error(error: BeaconStateError) -> ApiError {
-    ApiError::server_error(format!("{:?}", error))
+    ApiError::server_error(format!("{error:?}"))
 }
 
 /// Returns information about *all validators* (i.e., global) and how they performed during a given

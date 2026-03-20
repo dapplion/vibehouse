@@ -50,7 +50,7 @@ fn default_client_config(network_params: LocalNetworkParams, genesis_time: u64) 
 
     let el_config = execution_layer::Config {
         execution_endpoint: Some(
-            SensitiveUrl::parse(&format!("http://localhost:{}", EXECUTION_PORT)).unwrap(),
+            SensitiveUrl::parse(&format!("http://localhost:{EXECUTION_PORT}")).unwrap(),
         ),
         ..Default::default()
     };
@@ -253,7 +253,7 @@ impl<E: EthSpec> LocalNetwork<E> {
 
         // Construct execution node.
         let execution_node = LocalExecutionNode::new(
-            self.context.service_context(format!("node_{}_el", count)),
+            self.context.service_context(format!("node_{count}_el")),
             mock_execution_config,
         );
 
@@ -267,7 +267,7 @@ impl<E: EthSpec> LocalNetwork<E> {
 
         // Construct beacon node using the config,
         let beacon_node = LocalBeaconNode::production(
-            self.context.service_context(format!("node_{}", count)),
+            self.context.service_context(format!("node_{count}")),
             beacon_config,
         )
         .await?;
@@ -345,13 +345,13 @@ impl<E: EthSpec> LocalNetwork<E> {
     ) -> Result<(), String> {
         let context = self
             .context
-            .service_context(format!("validator_{}", beacon_node));
+            .service_context(format!("validator_{beacon_node}"));
         let self_1 = self.clone();
         let socket_addr = {
             let read_lock = self.beacon_nodes.read();
             let beacon_node = read_lock
                 .get(beacon_node)
-                .ok_or_else(|| format!("No beacon node for index {}", beacon_node))?;
+                .ok_or_else(|| format!("No beacon node for index {beacon_node}"))?;
             beacon_node
                 .client
                 .http_api_listen_addr()
@@ -407,7 +407,7 @@ impl<E: EthSpec> LocalNetwork<E> {
     ) -> Result<(), String> {
         let context = self
             .context
-            .service_context(format!("validator_{}", validator_index));
+            .service_context(format!("validator_{validator_index}"));
         let self_1 = self.clone();
         let mut beacon_node_urls = vec![];
         for beacon_node in beacon_nodes {
@@ -415,7 +415,7 @@ impl<E: EthSpec> LocalNetwork<E> {
                 let read_lock = self.beacon_nodes.read();
                 let beacon_node = read_lock
                     .get(beacon_node)
-                    .ok_or_else(|| format!("No beacon node for index {}", beacon_node))?;
+                    .ok_or_else(|| format!("No beacon node for index {beacon_node}"))?;
                 beacon_node
                     .client
                     .http_api_listen_addr()
@@ -459,7 +459,7 @@ impl<E: EthSpec> LocalNetwork<E> {
         bootnode
             .get_beacon_states_finality_checkpoints(StateId::Head)
             .await
-            .map_err(|e| format!("Cannot get head: {:?}", e))
+            .map_err(|e| format!("Cannot get head: {e:?}"))
             .map(|body| body.unwrap().data.finalized.epoch)
     }
 

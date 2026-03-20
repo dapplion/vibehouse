@@ -123,7 +123,7 @@ mod tests {
     #[test]
     fn display() {
         let id = SyncSubnetId::new(2);
-        assert_eq!(format!("{}", id), "2");
+        assert_eq!(format!("{id}"), "2");
     }
 
     #[test]

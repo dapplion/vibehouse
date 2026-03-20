@@ -114,13 +114,12 @@ impl ForkChoiceTestDefinition {
                             &spec,
                         )
                         .unwrap_or_else(|e| {
-                            panic!("find_head op at index {} returned error {}", op_index, e)
+                            panic!("find_head op at index {op_index} returned error {e}")
                         });
 
                     assert_eq!(
                         head, expected_head,
-                        "Operation at index {} failed head check. Operation: {:?}",
-                        op_index, op
+                        "Operation at index {op_index} failed head check. Operation: {op:?}"
                     );
                     check_bytes_round_trip(&fork_choice);
                 }
@@ -145,13 +144,12 @@ impl ForkChoiceTestDefinition {
                             &spec,
                         )
                         .unwrap_or_else(|e| {
-                            panic!("find_head op at index {} returned error {}", op_index, e)
+                            panic!("find_head op at index {op_index} returned error {e}")
                         });
 
                     assert_eq!(
                         head, expected_head,
-                        "Operation at index {} failed head check. Operation: {:?}",
-                        op_index, op
+                        "Operation at index {op_index} failed head check. Operation: {op:?}"
                     );
                     check_bytes_round_trip(&fork_choice);
                 }
@@ -175,9 +173,7 @@ impl ForkChoiceTestDefinition {
 
                     assert!(
                         result.is_err(),
-                        "Operation at index {} . Operation: {:?}",
-                        op_index,
-                        op
+                        "Operation at index {op_index} . Operation: {op:?}"
                     );
                     check_bytes_round_trip(&fork_choice);
                 }
@@ -224,10 +220,7 @@ impl ForkChoiceTestDefinition {
                     fork_choice
                         .process_block::<MainnetEthSpec>(block, slot)
                         .unwrap_or_else(|e| {
-                            panic!(
-                                "process_block op at index {} returned error: {:?}",
-                                op_index, e
-                            )
+                            panic!("process_block op at index {op_index} returned error: {e:?}")
                         });
                     check_bytes_round_trip(&fork_choice);
                 }
@@ -245,10 +238,7 @@ impl ForkChoiceTestDefinition {
                             false,
                         )
                         .unwrap_or_else(|_| {
-                            panic!(
-                                "process_attestation op at index {} returned error",
-                                op_index
-                            )
+                            panic!("process_attestation op at index {op_index} returned error")
                         });
                     check_bytes_round_trip(&fork_choice);
                 }

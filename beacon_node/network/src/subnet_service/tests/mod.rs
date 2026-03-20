@@ -412,7 +412,7 @@ mod test {
         if let SubnetServiceMessage::DiscoverPeers(d) = bulk_discovery_event {
             assert_eq!(d.len(), attestation_subnet_count as usize);
         } else {
-            panic!("Unexpected event {:?}", bulk_discovery_event);
+            panic!("Unexpected event {bulk_discovery_event:?}");
         }
 
         // 64 `DiscoverPeer` requests of length 1 corresponding to deterministic subnets
@@ -467,7 +467,7 @@ mod test {
                 SubnetServiceMessage::EnrAdd(_any_subnet) => enr_add_count += 1,
                 _ => {
                     unexpected_msg_count += 1;
-                    println!("{:?}", event);
+                    println!("{event:?}");
                 }
             }
         }
@@ -477,7 +477,7 @@ mod test {
         if let SubnetServiceMessage::DiscoverPeers(d) = bulk_discovery_event {
             assert_eq!(d.len(), attestation_subnet_count as usize);
         } else {
-            panic!("Unexpected event {:?}", bulk_discovery_event);
+            panic!("Unexpected event {bulk_discovery_event:?}");
         }
         // subnets_per_node `DiscoverPeer` requests of length 1 corresponding to long-lived subnets
         // and 1 `DiscoverPeer` request corresponding to the bulk subnet discovery.

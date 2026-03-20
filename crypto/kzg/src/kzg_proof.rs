@@ -169,7 +169,7 @@ mod tests {
     #[test]
     fn debug_format() {
         let p = sample_proof();
-        let debug = format!("{:?}", p);
+        let debug = format!("{p:?}");
         assert_eq!(debug, sample_hex());
     }
 

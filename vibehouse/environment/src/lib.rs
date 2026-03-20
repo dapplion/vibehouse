@@ -185,7 +185,7 @@ impl<E: EthSpec> EnvironmentBuilder<E> {
             RuntimeBuilder::new_multi_thread()
                 .enable_all()
                 .build()
-                .map_err(|e| format!("Failed to start runtime: {:?}", e))?,
+                .map_err(|e| format!("Failed to start runtime: {e:?}"))?,
         ));
         Ok(self)
     }
@@ -224,11 +224,11 @@ impl<E: EthSpec> EnvironmentBuilder<E> {
                 None
             }
             Some(path) => {
-                let log_filename = PathBuf::from(format!("{}.log", filename_prefix));
+                let log_filename = PathBuf::from(format!("{filename_prefix}.log"));
                 let mut appender = LogRollerBuilder::new(path, log_filename)
                     .rotation(Rotation::SizeBased(RotationSize::MB(config.max_log_size)))
                     .max_keep_files(config.max_log_number.try_into().unwrap_or_else(|e| {
-                        eprintln!("Failed to convert max_log_number to u64: {}", e);
+                        eprintln!("Failed to convert max_log_number to u64: {e}");
                         10
                     }))
                     .file_mode(file_mode);
@@ -250,7 +250,7 @@ impl<E: EthSpec> EnvironmentBuilder<E> {
                         ))
                     }
                     Err(e) => {
-                        eprintln!("Failed to initialize rolling file appender: {}", e);
+                        eprintln!("Failed to initialize rolling file appender: {e}");
                         None
                     }
                 }

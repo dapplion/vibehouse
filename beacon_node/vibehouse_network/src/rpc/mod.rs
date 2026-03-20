@@ -122,9 +122,9 @@ impl InboundRequestId {
 impl<E: EthSpec, Id: std::fmt::Debug> std::fmt::Display for RPCSend<Id, E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RPCSend::Request(id, req) => write!(f, "RPC Request(id: {:?}, {})", id, req),
-            RPCSend::Response(id, res) => write!(f, "RPC Response(id: {:?}, {})", id, res),
-            RPCSend::Shutdown(_id, reason) => write!(f, "Sending Goodbye: {}", reason),
+            RPCSend::Request(id, req) => write!(f, "RPC Request(id: {id:?}, {req})"),
+            RPCSend::Response(id, res) => write!(f, "RPC Response(id: {id:?}, {res})"),
+            RPCSend::Shutdown(_id, reason) => write!(f, "Sending Goodbye: {reason}"),
         }
     }
 }

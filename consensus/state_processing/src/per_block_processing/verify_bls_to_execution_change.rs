@@ -247,7 +247,7 @@ mod tests {
                 VerifySignatures::False,
                 &spec,
             );
-            assert!(result.is_ok(), "validator {} should succeed", i);
+            assert!(result.is_ok(), "validator {i} should succeed");
         }
     }
 

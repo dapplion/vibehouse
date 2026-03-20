@@ -47,8 +47,7 @@ pub fn attester_duties<T: BeaconChainTypes>(
         cached_attestation_duties(request_epoch, request_indices, chain)
     } else if request_epoch > current_epoch + 1 {
         Err(ApiError::bad_request(format!(
-            "request epoch {} is more than one epoch past the current epoch {}",
-            request_epoch, current_epoch
+            "request epoch {request_epoch} is more than one epoch past the current epoch {current_epoch}"
         )))
     } else {
         // request_epoch < current_epoch, in fact we only allow `request_epoch == current_epoch-1` in this case
@@ -132,7 +131,7 @@ fn compute_historic_attester_duties<T: BeaconChainTypes>(
     }
 
     let relative_epoch = RelativeEpoch::from_epoch(state.current_epoch(), request_epoch)
-        .map_err(|e| ApiError::server_error(format!("invalid epoch for state: {:?}", e)))?;
+        .map_err(|e| ApiError::server_error(format!("invalid epoch for state: {e:?}")))?;
 
     state
         .build_committee_cache(relative_epoch, &chain.spec)

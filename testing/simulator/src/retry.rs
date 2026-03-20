@@ -18,10 +18,7 @@ where
         retry_count += 1;
 
         if let Err(e) = result {
-            eprintln!(
-                "Operation failed with error {:?}, retrying {} of {}",
-                e, retry_count, max_retries
-            );
+            eprintln!("Operation failed with error {e:?}, retrying {retry_count} of {max_retries}");
         }
     }
 }

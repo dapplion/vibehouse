@@ -44,7 +44,7 @@ impl<E: EthSpec> BootNodeConfig<E> {
                 boot_nodes.extend_from_slice(
                     &nodes
                         .split(',')
-                        .map(|enr| enr.parse().map_err(|_| format!("Invalid ENR: {}", enr)))
+                        .map(|enr| enr.parse().map_err(|_| format!("Invalid ENR: {enr}")))
                         .collect::<Result<Vec<Enr>, _>>()?,
                 );
             }
@@ -157,7 +157,7 @@ impl<E: EthSpec> BootNodeConfig<E> {
                 }
                 builder
                     .build(&local_key)
-                    .map_err(|e| format!("Failed to build ENR: {:?}", e))?
+                    .map_err(|e| format!("Failed to build ENR: {e:?}"))?
             };
 
             use_or_load_enr(&local_key, &mut local_enr, &network_config)?;

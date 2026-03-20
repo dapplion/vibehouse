@@ -22,15 +22,14 @@ pub fn get_block_rewards<T: BeaconChainTypes>(
 
     if start_slot > end_slot || start_slot == 0 {
         return Err(ApiError::bad_request(format!(
-            "invalid start and end: {}, {}",
-            start_slot, end_slot
+            "invalid start and end: {start_slot}, {end_slot}"
         )));
     }
 
     let end_block_root = chain
         .block_root_at_slot(end_slot, WhenSlotSkipped::Prev)
         .map_err(ApiError::unhandled_error)?
-        .ok_or_else(|| ApiError::bad_request(format!("block at end slot {} unknown", end_slot)))?;
+        .ok_or_else(|| ApiError::bad_request(format!("block at end slot {end_slot} unknown")))?;
 
     let blocks = chain
         .store
@@ -41,7 +40,7 @@ pub fn get_block_rewards<T: BeaconChainTypes>(
         .state_root_at_slot(prior_slot)
         .map_err(ApiError::unhandled_error)?
         .ok_or_else(|| {
-            ApiError::bad_request(format!("prior state at slot {} unknown", prior_slot))
+            ApiError::bad_request(format!("prior state at slot {prior_slot} unknown"))
         })?;
 
     // This branch is reached from the HTTP API. We assume the user wants
@@ -136,8 +135,7 @@ pub fn compute_block_rewards<T: BeaconChainTypes>(
                 .map_err(ApiError::unhandled_error)?
                 .ok_or_else(|| {
                     ApiError::bad_request(format!(
-                        "parent block not known or not canonical: {:?}",
-                        parent_root
+                        "parent block not known or not canonical: {parent_root:?}"
                     ))
                 })?;
 
@@ -148,8 +146,7 @@ pub fn compute_block_rewards<T: BeaconChainTypes>(
                 .map_err(ApiError::unhandled_error)?
                 .ok_or_else(|| {
                     ApiError::bad_request(format!(
-                        "no state known for parent block: {:?}",
-                        parent_root
+                        "no state known for parent block: {parent_root:?}"
                     ))
                 })?;
 

@@ -90,8 +90,7 @@ pub fn run<E: EthSpec>(matches: &ArgMatches, env: Environment<E>) -> Result<(), 
                     }
                     Some(("", _)) => Err("No command supplied. See --help.".to_string()),
                     Some((unknown, _)) => Err(format!(
-                        "{} is not a valid {} command. See --help.",
-                        unknown, CMD
+                        "{unknown} is not a valid {CMD} command. See --help."
                     )),
                     _ => Err("No command supplied. See --help.".to_string()),
                 }

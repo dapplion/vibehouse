@@ -38,7 +38,7 @@ pub enum AuthorizationHeader {
 impl Display for AuthorizationHeader {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // The `Omit` variant should never be `Display`ed, but would result in a harmless rejection.
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -127,7 +127,7 @@ impl ValidatorClientHttpClient {
                 auth_header_token.as_str()
             ))
             .map_err(|e| {
-                Error::InvalidSecret(format!("secret is invalid as a header value: {}", e))
+                Error::InvalidSecret(format!("secret is invalid as a header value: {e}"))
             })?;
 
             headers.insert("Authorization", header_value);

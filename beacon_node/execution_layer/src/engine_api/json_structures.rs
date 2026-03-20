@@ -512,8 +512,7 @@ impl<E: EthSpec> TryFrom<JsonExecutionRequests> for ExecutionRequests<E> {
                     requests.deposits = DepositRequests::<E>::from_ssz_bytes(request_bytes)
                         .map_err(|e| {
                             RequestsError::DecodeError(format!(
-                                "Failed to decode DepositRequest from EL: {:?}",
-                                e
+                                "Failed to decode DepositRequest from EL: {e:?}"
                             ))
                         })?;
                 }
@@ -521,8 +520,7 @@ impl<E: EthSpec> TryFrom<JsonExecutionRequests> for ExecutionRequests<E> {
                     requests.withdrawals = WithdrawalRequests::<E>::from_ssz_bytes(request_bytes)
                         .map_err(|e| {
                         RequestsError::DecodeError(format!(
-                            "Failed to decode WithdrawalRequest from EL: {:?}",
-                            e
+                            "Failed to decode WithdrawalRequest from EL: {e:?}"
                         ))
                     })?;
                 }
@@ -530,8 +528,7 @@ impl<E: EthSpec> TryFrom<JsonExecutionRequests> for ExecutionRequests<E> {
                     requests.consolidations =
                         ConsolidationRequests::<E>::from_ssz_bytes(request_bytes).map_err(|e| {
                             RequestsError::DecodeError(format!(
-                                "Failed to decode ConsolidationRequest from EL: {:?}",
-                                e
+                                "Failed to decode ConsolidationRequest from EL: {e:?}"
                             ))
                         })?;
                 }
@@ -637,7 +634,7 @@ impl<E: EthSpec> TryFrom<JsonGetPayloadResponse<E>> for GetPayloadResponse<E> {
                     blobs_bundle: response.blobs_bundle.into(),
                     should_override_builder: response.should_override_builder,
                     requests: response.execution_requests.try_into().map_err(|e| {
-                        format!("Failed to convert json to execution requests : {:?}", e)
+                        format!("Failed to convert json to execution requests : {e:?}")
                     })?,
                 }))
             }
@@ -648,7 +645,7 @@ impl<E: EthSpec> TryFrom<JsonGetPayloadResponse<E>> for GetPayloadResponse<E> {
                     blobs_bundle: response.blobs_bundle.into(),
                     should_override_builder: response.should_override_builder,
                     requests: response.execution_requests.try_into().map_err(|e| {
-                        format!("Failed to convert json to execution requests  {:?}", e)
+                        format!("Failed to convert json to execution requests  {e:?}")
                     })?,
                 }))
             }
@@ -659,7 +656,7 @@ impl<E: EthSpec> TryFrom<JsonGetPayloadResponse<E>> for GetPayloadResponse<E> {
                     blobs_bundle: response.blobs_bundle.into(),
                     should_override_builder: response.should_override_builder,
                     requests: response.execution_requests.try_into().map_err(|e| {
-                        format!("Failed to convert json to execution requests  {:?}", e)
+                        format!("Failed to convert json to execution requests  {e:?}")
                     })?,
                 }))
             }
@@ -1067,7 +1064,7 @@ pub mod serde_logs_bloom {
         let vec = deserializer.deserialize_string(PrefixedHexVisitor)?;
 
         FixedVector::new(vec)
-            .map_err(|e| serde::de::Error::custom(format!("invalid logs bloom: {:?}", e)))
+            .map_err(|e| serde::de::Error::custom(format!("invalid logs bloom: {e:?}")))
     }
 }
 

@@ -31,11 +31,11 @@ impl Observe for SystemHealth {
     #[cfg(target_os = "linux")]
     fn observe() -> Result<Self, String> {
         let meminfo =
-            procfs::Meminfo::current().map_err(|e| format!("Unable to get meminfo: {:?}", e))?;
-        let loadavg = procfs::LoadAverage::current()
-            .map_err(|e| format!("Unable to get loadavg: {:?}", e))?;
+            procfs::Meminfo::current().map_err(|e| format!("Unable to get meminfo: {e:?}"))?;
+        let loadavg =
+            procfs::LoadAverage::current().map_err(|e| format!("Unable to get loadavg: {e:?}"))?;
         let kernel_stats = procfs::KernelStats::current()
-            .map_err(|e| format!("Unable to get kernel stats: {:?}", e))?;
+            .map_err(|e| format!("Unable to get kernel stats: {e:?}"))?;
 
         // Disk usage via statvfs
         let disk_usage = {
@@ -53,7 +53,7 @@ impl Observe for SystemHealth {
 
         // Sum disk I/O across all devices
         let disk_stats =
-            procfs::diskstats().map_err(|e| format!("Unable to get disk counters: {:?}", e))?;
+            procfs::diskstats().map_err(|e| format!("Unable to get disk counters: {e:?}"))?;
         let (disk_reads, disk_writes) =
             disk_stats.iter().fold((0u64, 0u64), |(reads, writes), d| {
                 (
@@ -64,7 +64,7 @@ impl Observe for SystemHealth {
 
         // Sum network I/O across all interfaces
         let net_status = procfs::net::InterfaceDeviceStatus::current()
-            .map_err(|e| format!("Unable to get network io counters: {:?}", e))?;
+            .map_err(|e| format!("Unable to get network io counters: {e:?}"))?;
         let (net_recv, net_sent) =
             net_status
                 .0
@@ -137,13 +137,13 @@ impl Observe for ProcessHealth {
     #[cfg(target_os = "linux")]
     fn observe() -> Result<Self, String> {
         let me = procfs::process::Process::myself()
-            .map_err(|e| format!("Unable to get current process: {:?}", e))?;
+            .map_err(|e| format!("Unable to get current process: {e:?}"))?;
         let stat = me
             .stat()
-            .map_err(|e| format!("Unable to get stat: {:?}", e))?;
+            .map_err(|e| format!("Unable to get stat: {e:?}"))?;
         let status = me
             .status()
-            .map_err(|e| format!("Unable to get process status: {:?}", e))?;
+            .map_err(|e| format!("Unable to get process status: {e:?}"))?;
 
         let page_size = procfs::page_size();
         let tps = procfs::ticks_per_second();

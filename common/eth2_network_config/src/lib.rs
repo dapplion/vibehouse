@@ -102,14 +102,14 @@ impl Eth2NetworkConfig {
     /// Instantiates `Self` from a `HardcodedNet`.
     fn from_hardcoded_net(net: &HardcodedNet) -> Result<Self, String> {
         let config: Config = serde_yaml::from_reader(net.config)
-            .map_err(|e| format!("Unable to parse yaml config: {:?}", e))?;
+            .map_err(|e| format!("Unable to parse yaml config: {e:?}"))?;
         let kzg_trusted_setup = get_trusted_setup();
         Ok(Self {
             deposit_contract_deploy_block: serde_yaml::from_reader(net.deploy_block)
-                .map_err(|e| format!("Unable to parse deploy block: {:?}", e))?,
+                .map_err(|e| format!("Unable to parse deploy block: {e:?}"))?,
             boot_enr: Some(
                 serde_yaml::from_reader(net.boot_enr)
-                    .map_err(|e| format!("Unable to parse boot enr: {:?}", e))?,
+                    .map_err(|e| format!("Unable to parse boot enr: {e:?}"))?,
             ),
             genesis_state_source: net.genesis_state_source,
             genesis_state_bytes: Some(net.genesis_state_bytes)
@@ -143,10 +143,7 @@ impl Eth2NetworkConfig {
             Hash256::from_str(genesis_validators_root)
                 .map(Option::Some)
                 .map_err(|e| {
-                    format!(
-                        "Unable to parse genesis state genesis_validators_root: {:?}",
-                        e
-                    )
+                    format!("Unable to parse genesis state genesis_validators_root: {e:?}")
                 })
         } else {
             self.get_genesis_state_from_bytes::<E>()
@@ -166,7 +163,7 @@ impl Eth2NetworkConfig {
                 genesis_state_root, ..
             } => Hash256::from_str(genesis_state_root)
                 .map(Option::Some)
-                .map_err(|e| format!("Unable to parse genesis state root: {:?}", e)),
+                .map_err(|e| format!("Unable to parse genesis state root: {e:?}")),
             GenesisStateSource::IncludedBytes => {
                 self.get_genesis_state_from_bytes::<E>()
                     .and_then(|mut state| {
@@ -212,24 +209,20 @@ impl Eth2NetworkConfig {
                 genesis_validators_root,
                 ..
             } => {
-                let checksum = Hash256::from_str(checksum).map_err(|e| {
-                    format!("Unable to parse genesis state bytes checksum: {:?}", e)
-                })?;
+                let checksum = Hash256::from_str(checksum)
+                    .map_err(|e| format!("Unable to parse genesis state bytes checksum: {e:?}"))?;
                 let bytes = if let Some(specified_url) = genesis_state_url {
                     download_genesis_state(&[specified_url], timeout, checksum).await
                 } else {
                     download_genesis_state(built_in_urls, timeout, checksum).await
                 }?;
                 let state = BeaconState::from_ssz_bytes(bytes.as_ref(), &spec).map_err(|e| {
-                    format!("Downloaded genesis state SSZ bytes are invalid: {:?}", e)
+                    format!("Downloaded genesis state SSZ bytes are invalid: {e:?}")
                 })?;
 
                 let genesis_validators_root =
                     Hash256::from_str(genesis_validators_root).map_err(|e| {
-                        format!(
-                            "Unable to parse genesis state genesis_validators_root: {:?}",
-                            e
-                        )
+                        format!("Unable to parse genesis state genesis_validators_root: {e:?}")
                     })?;
                 if state.genesis_validators_root() != genesis_validators_root {
                     return Err(format!(
@@ -250,7 +243,7 @@ impl Eth2NetworkConfig {
             .as_ref()
             .map(|bytes| {
                 BeaconState::from_ssz_bytes(bytes.as_ref(), &spec)
-                    .map_err(|e| format!("Built-in genesis state SSZ bytes are invalid: {:?}", e))
+                    .map_err(|e| format!("Built-in genesis state SSZ bytes are invalid: {e:?}"))
             })
             .ok_or("Genesis state bytes missing from Eth2NetworkConfig")?
     }
@@ -269,7 +262,7 @@ impl Eth2NetworkConfig {
     /// Write the files to the directory, even if the directory already exists.
     pub fn force_write_to_file(&self, base_dir: PathBuf) -> Result<(), String> {
         create_dir_all(&base_dir)
-            .map_err(|e| format!("Unable to create testnet directory: {:?}", e))?;
+            .map_err(|e| format!("Unable to create testnet directory: {e:?}"))?;
 
         macro_rules! write_to_yaml_file {
             ($file: ident, $variable: expr) => {
@@ -308,10 +301,10 @@ impl Eth2NetworkConfig {
             let file = base_dir.join(GENESIS_STATE_FILE);
 
             File::create(&file)
-                .map_err(|e| format!("Unable to create {:?}: {:?}", file, e))
+                .map_err(|e| format!("Unable to create {file:?}: {e:?}"))
                 .and_then(|mut file| {
                     file.write_all(genesis_state_bytes.as_ref())
-                        .map_err(|e| format!("Unable to write {:?}: {:?}", file, e))
+                        .map_err(|e| format!("Unable to write {file:?}: {e:?}"))
                 })?;
         }
 
@@ -349,10 +342,10 @@ impl Eth2NetworkConfig {
         let (genesis_state_bytes, genesis_state_source) = if genesis_file_path.exists() {
             let mut bytes = vec![];
             File::open(&genesis_file_path)
-                .map_err(|e| format!("Unable to open {:?}: {:?}", genesis_file_path, e))
+                .map_err(|e| format!("Unable to open {genesis_file_path:?}: {e:?}"))
                 .and_then(|mut file| {
                     file.read_to_end(&mut bytes)
-                        .map_err(|e| format!("Unable to read {:?}: {:?}", file, e))
+                        .map_err(|e| format!("Unable to read {file:?}: {e:?}"))
                 })?;
 
             let state = Some(bytes).filter(|bytes| !bytes.is_empty());
@@ -425,8 +418,7 @@ async fn download_genesis_state(
                         "Genesis state download failed"
                     );
                     errors.push(format!(
-                        "Response from {} did not match local checksum",
-                        redacted_url
+                        "Response from {redacted_url} did not match local checksum"
                     ));
                 }
             }
@@ -455,9 +447,9 @@ async fn get_state_bytes(timeout: Duration, url: Url, client: Client) -> Result<
 /// Parses the `url` and joins the necessary state download path.
 fn parse_state_download_url(url: &str) -> Result<Url, String> {
     Url::parse(url)
-        .map_err(|e| format!("Invalid genesis state URL: {:?}", e))?
+        .map_err(|e| format!("Invalid genesis state URL: {e:?}"))?
         .join("eth/v2/debug/beacon/states/genesis")
-        .map_err(|e| format!("Failed to append genesis state path to URL: {:?}", e))
+        .map_err(|e| format!("Failed to append genesis state path to URL: {e:?}"))
 }
 
 #[cfg(test)]

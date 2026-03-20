@@ -20,7 +20,7 @@ where
 
         // Then convert to List, which will check the length.
         List::new(vec)
-            .map_err(|e| serde::de::Error::custom(format!("Failed to create List: {:?}", e)))
+            .map_err(|e| serde::de::Error::custom(format!("Failed to create List: {e:?}")))
     }
 }
 
@@ -39,7 +39,7 @@ where
 
         // Then convert to Vector, which will check the length
         Vector::try_from(list).map_err(|e| {
-            serde::de::Error::custom(format!("Failed to convert List to Vector: {:?}", e))
+            serde::de::Error::custom(format!("Failed to convert List to Vector: {e:?}"))
         })
     }
 }

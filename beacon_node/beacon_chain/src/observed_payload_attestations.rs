@@ -225,7 +225,7 @@ mod tests {
                 assert!(existing_payload_present);
                 assert!(!new_payload_present);
             }
-            _ => panic!("Expected equivocation, got {:?}", outcome),
+            _ => panic!("Expected equivocation, got {outcome:?}"),
         }
     }
 
@@ -321,7 +321,7 @@ mod tests {
                 assert!(!existing_payload_present);
                 assert!(new_payload_present);
             }
-            _ => panic!("Expected equivocation, got {:?}", outcome),
+            _ => panic!("Expected equivocation, got {outcome:?}"),
         }
     }
 

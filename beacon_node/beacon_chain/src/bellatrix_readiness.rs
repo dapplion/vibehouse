@@ -37,22 +37,19 @@ impl fmt::Display for MergeConfig {
         if let Some(terminal_total_difficulty) = self.terminal_total_difficulty {
             write!(
                 display_string,
-                "terminal_total_difficulty: {},",
-                terminal_total_difficulty
+                "terminal_total_difficulty: {terminal_total_difficulty},"
             )?;
         }
         if let Some(terminal_block_hash) = self.terminal_block_hash {
             write!(
                 display_string,
-                "terminal_block_hash: {},",
-                terminal_block_hash
+                "terminal_block_hash: {terminal_block_hash},"
             )?;
         }
         if let Some(terminal_block_hash_epoch) = self.terminal_block_hash_epoch {
             write!(
                 display_string,
-                "terminal_block_hash_epoch: {},",
-                terminal_block_hash_epoch
+                "terminal_block_hash_epoch: {terminal_block_hash_epoch},"
             )?;
         }
         write!(f, "{}", display_string.trim_end_matches(','))?;
@@ -103,8 +100,7 @@ impl fmt::Display for BellatrixReadiness {
                 write!(
                     f,
                     "This node appears ready for Bellatrix \
-                        Params: {}, current_difficulty: {:?}",
-                    params, current_difficulty
+                        Params: {params}, current_difficulty: {current_difficulty:?}"
                 )
             }
             BellatrixReadiness::NotSynced => write!(

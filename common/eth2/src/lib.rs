@@ -146,7 +146,7 @@ impl Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -1147,7 +1147,7 @@ impl BeaconNodeHttpClient {
             .push("beacon")
             .push("light_client")
             .push("bootstrap")
-            .push(&format!("{:?}", block_root));
+            .push(&format!("{block_root:?}"));
 
         self.get_opt(path)
             .await
@@ -1214,7 +1214,7 @@ impl BeaconNodeHttpClient {
 
         if let Some(root) = parent_root {
             path.query_pairs_mut()
-                .append_pair("parent_root", &format!("{:?}", root));
+                .append_pair("parent_root", &format!("{root:?}"));
         }
 
         self.get_opt(path).await
@@ -1345,7 +1345,7 @@ impl BeaconNodeHttpClient {
 
         path.set_query(
             validation_level
-                .map(|v| format!("broadcast_validation={}", v))
+                .map(|v| format!("broadcast_validation={v}"))
                 .as_deref(),
         );
 
@@ -1363,7 +1363,7 @@ impl BeaconNodeHttpClient {
 
         path.set_query(
             validation_level
-                .map(|v| format!("broadcast_validation={}", v))
+                .map(|v| format!("broadcast_validation={v}"))
                 .as_deref(),
         );
 
@@ -2814,7 +2814,7 @@ impl BeaconNodeHttpClient {
             .append_pair("slot", &slot.to_string())
             .append_pair(
                 "attestation_data_root",
-                &format!("{:?}", attestation_data_root),
+                &format!("{attestation_data_root:?}"),
             );
 
         self.get_opt_with_timeout(path, self.timeouts.attestation)
@@ -2839,7 +2839,7 @@ impl BeaconNodeHttpClient {
             .append_pair("slot", &slot.to_string())
             .append_pair(
                 "attestation_data_root",
-                &format!("{:?}", attestation_data_root),
+                &format!("{attestation_data_root:?}"),
             )
             .append_pair("committee_index", &committee_index.to_string());
 

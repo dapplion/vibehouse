@@ -33,7 +33,7 @@ impl FromStr for EthSpecId {
             MAINNET => Ok(EthSpecId::Mainnet),
             MINIMAL => Ok(EthSpecId::Minimal),
             GNOSIS => Ok(EthSpecId::Gnosis),
-            _ => Err(format!("Unknown eth spec: {}", s)),
+            _ => Err(format!("Unknown eth spec: {s}")),
         }
     }
 }
@@ -45,7 +45,7 @@ impl fmt::Display for EthSpecId {
             EthSpecId::Minimal => MINIMAL,
             EthSpecId::Gnosis => GNOSIS,
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 

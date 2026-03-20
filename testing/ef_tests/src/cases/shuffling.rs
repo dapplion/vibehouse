@@ -27,7 +27,7 @@ impl<E: EthSpec> Case for Shuffling<E> {
         } else {
             let spec = E::default_spec();
             let seed = hex::decode(&self.seed[2..])
-                .map_err(|e| Error::FailedToParseTest(format!("{:?}", e)))?;
+                .map_err(|e| Error::FailedToParseTest(format!("{e:?}")))?;
 
             // Test compute_shuffled_index
             let shuffling = (0..self.count)

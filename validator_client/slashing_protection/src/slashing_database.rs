@@ -151,7 +151,7 @@ impl SlashingDatabase {
             .max_size(POOL_SIZE)
             .connection_timeout(CONNECTION_TIMEOUT)
             .build(manager)
-            .map_err(|e| NotSafe::SQLError(format!("Unable to open database: {:?}", e)))?;
+            .map_err(|e| NotSafe::SQLError(format!("Unable to open database: {e:?}")))?;
         Ok(conn_pool)
     }
 

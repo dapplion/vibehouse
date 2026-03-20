@@ -32,7 +32,7 @@ impl fmt::Display for ValidatorPath {
         write!(f, "m")?;
 
         for node in self.iter_nodes() {
-            write!(f, "/{}", node)?;
+            write!(f, "/{node}")?;
         }
 
         Ok(())
@@ -62,25 +62,25 @@ mod tests {
     #[test]
     fn voting_display_index_zero() {
         let path = ValidatorPath::new(0, KeyType::Voting);
-        assert_eq!(format!("{}", path), "m/12381/3600/0/0/0");
+        assert_eq!(format!("{path}"), "m/12381/3600/0/0/0");
     }
 
     #[test]
     fn withdrawal_display_index_zero() {
         let path = ValidatorPath::new(0, KeyType::Withdrawal);
-        assert_eq!(format!("{}", path), "m/12381/3600/0/0");
+        assert_eq!(format!("{path}"), "m/12381/3600/0/0");
     }
 
     #[test]
     fn voting_display_nonzero_index() {
         let path = ValidatorPath::new(42, KeyType::Voting);
-        assert_eq!(format!("{}", path), "m/12381/3600/42/0/0");
+        assert_eq!(format!("{path}"), "m/12381/3600/42/0/0");
     }
 
     #[test]
     fn withdrawal_display_nonzero_index() {
         let path = ValidatorPath::new(42, KeyType::Withdrawal);
-        assert_eq!(format!("{}", path), "m/12381/3600/42/0");
+        assert_eq!(format!("{path}"), "m/12381/3600/42/0");
     }
 
     #[test]
@@ -94,9 +94,6 @@ mod tests {
         let path = ValidatorPath::new(u32::MAX, KeyType::Voting);
         let nodes: Vec<_> = path.iter_nodes().copied().collect();
         assert_eq!(nodes[2], u32::MAX);
-        assert_eq!(
-            format!("{}", path),
-            format!("m/12381/3600/{}/0/0", u32::MAX)
-        );
+        assert_eq!(format!("{path}"), format!("m/12381/3600/{}/0/0", u32::MAX));
     }
 }

@@ -54,7 +54,7 @@ pub async fn create_signed_voluntary_exit<T: 'static + SlotClock + Clone, E: Eth
     let signed_voluntary_exit = validator_store
         .sign_voluntary_exit(pubkey_bytes, voluntary_exit)
         .await
-        .map_err(|e| ApiError::ServerError(format!("Failed to sign voluntary exit: {:?}", e)))?;
+        .map_err(|e| ApiError::ServerError(format!("Failed to sign voluntary exit: {e:?}")))?;
 
     Ok(GenericResponse::from(signed_voluntary_exit))
 }

@@ -117,8 +117,7 @@ impl StateId {
                     return Ok((*root, execution_optimistic, true));
                 } else {
                     return Err(ApiError::not_found(format!(
-                        "beacon state for state root {}",
-                        root
+                        "beacon state for state root {root}"
                     )));
                 }
             }
@@ -127,7 +126,7 @@ impl StateId {
         let root = chain
             .state_root_at_slot(slot)
             .map_err(ApiError::unhandled_error)?
-            .ok_or_else(|| ApiError::not_found(format!("beacon state at slot {}", slot)))?;
+            .ok_or_else(|| ApiError::not_found(format!("beacon state at slot {slot}")))?;
 
         Ok((root, execution_optimistic, finalized))
     }
@@ -192,9 +191,7 @@ impl StateId {
             .get_state(&state_root, slot_opt, true)
             .map_err(ApiError::unhandled_error)
             .and_then(|opt| {
-                opt.ok_or_else(|| {
-                    ApiError::not_found(format!("beacon state at root {}", state_root))
-                })
+                opt.ok_or_else(|| ApiError::not_found(format!("beacon state at root {state_root}")))
             })?;
 
         Ok((state, execution_optimistic, finalized))
@@ -338,26 +335,26 @@ mod tests {
     #[test]
     fn display_head() {
         let id = StateId(CoreStateId::Head);
-        assert_eq!(format!("{}", id), "head");
+        assert_eq!(format!("{id}"), "head");
     }
 
     #[test]
     fn display_genesis() {
         let id = StateId(CoreStateId::Genesis);
-        assert_eq!(format!("{}", id), "genesis");
+        assert_eq!(format!("{id}"), "genesis");
     }
 
     #[test]
     fn display_slot() {
         let id = StateId::from_slot(Slot::new(999));
-        assert_eq!(format!("{}", id), "999");
+        assert_eq!(format!("{id}"), "999");
     }
 
     #[test]
     fn display_root() {
         let root = Hash256::repeat_byte(0xcd);
         let id = StateId(CoreStateId::Root(root));
-        let display = format!("{}", id);
+        let display = format!("{id}");
         assert!(display.starts_with("0x"));
         assert!(display.contains("cdcd"));
     }
@@ -371,7 +368,7 @@ mod tests {
     #[test]
     fn debug_impl() {
         let id = StateId(CoreStateId::Head);
-        let dbg = format!("{:?}", id);
+        let dbg = format!("{id:?}");
         assert!(dbg.contains("Head"));
     }
 

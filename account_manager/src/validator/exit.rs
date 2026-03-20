@@ -101,7 +101,7 @@ pub fn cli_run<E: EthSpec>(matches: &ArgMatches, env: Environment<E>) -> Result<
     let server_url: String = clap_utils::parse_required(matches, BEACON_SERVER_FLAG)?;
     let client = BeaconNodeHttpClient::new(
         SensitiveUrl::parse(&server_url)
-            .map_err(|e| format!("Failed to parse beacon http server: {:?}", e))?,
+            .map_err(|e| format!("Failed to parse beacon http server: {e:?}"))?,
         Timeouts::set_all(Duration::from_secs(env.eth2_config.spec.seconds_per_slot)),
     );
 
@@ -179,9 +179,9 @@ async fn publish_voluntary_exit<E: EthSpec>(
 
         // Convert to JSON and print
         let string_output = serde_json::to_string_pretty(&signed_voluntary_exit)
-            .map_err(|e| format!("Unable to convert to JSON: {}", e))?;
+            .map_err(|e| format!("Unable to convert to JSON: {e}"))?;
 
-        println!("{}", string_output);
+        println!("{string_output}");
         return Ok(());
     }
 
@@ -192,8 +192,7 @@ async fn publish_voluntary_exit<E: EthSpec>(
     if !no_confirmation {
         eprintln!("WARNING: THIS IS AN IRREVERSIBLE OPERATION\n");
         eprintln!(
-            "PLEASE VISIT {} TO MAKE SURE YOU UNDERSTAND THE IMPLICATIONS OF A VOLUNTARY EXIT.",
-            WEBSITE_URL
+            "PLEASE VISIT {WEBSITE_URL} TO MAKE SURE YOU UNDERSTAND THE IMPLICATIONS OF A VOLUNTARY EXIT."
         );
         eprintln!("Enter the exit phrase from the above URL to confirm the voluntary exit: ");
     }
@@ -209,7 +208,7 @@ async fn publish_voluntary_exit<E: EthSpec>(
         client
             .post_beacon_pool_voluntary_exits(&signed_voluntary_exit)
             .await
-            .map_err(|e| format!("Failed to publish voluntary exit: {}", e))?;
+            .map_err(|e| format!("Failed to publish voluntary exit: {e}"))?;
         tokio::time::sleep(std::time::Duration::from_secs(1)).await; // Provides nicer UX.
         eprintln!(
             "Successfully validated and published voluntary exit for validator {}",
@@ -245,8 +244,7 @@ async fn publish_voluntary_exit<E: EthSpec>(
                         probability that the exit may be reverted."
                 );
                 eprintln!(
-                    "Current epoch: {}, Exit epoch: {}, Withdrawable epoch: {}",
-                    current_epoch, exit_epoch, withdrawal_epoch
+                    "Current epoch: {current_epoch}, Exit epoch: {exit_epoch}, Withdrawable epoch: {withdrawal_epoch}"
                 );
                 eprintln!("Please keep your validator running till exit epoch");
                 eprintln!(
@@ -286,20 +284,18 @@ async fn get_validator_index_for_exit(
                 .validator
                 .activation_epoch
                 .safe_add(spec.shard_committee_period)
-                .map_err(|e| format!("Failed to calculate eligible epoch, validator activation epoch too high: {:?}", e))?;
+                .map_err(|e| format!("Failed to calculate eligible epoch, validator activation epoch too high: {e:?}"))?;
 
             if epoch >= eligible_epoch {
                 Ok(validator_data.index)
             } else {
                 Err(format!(
-                    "Validator {:?} is not eligible for exit. It will become eligible on epoch {}",
-                    validator_pubkey, eligible_epoch
+                    "Validator {validator_pubkey:?} is not eligible for exit. It will become eligible on epoch {eligible_epoch}"
                 ))
             }
         }
         status => Err(format!(
-            "Validator {:?} is not eligible for voluntary exit. Validator status: {:?}",
-            validator_pubkey, status
+            "Validator {validator_pubkey:?} is not eligible for voluntary exit. Validator status: {status:?}"
         )),
     }
 }
@@ -315,12 +311,11 @@ async fn get_validator_data(
             &ValidatorId::PublicKey(validator_pubkey.into()),
         )
         .await
-        .map_err(|e| format!("Failed to get validator details: {:?}", e))?
+        .map_err(|e| format!("Failed to get validator details: {e:?}"))?
         .ok_or_else(|| {
             format!(
-                "Validator {} is not present in the beacon state. \
-                Please ensure that your beacon node is synced and the validator has been deposited.",
-                validator_pubkey
+                "Validator {validator_pubkey} is not present in the beacon state. \
+                Please ensure that your beacon node is synced and the validator has been deposited."
             )
         })?
         .data)
@@ -331,7 +326,7 @@ async fn get_geneisis_data(client: &BeaconNodeHttpClient) -> Result<GenesisData,
     Ok(client
         .get_beacon_genesis()
         .await
-        .map_err(|e| format!("Failed to get beacon genesis: {}", e))?
+        .map_err(|e| format!("Failed to get beacon genesis: {e}"))?
         .data)
 }
 
@@ -340,7 +335,7 @@ async fn is_syncing(client: &BeaconNodeHttpClient) -> Result<bool, String> {
     Ok(client
         .get_node_syncing()
         .await
-        .map_err(|e| format!("Failed to get sync status: {:?}", e))?
+        .map_err(|e| format!("Failed to get sync status: {e:?}"))?
         .data
         .is_syncing)
 }
@@ -364,24 +359,17 @@ fn load_voting_keypair(
     password_file_path: Option<&PathBuf>,
     stdin_inputs: bool,
 ) -> Result<Keypair, String> {
-    let keystore = Keystore::from_json_file(voting_keystore_path).map_err(|e| {
-        format!(
-            "Unable to read keystore JSON {:?}: {:?}",
-            voting_keystore_path, e
-        )
-    })?;
+    let keystore = Keystore::from_json_file(voting_keystore_path)
+        .map_err(|e| format!("Unable to read keystore JSON {voting_keystore_path:?}: {e:?}"))?;
 
     // Get password from password file.
     if let Some(password_file) = password_file_path {
         validator_dir::unlock_keypair_from_password_path(voting_keystore_path, password_file)
-            .map_err(|e| format!("Error while decrypting keypair: {:?}", e))
+            .map_err(|e| format!("Error while decrypting keypair: {e:?}"))
     } else {
         // Prompt password from user.
         eprintln!();
-        eprintln!(
-            "{} for validator in {:?}: ",
-            PASSWORD_PROMPT, voting_keystore_path
-        );
+        eprintln!("{PASSWORD_PROMPT} for validator in {voting_keystore_path:?}: ");
         let password = account_utils::read_password_from_user(stdin_inputs)?;
         match keystore.decrypt_keypair(password.as_ref()) {
             Ok(keypair) => {
@@ -391,7 +379,7 @@ fn load_voting_keypair(
                 Ok(keypair)
             }
             Err(eth2_keystore::Error::InvalidPassword) => Err("Invalid password".to_string()),
-            Err(e) => Err(format!("Error while decrypting keypair: {:?}", e)),
+            Err(e) => Err(format!("Error while decrypting keypair: {e:?}")),
         }
     }
 }

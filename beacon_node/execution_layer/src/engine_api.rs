@@ -687,7 +687,7 @@ impl std::fmt::Display for ClientCode {
             ClientCode::Reth => "RH",
             ClientCode::Unknown(code) => code,
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 
@@ -714,7 +714,7 @@ impl TryFrom<String> for ClientCode {
                 if string.len() == 2 {
                     Ok(Self::Unknown(code))
                 } else {
-                    Err(format!("Invalid client code: {}", code))
+                    Err(format!("Invalid client code: {code}"))
                 }
             }
         }
@@ -1149,7 +1149,7 @@ mod tests {
         ];
         for (code, expected) in cases {
             let result = ClientCode::try_from(code.to_string()).unwrap();
-            assert_eq!(result, expected, "Failed for code {}", code);
+            assert_eq!(result, expected, "Failed for code {code}");
         }
     }
 
@@ -1186,7 +1186,7 @@ mod tests {
             (ClientCode::Unknown("XY".to_string()), "XY"),
         ];
         for (code, expected) in cases {
-            assert_eq!(format!("{}", code), expected);
+            assert_eq!(format!("{code}"), expected);
         }
     }
 
@@ -1218,7 +1218,7 @@ mod tests {
     #[test]
     fn commit_prefix_display() {
         let cp = CommitPrefix::try_from("0xDEADBEEF".to_string()).unwrap();
-        assert_eq!(format!("{}", cp), "deadbeef");
+        assert_eq!(format!("{cp}"), "deadbeef");
     }
 
     #[test]
@@ -1241,8 +1241,8 @@ mod tests {
         let graffiti = cv.calculate_graffiti(vh_commit);
         let text = graffiti.as_utf8_lossy();
         // Expected: "RHaabbLH1122"
-        assert!(text.starts_with("RHaabb"), "Got: {}", text);
-        assert!(text.contains("LH1122"), "Got: {}", text);
+        assert!(text.starts_with("RHaabb"), "Got: {text}");
+        assert!(text.contains("LH1122"), "Got: {text}");
     }
 
     #[test]
@@ -1257,8 +1257,8 @@ mod tests {
         let graffiti = cv.calculate_graffiti(vh_commit);
         let text = graffiti.as_utf8_lossy();
         // "GEdeadLHcafe"
-        assert!(text.starts_with("GEdead"), "Got: {}", text);
-        assert!(text.contains("LHcafe"), "Got: {}", text);
+        assert!(text.starts_with("GEdead"), "Got: {text}");
+        assert!(text.contains("LHcafe"), "Got: {text}");
     }
 
     // --- GetPayloadResponse conversions ---

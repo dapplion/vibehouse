@@ -68,8 +68,7 @@ pub fn proposer_duties<T: BeaconChainTypes>(
     } else if request_epoch > current_epoch.safe_add(1).map_err(ApiError::arith_error)? {
         // Reject queries about the future epochs for which lookahead is not possible
         Err(ApiError::bad_request(format!(
-            "request epoch {} is ahead of the next epoch {}",
-            request_epoch, current_epoch
+            "request epoch {request_epoch} is ahead of the next epoch {current_epoch}"
         )))
     } else {
         // request_epoch < current_epoch

@@ -112,7 +112,7 @@ async fn run(config: DeleteConfig) -> Result<(), String> {
             .iter()
             .any(|validator| &validator.validating_pubkey == validator_to_delete)
         {
-            return Err(format!("Validator {} doesn't exist", validator_to_delete));
+            return Err(format!("Validator {validator_to_delete} doesn't exist"));
         }
     }
 
@@ -123,7 +123,7 @@ async fn run(config: DeleteConfig) -> Result<(), String> {
     let responses = http_client
         .delete_keystores(&delete_request)
         .await
-        .map_err(|e| format!("Error deleting keystore {}", e))?
+        .map_err(|e| format!("Error deleting keystore {e}"))?
         .data;
 
     let mut error = false;

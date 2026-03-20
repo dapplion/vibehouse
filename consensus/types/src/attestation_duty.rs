@@ -93,7 +93,7 @@ mod tests {
             committee_len: 64,
             committees_at_slot: 8,
         };
-        let debug = format!("{:?}", duty);
+        let debug = format!("{duty:?}");
         assert!(debug.contains("AttestationDuty"));
     }
 

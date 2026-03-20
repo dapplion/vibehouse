@@ -181,9 +181,7 @@ mod tests {
         // PROPOSER_WEIGHT < WEIGHT_DENOMINATOR - PROPOSER_WEIGHT, so proposer_reward < participant_reward
         assert!(
             proposer_reward < participant_reward,
-            "proposer_reward ({}) should be less than participant_reward ({})",
-            proposer_reward,
-            participant_reward
+            "proposer_reward ({proposer_reward}) should be less than participant_reward ({participant_reward})"
         );
     }
 
@@ -203,9 +201,7 @@ mod tests {
 
         assert!(
             pr_large > pr_small,
-            "more total stake → higher sync reward: small={}, large={}",
-            pr_small,
-            pr_large
+            "more total stake → higher sync reward: small={pr_small}, large={pr_large}"
         );
     }
 

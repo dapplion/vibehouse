@@ -110,7 +110,7 @@ impl<E: EthSpec> Debug for Availability<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::MissingComponents(block_root) => {
-                write!(f, "MissingComponents({})", block_root)
+                write!(f, "MissingComponents({block_root})")
             }
             Self::Available(block) => write!(f, "Available({:?})", block.import_data.block_root),
         }
@@ -1209,7 +1209,7 @@ mod test {
         let (_availability, reconstructed_columns) = match reconstruction_result {
             DataColumnReconstructionResult::Success(result) => result,
             e => {
-                panic!("Expected successful reconstruction {:?}", e);
+                panic!("Expected successful reconstruction {e:?}");
             }
         };
 

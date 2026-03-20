@@ -271,8 +271,7 @@ impl BlockShufflingIds {
         let get_shuffling_id = |relative_epoch| {
             AttestationShufflingId::new(head_block_root, head_state, relative_epoch).map_err(|e| {
                 format!(
-                    "Unable to get attester shuffling decision slot for the epoch {:?}: {:?}",
-                    relative_epoch, e
+                    "Unable to get attester shuffling decision slot for the epoch {relative_epoch:?}: {e:?}"
                 )
             })
         };

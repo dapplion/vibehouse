@@ -11,13 +11,13 @@ pub fn cli_app() -> Command {
 
 pub fn cli_run(wallet_base_dir: PathBuf) -> Result<(), String> {
     let mgr = WalletManager::open(wallet_base_dir)
-        .map_err(|e| format!("Unable to open --{}: {:?}", WALLETS_DIR_FLAG, e))?;
+        .map_err(|e| format!("Unable to open --{WALLETS_DIR_FLAG}: {e:?}"))?;
 
     for (name, _uuid) in mgr
         .wallets()
-        .map_err(|e| format!("Unable to list wallets: {:?}", e))?
+        .map_err(|e| format!("Unable to list wallets: {e:?}"))?
     {
-        println!("{}", name);
+        println!("{name}");
     }
 
     Ok(())

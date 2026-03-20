@@ -350,8 +350,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> BlockService<S, T> {
             }
             Err(e) => {
                 return Err(BlockError::Recoverable(format!(
-                    "Unable to sign block: {:?}",
-                    e
+                    "Unable to sign block: {e:?}"
                 )));
             }
         };
@@ -432,8 +431,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> BlockService<S, T> {
             }
             Err(e) => {
                 return Err(BlockError::Recoverable(format!(
-                    "Unable to produce randao reveal signature: {:?}",
-                    e
+                    "Unable to produce randao reveal signature: {e:?}"
                 )));
             }
         };
@@ -476,8 +474,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> BlockService<S, T> {
                 .await
                 .map_err(|e| {
                     BlockError::Recoverable(format!(
-                        "Error from beacon node when producing block: {:?}",
-                        e
+                        "Error from beacon node when producing block: {e:?}"
                     ))
                 })
             })
@@ -566,8 +563,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> BlockService<S, T> {
                     .await
                     .map_err(|e| {
                         BlockError::Recoverable(format!(
-                            "Error from beacon node when producing block: {:?}",
-                            e
+                            "Error from beacon node when producing block: {e:?}"
                         ))
                     })?;
 

@@ -11,7 +11,7 @@ pub fn read_wallet_name_from_cli(
     match wallet_name {
         Some(name) => Ok(name),
         None => {
-            eprintln!("{}", WALLET_NAME_PROMPT);
+            eprintln!("{WALLET_NAME_PROMPT}");
 
             read_input_from_user(stdin_inputs)
         }

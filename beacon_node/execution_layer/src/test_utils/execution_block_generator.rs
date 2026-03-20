@@ -364,8 +364,7 @@ impl<E: EthSpec> ExecutionBlockGenerator<E> {
     pub fn insert_pow_block(&mut self, block_number: u64) -> Result<(), String> {
         if let Some(finalized_block_hash) = self.finalized_block_hash {
             return Err(format!(
-                "terminal block {} has been finalized. PoW chain has stopped building",
-                finalized_block_hash
+                "terminal block {finalized_block_hash} has been finalized. PoW chain has stopped building"
             ));
         }
         let block = if block_number == 0 {
@@ -411,10 +410,7 @@ impl<E: EthSpec> ExecutionBlockGenerator<E> {
         unique_id: u64,
     ) -> Result<ExecutionBlockHash, String> {
         let parent_block = self.block_by_hash(parent_hash).ok_or_else(|| {
-            format!(
-                "Block corresponding to parent hash does not exist: {}",
-                parent_hash
-            )
+            format!("Block corresponding to parent hash does not exist: {parent_hash}")
         })?;
 
         let mut block = generate_pow_block(
@@ -792,7 +788,7 @@ pub fn load_test_blobs_bundle_v1<E: EthSpec>() -> Result<(KzgCommitment, KzgProo
         proofs,
         blobs,
     } = BlobsBundle::from_ssz_bytes(TEST_BLOB_BUNDLE)
-        .map_err(|e| format!("Unable to decode ssz: {:?}", e))?;
+        .map_err(|e| format!("Unable to decode ssz: {e:?}"))?;
 
     Ok((
         commitments
@@ -817,7 +813,7 @@ pub fn load_test_blobs_bundle_v2<E: EthSpec>()
         proofs,
         blobs,
     } = BlobsBundle::from_ssz_bytes(TEST_BLOB_BUNDLE_V2)
-        .map_err(|e| format!("Unable to decode ssz: {:?}", e))?;
+        .map_err(|e| format!("Unable to decode ssz: {e:?}"))?;
 
     Ok((
         commitments
@@ -837,8 +833,8 @@ pub fn generate_blobs<E: EthSpec>(
     n_blobs: usize,
     fork_name: ForkName,
 ) -> Result<(BlobsBundle<E>, Transactions<E>), String> {
-    let tx = static_valid_tx::<E>()
-        .map_err(|e| format!("error creating valid tx SSZ bytes: {:?}", e))?;
+    let tx =
+        static_valid_tx::<E>().map_err(|e| format!("error creating valid tx SSZ bytes: {e:?}"))?;
     let transactions = vec![tx; n_blobs];
 
     let bundle = if fork_name.fulu_enabled() {
@@ -873,9 +869,8 @@ pub fn static_valid_tx<E: EthSpec>() -> Result<Transaction<E::MaxBytesPerTransac
          2da3e20f328b16ddabcebc33eaac5feaa04ba69724e8f69de52f0125ad8b3c5c2c\
          ef33019bac3249e2c0a2192766d1721c",
     )
-    .map_err(|e| format!("Failed to decode static transaction hex: {:?}", e))?;
-    VariableList::new(rlp_bytes)
-        .map_err(|e| format!("Failed to convert transaction to SSZ: {:?}", e))
+    .map_err(|e| format!("Failed to decode static transaction hex: {e:?}"))?;
+    VariableList::new(rlp_bytes).map_err(|e| format!("Failed to convert transaction to SSZ: {e:?}"))
 }
 
 fn payload_id_from_u64(n: u64) -> PayloadId {
@@ -957,8 +952,7 @@ pub fn generate_pow_block(
 ) -> Result<PoWBlock, String> {
     if block_number > terminal_block_number {
         return Err(format!(
-            "{} is beyond terminal pow block {}",
-            block_number, terminal_block_number
+            "{block_number} is beyond terminal pow block {terminal_block_number}"
         ));
     }
 

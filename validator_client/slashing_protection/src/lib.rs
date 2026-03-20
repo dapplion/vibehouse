@@ -121,13 +121,13 @@ impl From<SQLError> for NotSafe {
 impl From<r2d2::Error> for NotSafe {
     fn from(error: r2d2::Error) -> Self {
         // Use `Display` impl to print "timed out waiting for connection"
-        NotSafe::SQLPoolError(format!("{}", error))
+        NotSafe::SQLPoolError(format!("{error}"))
     }
 }
 
 impl Display for NotSafe {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 

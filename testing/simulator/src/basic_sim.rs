@@ -53,7 +53,7 @@ pub fn run_basic_sim(matches: &ArgMatches) -> Result<(), String> {
         .unwrap_or(0);
     // extra beacon node added with delay
     let extra_nodes: usize = 1;
-    println!("PROPOSER-NODES: {}", proposer_nodes);
+    println!("PROPOSER-NODES: {proposer_nodes}");
     let validators_per_node = subcommand_matches
         .get_one::<String>("validators-per-node")
         .expect("missing validators-per-node default")
@@ -75,13 +75,13 @@ pub fn run_basic_sim(matches: &ArgMatches) -> Result<(), String> {
     let disable_stdout_logging = subcommand_matches.get_flag("disable-stdout-logging");
 
     println!("Basic Simulator:");
-    println!(" nodes: {}", node_count);
-    println!(" proposer-nodes: {}", proposer_nodes);
-    println!(" validators-per-node: {}", validators_per_node);
-    println!(" speed-up-factor: {}", speed_up_factor);
-    println!(" continue-after-checks: {}", continue_after_checks);
-    println!(" log-dir: {:?}", log_dir);
-    println!(" disable-stdout-logging: {}", disable_stdout_logging);
+    println!(" nodes: {node_count}");
+    println!(" proposer-nodes: {proposer_nodes}");
+    println!(" validators-per-node: {validators_per_node}");
+    println!(" speed-up-factor: {speed_up_factor}");
+    println!(" continue-after-checks: {continue_after_checks}");
+    println!(" log-dir: {log_dir:?}");
+    println!(" disable-stdout-logging: {disable_stdout_logging}");
 
     // Generate the directories and keystores required for the validator clients.
     let validator_files = (0..node_count)
@@ -244,7 +244,7 @@ pub fn run_basic_sim(matches: &ArgMatches) -> Result<(), String> {
                     let mut validator_config = testing_validator_config();
                     validator_config.validator_store.fee_recipient =
                         Some(SUGGESTED_FEE_RECIPIENT.into());
-                    println!("Adding validator client {}", i);
+                    println!("Adding validator client {i}");
 
                     // Enable broadcast on every 4th node.
                     if i % 4 == 0 {

@@ -31,7 +31,7 @@ impl FromStr for PeerIdSerialized {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self(
-            PeerId::from_str(s).map_err(|e| format!("Invalid peer id: {}", e))?,
+            PeerId::from_str(s).map_err(|e| format!("Invalid peer id: {e}"))?,
         ))
     }
 }
@@ -52,7 +52,7 @@ impl<'de> Deserialize<'de> for PeerIdSerialized {
     {
         let s: String = Deserialize::deserialize(deserializer)?;
         Ok(Self(PeerId::from_str(&s).map_err(|e| {
-            de::Error::custom(format!("Failed to deserialise peer id: {:?}", e))
+            de::Error::custom(format!("Failed to deserialise peer id: {e:?}"))
         })?))
     }
 }
@@ -92,7 +92,7 @@ impl std::fmt::Display for ClearDialError<'_> {
             DialError::DialPeerConditionFalse(_) => write!(f, "PeerCondition evaluation failed."),
             DialError::Aborted => write!(f, "Connection aborted."),
             DialError::WrongPeerId { .. } => write!(f, "Wrong peer id."),
-            DialError::Denied { cause } => write!(f, "Connection denied: {:?}", cause),
+            DialError::Denied { cause } => write!(f, "Connection denied: {cause:?}"),
         }
     }
 }

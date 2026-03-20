@@ -768,7 +768,7 @@ mod tests {
         let result = bitlist_extend(&l1, &l2).unwrap();
         assert_eq!(result.len(), 11);
         for i in 0..11 {
-            assert!(result.get(i).unwrap(), "bit {} should be set", i);
+            assert!(result.get(i).unwrap(), "bit {i} should be set");
         }
     }
 

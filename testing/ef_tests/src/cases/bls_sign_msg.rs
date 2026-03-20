@@ -23,7 +23,7 @@ impl Case for BlsSign {
     fn result(&self, _case_index: usize, _fork_name: ForkName) -> Result<(), Error> {
         // Convert private_key and message to required types
         let sk = hex::decode(&self.input.privkey[2..])
-            .map_err(|e| Error::FailedToParseTest(format!("{:?}", e)))?;
+            .map_err(|e| Error::FailedToParseTest(format!("{e:?}")))?;
 
         assert_eq!(sk.len(), 32);
 
@@ -32,10 +32,10 @@ impl Case for BlsSign {
             Err(_) if self.output.is_none() => {
                 return Ok(());
             }
-            Err(e) => return Err(Error::FailedToParseTest(format!("{:?}", e))),
+            Err(e) => return Err(Error::FailedToParseTest(format!("{e:?}"))),
         };
         let msg = hex::decode(&self.input.message[2..])
-            .map_err(|e| Error::FailedToParseTest(format!("{:?}", e)))?;
+            .map_err(|e| Error::FailedToParseTest(format!("{e:?}")))?;
 
         let signature = sk.sign(Hash256::from_slice(&msg));
 
@@ -44,7 +44,7 @@ impl Case for BlsSign {
             .as_ref()
             .map(|output| hex::decode(&output[2..]))
             .transpose()
-            .map_err(|e| Error::FailedToParseTest(format!("{:?}", e)))?;
+            .map_err(|e| Error::FailedToParseTest(format!("{e:?}")))?;
 
         compare_result::<Vec<u8>, Vec<u8>>(&Ok(signature.serialize().to_vec()), &decoded)
     }

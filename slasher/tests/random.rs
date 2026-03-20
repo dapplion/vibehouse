@@ -45,7 +45,7 @@ fn random_test(seed: u64, mut db: SlasherDB<E>, test_config: TestConfig) -> Slas
     let num_validators = test_config.num_validators;
     let max_attestations = test_config.max_attestations;
 
-    println!("Running with seed {}", seed);
+    println!("Running with seed {seed}");
     let mut rng = StdRng::seed_from_u64(seed);
 
     let mut config = Config::new(db.get_config().database_path.clone());

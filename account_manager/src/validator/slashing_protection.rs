@@ -84,7 +84,7 @@ pub fn cli_run<E: EthSpec>(
 
             eprint!("Loading JSON file into memory & deserializing");
             let interchange = Interchange::from_json_reader(&import_file)
-                .map_err(|e| format!("Error parsing file for import: {:?}", e))?;
+                .map_err(|e| format!("Error parsing file for import: {e:?}"))?;
             eprintln!(" [done].");
 
             let slashing_protection_database =
@@ -123,7 +123,7 @@ pub fn cli_run<E: EthSpec>(
                     for outcome in &outcomes {
                         match outcome {
                             InterchangeImportOutcome::Success { pubkey, summary } => {
-                                eprintln!("- {:?}", pubkey);
+                                eprintln!("- {pubkey:?}");
                                 eprintln!(
                                     "    - latest proposed block: {}",
                                     display_slot(summary.max_block_slot)
@@ -138,8 +138,7 @@ pub fn cli_run<E: EthSpec>(
                             }
                             InterchangeImportOutcome::Failure { pubkey, error } => {
                                 panic!(
-                                    "import should be atomic, but key {:?} was imported despite error: {:?}",
-                                    pubkey, error
+                                    "import should be atomic, but key {pubkey:?} was imported despite error: {error:?}"
                                 );
                             }
                         }
@@ -149,8 +148,8 @@ pub fn cli_run<E: EthSpec>(
                     eprintln!("ERROR: import aborted due to one or more errors");
                     for outcome in &outcomes {
                         if let InterchangeImportOutcome::Failure { pubkey, error } = outcome {
-                            eprintln!("- {:?}", pubkey);
-                            eprintln!("    - error: {:?}", error);
+                            eprintln!("- {pubkey:?}");
+                            eprintln!("    - error: {error:?}");
                         }
                     }
                     return Err("ERROR: import aborted due to errors, see above.\n\
@@ -163,9 +162,8 @@ pub fn cli_run<E: EthSpec>(
                 }
                 Err(e) => {
                     return Err(format!(
-                        "Fatal error during import: {:?}\n\
-                         IT IS NOT SAFE TO START VALIDATING",
-                        e
+                        "Fatal error during import: {e:?}\n\
+                         IT IS NOT SAFE TO START VALIDATING"
                     ));
                 }
             }
@@ -188,7 +186,7 @@ pub fn cli_run<E: EthSpec>(
                     .split(',')
                     .map(PublicKeyBytes::from_str)
                     .collect::<Result<Vec<_>, _>>()
-                    .map_err(|e| format!("Invalid --{} value: {:?}", PUBKEYS_FLAG, e))?;
+                    .map_err(|e| format!("Invalid --{PUBKEYS_FLAG} value: {e:?}"))?;
                 Some(pubkeys)
             } else {
                 None
@@ -212,20 +210,20 @@ pub fn cli_run<E: EthSpec>(
 
             let interchange = slashing_protection_database
                 .export_interchange_info(genesis_validators_root, selected_pubkeys.as_deref())
-                .map_err(|e| format!("Error during export: {:?}", e))?;
+                .map_err(|e| format!("Error during export: {e:?}"))?;
 
             let output_file = File::create(export_filename)
-                .map_err(|e| format!("Error creating output file: {:?}", e))?;
+                .map_err(|e| format!("Error creating output file: {e:?}"))?;
 
             interchange
                 .write_to(&output_file)
-                .map_err(|e| format!("Error writing output file: {:?}", e))?;
+                .map_err(|e| format!("Error writing output file: {e:?}"))?;
 
             eprintln!("Export completed successfully");
 
             Ok(())
         }
-        Some((command, _)) => Err(format!("No such subcommand `{}`", command)),
+        Some((command, _)) => Err(format!("No such subcommand `{command}`")),
         _ => Err("No subcommand provided, see --help for options".to_string()),
     }
 }

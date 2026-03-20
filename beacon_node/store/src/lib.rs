@@ -932,7 +932,7 @@ mod tests {
     #[test]
     fn db_column_key_sizes_positive() {
         for col in <DBColumn as strum::IntoEnumIterator>::iter() {
-            assert!(col.key_size() > 0, "column {:?} has zero key size", col);
+            assert!(col.key_size() > 0, "column {col:?} has zero key size");
         }
     }
 

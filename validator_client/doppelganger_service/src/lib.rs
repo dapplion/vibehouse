@@ -118,7 +118,7 @@ async fn beacon_node_liveness<T: 'static + SlotClock>(
                     beacon_node
                         .post_validator_liveness_epoch(previous_epoch, validator_indices_ref)
                         .await
-                        .map_err(|e| format!("Failed query for validator liveness: {:?}", e))
+                        .map_err(|e| format!("Failed query for validator liveness: {e:?}"))
                         .map(|result| {
                             result
                                 .data
@@ -153,7 +153,7 @@ async fn beacon_node_liveness<T: 'static + SlotClock>(
                 beacon_node
                     .post_validator_liveness_epoch(current_epoch, validator_indices_ref)
                     .await
-                    .map_err(|e| format!("Failed query for validator liveness: {:?}", e))
+                    .map_err(|e| format!("Failed query for validator liveness: {e:?}"))
                     .map(|result| {
                         result
                             .data
@@ -545,7 +545,7 @@ impl DoppelgangerService {
             let doppelganger_state = doppelganger_states
                 .get_mut(pubkey)
                 // Abort the routine if inconsistency is detected.
-                .ok_or_else(|| format!("inconsistent states for validator pubkey {}", pubkey))?;
+                .ok_or_else(|| format!("inconsistent states for validator pubkey {pubkey}"))?;
 
             // If a single doppelganger is detected, enable doppelganger checks on all
             // validators forever (technically only 2**64 epochs).

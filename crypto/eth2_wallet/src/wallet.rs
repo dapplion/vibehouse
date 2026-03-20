@@ -196,7 +196,7 @@ impl Wallet {
 
             let keypair = keypair_from_secret(secret.as_bytes())?;
 
-            KeystoreBuilder::new(&keypair, password, format!("{}", path))?
+            KeystoreBuilder::new(&keypair, password, format!("{path}"))?
                 .build()
                 .map_err(Into::into)
         };
@@ -503,7 +503,7 @@ mod tests {
         let (secret2, path2) =
             recover_validator_secret(&wallet, TEST_PASSWORD, 0, KeyType::Voting).unwrap();
         assert_eq!(secret1.as_bytes(), secret2.as_bytes());
-        assert_eq!(format!("{}", path1), format!("{}", path2));
+        assert_eq!(format!("{path1}"), format!("{}", path2));
     }
 
     #[test]

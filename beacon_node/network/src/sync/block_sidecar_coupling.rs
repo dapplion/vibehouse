@@ -467,7 +467,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
                         custody_columns.push(CustodyDataColumn::from_asserted_custody(data_column));
                     } else {
                         let Some(responsible_peer) = column_to_peer.get(index) else {
-                            return Err(CouplingError::InternalError(format!("Internal error, no request made for column {}", index)));
+                            return Err(CouplingError::InternalError(format!("Internal error, no request made for column {index}")));
                         };
                         naughty_peers.push((*index, *responsible_peer));
                     }
@@ -492,7 +492,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
                 }
 
                 RpcBlock::new_with_custody_columns(Some(block_root), block, custody_columns)
-                    .map_err(|e| CouplingError::InternalError(format!("{:?}", e)))?
+                    .map_err(|e| CouplingError::InternalError(format!("{e:?}")))?
             } else {
                 // Block has no data, expects zero columns
                 RpcBlock::new_without_blobs(Some(block_root), block)

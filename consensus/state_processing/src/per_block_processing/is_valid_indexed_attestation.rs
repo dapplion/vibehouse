@@ -255,8 +255,7 @@ mod tests {
                 err,
                 BlockOperationError::Invalid(Invalid::BadValidatorIndicesOrdering(0))
             ),
-            "expected BadValidatorIndicesOrdering(0) for first out-of-order pair, got {:?}",
-            err
+            "expected BadValidatorIndicesOrdering(0) for first out-of-order pair, got {err:?}"
         );
     }
 

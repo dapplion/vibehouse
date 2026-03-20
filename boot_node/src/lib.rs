@@ -51,7 +51,7 @@ fn main<E: EthSpec>(
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
-        .map_err(|e| format!("Failed to build runtime: {}", e))?;
+        .map_err(|e| format!("Failed to build runtime: {e}"))?;
 
     // Run the boot node
     runtime.block_on(server::run::<E>(

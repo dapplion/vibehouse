@@ -478,8 +478,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
         let Some(batch) = self.batches.get_mut(&batch_id) else {
             return self
                 .fail_sync(BackFillError::InvalidSyncState(format!(
-                    "Trying to process a batch that does not exist: {}",
-                    batch_id
+                    "Trying to process a batch that does not exist: {batch_id}"
                 )))
                 .map(|_| ProcessResult::Successful);
         };
@@ -556,8 +555,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
                         // This is an error. Fail the sync algorithm.
                         return self
                             .fail_sync(BackFillError::InvalidSyncState(format!(
-                                "Current processing batch not found: {}",
-                                batch_id
+                                "Current processing batch not found: {batch_id}"
                             )))
                             .map(|_| ProcessResult::Successful);
                     }

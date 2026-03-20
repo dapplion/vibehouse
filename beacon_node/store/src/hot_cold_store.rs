@@ -407,8 +407,7 @@ impl<E: EthSpec> HotColdDB<E, BeaconNodeBackend<E>, BeaconNodeBackend<E>> {
             );
             migrate_schema(db.clone(), schema_version, CURRENT_SCHEMA_VERSION).map_err(|e| {
                 Error::MigrationError(format!(
-                    "Migrating from {:?} to {:?}: {:?}",
-                    schema_version, CURRENT_SCHEMA_VERSION, e
+                    "Migrating from {schema_version:?} to {CURRENT_SCHEMA_VERSION:?}: {e:?}"
                 ))
             })?;
         } else {

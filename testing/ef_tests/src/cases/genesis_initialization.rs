@@ -46,7 +46,7 @@ impl<E: EthSpec> LoadCase for GenesisInitialization<E> {
             };
         let deposits: Vec<Deposit> = (0..meta.deposits_count)
             .map(|i| {
-                let filename = format!("deposits_{}.ssz_snappy", i);
+                let filename = format!("deposits_{i}.ssz_snappy");
                 ssz_decode_file(&path.join(filename))
             })
             .collect::<Result<_, _>>()?;

@@ -72,8 +72,7 @@ where
 
             if !mismatching_fields.is_empty() {
                 Err(Error::NotEqual(format!(
-                    "Fields not equal (a = expected, b = result): {:#?}",
-                    mismatching_fields
+                    "Fields not equal (a = expected, b = result): {mismatching_fields:#?}"
                 )))
             } else {
                 Ok(())
@@ -119,7 +118,7 @@ where
 }
 
 fn fmt_val<T: Debug>(val: T) -> String {
-    let mut string = format!("{:?}", val);
+    let mut string = format!("{val:?}");
     string.truncate(MAX_VALUE_STRING_LEN);
     string
 }

@@ -80,7 +80,7 @@ impl BlockId {
                     .map_err(ApiError::unhandled_error)
                     .and_then(|root_opt| {
                         root_opt.ok_or_else(|| {
-                            ApiError::not_found(format!("beacon block at slot {}", slot))
+                            ApiError::not_found(format!("beacon block at slot {slot}"))
                         })
                     })?;
                 let finalized = *slot
@@ -96,8 +96,7 @@ impl BlockId {
                 // This matches the behaviour of other consensus clients (e.g. Teku).
                 if root == &Hash256::zero() {
                     return Err(ApiError::not_found(format!(
-                        "beacon block with root {}",
-                        root
+                        "beacon block with root {root}"
                     )));
                 }
                 if chain
@@ -116,7 +115,7 @@ impl BlockId {
                         .get_blinded_block(root)
                         .map_err(ApiError::unhandled_error)?
                         .ok_or_else(|| {
-                            ApiError::not_found(format!("beacon block with root {}", root))
+                            ApiError::not_found(format!("beacon block with root {root}"))
                         })?;
                     let block_slot = blinded_block.slot();
                     let finalized = chain
@@ -125,8 +124,7 @@ impl BlockId {
                     Ok((*root, execution_optimistic, finalized))
                 } else {
                     Err(ApiError::not_found(format!(
-                        "beacon block with root {}",
-                        root
+                        "beacon block with root {root}"
                     )))
                 }
             }
@@ -171,13 +169,12 @@ impl BlockId {
                 BlockId::blinded_block_by_root(&root, chain).and_then(|block_opt| match block_opt {
                     Some(block) => {
                         if block.slot() != *slot {
-                            return Err(ApiError::not_found(format!("slot {} was skipped", slot)));
+                            return Err(ApiError::not_found(format!("slot {slot} was skipped")));
                         }
                         Ok((block, execution_optimistic, finalized))
                     }
                     None => Err(ApiError::not_found(format!(
-                        "beacon block with root {}",
-                        root
+                        "beacon block with root {root}"
                     ))),
                 })
             }
@@ -185,7 +182,7 @@ impl BlockId {
                 let (root, execution_optimistic, finalized) = self.root(chain)?;
                 let block = BlockId::blinded_block_by_root(&root, chain).and_then(|root_opt| {
                     root_opt.ok_or_else(|| {
-                        ApiError::not_found(format!("beacon block with root {}", root))
+                        ApiError::not_found(format!("beacon block with root {root}"))
                     })
                 })?;
                 Ok((block, execution_optimistic, finalized))
@@ -227,15 +224,13 @@ impl BlockId {
                         Some(block) => {
                             if block.slot() != *slot {
                                 return Err(ApiError::not_found(format!(
-                                    "slot {} was skipped",
-                                    slot
+                                    "slot {slot} was skipped"
                                 )));
                             }
                             Ok((Arc::new(block), execution_optimistic, finalized))
                         }
                         None => Err(ApiError::not_found(format!(
-                            "beacon block with root {}",
-                            root
+                            "beacon block with root {root}"
                         ))),
                     })
             }
@@ -249,7 +244,7 @@ impl BlockId {
                         block_opt
                             .map(|block| (Arc::new(block), execution_optimistic, finalized))
                             .ok_or_else(|| {
-                                ApiError::not_found(format!("beacon block with root {}", root))
+                                ApiError::not_found(format!("beacon block with root {root}"))
                             })
                     })
             }
@@ -263,7 +258,7 @@ impl BlockId {
     ) -> Result<DataColumnsResponse<T>, ApiError> {
         let (root, execution_optimistic, finalized) = self.root(chain)?;
         let block = BlockId::blinded_block_by_root(&root, chain)?
-            .ok_or_else(|| ApiError::not_found(format!("beacon block with root {}", root)))?;
+            .ok_or_else(|| ApiError::not_found(format!("beacon block with root {root}")))?;
 
         if !chain.spec.is_peer_das_enabled_for_epoch(block.epoch()) {
             return Err(ApiError::bad_request(
@@ -312,7 +307,7 @@ impl BlockId {
     > {
         let (root, execution_optimistic, finalized) = self.root(chain)?;
         let block = BlockId::blinded_block_by_root(&root, chain)?
-            .ok_or_else(|| ApiError::not_found(format!("beacon block with root {}", root)))?;
+            .ok_or_else(|| ApiError::not_found(format!("beacon block with root {root}")))?;
 
         // Error if the block is pre-Deneb and lacks blobs.
         let blob_kzg_commitments = block.message().body().blob_kzg_commitments().map_err(|_| {
@@ -329,7 +324,7 @@ impl BlockId {
             }
         } else {
             BlobSidecarList::new(vec![], max_blobs_per_block)
-                .map_err(|e| ApiError::server_error(format!("{:?}", e)))?
+                .map_err(|e| ApiError::server_error(format!("{e:?}")))?
         };
 
         Ok((block, blob_sidecar_list, execution_optimistic, finalized))
@@ -346,7 +341,7 @@ impl BlockId {
     > {
         let (root, execution_optimistic, finalized) = self.root(chain)?;
         let block = BlockId::blinded_block_by_root(&root, chain)?
-            .ok_or_else(|| ApiError::not_found(format!("beacon block with root {}", root)))?;
+            .ok_or_else(|| ApiError::not_found(format!("beacon block with root {root}")))?;
 
         // Error if the block is pre-Deneb and lacks blobs.
         let blob_kzg_commitments = block.message().body().blob_kzg_commitments().map_err(|_| {
@@ -375,7 +370,7 @@ impl BlockId {
             }
         } else {
             BlobSidecarList::new(vec![], max_blobs_per_block)
-                .map_err(|e| ApiError::server_error(format!("{:?}", e)))?
+                .map_err(|e| ApiError::server_error(format!("{e:?}")))?
         };
 
         let blobs = blob_sidecar_list
@@ -415,7 +410,7 @@ impl BlockId {
                     .collect();
 
                 BlobSidecarList::new(list, max_blobs_per_block)
-                    .map_err(|e| ApiError::server_error(format!("{:?}", e)))?
+                    .map_err(|e| ApiError::server_error(format!("{e:?}")))?
             }
             None => blob_sidecar_list,
         };
@@ -538,26 +533,26 @@ mod tests {
     #[test]
     fn display_head() {
         let id = BlockId(CoreBlockId::Head);
-        assert_eq!(format!("{}", id), "head");
+        assert_eq!(format!("{id}"), "head");
     }
 
     #[test]
     fn display_genesis() {
         let id = BlockId(CoreBlockId::Genesis);
-        assert_eq!(format!("{}", id), "genesis");
+        assert_eq!(format!("{id}"), "genesis");
     }
 
     #[test]
     fn display_slot() {
         let id = BlockId::from_slot(Slot::new(100));
-        assert_eq!(format!("{}", id), "100");
+        assert_eq!(format!("{id}"), "100");
     }
 
     #[test]
     fn display_root() {
         let root = Hash256::repeat_byte(0xab);
         let id = BlockId::from_root(root);
-        let display = format!("{}", id);
+        let display = format!("{id}");
         assert!(display.starts_with("0x"));
         assert!(display.contains("abab"));
     }
@@ -578,7 +573,7 @@ mod tests {
     #[test]
     fn debug_impl() {
         let id = BlockId(CoreBlockId::Head);
-        let dbg = format!("{:?}", id);
+        let dbg = format!("{id:?}");
         assert!(dbg.contains("Head"));
     }
 

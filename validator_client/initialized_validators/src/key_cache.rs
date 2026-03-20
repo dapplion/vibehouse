@@ -337,10 +337,7 @@ mod tests {
         assert_eq!(key_cache.pairs.len(), new_clone.pairs.len());
         for (key, value) in key_cache.pairs {
             assert!(new_clone.pairs.contains_key(&key));
-            assert_eq!(
-                format!("{:?}", value),
-                format!("{:?}", new_clone.pairs[&key])
-            );
+            assert_eq!(format!("{value:?}"), format!("{:?}", new_clone.pairs[&key]));
         }
     }
 }

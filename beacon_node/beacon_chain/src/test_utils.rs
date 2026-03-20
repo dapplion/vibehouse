@@ -177,10 +177,7 @@ fn make_rng() -> Mutex<StdRng> {
 pub fn fork_name_from_env() -> Option<ForkName> {
     if cfg!(feature = "fork_from_env") {
         let fork_name = std::env::var(FORK_NAME_ENV_VAR).unwrap_or_else(|e| {
-            panic!(
-                "{} env var must be defined when using fork_from_env: {:?}",
-                FORK_NAME_ENV_VAR, e
-            )
+            panic!("{FORK_NAME_ENV_VAR} env var must be defined when using fork_from_env: {e:?}")
         });
         Some(ForkName::from_str(fork_name.as_str()).unwrap())
     } else {

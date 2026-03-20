@@ -29,7 +29,7 @@ impl Case for BlsEthFastAggregateVerify {
     fn result(&self, _case_index: usize, _fork_name: ForkName) -> Result<(), Error> {
         let message = Hash256::from_slice(
             &hex::decode(&self.input.message[2..])
-                .map_err(|e| Error::FailedToParseTest(format!("{:?}", e)))?,
+                .map_err(|e| Error::FailedToParseTest(format!("{e:?}")))?,
         );
 
         let pubkeys_result = self
@@ -44,7 +44,7 @@ impl Case for BlsEthFastAggregateVerify {
             Err(bls::Error::InvalidInfinityPublicKey) if !self.output => {
                 return Ok(());
             }
-            Err(e) => return Err(Error::FailedToParseTest(format!("{:?}", e))),
+            Err(e) => return Err(Error::FailedToParseTest(format!("{e:?}"))),
         };
 
         let pubkey_refs = pubkeys.iter().collect::<Vec<_>>();

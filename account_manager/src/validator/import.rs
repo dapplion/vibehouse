@@ -93,7 +93,7 @@ pub fn cli_run(matches: &ArgMatches, validator_dir: PathBuf) -> Result<(), Strin
         clap_utils::parse_optional(matches, PASSWORD_FLAG)?;
 
     let mut defs = ValidatorDefinitions::open_or_create(&validator_dir)
-        .map_err(|e| format!("Unable to open {}: {:?}", CONFIG_FILENAME, e))?;
+        .map_err(|e| format!("Unable to open {CONFIG_FILENAME}: {e:?}"))?;
 
     let slashing_protection_path = validator_dir.join(SLASHING_PROTECTION_FILENAME);
     let slashing_protection =
@@ -106,12 +106,9 @@ pub fn cli_run(matches: &ArgMatches, validator_dir: PathBuf) -> Result<(), Strin
         })?;
 
     // Create an empty transaction and drop it. Used to test if the database is locked.
-    slashing_protection.test_transaction().map_err(|e| {
-        format!(
-            "Cannot import keys while the validator client is running: {:?}",
-            e
-        )
-    })?;
+    slashing_protection
+        .test_transaction()
+        .map_err(|e| format!("Cannot import keys while the validator client is running: {e:?}"))?;
 
     // Collect the paths for the keystores that should be imported.
     let keystore_paths = match (keystore, keystores_dir) {
@@ -120,10 +117,10 @@ pub fn cli_run(matches: &ArgMatches, validator_dir: PathBuf) -> Result<(), Strin
             let mut keystores = vec![];
 
             recursively_find_voting_keystores(&keystores_dir, &mut keystores)
-                .map_err(|e| format!("Unable to search {:?}: {:?}", keystores_dir, e))?;
+                .map_err(|e| format!("Unable to search {keystores_dir:?}: {e:?}"))?;
 
             if keystores.is_empty() {
-                eprintln!("No keystores found in {:?}", keystores_dir);
+                eprintln!("No keystores found in {keystores_dir:?}");
                 return Ok(());
             }
 
@@ -131,13 +128,12 @@ pub fn cli_run(matches: &ArgMatches, validator_dir: PathBuf) -> Result<(), Strin
         }
         _ => {
             return Err(format!(
-                "Must supply either --{} or --{}",
-                KEYSTORE_FLAG, DIR_FLAG
+                "Must supply either --{KEYSTORE_FLAG} or --{DIR_FLAG}"
             ));
         }
     };
 
-    eprintln!("WARNING: {}", KEYSTORE_REUSE_WARNING);
+    eprintln!("WARNING: {KEYSTORE_REUSE_WARNING}");
 
     // For each keystore:
     //
@@ -153,18 +149,17 @@ pub fn cli_run(matches: &ArgMatches, validator_dir: PathBuf) -> Result<(), Strin
 
     for src_keystore in &keystore_paths {
         let keystore = Keystore::from_json_file(src_keystore)
-            .map_err(|e| format!("Unable to read keystore JSON {:?}: {:?}", src_keystore, e))?;
+            .map_err(|e| format!("Unable to read keystore JSON {src_keystore:?}: {e:?}"))?;
 
         eprintln!();
-        eprintln!("Keystore found at {:?}:", src_keystore);
+        eprintln!("Keystore found at {src_keystore:?}:");
         eprintln!();
         eprintln!(" - Public key: 0x{}", keystore.pubkey());
         eprintln!(" - UUID: {}", keystore.uuid());
         eprintln!();
         eprintln!(
-            "If you enter the password it will be stored as plain-text in {} so that it is not \
-             required each time the validator client starts.",
-            CONFIG_FILENAME
+            "If you enter the password it will be stored as plain-text in {CONFIG_FILENAME} so that it is not \
+             required each time the validator client starts."
         );
 
         let password_opt = loop {
@@ -179,12 +174,12 @@ pub fn cli_run(matches: &ArgMatches, validator_dir: PathBuf) -> Result<(), Strin
                 }
             }
             eprintln!();
-            eprintln!("{}", PASSWORD_PROMPT);
+            eprintln!("{PASSWORD_PROMPT}");
 
             let password = match keystore_password_path.as_ref() {
                 Some(path) => {
                     let password_from_file: Zeroizing<String> = fs::read_to_string(path)
-                        .map_err(|e| format!("Unable to read {:?}: {:?}", path, e))?
+                        .map_err(|e| format!("Unable to read {path:?}: {e:?}"))?
                         .into();
                     password_from_file
                         .trim_end_matches(['\r', '\n'])
@@ -237,30 +232,27 @@ pub fn cli_run(matches: &ArgMatches, validator_dir: PathBuf) -> Result<(), Strin
             {
                 *old_passwd = password_opt;
                 defs.save(&validator_dir)
-                    .map_err(|e| format!("Unable to save {}: {:?}", CONFIG_FILENAME, e))?;
-                eprintln!("Password updated for public key {}", voting_pubkey);
+                    .map_err(|e| format!("Unable to save {CONFIG_FILENAME}: {e:?}"))?;
+                eprintln!("Password updated for public key {voting_pubkey}");
             }
 
-            eprintln!(
-                "Skipping import of keystore for existing public key: {:?}",
-                src_keystore
-            );
+            eprintln!("Skipping import of keystore for existing public key: {src_keystore:?}");
             continue;
         }
 
         fs::create_dir_all(&dest_dir)
-            .map_err(|e| format!("Unable to create import directory: {:?}", e))?;
+            .map_err(|e| format!("Unable to create import directory: {e:?}"))?;
 
         // Retain the keystore file name, but place it in the new directory.
         let dest_keystore = src_keystore
             .file_name()
             .and_then(|file_name| file_name.to_str())
             .map(|file_name_str| dest_dir.join(file_name_str))
-            .ok_or_else(|| format!("Badly formatted file name: {:?}", src_keystore))?;
+            .ok_or_else(|| format!("Badly formatted file name: {src_keystore:?}"))?;
 
         // Copy the keystore to the new location.
         fs::copy(src_keystore, &dest_keystore)
-            .map_err(|e| format!("Unable to copy keystore: {:?}", e))?;
+            .map_err(|e| format!("Unable to copy keystore: {e:?}"))?;
 
         // Register with slashing protection.
         slashing_protection
@@ -288,14 +280,14 @@ pub fn cli_run(matches: &ArgMatches, validator_dir: PathBuf) -> Result<(), Strin
             None,
             None,
         )
-        .map_err(|e| format!("Unable to create new validator definition: {:?}", e))?;
+        .map_err(|e| format!("Unable to create new validator definition: {e:?}"))?;
 
         defs.push(validator_def);
 
         defs.save(&validator_dir)
-            .map_err(|e| format!("Unable to save {}: {:?}", CONFIG_FILENAME, e))?;
+            .map_err(|e| format!("Unable to save {CONFIG_FILENAME}: {e:?}"))?;
 
-        eprintln!("Successfully updated {}.", CONFIG_FILENAME);
+        eprintln!("Successfully updated {CONFIG_FILENAME}.");
     }
 
     eprintln!();
@@ -305,7 +297,7 @@ pub fn cli_run(matches: &ArgMatches, validator_dir: PathBuf) -> Result<(), Strin
         keystore_paths.len() - num_imported_keystores
     );
     eprintln!();
-    eprintln!("WARNING: {}", KEYSTORE_REUSE_WARNING);
+    eprintln!("WARNING: {KEYSTORE_REUSE_WARNING}");
 
     Ok(())
 }
@@ -330,6 +322,6 @@ fn check_password_on_keystore(
             eprintln!("Invalid password");
             Ok(false)
         }
-        Err(e) => Err(format!("Error whilst decrypting keypair: {:?}", e)),
+        Err(e) => Err(format!("Error whilst decrypting keypair: {e:?}")),
     }
 }

@@ -28,8 +28,7 @@ pub fn get_next_withdrawals<T: BeaconChainTypes>(
             partial_state_advance(&mut state, Some(state_root), proposal_slot, &chain.spec)
     {
         return Err(ApiError::server_error(format!(
-            "failed to advance to the epoch of the proposal slot: {:?}",
-            e
+            "failed to advance to the epoch of the proposal slot: {e:?}"
         )));
     }
 
@@ -40,16 +39,14 @@ pub fn get_next_withdrawals<T: BeaconChainTypes>(
         match get_expected_withdrawals_gloas(&state, &chain.spec) {
             Ok(withdrawals) => Ok(withdrawals.into()),
             Err(e) => Err(ApiError::server_error(format!(
-                "failed to get expected withdrawal: {:?}",
-                e
+                "failed to get expected withdrawal: {e:?}"
             ))),
         }
     } else {
         match get_expected_withdrawals(&state, &chain.spec) {
             Ok((withdrawals, _)) => Ok(withdrawals),
             Err(e) => Err(ApiError::server_error(format!(
-                "failed to get expected withdrawal: {:?}",
-                e
+                "failed to get expected withdrawal: {e:?}"
             ))),
         }
     }

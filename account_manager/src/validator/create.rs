@@ -162,29 +162,22 @@ pub fn cli_run<E: EthSpec>(
     create_dir_all(&secrets_dir)
         .map_err(|e| format!("Could not create secrets dir at {secrets_dir:?}: {e:?}"))?;
 
-    eprintln!("secrets-dir path {:?}", secrets_dir);
-    eprintln!("wallets-dir path {:?}", wallet_base_dir);
+    eprintln!("secrets-dir path {secrets_dir:?}");
+    eprintln!("wallets-dir path {wallet_base_dir:?}");
 
     let starting_validator_count = existing_validator_count(&validator_dir)?;
 
     let n = match (count, at_most) {
-        (Some(_), Some(_)) => Err(format!(
-            "Cannot supply --{} and --{}",
-            COUNT_FLAG, AT_MOST_FLAG
-        )),
+        (Some(_), Some(_)) => Err(format!("Cannot supply --{COUNT_FLAG} and --{AT_MOST_FLAG}")),
         (None, None) => Err(format!(
-            "Must supply either --{} or --{}",
-            COUNT_FLAG, AT_MOST_FLAG
+            "Must supply either --{COUNT_FLAG} or --{AT_MOST_FLAG}"
         )),
         (Some(count), None) => Ok(count),
         (None, Some(at_most)) => Ok(at_most.saturating_sub(starting_validator_count)),
     }?;
 
     if n == 0 {
-        eprintln!(
-            "No validators to create. {}={:?}, {}={:?}",
-            COUNT_FLAG, count, AT_MOST_FLAG, at_most
-        );
+        eprintln!("No validators to create. {COUNT_FLAG}={count:?}, {AT_MOST_FLAG}={at_most:?}");
         return Ok(());
     }
 
@@ -195,11 +188,11 @@ pub fn cli_run<E: EthSpec>(
     let wallet_password = read_wallet_password_from_cli(wallet_password_path, stdin_inputs)?;
 
     let mgr = WalletManager::open(&wallet_base_dir)
-        .map_err(|e| format!("Unable to open --{}: {:?}", WALLETS_DIR_FLAG, e))?;
+        .map_err(|e| format!("Unable to open --{WALLETS_DIR_FLAG}: {e:?}"))?;
 
     let mut wallet = mgr
         .wallet_by_name(&wallet_name)
-        .map_err(|e| format!("Unable to open wallet: {:?}", e))?;
+        .map_err(|e| format!("Unable to open wallet: {e:?}"))?;
 
     let slashing_protection_path = validator_dir.join(SLASHING_PROTECTION_FILENAME);
     let slashing_protection =
@@ -212,12 +205,9 @@ pub fn cli_run<E: EthSpec>(
         })?;
 
     // Create an empty transaction and drops it. Used to test if the database is locked.
-    slashing_protection.test_transaction().map_err(|e| {
-        format!(
-            "Cannot create keys while the validator client is running: {:?}",
-            e
-        )
-    })?;
+    slashing_protection
+        .test_transaction()
+        .map_err(|e| format!("Cannot create keys while the validator client is running: {e:?}"))?;
 
     for i in 0..n {
         let voting_password = random_password();
@@ -229,7 +219,7 @@ pub fn cli_run<E: EthSpec>(
                 voting_password.as_bytes(),
                 withdrawal_password.as_bytes(),
             )
-            .map_err(|e| format!("Unable to create validator keys: {:?}", e))?;
+            .map_err(|e| format!("Unable to create validator keys: {e:?}"))?;
 
         let voting_pubkey = keystores.voting.public_key().ok_or_else(|| {
             format!(
@@ -255,7 +245,7 @@ pub fn cli_run<E: EthSpec>(
             .create_eth1_tx_data(deposit_gwei, &spec)
             .store_withdrawal_keystore(matches.get_flag(STORE_WITHDRAW_FLAG))
             .build()
-            .map_err(|e| format!("Unable to build validator directory: {:?}", e))?;
+            .map_err(|e| format!("Unable to build validator directory: {e:?}"))?;
 
         println!("{}/{}\t{}", i + 1, n, voting_pubkey.as_hex_string());
     }
@@ -291,11 +281,11 @@ pub fn read_wallet_password_from_cli(
 ) -> Result<PlainText, String> {
     match password_file_path {
         Some(path) => fs::read(&path)
-            .map_err(|e| format!("Unable to read {:?}: {:?}", path, e))
+            .map_err(|e| format!("Unable to read {path:?}: {e:?}"))
             .map(|bytes| strip_off_newlines(bytes).into()),
         None => {
             eprintln!();
-            eprintln!("{}", WALLET_PASSWORD_PROMPT);
+            eprintln!("{WALLET_PASSWORD_PROMPT}");
             let password =
                 PlainText::from(read_password_from_user(stdin_inputs)?.as_bytes().to_vec());
             Ok(password)

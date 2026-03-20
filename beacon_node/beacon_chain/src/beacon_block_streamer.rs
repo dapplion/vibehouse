@@ -104,8 +104,7 @@ fn reconstruct_default_header_block<E: EthSpec>(
         ForkName::Gloas => ExecutionPayloadGloas::default().into(),
         ForkName::Base | ForkName::Altair => {
             return Err(Error::PayloadReconstruction(format!(
-                "Block with fork variant {} has execution payload",
-                fork
+                "Block with fork variant {fork} has execution payload"
             ))
             .into());
         }
@@ -849,7 +848,7 @@ mod tests {
                             "expected block should match found block"
                         );
                     }
-                    Err(e) => panic!("Error retrieving block {}: {:?}", expected_root, e),
+                    Err(e) => panic!("Error retrieving block {expected_root}: {e:?}"),
                 }
             }
         }

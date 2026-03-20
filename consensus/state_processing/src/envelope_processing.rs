@@ -578,8 +578,7 @@ mod tests {
         );
         assert!(
             matches!(result, Err(EnvelopeProcessingError::BadSignature)),
-            "self-build envelope with empty signature should be rejected: {:?}",
-            result
+            "self-build envelope with empty signature should be rejected: {result:?}"
         );
     }
 
@@ -603,8 +602,7 @@ mod tests {
                 result,
                 Err(EnvelopeProcessingError::LatestBlockHeaderMismatch { .. })
             ),
-            "wrong beacon_block_root should fail: {:?}",
-            result,
+            "wrong beacon_block_root should fail: {result:?}",
         );
     }
 
@@ -623,8 +621,7 @@ mod tests {
         );
         assert!(
             matches!(result, Err(EnvelopeProcessingError::SlotMismatch { .. })),
-            "wrong slot should fail: {:?}",
-            result,
+            "wrong slot should fail: {result:?}",
         );
     }
 
@@ -648,8 +645,7 @@ mod tests {
                 result,
                 Err(EnvelopeProcessingError::BuilderIndexMismatch { .. })
             ),
-            "wrong builder_index should fail: {:?}",
-            result,
+            "wrong builder_index should fail: {result:?}",
         );
     }
 
@@ -671,8 +667,7 @@ mod tests {
                 result,
                 Err(EnvelopeProcessingError::PrevRandaoMismatch { .. })
             ),
-            "wrong prev_randao should fail: {:?}",
-            result,
+            "wrong prev_randao should fail: {result:?}",
         );
     }
 
@@ -694,8 +689,7 @@ mod tests {
                 result,
                 Err(EnvelopeProcessingError::GasLimitMismatch { .. })
             ),
-            "wrong gas_limit should fail: {:?}",
-            result,
+            "wrong gas_limit should fail: {result:?}",
         );
     }
 
@@ -717,8 +711,7 @@ mod tests {
                 result,
                 Err(EnvelopeProcessingError::BlockHashMismatch { .. })
             ),
-            "wrong block_hash should fail: {:?}",
-            result,
+            "wrong block_hash should fail: {result:?}",
         );
     }
 
@@ -742,8 +735,7 @@ mod tests {
                 result,
                 Err(EnvelopeProcessingError::ParentHashMismatch { .. })
             ),
-            "wrong parent_hash should fail: {:?}",
-            result,
+            "wrong parent_hash should fail: {result:?}",
         );
     }
 
@@ -765,8 +757,7 @@ mod tests {
                 result,
                 Err(EnvelopeProcessingError::TimestampMismatch { .. })
             ),
-            "wrong timestamp should fail: {:?}",
-            result,
+            "wrong timestamp should fail: {result:?}",
         );
     }
 
@@ -802,8 +793,7 @@ mod tests {
                 result,
                 Err(EnvelopeProcessingError::WithdrawalsRootMismatch { .. })
             ),
-            "wrong withdrawals should fail: {:?}",
-            result,
+            "wrong withdrawals should fail: {result:?}",
         );
     }
 
@@ -855,8 +845,7 @@ mod tests {
             );
             assert!(
                 result.is_ok(),
-                "envelope with correct stale withdrawals should be accepted: {:?}",
-                result,
+                "envelope with correct stale withdrawals should be accepted: {result:?}",
             );
         }
 
@@ -888,8 +877,7 @@ mod tests {
                     result,
                     Err(EnvelopeProcessingError::WithdrawalsRootMismatch { .. })
                 ),
-                "envelope with wrong withdrawals should fail: {:?}",
-                result,
+                "envelope with wrong withdrawals should fail: {result:?}",
             );
         }
 
@@ -914,8 +902,7 @@ mod tests {
                     result,
                     Err(EnvelopeProcessingError::WithdrawalsRootMismatch { .. })
                 ),
-                "empty envelope withdrawals should fail when stale withdrawals are expected: {:?}",
-                result,
+                "empty envelope withdrawals should fail when stale withdrawals are expected: {result:?}",
             );
         }
     }
@@ -947,8 +934,7 @@ mod tests {
                 result,
                 Err(EnvelopeProcessingError::InvalidStateRoot { .. })
             ),
-            "wrong state_root should fail: {:?}",
-            result,
+            "wrong state_root should fail: {result:?}",
         );
     }
 
@@ -1477,8 +1463,7 @@ mod tests {
         );
         assert!(
             matches!(result, Err(EnvelopeProcessingError::BadSignature)),
-            "wrong builder signature should be rejected: {:?}",
-            result,
+            "wrong builder signature should be rejected: {result:?}",
         );
     }
 
@@ -1549,8 +1534,7 @@ mod tests {
         );
         assert!(
             matches!(result, Err(EnvelopeProcessingError::BadSignature)),
-            "self-build envelope with wrong key should be rejected: {:?}",
-            result,
+            "self-build envelope with wrong key should be rejected: {result:?}",
         );
     }
 
@@ -1583,8 +1567,7 @@ mod tests {
         );
         assert!(
             matches!(result, Err(EnvelopeProcessingError::BadSignature)),
-            "self-build envelope with builder key should be rejected: {:?}",
-            result,
+            "self-build envelope with builder key should be rejected: {result:?}",
         );
     }
 
@@ -1605,8 +1588,7 @@ mod tests {
         );
         assert!(
             matches!(result, Err(EnvelopeProcessingError::BadSignature)),
-            "empty signature should be rejected when verifying: {:?}",
-            result,
+            "empty signature should be rejected when verifying: {result:?}",
         );
     }
 
@@ -1980,8 +1962,7 @@ mod tests {
         );
         assert!(
             matches!(result, Err(EnvelopeProcessingError::BadSignature)),
-            "builder_index beyond registry length should be rejected: {:?}",
-            result,
+            "builder_index beyond registry length should be rejected: {result:?}",
         );
     }
 
@@ -2016,10 +1997,7 @@ mod tests {
                     "error should report the state's slot"
                 );
             }
-            other => panic!(
-                "expected SlotMismatch with correct values, got: {:?}",
-                other
-            ),
+            other => panic!("expected SlotMismatch with correct values, got: {other:?}"),
         }
     }
 
@@ -2058,10 +2036,9 @@ mod tests {
                     "block_header_root should differ from the bad root"
                 );
             }
-            other => panic!(
-                "expected LatestBlockHeaderMismatch with correct values, got: {:?}",
-                other
-            ),
+            other => {
+                panic!("expected LatestBlockHeaderMismatch with correct values, got: {other:?}")
+            }
         }
     }
 
@@ -2096,10 +2073,7 @@ mod tests {
                     "error should report the envelope's timestamp"
                 );
             }
-            other => panic!(
-                "expected TimestampMismatch with correct values, got: {:?}",
-                other
-            ),
+            other => panic!("expected TimestampMismatch with correct values, got: {other:?}"),
         }
     }
 
@@ -2679,10 +2653,7 @@ mod tests {
                     "computed state root should be non-zero"
                 );
             }
-            other => panic!(
-                "expected InvalidStateRoot with correct values, got: {:?}",
-                other
-            ),
+            other => panic!("expected InvalidStateRoot with correct values, got: {other:?}"),
         }
     }
 
@@ -2868,8 +2839,7 @@ mod tests {
         );
         assert!(
             matches!(result, Err(EnvelopeProcessingError::BadSignature)),
-            "self-build envelope with wrong signer should be rejected: {:?}",
-            result,
+            "self-build envelope with wrong signer should be rejected: {result:?}",
         );
     }
 

@@ -1221,8 +1221,8 @@ mod tests {
     #[test]
     fn hierarchy_config_display_roundtrip() {
         let config = HierarchyConfig::from_str("5,13,21").unwrap();
-        assert_eq!(format!("{}", config), "5,13,21");
-        let reparsed = HierarchyConfig::from_str(&format!("{}", config)).unwrap();
+        assert_eq!(format!("{config}"), "5,13,21");
+        let reparsed = HierarchyConfig::from_str(&format!("{config}")).unwrap();
         assert_eq!(reparsed.exponents, config.exponents);
     }
 

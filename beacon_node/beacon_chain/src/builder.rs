@@ -231,7 +231,7 @@ where
 
         Ok(store
             .get_item::<PersistedBeaconChain>(&BEACON_CHAIN_DB_KEY)
-            .map_err(|e| format!("DB error when reading persisted beacon chain: {:?}", e))?
+            .map_err(|e| format!("DB error when reading persisted beacon chain: {e:?}"))?
             .is_some())
     }
 
@@ -248,7 +248,7 @@ where
 
         let chain = store
             .get_item::<PersistedBeaconChain>(&BEACON_CHAIN_DB_KEY)
-            .map_err(|e| format!("DB error when reading persisted beacon chain: {:?}", e))?
+            .map_err(|e| format!("DB error when reading persisted beacon chain: {e:?}"))?
             .ok_or_else(|| {
                 "No persisted beacon chain found in store. Try purging the beacon chain database."
                     .to_string()
@@ -261,7 +261,7 @@ where
             ),
             &self.spec,
         )
-        .map_err(|e| format!("Unable to load fork choice from disk: {:?}", e))?
+        .map_err(|e| format!("Unable to load fork choice from disk: {e:?}"))?
         .ok_or("Fork choice not found in store")?;
 
         let genesis_block = store
@@ -283,7 +283,7 @@ where
         self.op_pool = Some(
             store
                 .get_item::<PersistedOperationPool<E>>(&OP_POOL_DB_KEY)
-                .map_err(|e| format!("DB error whilst reading persisted op pool: {:?}", e))?
+                .map_err(|e| format!("DB error whilst reading persisted op pool: {e:?}"))?
                 .map_or_else(
                     OperationPool::new,
                     PersistedOperationPool::into_operation_pool,
@@ -291,7 +291,7 @@ where
         );
 
         let pubkey_cache = ValidatorPubkeyCache::load_from_store(store)
-            .map_err(|e| format!("Unable to open persisted pubkey cache: {:?}", e))?;
+            .map_err(|e| format!("Unable to open persisted pubkey cache: {e:?}"))?;
 
         self.genesis_block_root = Some(chain.genesis_block_root);
         self.genesis_state_root = Some(genesis_block.state_root());
@@ -319,17 +319,17 @@ where
 
         beacon_state
             .build_caches(&self.spec)
-            .map_err(|e| format!("Failed to build genesis state caches: {:?}", e))?;
+            .map_err(|e| format!("Failed to build genesis state caches: {e:?}"))?;
 
         let beacon_state_root = beacon_block.message().state_root();
         let beacon_block_root = beacon_block.canonical_root();
 
         store
             .put_state(&beacon_state_root, &beacon_state)
-            .map_err(|e| format!("Failed to store genesis state: {:?}", e))?;
+            .map_err(|e| format!("Failed to store genesis state: {e:?}"))?;
         store
             .put_block(&beacon_block_root, beacon_block.clone())
-            .map_err(|e| format!("Failed to store genesis block: {:?}", e))?;
+            .map_err(|e| format!("Failed to store genesis block: {e:?}"))?;
         store
             .store_frozen_block_root_at_skip_slots(Slot::new(0), Slot::new(1), beacon_block_root)
             .and_then(|ops| store.cold_db.do_atomically(ops))
@@ -338,12 +338,7 @@ where
         // Store the genesis block under the `ZERO_HASH` key.
         store
             .put_block(&Hash256::zero(), beacon_block.clone())
-            .map_err(|e| {
-                format!(
-                    "Failed to store genesis block under 0x00..00 alias: {:?}",
-                    e
-                )
-            })?;
+            .map_err(|e| format!("Failed to store genesis block under 0x00..00 alias: {e:?}"))?;
 
         self.genesis_state_root = Some(beacon_state_root);
         self.genesis_block_root = Some(beacon_block_root);
@@ -376,7 +371,7 @@ where
                     Slot::new(0),
                     retain_historic_states,
                 )
-                .map_err(|e| format!("Failed to initialize genesis anchor: {:?}", e))?,
+                .map_err(|e| format!("Failed to initialize genesis anchor: {e:?}"))?,
         );
 
         let (genesis, updated_builder) = self.set_genesis_state(beacon_state)?;
@@ -386,12 +381,12 @@ where
         self.pending_io_batch.push(
             store
                 .init_blob_info(genesis.beacon_block.slot())
-                .map_err(|e| format!("Failed to initialize genesis blob info: {:?}", e))?,
+                .map_err(|e| format!("Failed to initialize genesis blob info: {e:?}"))?,
         );
         self.pending_io_batch.push(
             store
                 .init_data_column_info(genesis.beacon_block.slot())
-                .map_err(|e| format!("Failed to initialize genesis data column info: {:?}", e))?,
+                .map_err(|e| format!("Failed to initialize genesis data column info: {e:?}"))?,
         );
 
         let fc_store = BeaconForkChoiceStore::get_forkchoice_store(store, genesis.clone())
@@ -406,7 +401,7 @@ where
             current_slot,
             &self.spec,
         )
-        .map_err(|e| format!("Unable to initialize ForkChoice: {:?}", e))?;
+        .map_err(|e| format!("Unable to initialize ForkChoice: {e:?}"))?;
 
         self.fork_choice = Some(fork_choice);
 
@@ -456,7 +451,7 @@ where
             .map_err(|e| format!("Error building caches on checkpoint state: {e:?}"))?;
         let weak_subj_state_root = weak_subj_state
             .update_tree_hash_cache()
-            .map_err(|e| format!("Error computing checkpoint state root: {:?}", e))?;
+            .map_err(|e| format!("Error computing checkpoint state root: {e:?}"))?;
 
         // Gloas ePBS: the state is post-envelope, so its tree hash differs from the block's
         // pre-envelope state_root. The block import path uses the block's state_root as the
@@ -478,8 +473,7 @@ where
         let state_latest_block_root = weak_subj_state.get_latest_block_root(weak_subj_state_root);
         if weak_subj_block_root != state_latest_block_root {
             return Err(format!(
-                "Snapshot state's most recent block root does not match block, expected: {:?}, got: {:?}",
-                weak_subj_block_root, state_latest_block_root
+                "Snapshot state's most recent block root does not match block, expected: {weak_subj_block_root:?}, got: {state_latest_block_root:?}"
             ));
         }
 
@@ -552,7 +546,7 @@ where
                     weak_subj_slot,
                     retain_historic_states,
                 )
-                .map_err(|e| format!("Failed to initialize anchor info: {:?}", e))?,
+                .map_err(|e| format!("Failed to initialize anchor info: {e:?}"))?,
         );
 
         let (_, updated_builder) = self.set_genesis_state(genesis_state)?;
@@ -587,7 +581,7 @@ where
                 weak_subj_block_root,
                 weak_subj_state.clone(),
             )
-            .map_err(|e| format!("Failed to set checkpoint state as finalized state: {:?}", e))?;
+            .map_err(|e| format!("Failed to set checkpoint state as finalized state: {e:?}"))?;
         // Note: post hot hdiff must update the anchor info before attempting to put_state otherwise
         // the write will fail if the weak_subj_slot is not aligned with the snapshot moduli.
         store
@@ -638,12 +632,12 @@ where
         self.pending_io_batch.push(
             store
                 .init_blob_info(weak_subj_block.slot())
-                .map_err(|e| format!("Failed to initialize blob info: {:?}", e))?,
+                .map_err(|e| format!("Failed to initialize blob info: {e:?}"))?,
         );
         self.pending_io_batch.push(
             store
                 .init_data_column_info(weak_subj_block.slot())
-                .map_err(|e| format!("Failed to initialize data column info: {:?}", e))?,
+                .map_err(|e| format!("Failed to initialize data column info: {e:?}"))?,
         );
 
         let snapshot = BeaconSnapshot {
@@ -663,7 +657,7 @@ where
             Some(weak_subj_slot),
             &self.spec,
         )
-        .map_err(|e| format!("Unable to initialize ForkChoice: {:?}", e))?;
+        .map_err(|e| format!("Unable to initialize ForkChoice: {e:?}"))?;
 
         self.fork_choice = Some(fork_choice);
 
@@ -833,7 +827,7 @@ where
 
         let initial_head_block_root = fork_choice
             .get_head(current_slot, &self.spec)
-            .map_err(|e| format!("Unable to get fork choice head: {:?}", e))?;
+            .map_err(|e| format!("Unable to get fork choice head: {e:?}"))?;
 
         // Try to decode the head block according to the current fork, if that fails, try
         // to backtrack to before the most recent fork.
@@ -889,7 +883,7 @@ where
         head_snapshot
             .beacon_state
             .build_caches(&self.spec)
-            .map_err(|e| format!("Failed to build state caches: {:?}", e))?;
+            .map_err(|e| format!("Failed to build state caches: {e:?}"))?;
 
         // Perform a check to ensure that the finalization points of the head and fork choice are
         // consistent.
@@ -899,23 +893,22 @@ where
         let head_finalized = head_snapshot.beacon_state.finalized_checkpoint();
         if fc_finalized.epoch < head_finalized.epoch {
             return Err(format!(
-                "Database corrupt: fork choice is finalized at {:?} whilst head is finalized at \
-                    {:?}",
-                fc_finalized, head_finalized
+                "Database corrupt: fork choice is finalized at {fc_finalized:?} whilst head is finalized at \
+                    {head_finalized:?}"
             ));
         }
 
         let validator_pubkey_cache = self.validator_pubkey_cache.map_or_else(
             || {
                 ValidatorPubkeyCache::new(&head_snapshot.beacon_state, store.clone())
-                    .map_err(|e| format!("Unable to init validator pubkey cache: {:?}", e))
+                    .map_err(|e| format!("Unable to init validator pubkey cache: {e:?}"))
             },
             |mut validator_pubkey_cache| {
                 // If any validators weren't persisted to disk on previous runs, this will use the head state to
                 // "top-up" the in-memory validator cache and its on-disk representation with any missing validators.
                 let pubkey_store_ops = validator_pubkey_cache
                     .import_new_pubkeys(&head_snapshot.beacon_state)
-                    .map_err(|e| format!("Unable to top-up persisted pubkey cache {:?}", e))?;
+                    .map_err(|e| format!("Unable to top-up persisted pubkey cache {e:?}"))?;
                 if !pubkey_store_ops.is_empty() {
                     // Write any missed validators to disk
                     debug!(
@@ -924,7 +917,7 @@ where
                     );
                     store
                         .do_atomically_with_block_and_blobs_cache(pubkey_store_ops)
-                        .map_err(|e| format!("Unable to write pubkeys to disk {:?}", e))?;
+                        .map_err(|e| format!("Unable to write pubkeys to disk {e:?}"))?;
                 }
                 Ok(validator_pubkey_cache)
             },
@@ -970,7 +963,7 @@ where
         store
             .hot_db
             .do_atomically(self.pending_io_batch)
-            .map_err(|e| format!("Error writing chain & metadata to disk: {:?}", e))?;
+            .map_err(|e| format!("Error writing chain & metadata to disk: {e:?}"))?;
 
         let genesis_validators_root = head_snapshot.beacon_state.genesis_validators_root();
         let genesis_time = head_snapshot.beacon_state.genesis_time();
@@ -1127,7 +1120,7 @@ where
                     self.spec,
                     min_execution_proofs_required,
                 )
-                .map_err(|e| format!("Error initializing DataAvailabilityChecker: {:?}", e))?,
+                .map_err(|e| format!("Error initializing DataAvailabilityChecker: {e:?}"))?,
             ),
             kzg: self.kzg.clone(),
             rng: Arc::new(Mutex::new(rng)),
@@ -1150,7 +1143,7 @@ where
                 head.beacon_block_root,
                 &beacon_chain.spec,
             )
-            .map_err(|e| format!("Failed to prime attester cache: {:?}", e))?;
+            .map_err(|e| format!("Failed to prime attester cache: {e:?}"))?;
 
         // Only perform the check if it was configured.
         if let Some(wss_checkpoint) = beacon_chain.config.weak_subjectivity_checkpoint
@@ -1171,7 +1164,7 @@ where
             crit!(
                 "You must use the `--purge-db` flag to clear the database and restart sync. You may be on a hostile network."
             );
-            return Err(format!("Weak subjectivity verification failed: {:?}", e));
+            return Err(format!("Weak subjectivity verification failed: {e:?}"));
         }
 
         if let Some(cgc_changed) = cgc_changed_opt {
@@ -1252,7 +1245,7 @@ fn genesis_block<E: EthSpec>(
     let mut genesis_block = BeaconBlock::empty(spec);
     *genesis_block.state_root_mut() = genesis_state
         .update_tree_hash_cache()
-        .map_err(|e| format!("Error hashing genesis state: {:?}", e))?;
+        .map_err(|e| format!("Error hashing genesis state: {e:?}"))?;
 
     Ok(SignedBeaconBlock::from_block(
         genesis_block,
@@ -1271,10 +1264,7 @@ fn descriptive_db_error(item: &str, error: &StoreError) -> String {
         "Database corruption may be present. If the issue persists, use \
         --purge-db to permanently delete the existing data directory."
     };
-    format!(
-        "DB error when reading {}: {:?}. {}",
-        item, error, additional_info
-    )
+    format!("DB error when reading {item}: {error:?}. {additional_info}")
 }
 
 /// Build data columns and proofs from blobs.

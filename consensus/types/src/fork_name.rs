@@ -317,7 +317,7 @@ impl FromStr for ForkName {
             "electra" => ForkName::Electra,
             "fulu" => ForkName::Fulu,
             "gloas" => ForkName::Gloas,
-            _ => return Err(format!("unknown fork name: {}", fork_name)),
+            _ => return Err(format!("unknown fork name: {fork_name}")),
         })
     }
 }

@@ -395,15 +395,13 @@ impl<'de, E: EthSpec> ContextDeserialize<'de, ForkName> for LightClientHeader<E>
     {
         let convert_err = |e| {
             serde::de::Error::custom(format!(
-                "LightClientFinalityUpdate failed to deserialize: {:?}",
-                e
+                "LightClientFinalityUpdate failed to deserialize: {e:?}"
             ))
         };
         Ok(match context {
             ForkName::Base => {
                 return Err(serde::de::Error::custom(format!(
-                    "LightClientFinalityUpdate failed to deserialize: unsupported fork '{}'",
-                    context
+                    "LightClientFinalityUpdate failed to deserialize: unsupported fork '{context}'"
                 )));
             }
             ForkName::Altair | ForkName::Bellatrix => {

@@ -102,8 +102,7 @@ impl<T: BeaconChainTypes> LightClientServerCache<T> {
 
         let attested_block = store.get_blinded_block(attested_block_root)?.ok_or(
             BeaconChainError::DBInconsistent(format!(
-                "Block not available {:?}",
-                attested_block_root
+                "Block not available {attested_block_root:?}"
             )),
         )?;
 
@@ -328,7 +327,7 @@ impl<T: BeaconChainTypes> LightClientServerCache<T> {
         let mut state = store
             .get_state(block_state_root, Some(block_slot), false)?
             .ok_or_else(|| {
-                BeaconChainError::DBInconsistent(format!("Missing state {:?}", block_state_root))
+                BeaconChainError::DBInconsistent(format!("Missing state {block_state_root:?}"))
             })?;
         let new_value = LightClientCachedData::from_state(&mut state)?;
 
@@ -458,8 +457,7 @@ impl<T: BeaconChainTypes> LightClientServerCache<T> {
         let Some(current_sync_committee_branch) = store.get_sync_committee_branch(block_root)?
         else {
             return Err(BeaconChainError::LightClientBootstrapError(format!(
-                "Sync committee branch for block root {:?} not found. This typically occurs when the block is not a finalized checkpoint. Light client bootstrap is only supported for finalized checkpoint block roots.",
-                block_root
+                "Sync committee branch for block root {block_root:?} not found. This typically occurs when the block is not a finalized checkpoint. Light client bootstrap is only supported for finalized checkpoint block roots."
             )));
         };
 

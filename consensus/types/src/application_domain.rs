@@ -50,7 +50,7 @@ mod tests {
     #[test]
     fn debug_format() {
         let domain = ApplicationDomain::Builder;
-        let debug = format!("{:?}", domain);
+        let debug = format!("{domain:?}");
         assert!(debug.contains("Builder"));
     }
 }

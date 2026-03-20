@@ -602,7 +602,7 @@ impl<E: EthSpec> MockBuilder<E> {
                 },
             )
             .await
-            .map_err(|e| format!("couldn't get payload {:?}", e))?;
+            .map_err(|e| format!("couldn't get payload {e:?}"))?;
 
         info!("Got payload message, fork {}", fork);
 
@@ -724,7 +724,7 @@ impl<E: EthSpec> MockBuilder<E> {
             .beacon_client
             .get_events::<E>(&[EventTopic::Head])
             .await
-            .map_err(|e| format!("Failed to get head event {:?}", e))?;
+            .map_err(|e| format!("Failed to get head event {e:?}"))?;
 
         while let Some(Ok(event)) = head_event_stream.next().await {
             match event {
@@ -755,8 +755,7 @@ impl<E: EthSpec> MockBuilder<E> {
                                     .await
                                     .map_err(|e| {
                                         format!(
-                                            "Failed to get proposer duties for epoch: {}, {:?}",
-                                            epoch, e
+                                            "Failed to get proposer duties for epoch: {epoch}, {e:?}"
                                         )
                                     })?
                                     .data;
@@ -915,7 +914,7 @@ impl<E: EthSpec> MockBuilder<E> {
                 self.beacon_client
                     .get_expected_withdrawals(&StateId::Head)
                     .await
-                    .map_err(|e| format!("Failed to get expected withdrawals: {:?}", e))?
+                    .map_err(|e| format!("Failed to get expected withdrawals: {e:?}"))?
                     .data,
             )
         } else {
@@ -981,7 +980,7 @@ impl<E: EthSpec> MockBuilder<E> {
                 head_block_root,
             )
             .await
-            .map_err(|e| format!("fcu call failed : {:?}", e))?;
+            .map_err(|e| format!("fcu call failed : {e:?}"))?;
 
         let payload_parameters = PayloadParametersCloned {
             parent_hash: head_execution_hash,
@@ -1120,7 +1119,7 @@ async fn blinded_blocks_dispatch<E: EthSpec>(
         let block = match SignedBlindedBeaconBlock::<E>::from_ssz_bytes_by_fork(&body, fork_name) {
             Ok(b) => b,
             Err(e) => {
-                return (axum::http::StatusCode::BAD_REQUEST, format!("{:?}", e)).into_response();
+                return (axum::http::StatusCode::BAD_REQUEST, format!("{e:?}")).into_response();
             }
         };
         let payload = match builder.submit_blinded_block(block).await {

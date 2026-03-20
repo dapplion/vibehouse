@@ -224,7 +224,7 @@ impl<E: EthSpec> Discovery<E> {
         let enr_key: CombinedKey = CombinedKey::from_libp2p(local_key)?;
 
         let mut discv5 = Discv5::new(local_enr, enr_key, config.discv5_config.clone())
-            .map_err(|e| format!("Discv5 service failed. Error: {:?}", e))?;
+            .map_err(|e| format!("Discv5 service failed. Error: {e:?}"))?;
 
         // Add bootnodes to routing table
         for bootnode_enr in config.boot_nodes_enr.clone() {
@@ -418,7 +418,7 @@ impl<E: EthSpec> Discovery<E> {
 
         self.discv5
             .enr_insert(enr_field, &port)
-            .map_err(|e| format!("{:?}", e))?;
+            .map_err(|e| format!("{e:?}"))?;
 
         // replace the global version
         *self.network_globals.local_enr.write() = self.discv5.local_enr();
@@ -452,7 +452,7 @@ impl<E: EthSpec> Discovery<E> {
 
         self.discv5
             .enr_insert(enr_field, &port)
-            .map_err(|e| format!("{:?}", e))?;
+            .map_err(|e| format!("{e:?}"))?;
 
         // replace the global version
         *self.network_globals.local_enr.write() = self.discv5.local_enr();
@@ -478,7 +478,7 @@ impl<E: EthSpec> Discovery<E> {
     pub fn update_enr_cgc(&mut self, custody_group_count: u64) -> Result<(), String> {
         self.discv5
             .enr_insert(PEERDAS_CUSTODY_GROUP_COUNT_ENR_KEY, &custody_group_count)
-            .map_err(|e| format!("{:?}", e))?;
+            .map_err(|e| format!("{e:?}"))?;
         enr::save_enr_to_disk(Path::new(&self.enr_dir), &self.local_enr());
         *self.network_globals.local_enr.write() = self.discv5.local_enr();
         Ok(())
@@ -520,7 +520,7 @@ impl<E: EthSpec> Discovery<E> {
                         ATTESTATION_BITFIELD_ENR_KEY,
                         &current_bitfield.as_ssz_bytes().into(),
                     )
-                    .map_err(|e| format!("{:?}", e))?;
+                    .map_err(|e| format!("{e:?}"))?;
             }
             Subnet::SyncCommittee(id) => {
                 let id = *id as usize;
@@ -554,7 +554,7 @@ impl<E: EthSpec> Discovery<E> {
                         SYNC_COMMITTEE_BITFIELD_ENR_KEY,
                         &current_bitfield.as_ssz_bytes().into(),
                     )
-                    .map_err(|e| format!("{:?}", e))?;
+                    .map_err(|e| format!("{e:?}"))?;
             }
             // Data column subnets are computed from node ID. No subnet bitfield in the ENR.
             // Execution proof subnets have no ENR advertisement.
@@ -572,7 +572,7 @@ impl<E: EthSpec> Discovery<E> {
     pub fn update_enr_nfd(&mut self, nfd: [u8; 4]) -> Result<(), String> {
         self.discv5
             .enr_insert::<Bytes>(NEXT_FORK_DIGEST_ENR_KEY, &nfd.as_ssz_bytes().into())
-            .map_err(|e| format!("{:?}", e))?;
+            .map_err(|e| format!("{e:?}"))?;
         info!(
             next_fork_digest = ?nfd,
             "Updating the ENR nfd"

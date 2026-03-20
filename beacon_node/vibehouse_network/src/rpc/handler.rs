@@ -947,8 +947,7 @@ where
                         id: self.current_inbound_substream_id,
                         proto: Protocol::BlobsByRange,
                         error: RPCError::InvalidData(format!(
-                            "requested exceeded limit. allowed: {}, requested: {}",
-                            max_allowed, max_requested_blobs
+                            "requested exceeded limit. allowed: {max_allowed}, requested: {max_requested_blobs}"
                         )),
                     }));
                     return;

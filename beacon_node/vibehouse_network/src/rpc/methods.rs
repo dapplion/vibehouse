@@ -54,7 +54,7 @@ impl Display for ErrorType {
         let re = Regex::new("\\p{C}").expect("Regex is valid");
         let error_type_str =
             String::from_utf8_lossy(&re.replace_all(self.0.deref(), &b""[..])).to_string();
-        write!(f, "{}", error_type_str)
+        write!(f, "{error_type_str}")
     }
 }
 
@@ -830,7 +830,7 @@ impl std::fmt::Display for StatusMessage {
 impl<E: EthSpec> std::fmt::Display for RpcSuccessResponse<E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RpcSuccessResponse::Status(status) => write!(f, "{}", status),
+            RpcSuccessResponse::Status(status) => write!(f, "{status}"),
             RpcSuccessResponse::BlocksByRange(block) => {
                 write!(f, "BlocksByRange: Block slot: {}", block.slot())
             }
@@ -895,8 +895,8 @@ impl<E: EthSpec> std::fmt::Display for RpcSuccessResponse<E> {
 impl<E: EthSpec> std::fmt::Display for RpcResponse<E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RpcResponse::Success(res) => write!(f, "{}", res),
-            RpcResponse::Error(code, err) => write!(f, "{}: {}", code, err),
+            RpcResponse::Success(res) => write!(f, "{res}"),
+            RpcResponse::Error(code, err) => write!(f, "{code}: {err}"),
             RpcResponse::StreamTermination(_) => write!(f, "Stream Termination"),
         }
     }
@@ -1062,14 +1062,14 @@ mod tests {
     #[test]
     fn error_type_display_strips_control_chars() {
         let err = ErrorType::from("ok");
-        let display = format!("{}", err);
+        let display = format!("{err}");
         assert_eq!(display, "ok");
     }
 
     #[test]
     fn error_type_display_empty() {
         let err = ErrorType::from("");
-        let display = format!("{}", err);
+        let display = format!("{err}");
         assert_eq!(display, "");
     }
 
@@ -1230,7 +1230,7 @@ mod tests {
     #[test]
     fn blocks_by_range_request_display() {
         let req = BlocksByRangeRequest::new(42, 10);
-        let s = format!("{}", req);
+        let s = format!("{req}");
         assert!(s.contains("42"));
         assert!(s.contains("10"));
     }
@@ -1257,7 +1257,7 @@ mod tests {
     #[test]
     fn old_blocks_by_range_display() {
         let req = OldBlocksByRangeRequest::new(1, 10, 2);
-        let s = format!("{}", req);
+        let s = format!("{req}");
         assert!(s.contains("1"));
         assert!(s.contains("10"));
         assert!(s.contains("2"));
@@ -1319,7 +1319,7 @@ mod tests {
             start_slot: 10,
             count: 3,
         };
-        let s = format!("{}", req);
+        let s = format!("{req}");
         assert!(s.contains("10"));
         assert!(s.contains("3"));
     }
@@ -1410,7 +1410,7 @@ mod tests {
             head_slot: Slot::new(0),
             earliest_available_slot: Slot::new(0),
         });
-        let s = format!("{}", status);
+        let s = format!("{status}");
         assert!(s.contains("Status Message"));
         assert!(s.contains("Fork Digest"));
     }

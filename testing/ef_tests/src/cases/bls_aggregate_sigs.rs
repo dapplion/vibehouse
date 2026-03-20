@@ -18,9 +18,9 @@ impl Case for BlsAggregateSigs {
 
         for key_str in &self.input {
             let sig = hex::decode(&key_str[2..])
-                .map_err(|e| Error::FailedToParseTest(format!("{:?}", e)))?;
+                .map_err(|e| Error::FailedToParseTest(format!("{e:?}")))?;
             let sig = Signature::deserialize(&sig)
-                .map_err(|e| Error::FailedToParseTest(format!("{:?}", e)))?;
+                .map_err(|e| Error::FailedToParseTest(format!("{e:?}")))?;
 
             aggregate_signature.add_assign(&sig);
         }
@@ -30,8 +30,9 @@ impl Case for BlsAggregateSigs {
             // as our mutating `aggregate_signature.add` API doesn't play nicely with aggregating 0
             // inputs.
             Some("~") | None => AggregateSignature::infinity().serialize().to_vec(),
-            Some(output) => hex::decode(&output[2..])
-                .map_err(|e| Error::FailedToParseTest(format!("{:?}", e)))?,
+            Some(output) => {
+                hex::decode(&output[2..]).map_err(|e| Error::FailedToParseTest(format!("{e:?}")))?
+            }
         };
         let aggregate_signature = Ok(aggregate_signature.serialize().to_vec());
 

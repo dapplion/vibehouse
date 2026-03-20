@@ -334,8 +334,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
 
         let Some(batch) = self.batches.get_mut(&batch_id) else {
             return Err(RemoveChain::WrongChainState(format!(
-                "Trying to process a batch that does not exist: {}",
-                batch_id
+                "Trying to process a batch that does not exist: {batch_id}"
             )));
         };
 
@@ -405,8 +404,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
                     // - AwaitingDownload -> A recoverable failed batch should have been
                     //   re-requested.
                     return Err(RemoveChain::WrongChainState(format!(
-                        "Optimistic batch indicates inconsistent chain state: {:?}",
-                        state
+                        "Optimistic batch indicates inconsistent chain state: {state:?}"
                     )));
                 }
                 BatchState::AwaitingValidation(_) => {
@@ -441,8 +439,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
                     //   re-requested.
                     // - Processing -> `self.current_processing_batch` is None
                     return Err(RemoveChain::WrongChainState(format!(
-                        "Robust target batch indicates inconsistent chain state: {:?}",
-                        state
+                        "Robust target batch indicates inconsistent chain state: {state:?}"
                     )));
                 }
                 BatchState::AwaitingValidation(_) => {
@@ -499,8 +496,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
                 self.current_processing_batch = None;
                 self.batches.get_mut(&batch_id).ok_or_else(|| {
                     RemoveChain::WrongChainState(format!(
-                        "Current processing batch not found: {}",
-                        batch_id
+                        "Current processing batch not found: {batch_id}"
                     ))
                 })?
             }

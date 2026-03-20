@@ -116,13 +116,13 @@ mod tests {
     #[test]
     fn display() {
         let id = DataColumnSubnetId::new(13);
-        assert_eq!(format!("{}", id), "13");
+        assert_eq!(format!("{id}"), "13");
     }
 
     #[test]
     fn debug() {
         let id = DataColumnSubnetId::new(8);
-        assert_eq!(format!("{:?}", id), "8");
+        assert_eq!(format!("{id:?}"), "8");
     }
 
     #[test]

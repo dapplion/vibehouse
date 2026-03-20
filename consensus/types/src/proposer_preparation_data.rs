@@ -76,7 +76,7 @@ mod tests {
             validator_index: 7,
             fee_recipient: Address::zero(),
         };
-        let debug = format!("{:?}", data);
+        let debug = format!("{data:?}");
         assert!(debug.contains("ProposerPreparationData"));
     }
 }

@@ -70,13 +70,11 @@ mod tests {
 
         assert!(
             low.current_num_threads() >= MINIMUM_THREAD_COUNT,
-            "low priority pool has at least {} thread(s)",
-            MINIMUM_THREAD_COUNT
+            "low priority pool has at least {MINIMUM_THREAD_COUNT} thread(s)"
         );
         assert!(
             high.current_num_threads() >= MINIMUM_THREAD_COUNT,
-            "high priority pool has at least {} thread(s)",
-            MINIMUM_THREAD_COUNT
+            "high priority pool has at least {MINIMUM_THREAD_COUNT} thread(s)"
         );
     }
 

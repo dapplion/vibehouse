@@ -54,7 +54,7 @@ pub fn get_state_before_applying_block<T: BeaconChainTypes>(
         .and_then(|maybe_block| {
             maybe_block.ok_or_else(|| BeaconChainError::MissingBeaconBlock(block.parent_root()))
         })
-        .map_err(|e| ApiError::not_found(format!("Parent block is not available! {:?}", e)))?;
+        .map_err(|e| ApiError::not_found(format!("Parent block is not available! {e:?}")))?;
 
     // We are about to apply a new block to the chain. It's parent state
     // is a useful/recent state, we elect to cache it.
@@ -64,7 +64,7 @@ pub fn get_state_before_applying_block<T: BeaconChainTypes>(
             maybe_state
                 .ok_or_else(|| BeaconChainError::MissingBeaconState(parent_block.state_root()))
         })
-        .map_err(|e| ApiError::not_found(format!("Parent state is not available! {:?}", e)))?;
+        .map_err(|e| ApiError::not_found(format!("Parent state is not available! {e:?}")))?;
 
     let replayer =
         BlockReplayer::<_, beacon_chain::BeaconChainError, _>::new(parent_state, &chain.spec)

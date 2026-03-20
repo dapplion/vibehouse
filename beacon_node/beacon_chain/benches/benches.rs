@@ -52,7 +52,7 @@ fn all_benches(c: &mut Criterion) {
 
         let spec = spec.clone();
 
-        c.bench_function(&format!("reconstruct_{}", blob_count), |b| {
+        c.bench_function(&format!("reconstruct_{blob_count}"), |b| {
             b.iter(|| {
                 black_box(reconstruct_data_columns(
                     &kzg,

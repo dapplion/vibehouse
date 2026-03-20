@@ -1363,7 +1363,7 @@ impl Display for BanResult {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             BanResult::BadScore => write!(f, "Peer has a bad score"),
-            BanResult::BannedIp(addr) => write!(f, "Peer address: {} is banned", addr),
+            BanResult::BannedIp(addr) => write!(f, "Peer address: {addr} is banned"),
         }
     }
 }
@@ -1511,7 +1511,7 @@ mod tests {
 
         // Only the oldest peer should have been removed
         for (id, peer_id) in peer_list.iter().rev().take(MAX_DC_PEERS) {
-            println!("Testing id {}", id);
+            println!("Testing id {id}");
             assert!(
                 pdb.peer_info(peer_id).is_some(),
                 "Latest peer should not be pruned"
@@ -1705,10 +1705,10 @@ mod tests {
         let random_peer1 = PeerId::random();
         let random_peer2 = PeerId::random();
         let random_peer3 = PeerId::random();
-        println!("{}", random_peer);
-        println!("{}", random_peer1);
-        println!("{}", random_peer2);
-        println!("{}", random_peer3);
+        println!("{random_peer}");
+        println!("{random_peer1}");
+        println!("{random_peer2}");
+        println!("{random_peer3}");
 
         // All 4 peers connected on the same IP
         pdb.connect_ingoing(&random_peer, multiaddr.clone(), None);

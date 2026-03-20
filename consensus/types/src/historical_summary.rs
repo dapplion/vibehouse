@@ -145,7 +145,7 @@ mod tests {
     #[test]
     fn debug_format() {
         let summary = HistoricalSummary::default();
-        let debug = format!("{:?}", summary);
+        let debug = format!("{summary:?}");
         assert!(debug.contains("HistoricalSummary"));
     }
 }

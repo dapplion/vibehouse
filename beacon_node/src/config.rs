@@ -93,7 +93,7 @@ pub fn get_config<E: EthSpec>(
 
     // Create `datadir` and any non-existing parent directories.
     fs::create_dir_all(client_config.data_dir())
-        .map_err(|e| format!("Failed to create data dir: {}", e))?;
+        .map_err(|e| format!("Failed to create data dir: {e}"))?;
 
     // logs the chosen data directory
     let mut log_dir = client_config.data_dir().clone();
@@ -311,15 +311,10 @@ pub fn get_config<E: EthSpec>(
         use std::io::Write;
         secret_file = client_config.data_dir().join(DEFAULT_JWT_FILE);
         let mut jwt_secret_key_file = File::create(secret_file.clone())
-            .map_err(|e| format!("Error while creating jwt_secret_key file: {:?}", e))?;
+            .map_err(|e| format!("Error while creating jwt_secret_key file: {e:?}"))?;
         jwt_secret_key_file
             .write_all(jwt_secret_key.as_bytes())
-            .map_err(|e| {
-                format!(
-                    "Error occurred while writing to jwt_secret_key file: {:?}",
-                    e
-                )
-            })?;
+            .map_err(|e| format!("Error occurred while writing to jwt_secret_key file: {e:?}"))?;
     } else {
         return Err("Error! Please set either --execution-jwt file_path or --execution-jwt-secret-key directly via cli when using --execution-endpoint".to_string());
     }
@@ -359,7 +354,7 @@ pub fn get_config<E: EthSpec>(
     if let Some(trusted_setup_file_path) = cli_args.get_one::<String>("trusted-setup-file-override")
     {
         client_config.trusted_setup = std::fs::read(trusted_setup_file_path)
-            .map_err(|e| format!("Failed to read trusted setup file: {}", e))?;
+            .map_err(|e| format!("Failed to read trusted setup file: {e}"))?;
     } else if let Some(eth2_network_config) = context.eth2_network_config.as_ref() {
         client_config.trusted_setup = eth2_network_config.kzg_trusted_setup.clone();
     }
@@ -541,7 +536,7 @@ pub fn get_config<E: EthSpec>(
                         f.read_to_end(&mut buffer)?;
                         Ok(buffer)
                     })
-                    .map_err(|e| format!("Unable to open {}: {:?}", path, e))
+                    .map_err(|e| format!("Unable to open {path}: {e:?}"))
             };
 
             let anchor_state_bytes = read(initial_state_path)?;
@@ -555,7 +550,7 @@ pub fn get_config<E: EthSpec>(
             }
         } else if let Some(remote_bn_url) = cli_args.get_one::<String>("checkpoint-sync-url") {
             let url = SensitiveUrl::parse(remote_bn_url)
-                .map_err(|e| format!("Invalid checkpoint sync URL: {:?}", e))?;
+                .map_err(|e| format!("Invalid checkpoint sync URL: {e:?}"))?;
 
             ClientGenesis::CheckpointSyncUrl { url }
         } else {
@@ -611,7 +606,7 @@ pub fn get_config<E: EthSpec>(
 
         let root =
             Hash256::from_slice(&hex::decode(&root_str[2..]).map_err(|e| {
-                format!("Unable to parse weak subjectivity checkpoint root: {:?}", e)
+                format!("Unable to parse weak subjectivity checkpoint root: {e:?}")
             })?);
         let epoch = Epoch::new(
             epoch_str
@@ -655,8 +650,7 @@ pub fn get_config<E: EthSpec>(
                 slasher_config.slot_offset = slot_offset;
             } else {
                 return Err(format!(
-                    "invalid float for slasher-slot-offset: {}",
-                    slot_offset
+                    "invalid float for slasher-slot-offset: {slot_offset}"
                 ));
             }
         }
@@ -709,7 +703,7 @@ pub fn get_config<E: EthSpec>(
             .split(',')
             .map(PublicKeyBytes::from_str)
             .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| format!("Invalid --validator-monitor-pubkeys value: {:?}", e))?;
+            .map_err(|e| format!("Invalid --validator-monitor-pubkeys value: {e:?}"))?;
         client_config
             .validator_monitor
             .validators
@@ -718,17 +712,17 @@ pub fn get_config<E: EthSpec>(
 
     if let Some(path) = cli_args.get_one::<String>("validator-monitor-file") {
         let string = fs::read(path)
-            .map_err(|e| format!("Unable to read --validator-monitor-file: {}", e))
+            .map_err(|e| format!("Unable to read --validator-monitor-file: {e}"))
             .and_then(|bytes| {
                 String::from_utf8(bytes)
-                    .map_err(|e| format!("--validator-monitor-file is not utf8: {}", e))
+                    .map_err(|e| format!("--validator-monitor-file is not utf8: {e}"))
             })?;
         let pubkeys = string
             .trim_end() // Remove trailing white space
             .split(',')
             .map(PublicKeyBytes::from_str)
             .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| format!("Invalid --validator-monitor-file contents: {:?}", e))?;
+            .map_err(|e| format!("Invalid --validator-monitor-file contents: {e:?}"))?;
         client_config
             .validator_monitor
             .validators
@@ -880,10 +874,10 @@ pub fn get_config<E: EthSpec>(
         clap_utils::parse_optional::<String>(cli_args, "invalid-block-roots")?
     {
         let mut file = std::fs::File::open(invalid_block_roots_file_path)
-            .map_err(|e| format!("Failed to open invalid-block-roots file: {}", e))?;
+            .map_err(|e| format!("Failed to open invalid-block-roots file: {e}"))?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)
-            .map_err(|e| format!("Failed to read invalid-block-roots file {}", e))?;
+            .map_err(|e| format!("Failed to read invalid-block-roots file {e}"))?;
         let invalid_block_roots: HashSet<Hash256> = contents
             .split(',')
             .filter_map(
@@ -1191,13 +1185,13 @@ pub fn set_network_config(
     if let Some(target_peers_str) = cli_args.get_one::<String>("target-peers") {
         config.target_peers = target_peers_str
             .parse::<usize>()
-            .map_err(|_| format!("Invalid number of target peers: {}", target_peers_str))?;
+            .map_err(|_| format!("Invalid number of target peers: {target_peers_str}"))?;
     }
 
     if let Some(value) = cli_args.get_one::<String>("network-load") {
         let network_load = value
             .parse::<u8>()
-            .map_err(|_| format!("Invalid integer: {}", value))?;
+            .map_err(|_| format!("Invalid integer: {value}"))?;
         config.network_load = network_load;
     }
 
@@ -1211,7 +1205,7 @@ pub fn set_network_config(
                     // parsing as ENR failed, try as Multiaddr
                     let multi: Multiaddr = addr
                         .parse()
-                        .map_err(|_| format!("Not valid as ENR nor Multiaddr: {}", addr))?;
+                        .map_err(|_| format!("Not valid as ENR nor Multiaddr: {addr}"))?;
                     if !multi.iter().any(|proto| matches!(proto, Protocol::Udp(_))) {
                         error!(multiaddr = multi.to_string(), "Missing UDP in Multiaddr");
                     }
@@ -1232,7 +1226,7 @@ pub fn set_network_config(
             .map(|multiaddr| {
                 multiaddr
                     .parse()
-                    .map_err(|_| format!("Invalid Multiaddr: {}", multiaddr))
+                    .map_err(|_| format!("Invalid Multiaddr: {multiaddr}"))
             })
             .collect::<Result<Vec<Multiaddr>, _>>()?;
     }
@@ -1247,7 +1241,7 @@ pub fn set_network_config(
             .map(|peer_id| {
                 peer_id
                     .parse()
-                    .map_err(|_| format!("Invalid trusted peer id: {}", peer_id))
+                    .map_err(|_| format!("Invalid trusted peer id: {peer_id}"))
             })
             .collect::<Result<Vec<PeerIdSerialized>, _>>()?;
         if config.trusted_peers.len() >= config.target_peers {
@@ -1263,7 +1257,7 @@ pub fn set_network_config(
         config.enr_udp4_port = Some(
             enr_udp_port_str
                 .parse::<NonZeroU16>()
-                .map_err(|_| format!("Invalid ENR discovery port: {}", enr_udp_port_str))?,
+                .map_err(|_| format!("Invalid ENR discovery port: {enr_udp_port_str}"))?,
         );
     }
 
@@ -1271,7 +1265,7 @@ pub fn set_network_config(
         config.enr_quic4_port = Some(
             enr_quic_port_str
                 .parse::<NonZeroU16>()
-                .map_err(|_| format!("Invalid ENR quic port: {}", enr_quic_port_str))?,
+                .map_err(|_| format!("Invalid ENR quic port: {enr_quic_port_str}"))?,
         );
     }
 
@@ -1279,7 +1273,7 @@ pub fn set_network_config(
         config.enr_tcp4_port = Some(
             enr_tcp_port_str
                 .parse::<NonZeroU16>()
-                .map_err(|_| format!("Invalid ENR TCP port: {}", enr_tcp_port_str))?,
+                .map_err(|_| format!("Invalid ENR TCP port: {enr_tcp_port_str}"))?,
         );
     }
 
@@ -1287,7 +1281,7 @@ pub fn set_network_config(
         config.enr_udp6_port = Some(
             enr_udp_port_str
                 .parse::<NonZeroU16>()
-                .map_err(|_| format!("Invalid ENR discovery port: {}", enr_udp_port_str))?,
+                .map_err(|_| format!("Invalid ENR discovery port: {enr_udp_port_str}"))?,
         );
     }
 
@@ -1295,7 +1289,7 @@ pub fn set_network_config(
         config.enr_quic6_port = Some(
             enr_quic_port_str
                 .parse::<NonZeroU16>()
-                .map_err(|_| format!("Invalid ENR quic port: {}", enr_quic_port_str))?,
+                .map_err(|_| format!("Invalid ENR quic port: {enr_quic_port_str}"))?,
         );
     }
 
@@ -1303,7 +1297,7 @@ pub fn set_network_config(
         config.enr_tcp6_port = Some(
             enr_tcp_port_str
                 .parse::<NonZeroU16>()
-                .map_err(|_| format!("Invalid ENR TCP port: {}", enr_tcp_port_str))?,
+                .map_err(|_| format!("Invalid ENR TCP port: {enr_tcp_port_str}"))?,
         );
     }
 
@@ -1502,8 +1496,7 @@ pub fn set_network_config(
             .parse::<usize>()
             .map_err(|_| {
                 format!(
-                    "Invalid idontwant message size threshold value passed: {}",
-                    idontwant_message_size_threshold
+                    "Invalid idontwant message size threshold value passed: {idontwant_message_size_threshold}"
                 )
             })?;
     }
@@ -1547,7 +1540,7 @@ where
         .split(',')
         .map(parser)
         .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| format!("{} contains an invalid value {:?}", flag_name, e))?;
+        .map_err(|e| format!("{flag_name} contains an invalid value {e:?}"))?;
 
     if values.len() > 1 {
         warn!(
@@ -1561,27 +1554,25 @@ where
     values
         .into_iter()
         .next()
-        .ok_or_else(|| format!("Must provide at least one value to {}", flag_name))
+        .ok_or_else(|| format!("Must provide at least one value to {flag_name}"))
 }
 
 /// Remove chain, freezer and blobs db.
 fn purge_db(chain_db: PathBuf, freezer_db: PathBuf, blobs_db: PathBuf) -> Result<(), String> {
     // Remove the chain_db.
     if chain_db.exists() {
-        fs::remove_dir_all(chain_db)
-            .map_err(|err| format!("Failed to remove chain_db: {}", err))?;
+        fs::remove_dir_all(chain_db).map_err(|err| format!("Failed to remove chain_db: {err}"))?;
     }
 
     // Remove the freezer db.
     if freezer_db.exists() {
         fs::remove_dir_all(freezer_db)
-            .map_err(|err| format!("Failed to remove freezer_db: {}", err))?;
+            .map_err(|err| format!("Failed to remove freezer_db: {err}"))?;
     }
 
     // Remove the blobs db.
     if blobs_db.exists() {
-        fs::remove_dir_all(blobs_db)
-            .map_err(|err| format!("Failed to remove blobs_db: {}", err))?;
+        fs::remove_dir_all(blobs_db).map_err(|err| format!("Failed to remove blobs_db: {err}"))?;
     }
 
     Ok(())

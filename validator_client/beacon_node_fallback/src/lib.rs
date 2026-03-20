@@ -117,7 +117,7 @@ impl<T: Debug> fmt::Display for Errors<T> {
         for (i, (id, error)) in self.0.iter().enumerate() {
             let comma = if i + 1 < self.0.len() { "," } else { "" };
 
-            write!(f, " {} => {:?}{}", id, error, comma)?;
+            write!(f, " {id} => {error:?}{comma}")?;
         }
         Ok(())
     }

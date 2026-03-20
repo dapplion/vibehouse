@@ -591,7 +591,7 @@ mod tests {
         let bits = &gloas.execution_payload_availability;
         let slots_per_hist = <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
         for i in 0..slots_per_hist {
-            assert!(bits.get(i).unwrap(), "bit {} should be true", i);
+            assert!(bits.get(i).unwrap(), "bit {i} should be true");
         }
     }
 

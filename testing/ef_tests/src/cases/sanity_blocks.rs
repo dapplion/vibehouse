@@ -32,7 +32,7 @@ impl<E: EthSpec> LoadCase for SanityBlocks<E> {
         let pre = ssz_decode_state(&path.join("pre.ssz_snappy"), spec)?;
         let blocks = (0..metadata.blocks_count)
             .map(|i| {
-                let filename = format!("blocks_{}.ssz_snappy", i);
+                let filename = format!("blocks_{i}.ssz_snappy");
                 ssz_decode_file_with(&path.join(filename), |bytes| {
                     SignedBeaconBlock::from_ssz_bytes(bytes, spec)
                 })

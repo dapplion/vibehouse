@@ -1146,8 +1146,7 @@ mod produce_tests {
             self.signed.lock().unwrap().push(validator_index);
             if validator_index == self.fail_index {
                 return Err(ValidatorStoreError::Middleware(format!(
-                    "mock sign error for validator {}",
-                    validator_index
+                    "mock sign error for validator {validator_index}"
                 )));
             }
             Ok(PayloadAttestationMessage {

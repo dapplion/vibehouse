@@ -138,14 +138,14 @@ impl<E: EthSpec> InteropGenesisBuilder<E> {
             self.execution_payload_header,
             spec,
         )
-        .map_err(|e| format!("Unable to initialize genesis state: {:?}", e))?;
+        .map_err(|e| format!("Unable to initialize genesis state: {e:?}"))?;
 
         *state.genesis_time_mut() = genesis_time;
 
         // Invalidate all the caches after all the manual state surgery.
         state
             .drop_all_caches()
-            .map_err(|e| format!("Unable to drop caches: {:?}", e))?;
+            .map_err(|e| format!("Unable to drop caches: {e:?}"))?;
 
         Ok(state)
     }

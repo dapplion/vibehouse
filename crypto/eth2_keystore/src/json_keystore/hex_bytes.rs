@@ -38,14 +38,14 @@ impl TryFrom<String> for HexBytes {
         // Left-pad with a zero if there is not an even number of hex digits to ensure
         // `hex::decode` doesn't return an error.
         let s = if !s.len().is_multiple_of(2) {
-            format!("0{}", s)
+            format!("0{s}")
         } else {
             s
         };
 
         hex::decode(s)
             .map(Self)
-            .map_err(|e| format!("Invalid hex: {}", e))
+            .map_err(|e| format!("Invalid hex: {e}"))
     }
 }
 
@@ -54,7 +54,7 @@ mod tests {
     use super::*;
 
     fn decode(json: &str) -> Vec<u8> {
-        serde_json::from_str::<HexBytes>(&format!("\"{}\"", json))
+        serde_json::from_str::<HexBytes>(&format!("\"{json}\""))
             .expect("should decode json")
             .as_bytes()
             .to_vec()

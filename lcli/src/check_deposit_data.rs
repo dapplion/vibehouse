@@ -16,13 +16,12 @@ pub fn run(matches: &ArgMatches) -> Result<(), String> {
     }
 
     let (deposit_data, root) = decode_eth1_tx_data(&rlp_bytes, amount)
-        .map_err(|e| format!("Invalid deposit data bytes: {:?}", e))?;
+        .map_err(|e| format!("Invalid deposit data bytes: {e:?}"))?;
 
     let expected_root = deposit_data.tree_hash_root();
     if root != expected_root {
         return Err(format!(
-            "Deposit data root is invalid. Expected {:?}, but got {:?}. Perhaps the amount is incorrect?",
-            expected_root, root
+            "Deposit data root is invalid. Expected {expected_root:?}, but got {root:?}. Perhaps the amount is incorrect?"
         ));
     }
 

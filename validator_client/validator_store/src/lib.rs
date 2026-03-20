@@ -419,7 +419,7 @@ mod tests {
     fn doppelganger_status_debug() {
         let pk = sample_pubkey(11);
         let status = DoppelgangerStatus::SigningEnabled(pk);
-        let debug = format!("{:?}", status);
+        let debug = format!("{status:?}");
         assert!(debug.contains("SigningEnabled"));
     }
 

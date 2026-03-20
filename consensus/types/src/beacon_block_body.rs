@@ -1117,7 +1117,7 @@ pub fn format_kzg_commitments(commitments: &[KzgCommitment]) -> String {
         .map(std::string::ToString::to_string)
         .collect();
     let commitments_joined = commitment_strings.join(", ");
-    let surrounded_commitments = format!("[{}]", commitments_joined);
+    let surrounded_commitments = format!("[{commitments_joined}]");
     surrounded_commitments
 }
 

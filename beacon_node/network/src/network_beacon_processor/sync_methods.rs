@@ -748,7 +748,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                         0,
                         Err(ChainSegmentFailed {
                             peer_action: Some(PeerAction::LowToleranceError),
-                            message: format!("Failed to check block availability : {:?}", e),
+                            message: format!("Failed to check block availability : {e:?}"),
                         }),
                     );
                 }
@@ -840,7 +840,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 (
                     0,
                     Err(ChainSegmentFailed {
-                        message: format!("{:?}", err_str),
+                        message: format!("{err_str:?}"),
                         // This is an internal error, don't penalize the peer.
                         peer_action,
                     }),
@@ -855,7 +855,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             BlockError::ParentUnknown { parent_root, .. } => {
                 // blocks should be sequential and all parents should exist
                 Err(ChainSegmentFailed {
-                    message: format!("Block has an unknown parent: {}", parent_root),
+                    message: format!("Block has an unknown parent: {parent_root}"),
                     // Peers are faulty if they send non-sequential blocks.
                     peer_action: Some(PeerAction::LowToleranceError),
                 })
@@ -891,8 +891,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
 
                 Err(ChainSegmentFailed {
                     message: format!(
-                        "Block with slot {} is higher than the current slot {}",
-                        block_slot, present_slot
+                        "Block with slot {block_slot} is higher than the current slot {present_slot}"
                     ),
                     // Peers are faulty if they send blocks from the future.
                     peer_action: Some(PeerAction::LowToleranceError),
@@ -908,8 +907,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 );
                 Err(ChainSegmentFailed {
                     message: format!(
-                        "Block with parent_root {} conflicts with our checkpoint state",
-                        block_parent_root
+                        "Block with parent_root {block_parent_root} conflicts with our checkpoint state"
                     ),
                     peer_action: Some(PeerAction::Fatal),
                 })
@@ -926,7 +924,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 );
 
                 Err(ChainSegmentFailed {
-                    message: format!("Internal error whilst processing block: {:?}", e),
+                    message: format!("Internal error whilst processing block: {e:?}"),
                     // Do not penalize peers for internal errors.
                     peer_action: None,
                 })
@@ -941,7 +939,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                         "Execution layer verification failed"
                     );
                     Err(ChainSegmentFailed {
-                        message: format!("Execution layer offline. Reason: {:?}", err),
+                        message: format!("Execution layer offline. Reason: {err:?}"),
                         // Do not penalize peers for internal errors.
                         peer_action: None,
                     })
@@ -952,8 +950,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     );
                     Err(ChainSegmentFailed {
                         message: format!(
-                            "Peer sent a block containing invalid execution payload. Reason: {:?}",
-                            err
+                            "Peer sent a block containing invalid execution payload. Reason: {err:?}"
                         ),
                         peer_action: Some(PeerAction::LowToleranceError),
                     })
@@ -989,7 +986,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 );
 
                 Err(ChainSegmentFailed {
-                    message: format!("Peer sent invalid block. Reason: {:?}", other),
+                    message: format!("Peer sent invalid block. Reason: {other:?}"),
                     // Do not penalize peers for internal errors.
                     peer_action: None,
                 })

@@ -152,8 +152,8 @@ pub fn run<E: EthSpec>(
                     let block = client
                         .get_beacon_blocks(block_id)
                         .await
-                        .map_err(|e| format!("Failed to download block: {:?}", e))?
-                        .ok_or_else(|| format!("Unable to locate block at {:?}", block_id))?
+                        .map_err(|e| format!("Failed to download block: {e:?}"))?
+                        .ok_or_else(|| format!("Unable to locate block at {block_id:?}"))?
                         .into_data();
 
                     if block.slot() == inner_spec.genesis_slot {
@@ -163,8 +163,8 @@ pub fn run<E: EthSpec>(
                     let parent_block: SignedBeaconBlock<E> = client
                         .get_beacon_blocks(BlockId::Root(block.parent_root()))
                         .await
-                        .map_err(|e| format!("Failed to download parent block: {:?}", e))?
-                        .ok_or_else(|| format!("Unable to locate parent block at {:?}", block_id))?
+                        .map_err(|e| format!("Failed to download parent block: {e:?}"))?
+                        .ok_or_else(|| format!("Unable to locate parent block at {block_id:?}"))?
                         .into_data();
 
                     let state_root = parent_block.state_root();
@@ -172,13 +172,13 @@ pub fn run<E: EthSpec>(
                     let pre_state = client
                         .get_debug_beacon_states::<E>(state_id)
                         .await
-                        .map_err(|e| format!("Failed to download state: {:?}", e))?
-                        .ok_or_else(|| format!("Unable to locate state at {:?}", state_id))?
+                        .map_err(|e| format!("Failed to download state: {e:?}"))?
+                        .ok_or_else(|| format!("Unable to locate state at {state_id:?}"))?
                         .into_data();
 
                     Ok((pre_state, Some(state_root), block))
                 })
-                .map_err(|e| format!("Failed to complete task: {:?}", e))?
+                .map_err(|e| format!("Failed to complete task: {e:?}"))?
         }
         _ => {
             return Err(
@@ -196,12 +196,12 @@ pub fn run<E: EthSpec>(
      */
 
     let store = HotColdDB::open_ephemeral(<_>::default(), spec.clone())
-        .map_err(|e| format!("Failed to create ephemeral store: {:?}", e))?;
+        .map_err(|e| format!("Failed to create ephemeral store: {e:?}"))?;
     let store = Arc::new(store);
 
     debug!("Building pubkey cache (might take some time)");
     let validator_pubkey_cache = ValidatorPubkeyCache::new(&pre_state, store)
-        .map_err(|e| format!("Failed to create pubkey cache: {:?}", e))?;
+        .map_err(|e| format!("Failed to create pubkey cache: {e:?}"))?;
 
     /*
      * If cache builds are excluded from the timings, build them early so they are available for
@@ -211,10 +211,10 @@ pub fn run<E: EthSpec>(
     if config.exclude_cache_builds {
         pre_state
             .build_all_caches(&spec)
-            .map_err(|e| format!("Unable to build caches: {:?}", e))?;
+            .map_err(|e| format!("Unable to build caches: {e:?}"))?;
         let state_root = pre_state
             .update_tree_hash_cache()
-            .map_err(|e| format!("Unable to build THC: {:?}", e))?;
+            .map_err(|e| format!("Unable to build THC: {e:?}"))?;
 
         if state_root_opt.is_some_and(|expected| expected != state_root) {
             return Err(format!(
@@ -263,36 +263,33 @@ pub fn run<E: EthSpec>(
 
     if let Some(path) = post_state_output_path {
         let output_post_state = output_post_state.ok_or_else(|| {
-            format!(
-                "Post state was not computed, cannot save to disk (runs = {})",
-                runs
-            )
+            format!("Post state was not computed, cannot save to disk (runs = {runs})")
         })?;
 
         let mut output_file =
-            File::create(path).map_err(|e| format!("Unable to create output file: {:?}", e))?;
+            File::create(path).map_err(|e| format!("Unable to create output file: {e:?}"))?;
 
         output_file
             .write_all(&output_post_state.as_ssz_bytes())
-            .map_err(|e| format!("Unable to write to output file: {:?}", e))?;
+            .map_err(|e| format!("Unable to write to output file: {e:?}"))?;
     }
 
     if let Some(path) = pre_state_output_path {
         let mut output_file =
-            File::create(path).map_err(|e| format!("Unable to create output file: {:?}", e))?;
+            File::create(path).map_err(|e| format!("Unable to create output file: {e:?}"))?;
 
         output_file
             .write_all(&pre_state.as_ssz_bytes())
-            .map_err(|e| format!("Unable to write to output file: {:?}", e))?;
+            .map_err(|e| format!("Unable to write to output file: {e:?}"))?;
     }
 
     if let Some(path) = block_output_path {
         let mut output_file =
-            File::create(path).map_err(|e| format!("Unable to create output file: {:?}", e))?;
+            File::create(path).map_err(|e| format!("Unable to create output file: {e:?}"))?;
 
         output_file
             .write_all(&block.as_ssz_bytes())
-            .map_err(|e| format!("Unable to write to output file: {:?}", e))?;
+            .map_err(|e| format!("Unable to write to output file: {e:?}"))?;
     }
 
     drop(pre_state);
@@ -315,13 +312,13 @@ fn do_transition<E: EthSpec>(
         let t = Instant::now();
         pre_state
             .build_all_caches(spec)
-            .map_err(|e| format!("Unable to build caches: {:?}", e))?;
+            .map_err(|e| format!("Unable to build caches: {e:?}"))?;
         debug!("Build caches: {:?}", t.elapsed());
 
         let t = Instant::now();
         let state_root = pre_state
             .update_tree_hash_cache()
-            .map_err(|e| format!("Unable to build tree hash cache: {:?}", e))?;
+            .map_err(|e| format!("Unable to build tree hash cache: {e:?}"))?;
         debug!("Initial tree hash: {:?}", t.elapsed());
 
         if state_root_opt.is_some_and(|expected| expected != state_root) {
@@ -348,7 +345,7 @@ fn do_transition<E: EthSpec>(
     let t = Instant::now();
     pre_state
         .build_all_caches(spec)
-        .map_err(|e| format!("Unable to build caches: {:?}", e))?;
+        .map_err(|e| format!("Unable to build caches: {e:?}"))?;
     debug!("Build all caches (again): {:?}", t.elapsed());
 
     let mut ctxt = if let Some(ctxt) = saved_ctxt {
@@ -382,7 +379,7 @@ fn do_transition<E: EthSpec>(
             &mut ctxt,
             spec,
         )
-        .map_err(|e| format!("Invalid block signature: {:?}", e))?;
+        .map_err(|e| format!("Invalid block signature: {e:?}"))?;
         debug!("Batch verify block signatures: {:?}", t.elapsed());
 
         // Signature verification should prime the indexed attestation cache.
@@ -401,14 +398,14 @@ fn do_transition<E: EthSpec>(
         &mut ctxt,
         spec,
     )
-    .map_err(|e| format!("State transition failed: {:?}", e))?;
+    .map_err(|e| format!("State transition failed: {e:?}"))?;
     debug!("Process block: {:?}", t.elapsed());
 
     if !config.exclude_post_block_thc {
         let t = Instant::now();
         pre_state
             .update_tree_hash_cache()
-            .map_err(|e| format!("Unable to build tree hash cache: {:?}", e))?;
+            .map_err(|e| format!("Unable to build tree hash cache: {e:?}"))?;
         debug!("Post-block tree hash: {:?}", t.elapsed());
     }
 
@@ -420,13 +417,12 @@ pub fn load_from_ssz_with<T>(
     spec: &ChainSpec,
     decoder: impl FnOnce(&[u8], &ChainSpec) -> Result<T, ssz::DecodeError>,
 ) -> Result<T, String> {
-    let mut file =
-        File::open(path).map_err(|e| format!("Unable to open file {:?}: {:?}", path, e))?;
+    let mut file = File::open(path).map_err(|e| format!("Unable to open file {path:?}: {e:?}"))?;
     let mut bytes = vec![];
     file.read_to_end(&mut bytes)
-        .map_err(|e| format!("Unable to read from file {:?}: {:?}", path, e))?;
+        .map_err(|e| format!("Unable to read from file {path:?}: {e:?}"))?;
     let t = Instant::now();
-    let result = decoder(&bytes, spec).map_err(|e| format!("Ssz decode failed: {:?}", e));
+    let result = decoder(&bytes, spec).map_err(|e| format!("Ssz decode failed: {e:?}"));
     debug!("SSZ decoding {}: {:?}", path.display(), t.elapsed());
     result
 }

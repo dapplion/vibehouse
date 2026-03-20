@@ -82,7 +82,7 @@ impl<E: EthSpec> LoadCase for TransitionTest<E> {
         // Load blocks
         let blocks = (0..metadata.blocks_count)
             .map(|i| {
-                let filename = format!("blocks_{}.ssz_snappy", i);
+                let filename = format!("blocks_{i}.ssz_snappy");
                 ssz_decode_file_with(&path.join(filename), |bytes| {
                     SignedBeaconBlock::from_ssz_bytes(bytes, &spec)
                 })
@@ -123,7 +123,7 @@ impl<E: EthSpec> Case for TransitionTest<E> {
             .try_for_each(|block| {
                 // Advance to block slot.
                 complete_state_advance(&mut state, None, block.slot(), spec)
-                    .map_err(|e| format!("Failed to advance: {:?}", e))?;
+                    .map_err(|e| format!("Failed to advance: {e:?}"))?;
 
                 // Apply block.
                 let mut ctxt = ConsensusContext::new(state.slot());
@@ -135,7 +135,7 @@ impl<E: EthSpec> Case for TransitionTest<E> {
                     &mut ctxt,
                     spec,
                 )
-                .map_err(|e| format!("Block processing failed: {:?}", e))?;
+                .map_err(|e| format!("Block processing failed: {e:?}"))?;
 
                 let state_root = state.update_tree_hash_cache().unwrap();
                 if block.state_root() != state_root {

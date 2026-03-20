@@ -20,7 +20,7 @@ where
         D: Deserializer<'de>,
     {
         let vec = Vec::<T>::context_deserialize(deserializer, context)?;
-        FixedVector::new(vec).map_err(|e| D::Error::custom(format!("{:?}", e)))
+        FixedVector::new(vec).map_err(|e| D::Error::custom(format!("{e:?}")))
     }
 }
 
@@ -33,7 +33,7 @@ where
         D: Deserializer<'de>,
     {
         Bitfield::<Variable<N>>::deserialize(deserializer)
-            .map_err(|e| D::Error::custom(format!("{:?}", e)))
+            .map_err(|e| D::Error::custom(format!("{e:?}")))
     }
 }
 
@@ -46,6 +46,6 @@ where
         D: Deserializer<'de>,
     {
         Bitfield::<Fixed<N>>::deserialize(deserializer)
-            .map_err(|e| D::Error::custom(format!("{:?}", e)))
+            .map_err(|e| D::Error::custom(format!("{e:?}")))
     }
 }

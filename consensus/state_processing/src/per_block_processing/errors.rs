@@ -741,7 +741,7 @@ mod tests {
             block_slot: Slot::new(5),
         };
         assert_eq!(
-            format!("{:?}", h),
+            format!("{h:?}"),
             "OlderThanLatestBlockHeader { latest_block_header_slot: Slot(10), block_slot: Slot(5) }"
         );
     }
@@ -860,7 +860,7 @@ mod tests {
     #[test]
     fn block_processing_error_debug_format() {
         let e = BlockProcessingError::RandaoSignatureInvalid;
-        let dbg = format!("{:?}", e);
+        let dbg = format!("{e:?}");
         assert!(dbg.contains("RandaoSignatureInvalid"));
     }
 

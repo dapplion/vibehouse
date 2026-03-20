@@ -48,7 +48,7 @@ pub async fn run_async<T: EthSpec>(
 
     if !cache_dir_path.exists() {
         fs::create_dir_all(&cache_dir_path)
-            .map_err(|e| format!("Unable to create block cache dir: {:?}", e))?;
+            .map_err(|e| format!("Unable to create block cache dir: {e:?}"))?;
     }
 
     // 1. Download blocks back from head, looking for common ancestor.

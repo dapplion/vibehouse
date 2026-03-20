@@ -171,7 +171,7 @@ impl<T: SlotClock + 'static, E: EthSpec> VibehouseValidatorStore<T, E> {
             builder_boost_factor,
             prefer_builder_proposals,
         )
-        .map_err(|e| format!("failed to create validator definitions: {:?}", e))?;
+        .map_err(|e| format!("failed to create validator definitions: {e:?}"))?;
 
         validator_def.enabled = enable;
 
@@ -195,7 +195,7 @@ impl<T: SlotClock + 'static, E: EthSpec> VibehouseValidatorStore<T, E> {
 
         self.slashing_protection
             .register_validator(validator_pubkey)
-            .map_err(|e| format!("failed to register validator: {:?}", e))?;
+            .map_err(|e| format!("failed to register validator: {e:?}"))?;
 
         if let Some(doppelganger_service) = &self.doppelganger_service {
             doppelganger_service.register_new_validator(
@@ -209,7 +209,7 @@ impl<T: SlotClock + 'static, E: EthSpec> VibehouseValidatorStore<T, E> {
             .write()
             .add_definition_replace_disabled(validator_def.clone())
             .await
-            .map_err(|e| format!("Unable to add definition: {:?}", e))?;
+            .map_err(|e| format!("Unable to add definition: {e:?}"))?;
 
         Ok(validator_def)
     }

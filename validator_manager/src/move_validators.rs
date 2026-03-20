@@ -52,7 +52,7 @@ impl PasswordSource {
     fn read_password(&mut self, pubkey: &PublicKeyBytes) -> Result<Zeroizing<String>, String> {
         match self {
             PasswordSource::Interactive { stdin_inputs } => {
-                eprintln!("Please enter a password for keystore {:?}:", pubkey);
+                eprintln!("Please enter a password for keystore {pubkey:?}:");
                 read_password_from_user(*stdin_inputs)
             }
             // This path with panic if the password list is empty. Since the
@@ -296,8 +296,7 @@ async fn run(config: MoveConfig) -> Result<(), String> {
     // error.
     if src_vc_url == dest_vc_url {
         return Err(format!(
-            "--{} and --{} must be different",
-            SRC_VC_URL_FLAG, DEST_VC_URL_FLAG
+            "--{SRC_VC_URL_FLAG} and --{DEST_VC_URL_FLAG} must be different"
         ));
     }
 
@@ -340,7 +339,7 @@ async fn run(config: MoveConfig) -> Result<(), String> {
                 .collect::<Vec<_>>();
             if !difference.is_empty() {
                 for pk in &difference {
-                    eprintln!("{:?} is not present on {:?}", pk, src_vc_url);
+                    eprintln!("{pk:?} is not present on {src_vc_url:?}");
                 }
                 return Err(format!(
                     "{} validators not found on {:?}",
@@ -367,7 +366,7 @@ async fn run(config: MoveConfig) -> Result<(), String> {
             .readonly
             .unwrap_or(true)
         {
-            eprintln!("Skipping read-only validator {:?}", pubkey_to_move);
+            eprintln!("Skipping read-only validator {pubkey_to_move:?}");
         }
 
         let request = DeleteKeystoresRequest {
@@ -399,7 +398,7 @@ async fn run(config: MoveConfig) -> Result<(), String> {
                     }
                 }
 
-                return Err(format!("Deleting {:?} failed with {:?}", pubkey_to_move, e));
+                return Err(format!("Deleting {pubkey_to_move:?} failed with {e:?}"));
             }
         };
 
@@ -432,7 +431,7 @@ async fn run(config: MoveConfig) -> Result<(), String> {
                 (Some(keystore), Some(password)) => (keystore, password),
                 (Some(keystore), None) => {
                     eprintln!(
-                        "Validator {:?} requires a password, please provide it to continue \
+                        "Validator {pubkey_to_move:?} requires a password, please provide it to continue \
                             moving validators. \
                             The dest VC will store this password on its filesystem and the password \
                             will not be required next time the dest VC starts. \
@@ -441,8 +440,7 @@ async fn run(config: MoveConfig) -> Result<(), String> {
                             Failing to provide the correct password now will \
                             result in the keystore being deleted from the src VC \
                             without being transfered to the dest VC. \
-                            It is strongly recommend to provide a password now rather than exiting.",
-                        pubkey_to_move
+                            It is strongly recommend to provide a password now rather than exiting."
                     );
 
                     // Read the password from the user, retrying if the password is incorrect.
@@ -450,16 +448,15 @@ async fn run(config: MoveConfig) -> Result<(), String> {
                         match password_source.read_password(&pubkey_to_move) {
                             Ok(password) => {
                                 if let Err(e) = keystore.decrypt_keypair(password.as_ref()) {
-                                    eprintln!("Failed to decrypt keystore: {:?}", e);
+                                    eprintln!("Failed to decrypt keystore: {e:?}");
                                 } else {
                                     break (keystore, password);
                                 }
                             }
                             Err(e) => {
                                 eprintln!(
-                                    "Retrying after error: {:?}. If this error persists the user will need to \
-                                        manually recover their keystore for validator {:?} from the mnemonic.",
-                                    e, pubkey_to_move
+                                    "Retrying after error: {e:?}. If this error persists the user will need to \
+                                        manually recover their keystore for validator {pubkey_to_move:?} from the mnemonic."
                                 );
                             }
                         }
@@ -470,13 +467,12 @@ async fn run(config: MoveConfig) -> Result<(), String> {
                 }
                 (None, password_opt) => {
                     eprintln!(
-                        "Validator {:?} was not moved since the validator client did \
+                        "Validator {pubkey_to_move:?} was not moved since the validator client did \
                             not return a keystore. It is likely that the \
                             validator has been deleted from the source validator client \
                             without being moved to the destination validator client. \
                             This validator will most likely need to be manually recovered \
-                            from a mnemonic or backup.",
-                        pubkey_to_move
+                            from a mnemonic or backup."
                     );
                     return Err(format!(
                         "VC returned deleted but keystore not present (password {})",
@@ -493,16 +489,14 @@ async fn run(config: MoveConfig) -> Result<(), String> {
             ) =>
             {
                 eprintln!(
-                    "Validator {:?} was not moved since it was not found or not active. This scenario \
+                    "Validator {pubkey_to_move:?} was not moved since it was not found or not active. This scenario \
                     is unexpected and might indicate that another process is also performing \
                     an export from the source validator client. Exiting now for safety. \
                     If there is definitely no other process exporting validators then it \
-                    may be safe to run this command again.",
-                    pubkey_to_move
+                    may be safe to run this command again."
                 );
                 return Err(format!(
-                    "VC indicated that a previously known validator was {:?}",
-                    status,
+                    "VC indicated that a previously known validator was {status:?}",
                 ));
             }
             SingleExportKeystoresResponse {
@@ -510,14 +504,12 @@ async fn run(config: MoveConfig) -> Result<(), String> {
                 ..
             } => {
                 eprintln!(
-                    "Validator {:?} was not moved because the source validator client \
+                    "Validator {pubkey_to_move:?} was not moved because the source validator client \
                     indicated there was an error disabling it. Manual intervention is \
-                    required to recover from this scenario.",
-                    pubkey_to_move
+                    required to recover from this scenario."
                 );
                 return Err(format!(
-                    "VC returned status {:?} with message {:?}",
-                    status, message
+                    "VC returned status {status:?} with message {message:?}"
                 ));
             }
         };
@@ -577,8 +569,8 @@ async fn run(config: MoveConfig) -> Result<(), String> {
                     }
                 }
                 e @ Err(UploadError::InvalidPublicKey) => {
-                    eprintln!("Validator {} has an invalid public key", i);
-                    return Err(format!("{:?}", e));
+                    eprintln!("Validator {i} has an invalid public key");
+                    return Err(format!("{e:?}"));
                 }
                 Err(UploadError::DuplicateValidator(_)) => {
                     return Err(
@@ -588,8 +580,7 @@ async fn run(config: MoveConfig) -> Result<(), String> {
                 Err(UploadError::FailedToListKeys(e)) => {
                     eprintln!(
                         "Failed to list keystores. Some keys may have been moved whilst \
-                        others may not. Error was {:?}",
-                        e
+                        others may not. Error was {e:?}"
                     );
                     // Retry uploading this validator.
                     sleep_with_retry_message(&pubkey_to_move, keystore_derivation_path.as_deref())
@@ -598,8 +589,7 @@ async fn run(config: MoveConfig) -> Result<(), String> {
                 Err(UploadError::KeyUploadFailed(e)) => {
                     eprintln!(
                         "Failed to upload keystore. Some keys may have been moved whilst \
-                        others may not. Error was {:?}",
-                        e
+                        others may not. Error was {e:?}"
                     );
                     // Retry uploading this validator.
                     sleep_with_retry_message(&pubkey_to_move, keystore_derivation_path.as_deref())
@@ -609,26 +599,21 @@ async fn run(config: MoveConfig) -> Result<(), String> {
                     eprintln!(
                         "Keystore was uploaded, however the validator client returned an invalid response."
                     );
-                    return Err(format!(
-                        "Invalid status count in import response: {}",
-                        count
-                    ));
+                    return Err(format!("Invalid status count in import response: {count}"));
                 }
                 Err(UploadError::FeeRecipientUpdateFailed(e)) => {
                     eprintln!(
-                        "Failed to set fee recipient for validator {}. This value may need \
-                        to be set manually. Continuing with other validators. Error was {:?}",
-                        i, e
+                        "Failed to set fee recipient for validator {i}. This value may need \
+                        to be set manually. Continuing with other validators. Error was {e:?}"
                     );
                     // Continue onto the next validator.
                     break;
                 }
                 Err(UploadError::PatchValidatorFailed(e)) => {
                     eprintln!(
-                        "Failed to set some values on validator {} (e.g., builder, enabled or gas limit). \
+                        "Failed to set some values on validator {i} (e.g., builder, enabled or gas limit). \
                         These values value may need to be set manually. Continuing with other validators. \
-                        Error was {:?}",
-                        i, e
+                        Error was {e:?}"
                     );
                     // Continue onto the next validator.
                     break;
@@ -650,11 +635,10 @@ async fn run(config: MoveConfig) -> Result<(), String> {
 async fn sleep_with_retry_message(pubkey: &PublicKeyBytes, path: Option<&str>) {
     let path = path.unwrap_or("<unspecified>");
     eprintln!(
-        "Sleeping for {:?} before retrying. Exiting the application before it completes \
+        "Sleeping for {UPLOAD_RETRY_WAIT:?} before retrying. Exiting the application before it completes \
         may result in the loss of a validator keystore. The keystore would need to be \
         restored from a backup or mnemonic. The keystore which may be lost has a public \
-        key of {:?} and a derivation path of {}",
-        UPLOAD_RETRY_WAIT, pubkey, path
+        key of {pubkey:?} and a derivation path of {path}"
     );
     sleep(UPLOAD_RETRY_WAIT).await;
 }

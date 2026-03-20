@@ -93,7 +93,7 @@ impl<'de> Deserialize<'de> for G1Point {
                 E: de::Error,
             {
                 let point = hex::decode(strip_prefix(v))
-                    .map_err(|e| de::Error::custom(format!("Failed to decode G1 point: {}", e)))?;
+                    .map_err(|e| de::Error::custom(format!("Failed to decode G1 point: {e}")))?;
                 if point.len() != BYTES_PER_G1_POINT {
                     return Err(de::Error::custom(format!(
                         "G1 point has invalid length. Expected {} got {}",
@@ -129,7 +129,7 @@ impl<'de> Deserialize<'de> for G2Point {
                 E: de::Error,
             {
                 let point = hex::decode(strip_prefix(v))
-                    .map_err(|e| de::Error::custom(format!("Failed to decode G2 point: {}", e)))?;
+                    .map_err(|e| de::Error::custom(format!("Failed to decode G2 point: {e}")))?;
                 if point.len() != BYTES_PER_G2_POINT {
                     return Err(de::Error::custom(format!(
                         "G2 point has invalid length. Expected {} got {}",

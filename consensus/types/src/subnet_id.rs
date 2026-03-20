@@ -193,7 +193,7 @@ mod tests {
         let spec = ChainSpec::mainnet();
 
         for x in 0..node_ids.len() {
-            println!("Test: {}", x);
+            println!("Test: {x}");
             println!(
                 "NodeId: {:?}\nExpected_subnets: {:?}",
                 node_ids[x], expected_subnets[x]

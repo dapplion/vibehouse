@@ -59,11 +59,11 @@ pub fn run<E: EthSpec>(mut env: Environment<E>, matches: &ArgMatches) -> Result<
         "This tool is for TESTING PURPOSES ONLY. Do not use in production or on mainnet. \
         It cannot perform validator duties. It may cause nodes to follow an invalid chain."
     );
-    eprintln!("Server listening on {}:{}", listen_addr, listen_port);
+    eprintln!("Server listening on {listen_addr}:{listen_port}");
 
     let shutdown_reason = env.block_until_shutdown_requested()?;
 
-    eprintln!("Shutting down: {:?}", shutdown_reason);
+    eprintln!("Shutting down: {shutdown_reason:?}");
 
     Ok(())
 }

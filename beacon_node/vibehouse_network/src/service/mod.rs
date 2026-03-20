@@ -335,7 +335,7 @@ impl<E: EthSpec> Network<E> {
                 filter,
                 snappy_transform,
             )
-            .map_err(|e| format!("Could not construct gossipsub: {:?}", e))?;
+            .map_err(|e| format!("Could not construct gossipsub: {e:?}"))?;
 
             // If metrics are enabled for libp2p build the configuration
             if let Some(ref mut registry) = ctx.libp2p_registry {
@@ -454,7 +454,7 @@ impl<E: EthSpec> Network<E> {
 
         // Set up the transport - tcp/quic with noise and mplex
         let transport = build_transport(local_keypair.clone(), !config.disable_quic_support)
-            .map_err(|e| format!("Failed to build transport: {:?}", e))?;
+            .map_err(|e| format!("Failed to build transport: {e:?}"))?;
 
         // use the executor for libp2p
         struct Executor(task_executor::TaskExecutor);
@@ -870,7 +870,7 @@ impl<E: EthSpec> Network<E> {
                         kind => {
                             if let Some(v) = metrics::get_int_gauge(
                                 &metrics::FAILED_PUBLISHES_PER_MAIN_TOPIC,
-                                &[&format!("{:?}", kind)],
+                                &[&format!("{kind:?}")],
                             ) {
                                 v.inc();
                             }

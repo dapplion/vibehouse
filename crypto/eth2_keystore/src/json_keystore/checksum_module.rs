@@ -28,7 +28,7 @@ impl TryFrom<String> for ChecksumFunction {
     fn try_from(s: String) -> Result<Self, Self::Error> {
         match s.as_ref() {
             "sha256" => Ok(ChecksumFunction::Sha256),
-            other => Err(format!("Unsupported checksum function: {}", other)),
+            other => Err(format!("Unsupported checksum function: {other}")),
         }
     }
 }

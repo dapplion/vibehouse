@@ -29,8 +29,7 @@ pub fn run<E: EthSpec>(matches: &ArgMatches, env: Environment<E>) -> Result<(), 
         Some((validator::CMD, matches)) => validator::cli_run(matches, env)?,
         Some((unknown, _)) => {
             return Err(format!(
-                "{} is not a valid {} command. See --help.",
-                unknown, CMD
+                "{unknown} is not a valid {CMD} command. See --help."
             ));
         }
         _ => return Err("No subcommand provided, see --help for options".to_string()),

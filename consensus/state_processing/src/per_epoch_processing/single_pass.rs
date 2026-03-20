@@ -1495,10 +1495,7 @@ mod tests {
         for (i, &proposer) in after[slots_per_epoch..].iter().enumerate() {
             assert!(
                 (proposer as usize) < num_validators,
-                "new proposer at offset {} has index {} but only {} validators exist",
-                i,
-                proposer,
-                num_validators
+                "new proposer at offset {i} has index {proposer} but only {num_validators} validators exist"
             );
         }
     }
@@ -1592,9 +1589,7 @@ mod tests {
         for &proposer in &la {
             assert!(
                 (proposer as usize) < num_validators,
-                "initial lookahead entry {} exceeds validator count {}",
-                proposer,
-                num_validators
+                "initial lookahead entry {proposer} exceeds validator count {num_validators}"
             );
         }
     }
@@ -2137,9 +2132,7 @@ mod tests {
         for &proposer in &after {
             assert!(
                 (proposer as usize) < num_validators,
-                "proposer index {} should be a valid validator index (< {})",
-                proposer,
-                num_validators
+                "proposer index {proposer} should be a valid validator index (< {num_validators})"
             );
         }
     }
@@ -2387,9 +2380,7 @@ mod tests {
         for &proposer in &after[slots_per_epoch..] {
             assert!(
                 (proposer as usize) < num_validators,
-                "new proposer {} should be valid index (< {})",
-                proposer,
-                num_validators
+                "new proposer {proposer} should be valid index (< {num_validators})"
             );
         }
     }

@@ -182,7 +182,7 @@ mod tests {
     #[test]
     fn debug_format() {
         let v = RuntimeFixedVector::new(vec![1, 2]);
-        let s = format!("{:?}", v);
+        let s = format!("{v:?}");
         assert!(s.contains("(len=2)"));
     }
 }

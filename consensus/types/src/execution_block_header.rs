@@ -298,7 +298,7 @@ mod tests {
         assert!(set.contains(&h1));
         assert!(!set.contains(&h2));
         // Debug doesn't panic
-        let _ = format!("{:?}", h1);
+        let _ = format!("{h1:?}");
     }
 
     #[test]

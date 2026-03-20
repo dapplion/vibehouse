@@ -56,7 +56,7 @@ pub async fn handle_rpc<E: EthSpec>(
                 )
                 .unwrap()),
                 other => Err((
-                    format!("The tag {} is not supported", other),
+                    format!("The tag {other} is not supported"),
                     BAD_PARAMS_ERROR_CODE,
                 )),
             }
@@ -68,7 +68,7 @@ pub async fn handle_rpc<E: EthSpec>(
                 .ok_or_else(|| "missing/invalid params[0] value".to_string())
                 .and_then(|s| {
                     s.parse()
-                        .map_err(|e| format!("unable to parse hash: {:?}", e))
+                        .map_err(|e| format!("unable to parse hash: {e:?}"))
                 })
                 .map_err(|s| (s, BAD_PARAMS_ERROR_CODE))?;
 
@@ -142,8 +142,7 @@ pub async fn handle_rpc<E: EthSpec>(
                     if matches!(request, JsonExecutionPayload::Capella(_)) {
                         return Err((
                             format!(
-                                "{} called with `ExecutionPayloadCapella` before Capella fork!",
-                                method
+                                "{method} called with `ExecutionPayloadCapella` before Capella fork!"
                             ),
                             GENERIC_ERROR_CODE,
                         ));
@@ -152,15 +151,14 @@ pub async fn handle_rpc<E: EthSpec>(
                 ForkName::Capella => {
                     if method == ENGINE_NEW_PAYLOAD_V1 {
                         return Err((
-                            format!("{} called after Capella fork!", method),
+                            format!("{method} called after Capella fork!"),
                             GENERIC_ERROR_CODE,
                         ));
                     }
                     if matches!(request, JsonExecutionPayload::Bellatrix(_)) {
                         return Err((
                             format!(
-                                "{} called with `ExecutionPayloadBellatrix` after Capella fork!",
-                                method
+                                "{method} called with `ExecutionPayloadBellatrix` after Capella fork!"
                             ),
                             GENERIC_ERROR_CODE,
                         ));
@@ -169,25 +167,19 @@ pub async fn handle_rpc<E: EthSpec>(
                 ForkName::Deneb => {
                     if method == ENGINE_NEW_PAYLOAD_V1 || method == ENGINE_NEW_PAYLOAD_V2 {
                         return Err((
-                            format!("{} called after Deneb fork!", method),
+                            format!("{method} called after Deneb fork!"),
                             GENERIC_ERROR_CODE,
                         ));
                     }
                     if matches!(request, JsonExecutionPayload::Bellatrix(_)) {
                         return Err((
-                            format!(
-                                "{} called with `ExecutionPayloadV1` after Deneb fork!",
-                                method
-                            ),
+                            format!("{method} called with `ExecutionPayloadV1` after Deneb fork!"),
                             GENERIC_ERROR_CODE,
                         ));
                     }
                     if matches!(request, JsonExecutionPayload::Capella(_)) {
                         return Err((
-                            format!(
-                                "{} called with `ExecutionPayloadV2` after Deneb fork!",
-                                method
-                            ),
+                            format!("{method} called with `ExecutionPayloadV2` after Deneb fork!"),
                             GENERIC_ERROR_CODE,
                         ));
                     }
@@ -198,15 +190,14 @@ pub async fn handle_rpc<E: EthSpec>(
                         || method == ENGINE_NEW_PAYLOAD_V3
                     {
                         return Err((
-                            format!("{} called after Electra fork!", method),
+                            format!("{method} called after Electra fork!"),
                             GENERIC_ERROR_CODE,
                         ));
                     }
                     if matches!(request, JsonExecutionPayload::Bellatrix(_)) {
                         return Err((
                             format!(
-                                "{} called with `ExecutionPayloadBellatrix after Electra fork!",
-                                method
+                                "{method} called with `ExecutionPayloadBellatrix after Electra fork!"
                             ),
                             GENERIC_ERROR_CODE,
                         ));
@@ -214,8 +205,7 @@ pub async fn handle_rpc<E: EthSpec>(
                     if matches!(request, JsonExecutionPayload::Capella(_)) {
                         return Err((
                             format!(
-                                "{} called with `ExecutionPayloadCapella` after Electra fork!",
-                                method
+                                "{method} called with `ExecutionPayloadCapella` after Electra fork!"
                             ),
                             GENERIC_ERROR_CODE,
                         ));
@@ -223,8 +213,7 @@ pub async fn handle_rpc<E: EthSpec>(
                     if matches!(request, JsonExecutionPayload::Deneb(_)) {
                         return Err((
                             format!(
-                                "{} called with `ExecutionPayloadDeneb` after Electra fork!",
-                                method
+                                "{method} called with `ExecutionPayloadDeneb` after Electra fork!"
                             ),
                             GENERIC_ERROR_CODE,
                         ));
@@ -280,7 +269,7 @@ pub async fn handle_rpc<E: EthSpec>(
                 .get_payload(&id)
                 .ok_or_else(|| {
                     (
-                        format!("no payload for id {:?}", id),
+                        format!("no payload for id {id:?}"),
                         UNKNOWN_PAYLOAD_ERROR_CODE,
                     )
                 })?;
@@ -296,7 +285,7 @@ pub async fn handle_rpc<E: EthSpec>(
                 && method == ENGINE_GET_PAYLOAD_V1
             {
                 return Err((
-                    format!("{} called after Capella fork!", method),
+                    format!("{method} called after Capella fork!"),
                     FORK_REQUEST_MISMATCH_ERROR_CODE,
                 ));
             }
@@ -309,7 +298,7 @@ pub async fn handle_rpc<E: EthSpec>(
                 && (method == ENGINE_GET_PAYLOAD_V1 || method == ENGINE_GET_PAYLOAD_V2)
             {
                 return Err((
-                    format!("{} called after Deneb fork!", method),
+                    format!("{method} called after Deneb fork!"),
                     FORK_REQUEST_MISMATCH_ERROR_CODE,
                 ));
             }
@@ -324,7 +313,7 @@ pub async fn handle_rpc<E: EthSpec>(
                     || method == ENGINE_GET_PAYLOAD_V3)
             {
                 return Err((
-                    format!("{} called after Electra fork!", method),
+                    format!("{method} called after Electra fork!"),
                     FORK_REQUEST_MISMATCH_ERROR_CODE,
                 ));
             }
@@ -341,7 +330,7 @@ pub async fn handle_rpc<E: EthSpec>(
                     || method == ENGINE_GET_PAYLOAD_V4)
             {
                 return Err((
-                    format!("{} called after Fulu fork!", method),
+                    format!("{method} called after Fulu fork!"),
                     FORK_REQUEST_MISMATCH_ERROR_CODE,
                 ));
             }
@@ -358,7 +347,7 @@ pub async fn handle_rpc<E: EthSpec>(
                     || method == ENGINE_GET_PAYLOAD_V4)
             {
                 return Err((
-                    format!("{} called after Gloas fork!", method),
+                    format!("{method} called after Gloas fork!"),
                     FORK_REQUEST_MISMATCH_ERROR_CODE,
                 ));
             }
@@ -536,8 +525,7 @@ pub async fn handle_rpc<E: EthSpec>(
                         if matches!(pa, JsonPayloadAttributes::V2(_)) {
                             return Err((
                                 format!(
-                                    "{} called with `JsonPayloadAttributesV2` before Capella fork!",
-                                    method
+                                    "{method} called with `JsonPayloadAttributesV2` before Capella fork!"
                                 ),
                                 GENERIC_ERROR_CODE,
                             ));
@@ -546,15 +534,14 @@ pub async fn handle_rpc<E: EthSpec>(
                     ForkName::Capella => {
                         if method == ENGINE_FORKCHOICE_UPDATED_V1 {
                             return Err((
-                                format!("{} called after Capella fork!", method),
+                                format!("{method} called after Capella fork!"),
                                 FORK_REQUEST_MISMATCH_ERROR_CODE,
                             ));
                         }
                         if method == ENGINE_FORKCHOICE_UPDATED_V3 {
                             return Err((
                                 format!(
-                                    "{} called with `JsonPayloadAttributesV3` before Deneb fork!",
-                                    method
+                                    "{method} called with `JsonPayloadAttributesV3` before Deneb fork!"
                                 ),
                                 GENERIC_ERROR_CODE,
                             ));
@@ -562,8 +549,7 @@ pub async fn handle_rpc<E: EthSpec>(
                         if matches!(pa, JsonPayloadAttributes::V1(_)) {
                             return Err((
                                 format!(
-                                    "{} called with `JsonPayloadAttributesV1` after Capella fork!",
-                                    method
+                                    "{method} called with `JsonPayloadAttributesV1` after Capella fork!"
                                 ),
                                 FORK_REQUEST_MISMATCH_ERROR_CODE,
                             ));
@@ -572,13 +558,13 @@ pub async fn handle_rpc<E: EthSpec>(
                     ForkName::Deneb | ForkName::Electra | ForkName::Fulu | ForkName::Gloas => {
                         if method == ENGINE_FORKCHOICE_UPDATED_V1 {
                             return Err((
-                                format!("{} called after Deneb fork!", method),
+                                format!("{method} called after Deneb fork!"),
                                 FORK_REQUEST_MISMATCH_ERROR_CODE,
                             ));
                         }
                         if method == ENGINE_FORKCHOICE_UPDATED_V2 {
                             return Err((
-                                format!("{} called after Deneb fork!", method),
+                                format!("{method} called after Deneb fork!"),
                                 FORK_REQUEST_MISMATCH_ERROR_CODE,
                             ));
                         }
@@ -668,7 +654,7 @@ pub async fn handle_rpc<E: EthSpec>(
             Ok(serde_json::to_value(response).unwrap())
         }
         other => Err((
-            format!("The method {} does not exist/is not available", other),
+            format!("The method {other} does not exist/is not available"),
             METHOD_NOT_FOUND_CODE,
         )),
     }
@@ -677,9 +663,9 @@ pub async fn handle_rpc<E: EthSpec>(
 fn get_param<T: DeserializeOwned>(params: &JsonValue, index: usize) -> Result<T, String> {
     params
         .get(index)
-        .ok_or_else(|| format!("missing/invalid params[{}] value", index))
+        .ok_or_else(|| format!("missing/invalid params[{index}] value"))
         .and_then(|param| {
             serde_json::from_value(param.clone())
-                .map_err(|e| format!("failed to deserialize param[{}]: {:?}", index, e))
+                .map_err(|e| format!("failed to deserialize param[{index}]: {e:?}"))
         })
 }

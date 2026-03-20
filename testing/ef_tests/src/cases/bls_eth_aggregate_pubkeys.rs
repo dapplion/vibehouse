@@ -31,7 +31,7 @@ impl Case for BlsEthAggregatePubkeys {
             {
                 return Ok(());
             }
-            Err(e) => return Err(Error::FailedToParseTest(format!("{:?}", e))),
+            Err(e) => return Err(Error::FailedToParseTest(format!("{e:?}"))),
         };
 
         let aggregate_pubkey =

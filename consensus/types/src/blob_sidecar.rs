@@ -246,16 +246,16 @@ impl<E: EthSpec> BlobSidecar<E> {
         }
 
         let blob = Blob::<E>::new(blob_bytes)
-            .map_err(|e| format!("error constructing random blob: {:?}", e))?;
+            .map_err(|e| format!("error constructing random blob: {e:?}"))?;
         let kzg_blob = KzgBlob::from_bytes(&blob).unwrap();
 
         let commitment = kzg
             .blob_to_kzg_commitment(&kzg_blob)
-            .map_err(|e| format!("error computing kzg commitment: {:?}", e))?;
+            .map_err(|e| format!("error computing kzg commitment: {e:?}"))?;
 
         let proof = kzg
             .compute_blob_kzg_proof(&kzg_blob, commitment)
-            .map_err(|e| format!("error computing kzg proof: {:?}", e))?;
+            .map_err(|e| format!("error computing kzg proof: {e:?}"))?;
 
         Ok(Self {
             blob,

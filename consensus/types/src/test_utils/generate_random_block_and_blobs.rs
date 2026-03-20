@@ -57,13 +57,13 @@ pub fn generate_blobs<E: EthSpec>(n_blobs: usize) -> Result<BlobsBundle<E>, Stri
     for blob_index in 0..n_blobs {
         blobs
             .push(Blob::<E>::default())
-            .map_err(|_| format!("blobs are full, blob index: {:?}", blob_index))?;
+            .map_err(|_| format!("blobs are full, blob index: {blob_index:?}"))?;
         commitments
             .push(KzgCommitment::empty_for_testing())
-            .map_err(|_| format!("blobs are full, blob index: {:?}", blob_index))?;
+            .map_err(|_| format!("blobs are full, blob index: {blob_index:?}"))?;
         proofs
             .push(KzgProof::empty())
-            .map_err(|_| format!("blobs are full, blob index: {:?}", blob_index))?;
+            .map_err(|_| format!("blobs are full, blob index: {blob_index:?}"))?;
     }
 
     Ok((commitments, proofs, blobs))

@@ -38,7 +38,7 @@ pub const STDIN_INPUTS_FLAG: &str = "stdin-inputs";
 
 /// Returns the "default" path where a wallet should store its password file.
 pub fn default_wallet_password_path<P: AsRef<Path>>(wallet_name: &str, secrets_dir: P) -> PathBuf {
-    secrets_dir.as_ref().join(format!("{}.pass", wallet_name))
+    secrets_dir.as_ref().join(format!("{wallet_name}.pass"))
 }
 
 /// Returns a password for a wallet, where that password is loaded from the "default" path.
@@ -68,11 +68,11 @@ pub fn read_password<P: AsRef<Path>>(path: P) -> Result<PlainText, io::Error> {
 /// Reads a password file into a `Zeroizing<String>` struct, with new-lines removed.
 pub fn read_password_string<P: AsRef<Path>>(path: P) -> Result<Zeroizing<String>, String> {
     fs::read(path)
-        .map_err(|e| format!("Error opening file: {:?}", e))
+        .map_err(|e| format!("Error opening file: {e:?}"))
         .map(strip_off_newlines)
         .and_then(|bytes| {
             String::from_utf8(bytes)
-                .map_err(|e| format!("Error decoding utf8: {:?}", e))
+                .map_err(|e| format!("Error decoding utf8: {e:?}"))
                 .map(Into::into)
         })
 }
@@ -140,9 +140,9 @@ pub fn strip_off_newlines(mut bytes: Vec<u8>) -> Vec<u8> {
 pub fn read_password_from_user(use_stdin: bool) -> Result<Zeroizing<String>, String> {
     let result = if use_stdin {
         rpassword::read_password_from_bufread(&mut std::io::stdin().lock())
-            .map_err(|e| format!("Error reading from stdin: {}", e))
+            .map_err(|e| format!("Error reading from stdin: {e}"))
     } else {
-        rpassword::read_password().map_err(|e| format!("Error reading from tty: {}", e))
+        rpassword::read_password().map_err(|e| format!("Error reading from tty: {e}"))
     };
 
     result.map(Zeroizing::from)
@@ -154,13 +154,13 @@ pub fn read_input_from_user(use_stdin: bool) -> Result<String, String> {
     if use_stdin {
         io::stdin()
             .read_line(&mut input)
-            .map_err(|e| format!("Error reading from stdin: {}", e))?;
+            .map_err(|e| format!("Error reading from stdin: {e}"))?;
     } else {
-        let tty = File::open("/dev/tty").map_err(|e| format!("Error opening tty: {}", e))?;
+        let tty = File::open("/dev/tty").map_err(|e| format!("Error opening tty: {e}"))?;
         let mut buf_reader = io::BufReader::new(tty);
         buf_reader
             .read_line(&mut input)
-            .map_err(|e| format!("Error reading from tty: {}", e))?;
+            .map_err(|e| format!("Error reading from tty: {e}"))?;
     }
     trim_newline(&mut input);
     Ok(input)
@@ -189,8 +189,7 @@ pub fn is_password_sufficiently_complex(password: &[u8]) -> Result<(), String> {
         Ok(())
     } else {
         Err(format!(
-            "Please use at least {} characters for your password.",
-            MINIMUM_PASSWORD_LEN
+            "Please use at least {MINIMUM_PASSWORD_LEN} characters for your password."
         ))
     }
 }
@@ -211,21 +210,17 @@ pub fn read_mnemonic_from_cli(
 ) -> Result<Mnemonic, String> {
     let mnemonic = match mnemonic_path {
         Some(path) => fs::read(&path)
-            .map_err(|e| format!("Unable to read {:?}: {:?}", path, e))
+            .map_err(|e| format!("Unable to read {path:?}: {e:?}"))
             .and_then(|bytes| {
                 let bytes_no_newlines: PlainText = strip_off_newlines(bytes).into();
                 let phrase = from_utf8(bytes_no_newlines.as_ref())
-                    .map_err(|e| format!("Unable to derive mnemonic: {:?}", e))?;
-                Mnemonic::from_phrase(phrase, Language::English).map_err(|e| {
-                    format!(
-                        "Unable to derive mnemonic from string {:?}: {:?}",
-                        phrase, e
-                    )
-                })
+                    .map_err(|e| format!("Unable to derive mnemonic: {e:?}"))?;
+                Mnemonic::from_phrase(phrase, Language::English)
+                    .map_err(|e| format!("Unable to derive mnemonic from string {phrase:?}: {e:?}"))
             })?,
         None => loop {
             eprintln!();
-            eprintln!("{}", MNEMONIC_PROMPT);
+            eprintln!("{MNEMONIC_PROMPT}");
 
             let mnemonic = read_input_from_user(stdin_inputs)?;
 

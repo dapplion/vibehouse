@@ -92,9 +92,8 @@ impl ValidatorSpecification {
                 {
                     if ignore_duplicates {
                         eprintln!(
-                            "Duplicate validators are ignored, ignoring {:?} which exists \
-                            on the destination validator client",
-                            voting_public_key
+                            "Duplicate validators are ignored, ignoring {voting_public_key:?} which exists \
+                            on the destination validator client"
                         );
                     } else {
                         return Err(UploadError::DuplicateValidator(voting_public_key));
@@ -324,21 +323,17 @@ pub async fn vc_http_client<P: AsRef<Path>>(
 ) -> Result<(ValidatorClientHttpClient, Vec<SingleKeystoreResponse>), String> {
     let token_path = token_path.as_ref();
     let token_bytes =
-        fs::read(token_path).map_err(|e| format!("Failed to read {:?}: {:?}", token_path, e))?;
+        fs::read(token_path).map_err(|e| format!("Failed to read {token_path:?}: {e:?}"))?;
     let token_string = String::from_utf8(strip_off_newlines(token_bytes))
-        .map_err(|e| format!("Failed to parse {:?} as utf8: {:?}", token_path, e))?;
-    let http_client = ValidatorClientHttpClient::new(url.clone(), token_string).map_err(|e| {
-        format!(
-            "Could not instantiate HTTP client from URL and secret: {:?}",
-            e
-        )
-    })?;
+        .map_err(|e| format!("Failed to parse {token_path:?} as utf8: {e:?}"))?;
+    let http_client = ValidatorClientHttpClient::new(url.clone(), token_string)
+        .map_err(|e| format!("Could not instantiate HTTP client from URL and secret: {e:?}"))?;
 
     // Perform a request to check that the connection works
     let remote_keystores = http_client
         .get_keystores()
         .await
-        .map_err(|e| format!("Failed to list keystores on VC: {:?}", e))?
+        .map_err(|e| format!("Failed to list keystores on VC: {e:?}"))?
         .data;
 
     eprintln!(

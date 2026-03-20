@@ -55,7 +55,7 @@ impl<E: EthSpec> LoadCase for GenericMerkleProofValidity<E> {
                 .map(Box::new)
                 .map(GenericMerkleProofValidity::BeaconBlockBody)
         } else {
-            panic!("unsupported type for merkle proof test: {:?}", suite_name)
+            panic!("unsupported type for merkle proof test: {suite_name:?}")
         }
     }
 }
@@ -120,8 +120,7 @@ impl<E: EthSpec> Case for BeaconStateMerkleProofValidity<E> {
         let branch_len = self.merkle_proof.branch.len();
         if proof_len != branch_len {
             return Err(Error::NotEqual(format!(
-                "Branches not equal in length computed: {}, expected {}",
-                proof_len, branch_len
+                "Branches not equal in length computed: {proof_len}, expected {branch_len}"
             )));
         }
 
@@ -159,8 +158,7 @@ impl<E: EthSpec> LoadCase for KzgInclusionMerkleProofValidity<E> {
         let block: BeaconBlockBody<E, FullPayload<E>> = match fork_name {
             ForkName::Base | ForkName::Altair | ForkName::Bellatrix | ForkName::Capella => {
                 return Err(Error::InternalError(format!(
-                    "KZG inclusion merkle proof validity test skipped for {:?}",
-                    fork_name
+                    "KZG inclusion merkle proof validity test skipped for {fork_name:?}"
                 )));
             }
             ForkName::Deneb => {
@@ -217,8 +215,7 @@ impl<E: EthSpec> KzgInclusionMerkleProofValidity<E> {
         let branch_len = self.merkle_proof.branch.len();
         if proof_len != branch_len {
             return Err(Error::NotEqual(format!(
-                "Branches not equal in length computed: {}, expected {}",
-                proof_len, branch_len
+                "Branches not equal in length computed: {proof_len}, expected {branch_len}"
             )));
         }
 
@@ -276,8 +273,7 @@ impl<E: EthSpec> LoadCase for BeaconBlockBodyMerkleProofValidity<E> {
         let block_body: BeaconBlockBody<E, FullPayload<E>> = match fork_name {
             ForkName::Base | ForkName::Altair | ForkName::Bellatrix => {
                 return Err(Error::InternalError(format!(
-                    "Beacon block body merkle proof validity test skipped for {:?}",
-                    fork_name
+                    "Beacon block body merkle proof validity test skipped for {fork_name:?}"
                 )));
             }
             ForkName::Capella => {
@@ -327,8 +323,7 @@ impl<E: EthSpec> Case for BeaconBlockBodyMerkleProofValidity<E> {
         let branch_len = self.merkle_proof.branch.len();
         if proof_len != branch_len {
             return Err(Error::NotEqual(format!(
-                "Branches not equal in length computed: {}, expected {}",
-                proof_len, branch_len
+                "Branches not equal in length computed: {proof_len}, expected {branch_len}"
             )));
         }
 

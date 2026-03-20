@@ -35,8 +35,7 @@ impl ApiSecret {
         // Check if the path is a directory
         if pk_path.is_dir() {
             return Err(format!(
-                "API token path {:?} is a directory, not a file",
-                pk_path
+                "API token path {pk_path:?} is a directory, not a file"
             ));
         }
 
@@ -44,10 +43,7 @@ impl ApiSecret {
             // Create parent directories if they don't exist
             if let Some(parent) = pk_path.parent() {
                 std::fs::create_dir_all(parent).map_err(|e| {
-                    format!(
-                        "Unable to create parent directories for {:?}: {:?}",
-                        pk_path, e
-                    )
+                    format!("Unable to create parent directories for {pk_path:?}: {e:?}")
                 })?;
             }
 
@@ -60,10 +56,7 @@ impl ApiSecret {
 
             // Create and write the public key to file with appropriate permissions
             create_with_600_perms(pk_path, pk.as_bytes()).map_err(|e| {
-                format!(
-                    "Unable to create file with permissions for {:?}: {:?}",
-                    pk_path, e
-                )
+                format!("Unable to create file with permissions for {pk_path:?}: {e:?}")
             })?;
         }
 
@@ -143,8 +136,8 @@ mod tests {
         assert!(headers[0].starts_with("Basic "));
         assert!(headers[1].starts_with("Bearer "));
         let token = secret.api_token();
-        assert_eq!(headers[0], format!("Basic {}", token));
-        assert_eq!(headers[1], format!("Bearer {}", token));
+        assert_eq!(headers[0], format!("Basic {token}"));
+        assert_eq!(headers[1], format!("Bearer {token}"));
     }
 
     #[test]
@@ -154,8 +147,7 @@ mod tests {
         match result {
             Err(e) => assert!(
                 e.contains("directory"),
-                "Expected 'directory' in error: {}",
-                e
+                "Expected 'directory' in error: {e}"
             ),
             Ok(_) => panic!("Expected error for directory path"),
         }

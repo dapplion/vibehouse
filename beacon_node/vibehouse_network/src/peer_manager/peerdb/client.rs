@@ -100,7 +100,7 @@ impl std::fmt::Display for Client {
             ClientKind::Caplin => write!(f, "Caplin"),
             ClientKind::Unknown => {
                 if let Some(agent_string) = &self.agent_string {
-                    write!(f, "Unknown: {}", agent_string)
+                    write!(f, "Unknown: {agent_string}")
                 } else {
                     write!(f, "Unknown")
                 }
@@ -343,7 +343,7 @@ mod tests {
             protocol_version: "unknown".into(),
             agent_string: None,
         };
-        let display = format!("{}", client);
+        let display = format!("{client}");
         assert!(display.contains("vibehouse"));
         assert!(display.contains("v1.0.0"));
         assert!(display.contains("linux"));
@@ -358,7 +358,7 @@ mod tests {
             protocol_version: "unknown".into(),
             agent_string: Some("mystery/v1".into()),
         };
-        assert!(format!("{}", client).contains("mystery/v1"));
+        assert!(format!("{client}").contains("mystery/v1"));
     }
 
     #[test]
@@ -370,7 +370,7 @@ mod tests {
             protocol_version: "unknown".into(),
             agent_string: None,
         };
-        assert_eq!(format!("{}", client), "Unknown");
+        assert_eq!(format!("{client}"), "Unknown");
     }
 
     #[test]

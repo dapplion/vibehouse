@@ -684,8 +684,7 @@ mod tests {
         let flags = get_attestation_participation_flag_indices(&state, &data, 1, &spec).unwrap();
         assert!(
             flags.contains(&TIMELY_HEAD_FLAG_INDEX),
-            "availability lookup should wrap correctly: slot 64 %% {} = 0, index=0 matches availability=false(0)",
-            slots_per_hist
+            "availability lookup should wrap correctly: slot 64 %% {slots_per_hist} = 0, index=0 matches availability=false(0)"
         );
     }
 

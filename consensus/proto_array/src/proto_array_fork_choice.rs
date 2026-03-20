@@ -600,7 +600,7 @@ impl ProtoArrayForkChoice {
 
         proto_array
             .on_block::<E>(block, current_slot)
-            .map_err(|e| format!("Failed to add finalized block to proto_array: {:?}", e))?;
+            .map_err(|e| format!("Failed to add finalized block to proto_array: {e:?}"))?;
 
         Ok(Self::from_parts(
             proto_array,
@@ -635,7 +635,7 @@ impl ProtoArrayForkChoice {
     ) -> Result<(), String> {
         self.proto_array
             .propagate_execution_payload_validation(block_root)
-            .map_err(|e| format!("Failed to process valid payload: {:?}", e))
+            .map_err(|e| format!("Failed to process valid payload: {e:?}"))
     }
 
     /// See `ProtoArray::propagate_execution_payload_invalidation` for documentation.
@@ -645,7 +645,7 @@ impl ProtoArrayForkChoice {
     ) -> Result<(), String> {
         self.proto_array
             .propagate_execution_payload_invalidation::<E>(op)
-            .map_err(|e| format!("Failed to process invalid payload: {:?}", e))
+            .map_err(|e| format!("Failed to process invalid payload: {e:?}"))
     }
 
     pub fn process_attestation(
@@ -679,7 +679,7 @@ impl ProtoArrayForkChoice {
 
         self.proto_array
             .on_block::<E>(block, current_slot)
-            .map_err(|e| format!("process_block_error: {:?}", e))
+            .map_err(|e| format!("process_block_error: {e:?}"))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -737,7 +737,7 @@ impl ProtoArrayForkChoice {
             &new_balances.effective_balances,
             equivocating_indices,
         )
-        .map_err(|e| format!("find_head compute_deltas failed: {:?}", e))?;
+        .map_err(|e| format!("find_head compute_deltas failed: {e:?}"))?;
 
         self.proto_array
             .apply_score_changes::<E>(
@@ -749,7 +749,7 @@ impl ProtoArrayForkChoice {
                 current_slot,
                 spec,
             )
-            .map_err(|e| format!("find_head apply_score_changes failed: {:?}", e))?;
+            .map_err(|e| format!("find_head apply_score_changes failed: {e:?}"))?;
 
         self.maybe_update_balances(new_balances);
 
@@ -757,7 +757,7 @@ impl ProtoArrayForkChoice {
 
         self.proto_array
             .find_head::<E>(&justified_checkpoint.root, current_slot)
-            .map_err(|e| format!("find_head failed: {:?}", e))
+            .map_err(|e| format!("find_head failed: {e:?}"))
     }
 
     /// Update stored balances only when they differ from the new values.
@@ -1007,7 +1007,7 @@ impl ProtoArrayForkChoice {
                             if let Some(parent_index) = node_or_ancestor.parent {
                                 node_or_ancestor =
                                     self.proto_array.nodes.get_mut(parent_index).ok_or_else(
-                                        || format!("Missing parent index: {}", parent_index),
+                                        || format!("Missing parent index: {parent_index}"),
                                     )?;
                             } else {
                                 // This is either the finalized block or a block that does not
@@ -1033,7 +1033,7 @@ impl ProtoArrayForkChoice {
     pub fn maybe_prune(&mut self, finalized_root: Hash256) -> Result<(), String> {
         self.proto_array
             .maybe_prune(finalized_root)
-            .map_err(|e| format!("find_head maybe_prune failed: {:?}", e))
+            .map_err(|e| format!("find_head maybe_prune failed: {e:?}"))
     }
 
     pub fn set_prune_threshold(&mut self, prune_threshold: usize) {
@@ -1177,7 +1177,7 @@ impl ProtoArrayForkChoice {
 
     pub fn from_bytes(bytes: &[u8], balances: JustifiedBalances) -> Result<Self, String> {
         let container = SszContainer::from_ssz_bytes(bytes)
-            .map_err(|e| format!("Failed to decode ProtoArrayForkChoice: {:?}", e))?;
+            .map_err(|e| format!("Failed to decode ProtoArrayForkChoice: {e:?}"))?;
         Self::from_container(container, balances)
     }
 
@@ -4651,7 +4651,7 @@ mod test_gloas_fork_choice {
         );
 
         // FULL > EMPTY when extending
-        assert!(tf > te, "FULL({}) should beat EMPTY({})", tf, te);
+        assert!(tf > te, "FULL({tf}) should beat EMPTY({te})");
     }
 
     #[test]

@@ -631,7 +631,7 @@ async fn post_block_import_logging_and_response<T: BeaconChainTypes>(
             Ok(StatusCode::OK.into_response())
         }
         Ok(AvailabilityProcessingStatus::MissingComponents(_, block_root)) => {
-            let msg = format!("Missing parts of block with root {:?}", block_root);
+            let msg = format!("Missing parts of block with root {block_root:?}");
             if let BroadcastValidation::Gossip = validation_level {
                 Err(ApiError::BroadcastWithoutImport(msg))
             } else {
@@ -755,11 +755,10 @@ pub async fn reconstruct_block<T: BeaconChainTypes>(
                         && builder_err.status().is_some_and(|s| s.is_client_error())
                     {
                         return ApiError::bad_request(format!(
-                            "Blind block proposal failed: {:?}",
-                            e
+                            "Blind block proposal failed: {e:?}"
                         ));
                     }
-                    ApiError::server_error(format!("Blind block proposal failed: {:?}", e))
+                    ApiError::server_error(format!("Blind block proposal failed: {e:?}"))
                 })? {
                 SubmitBlindedBlockResponse::V1(full_payload) => {
                     info!(block_root = ?block_root, "Successfully published a block to the builder network");

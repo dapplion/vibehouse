@@ -73,24 +73,17 @@ pub fn zero_port(transport: Transport, ipv: IpVersion) -> Result<u16, String> {
 fn find_unused_port(transport: Transport, socket_addr: SocketAddr) -> Result<u16, String> {
     let local_addr = match transport {
         Transport::Tcp => {
-            let listener = TcpListener::bind(socket_addr).map_err(|e| {
-                format!("Failed to create TCP listener to find unused port: {:?}", e)
-            })?;
+            let listener = TcpListener::bind(socket_addr)
+                .map_err(|e| format!("Failed to create TCP listener to find unused port: {e:?}"))?;
             listener.local_addr().map_err(|e| {
-                format!(
-                    "Failed to read TCP listener local_addr to find unused port: {:?}",
-                    e
-                )
+                format!("Failed to read TCP listener local_addr to find unused port: {e:?}")
             })?
         }
         Transport::Udp => {
             let socket = UdpSocket::bind(socket_addr)
-                .map_err(|e| format!("Failed to create UDP socket to find unused port: {:?}", e))?;
+                .map_err(|e| format!("Failed to create UDP socket to find unused port: {e:?}"))?;
             socket.local_addr().map_err(|e| {
-                format!(
-                    "Failed to read UDP socket local_addr to find unused port: {:?}",
-                    e
-                )
+                format!("Failed to read UDP socket local_addr to find unused port: {e:?}")
             })?
         }
     };
@@ -152,7 +145,7 @@ mod tests {
         let mut ports = std::collections::HashSet::new();
         for _ in 0..20 {
             let port = unused_tcp4_port().unwrap();
-            assert!(ports.insert(port), "port {} was returned twice", port);
+            assert!(ports.insert(port), "port {port} was returned twice");
         }
     }
 }

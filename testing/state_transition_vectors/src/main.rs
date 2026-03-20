@@ -30,7 +30,7 @@ async fn main() {
     match write_all_vectors().await {
         Ok(()) => exit(0),
         Err(e) => {
-            eprintln!("Error: {}", e);
+            eprintln!("Error: {e}");
             exit(1)
         }
     }
@@ -85,23 +85,23 @@ async fn write_all_vectors() -> Result<(), String> {
 /// Writes a list of `vectors` to the `title` dir.
 fn write_vectors_to_file(title: &str, vectors: &[TestVector]) -> Result<(), String> {
     let dir = env::var("CARGO_MANIFEST_DIR")
-        .map_err(|e| format!("Unable to find manifest dir: {:?}", e))?
+        .map_err(|e| format!("Unable to find manifest dir: {e:?}"))?
         .parse::<PathBuf>()
-        .map_err(|e| format!("Unable to parse manifest dir: {:?}", e))?
+        .map_err(|e| format!("Unable to parse manifest dir: {e:?}"))?
         .join(BASE_VECTOR_DIR)
         .join(title);
 
     if dir.exists() {
-        fs::remove_dir_all(&dir).map_err(|e| format!("Unable to remove {:?}: {:?}", dir, e))?;
+        fs::remove_dir_all(&dir).map_err(|e| format!("Unable to remove {dir:?}: {e:?}"))?;
     }
-    fs::create_dir_all(&dir).map_err(|e| format!("Unable to create {:?}: {:?}", dir, e))?;
+    fs::create_dir_all(&dir).map_err(|e| format!("Unable to create {dir:?}: {e:?}"))?;
 
     for vector in vectors {
         let dir = dir.clone().join(&vector.title);
         if dir.exists() {
-            fs::remove_dir_all(&dir).map_err(|e| format!("Unable to remove {:?}: {:?}", dir, e))?;
+            fs::remove_dir_all(&dir).map_err(|e| format!("Unable to remove {dir:?}: {e:?}"))?;
         }
-        fs::create_dir_all(&dir).map_err(|e| format!("Unable to create {:?}: {:?}", dir, e))?;
+        fs::create_dir_all(&dir).map_err(|e| format!("Unable to create {dir:?}: {e:?}"))?;
 
         write_to_ssz_file(&dir.clone().join("pre.ssz"), &vector.pre_state)?;
         write_to_ssz_file(&dir.clone().join("block.ssz"), &vector.block)?;
@@ -124,10 +124,10 @@ fn write_to_ssz_file<T: Encode>(path: &Path, item: &T) -> Result<(), String> {
 /// Write some bytes to file.
 fn write_to_file(path: &Path, item: &[u8]) -> Result<(), String> {
     File::create(path)
-        .map_err(|e| format!("Unable to create {:?}: {:?}", path, e))
+        .map_err(|e| format!("Unable to create {path:?}: {e:?}"))
         .and_then(|mut file| {
             file.write_all(item)
                 .map(|_| ())
-                .map_err(|e| format!("Unable to write to {:?}: {:?}", path, e))
+                .map_err(|e| format!("Unable to write to {path:?}: {e:?}"))
         })
 }

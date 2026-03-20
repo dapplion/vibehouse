@@ -12,7 +12,7 @@ pub enum SensitiveError {
 
 impl fmt::Display for SensitiveError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -57,7 +57,7 @@ impl<'de> Deserialize<'de> for SensitiveUrl {
     {
         let s: String = Deserialize::deserialize(deserializer)?;
         SensitiveUrl::parse(&s)
-            .map_err(|e| de::Error::custom(format!("Failed to deserialize sensitive URL {:?}", e)))
+            .map_err(|e| de::Error::custom(format!("Failed to deserialize sensitive URL {e:?}")))
     }
 }
 
@@ -147,7 +147,7 @@ mod tests {
     #[test]
     fn debug_shows_redacted() {
         let surl = SensitiveUrl::parse("https://secret:pass@example.com/path").unwrap();
-        let debug = format!("{:?}", surl);
+        let debug = format!("{surl:?}");
         assert!(
             !debug.contains("secret"),
             "debug should not expose credentials: {debug}"

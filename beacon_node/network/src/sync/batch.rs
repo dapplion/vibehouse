@@ -524,18 +524,18 @@ impl<D: Hash> std::fmt::Debug for BatchState<D> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             BatchState::Processing(Attempt { peer_group, .. }) => {
-                write!(f, "Processing({:?})", peer_group)
+                write!(f, "Processing({peer_group:?})")
             }
             BatchState::AwaitingValidation(Attempt { peer_group, .. }) => {
-                write!(f, "AwaitingValidation({:?})", peer_group)
+                write!(f, "AwaitingValidation({peer_group:?})")
             }
             BatchState::AwaitingDownload => f.write_str("AwaitingDownload"),
             BatchState::Failed => f.write_str("Failed"),
             BatchState::AwaitingProcessing(peer_group, ..) => {
-                write!(f, "AwaitingProcessing({:?})", peer_group)
+                write!(f, "AwaitingProcessing({peer_group:?})")
             }
             BatchState::Downloading(request_id) => {
-                write!(f, "Downloading({})", request_id)
+                write!(f, "Downloading({request_id})")
             }
             BatchState::Poisoned => f.write_str("Poisoned"),
         }
@@ -1074,7 +1074,7 @@ mod tests {
     #[test]
     fn batch_display_includes_slot_range() {
         let batch = make_batch();
-        let display = format!("{}", batch);
+        let display = format!("{batch}");
         assert!(display.contains("Start Slot: 0"));
         assert!(display.contains("End Slot: 8"));
     }

@@ -25,12 +25,12 @@ pub fn get_aggregate_attestation<T: BeaconChainTypes>(
         };
         chain
             .get_aggregated_attestation_electra(slot, attestation_data_root, committee_index)
-            .map_err(|e| ApiError::bad_request(format!("unable to fetch aggregate: {:?}", e)))?
+            .map_err(|e| ApiError::bad_request(format!("unable to fetch aggregate: {e:?}")))?
             .ok_or_else(|| ApiError::not_found("no matching aggregate found".to_string()))?
     } else {
         chain
             .get_pre_electra_aggregated_attestation_by_slot_and_root(slot, attestation_data_root)
-            .map_err(|e| ApiError::bad_request(format!("unable to fetch aggregate: {:?}", e)))?
+            .map_err(|e| ApiError::bad_request(format!("unable to fetch aggregate: {e:?}")))?
             .ok_or_else(|| ApiError::not_found("no matching aggregate found".to_string()))?
     };
 

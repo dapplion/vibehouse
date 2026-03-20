@@ -484,12 +484,12 @@ mod test {
         for slot in 0..slots_per_historical_root {
             state_a
                 .set_state_root(Slot::from(slot), hashes.next().unwrap())
-                .unwrap_or_else(|_| panic!("should set state_a slot {}", slot));
+                .unwrap_or_else(|_| panic!("should set state_a slot {slot}"));
         }
         for slot in slots_per_historical_root..slots_per_historical_root * 2 {
             state_b
                 .set_state_root(Slot::from(slot), hashes.next().unwrap())
-                .unwrap_or_else(|_| panic!("should set state_b slot {}", slot));
+                .unwrap_or_else(|_| panic!("should set state_b slot {slot}"));
         }
 
         let state_a_root = Hash256::from_low_u64_be(slots_per_historical_root as u64);
@@ -519,13 +519,12 @@ mod test {
         for (i, item) in collected.iter().enumerate() {
             let (hash, slot) = *item;
 
-            assert_eq!(slot, i as u64, "slot mismatch at {}: {} vs {}", i, slot, i);
+            assert_eq!(slot, i as u64, "slot mismatch at {i}: {slot} vs {i}");
 
             assert_eq!(
                 hash,
                 Hash256::from_low_u64_be(i as u64),
-                "hash mismatch at {}",
-                i
+                "hash mismatch at {i}"
             );
         }
     }

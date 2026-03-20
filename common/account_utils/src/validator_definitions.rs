@@ -300,9 +300,9 @@ impl ValidatorDefinitions {
                     .read(true)
                     .create(false)
                     .open(&voting_keystore_path)
-                    .map_err(|e| format!("{:?}", e))
+                    .map_err(|e| format!("{e:?}"))
                     .and_then(|file| {
-                        Keystore::from_json_reader(file).map_err(|e| format!("{:?}", e))
+                        Keystore::from_json_reader(file).map_err(|e| format!("{e:?}"))
                     });
 
                 let keystore = match keystore_result {
@@ -493,8 +493,8 @@ mod tests {
     #[test]
     fn voting_keystore_filename_launchpad() {
         assert!(!is_voting_keystore("cats"));
-        assert!(!is_voting_keystore(&format!("a{}", VOTING_KEYSTORE_FILE)));
-        assert!(!is_voting_keystore(&format!("{}b", VOTING_KEYSTORE_FILE)));
+        assert!(!is_voting_keystore(&format!("a{VOTING_KEYSTORE_FILE}")));
+        assert!(!is_voting_keystore(&format!("{VOTING_KEYSTORE_FILE}b")));
         assert!(is_voting_keystore(
             "keystore-m_12381_3600_0_0_0-1593476250.json"
         ));

@@ -280,6 +280,6 @@ mod tests {
     fn display_matches_as_str() {
         let info = make_sync_info(100, None);
         let status = SyncStatus::Advanced { info };
-        assert_eq!(format!("{}", status), status.as_str());
+        assert_eq!(format!("{status}"), status.as_str());
     }
 }

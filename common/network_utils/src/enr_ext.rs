@@ -314,12 +314,8 @@ pub fn peer_id_to_node_id(peer_id: &PeerId) -> Result<discv5::enr::NodeId, Strin
     // if generated from a PublicKey with Identity multihash.
     let pk_bytes = &peer_id.to_bytes()[2..];
 
-    let public_key = PublicKey::try_decode_protobuf(pk_bytes).map_err(|e| {
-        format!(
-            " Cannot parse libp2p public key public key from peer id: {}",
-            e
-        )
-    })?;
+    let public_key = PublicKey::try_decode_protobuf(pk_bytes)
+        .map_err(|e| format!(" Cannot parse libp2p public key public key from peer id: {e}"))?;
 
     match public_key.key_type() {
         KeyType::Secp256k1 => {
@@ -341,7 +337,7 @@ pub fn peer_id_to_node_id(peer_id: &PeerId) -> Result<discv5::enr::NodeId, Strin
             Ok(discv5::enr::NodeId::parse(&output).expect("Must be correct length"))
         }
 
-        _ => Err(format!("Unsupported public key from peer {}", peer_id)),
+        _ => Err(format!("Unsupported public key from peer {peer_id}")),
     }
 }
 

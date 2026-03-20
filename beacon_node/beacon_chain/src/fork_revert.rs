@@ -31,12 +31,11 @@ pub fn revert_to_fork_boundary<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>
     let current_fork = spec.fork_name_at_slot::<E>(current_slot);
     let fork_epoch = spec
         .fork_epoch(current_fork)
-        .ok_or_else(|| format!("Current fork '{}' never activates", current_fork))?;
+        .ok_or_else(|| format!("Current fork '{current_fork}' never activates"))?;
 
     if current_fork == ForkName::Base {
         return Err(format!(
-            "Cannot revert to before phase0 hard fork. {}",
-            CORRUPT_DB_MESSAGE
+            "Cannot revert to before phase0 hard fork. {CORRUPT_DB_MESSAGE}"
         ));
     }
 
@@ -61,17 +60,12 @@ pub fn revert_to_fork_boundary<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>
             }
         })
     })
-    .map_err(|e| {
-        format!(
-            "Error fetching blocks to revert: {:?}. {}",
-            e, CORRUPT_DB_MESSAGE
-        )
-    })?
-    .ok_or_else(|| format!("No pre-fork blocks found. {}", CORRUPT_DB_MESSAGE))?;
+    .map_err(|e| format!("Error fetching blocks to revert: {e:?}. {CORRUPT_DB_MESSAGE}"))?
+    .ok_or_else(|| format!("No pre-fork blocks found. {CORRUPT_DB_MESSAGE}"))?;
 
     let block = store
         .make_full_block(&block_root, blinded_block)
-        .map_err(|e| format!("Unable to add payload to new head block: {:?}", e))?;
+        .map_err(|e| format!("Unable to add payload to new head block: {e:?}"))?;
 
     Ok((block_root, block))
 }
@@ -103,25 +97,17 @@ pub fn reset_fork_choice_to_finalization<E: EthSpec, Hot: ItemStore<E>, Cold: It
     let finalized_block_root = finalized_checkpoint.root;
     let finalized_block = store
         .get_full_block(&finalized_block_root)
-        .map_err(|e| format!("Error loading finalized block: {:?}", e))?
-        .ok_or_else(|| {
-            format!(
-                "Finalized block missing for revert: {:?}",
-                finalized_block_root
-            )
-        })?;
+        .map_err(|e| format!("Error loading finalized block: {e:?}"))?
+        .ok_or_else(|| format!("Finalized block missing for revert: {finalized_block_root:?}"))?;
 
     // Advance finalized state to finalized epoch (to handle skipped slots).
     let finalized_state_root = finalized_block.state_root();
     // The enshrined finalized state should be in the state cache.
     let mut finalized_state = store
         .get_state(&finalized_state_root, Some(finalized_block.slot()), true)
-        .map_err(|e| format!("Error loading finalized state: {:?}", e))?
+        .map_err(|e| format!("Error loading finalized state: {e:?}"))?
         .ok_or_else(|| {
-            format!(
-                "Finalized block state missing from database: {:?}",
-                finalized_state_root
-            )
+            format!("Finalized block state missing from database: {finalized_state_root:?}")
         })?;
     let finalized_slot = finalized_checkpoint.epoch.start_slot(E::slots_per_epoch());
     complete_state_advance(
@@ -130,12 +116,7 @@ pub fn reset_fork_choice_to_finalization<E: EthSpec, Hot: ItemStore<E>, Cold: It
         finalized_slot,
         spec,
     )
-    .map_err(|e| {
-        format!(
-            "Error advancing finalized state to finalized epoch: {:?}",
-            e
-        )
-    })?;
+    .map_err(|e| format!("Error advancing finalized state to finalized epoch: {e:?}"))?;
     let finalized_snapshot = BeaconSnapshot {
         beacon_block_root: finalized_block_root,
         beacon_block: Arc::new(finalized_block),
@@ -154,19 +135,19 @@ pub fn reset_fork_choice_to_finalization<E: EthSpec, Hot: ItemStore<E>, Cold: It
         current_slot,
         spec,
     )
-    .map_err(|e| format!("Unable to reset fork choice for revert: {:?}", e))?;
+    .map_err(|e| format!("Unable to reset fork choice for revert: {e:?}"))?;
 
     // Replay blocks from finalized checkpoint back to head.
     // We do not replay attestations presently, relying on the absence of other blocks
     // to guarantee `head_block_root` as the head.
     let blocks = store
         .load_blocks_to_replay(finalized_slot + 1, head_state.slot(), head_block_root)
-        .map_err(|e| format!("Error loading blocks to replay for fork choice: {:?}", e))?;
+        .map_err(|e| format!("Error loading blocks to replay for fork choice: {e:?}"))?;
 
     let mut state = finalized_snapshot.beacon_state;
     for block in blocks {
         complete_state_advance(&mut state, None, block.slot(), spec)
-            .map_err(|e| format!("State advance failed: {:?}", e))?;
+            .map_err(|e| format!("State advance failed: {e:?}"))?;
 
         let mut ctxt = ConsensusContext::new(block.slot())
             .set_proposer_index(block.message().proposer_index());
@@ -178,7 +159,7 @@ pub fn reset_fork_choice_to_finalization<E: EthSpec, Hot: ItemStore<E>, Cold: It
             &mut ctxt,
             spec,
         )
-        .map_err(|e| format!("Error replaying block: {:?}", e))?;
+        .map_err(|e| format!("Error replaying block: {e:?}"))?;
 
         // Setting this to unverified is the safest solution, since we don't have a way to
         // retro-actively determine if they were valid or not.
@@ -200,7 +181,7 @@ pub fn reset_fork_choice_to_finalization<E: EthSpec, Hot: ItemStore<E>, Cold: It
                 None,
                 spec,
             )
-            .map_err(|e| format!("Error applying replayed block to fork choice: {:?}", e))?;
+            .map_err(|e| format!("Error applying replayed block to fork choice: {e:?}"))?;
     }
 
     Ok(fork_choice)

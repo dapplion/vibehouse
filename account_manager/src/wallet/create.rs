@@ -127,10 +127,10 @@ pub fn cli_run(matches: &ArgMatches, wallet_base_dir: PathBuf) -> Result<(), Str
 
     if let Some(path) = mnemonic_output_path {
         create_with_600_perms(&path, mnemonic.phrase().as_bytes())
-            .map_err(|e| format!("Unable to write mnemonic to {:?}: {:?}", path, e))?;
+            .map_err(|e| format!("Unable to write mnemonic to {path:?}: {e:?}"))?;
     }
 
-    println!("Your wallet's {}-word BIP-39 mnemonic is:", mnemonic_length);
+    println!("Your wallet's {mnemonic_length}-word BIP-39 mnemonic is:");
     println!();
     println!("\t{}", mnemonic.phrase());
     println!();
@@ -165,11 +165,11 @@ pub fn create_wallet_from_mnemonic(
     let stdin_inputs = cfg!(windows) || matches.get_flag(STDIN_INPUTS_FLAG);
     let wallet_type = match type_field.as_ref() {
         HD_TYPE => WalletType::Hd,
-        unknown => return Err(format!("--{} {} is not supported", TYPE_FLAG, unknown)),
+        unknown => return Err(format!("--{TYPE_FLAG} {unknown} is not supported")),
     };
 
     let mgr = WalletManager::open(wallet_base_dir)
-        .map_err(|e| format!("Unable to open --{}: {:?}", WALLETS_DIR_FLAG, e))?;
+        .map_err(|e| format!("Unable to open --{WALLETS_DIR_FLAG}: {e:?}"))?;
 
     let wallet_password: PlainText = match wallet_password_path {
         Some(path) => {
@@ -179,13 +179,12 @@ pub fn create_wallet_from_mnemonic(
                 // create a file with that name, we require that the password has a .pass suffix.
                 if path.extension() != Some(OsStr::new("pass")) {
                     return Err(format!(
-                        "Only creates a password file if that file ends in .pass: {:?}",
-                        path
+                        "Only creates a password file if that file ends in .pass: {path:?}"
                     ));
                 }
 
                 create_with_600_perms(&path, random_password().as_bytes())
-                    .map_err(|e| format!("Unable to write to {:?}: {:?}", path, e))?;
+                    .map_err(|e| format!("Unable to write to {path:?}: {e:?}"))?;
             }
             read_new_wallet_password_from_cli(Some(path), stdin_inputs)?
         }
@@ -201,7 +200,7 @@ pub fn create_wallet_from_mnemonic(
             mnemonic,
             wallet_password.as_bytes(),
         )
-        .map_err(|e| format!("Unable to create wallet: {:?}", e))?;
+        .map_err(|e| format!("Unable to create wallet: {e:?}"))?;
     Ok(wallet)
 }
 
@@ -215,7 +214,7 @@ pub fn read_new_wallet_password_from_cli(
     match password_file_path {
         Some(path) => {
             let password: PlainText = fs::read(&path)
-                .map_err(|e| format!("Unable to read {:?}: {:?}", path, e))
+                .map_err(|e| format!("Unable to read {path:?}: {e:?}"))
                 .map(|bytes| strip_off_newlines(bytes).into())?;
 
             // Ensure the password meets the minimum requirements.
@@ -224,14 +223,14 @@ pub fn read_new_wallet_password_from_cli(
         }
         None => loop {
             eprintln!();
-            eprintln!("{}", NEW_WALLET_PASSWORD_PROMPT);
+            eprintln!("{NEW_WALLET_PASSWORD_PROMPT}");
             let password =
                 PlainText::from(read_password_from_user(stdin_inputs)?.as_bytes().to_vec());
 
             // Ensure the password meets the minimum requirements.
             match is_password_sufficiently_complex(password.as_bytes()) {
                 Ok(_) => {
-                    eprintln!("{}", RETYPE_PASSWORD_PROMPT);
+                    eprintln!("{RETYPE_PASSWORD_PROMPT}");
                     let retyped_password =
                         PlainText::from(read_password_from_user(stdin_inputs)?.as_bytes().to_vec());
                     if retyped_password == password {
@@ -240,7 +239,7 @@ pub fn read_new_wallet_password_from_cli(
                         eprintln!("Passwords do not match.");
                     }
                 }
-                Err(message) => eprintln!("{}", message),
+                Err(message) => eprintln!("{message}"),
             }
         },
     }

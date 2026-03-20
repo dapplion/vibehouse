@@ -293,7 +293,7 @@ mod tests {
             graffiti_str, "results"
         );
         println!("vibehouse_version: '{}'", vibehouse_version::VERSION);
-        println!("graffiti_str:       '{}'", graffiti_str);
+        println!("graffiti_str:       '{graffiti_str}'");
 
         assert!(vibehouse_version::VERSION.starts_with(graffiti_str));
     }
@@ -329,8 +329,8 @@ mod tests {
                 .expect("bytes should convert nicely to ascii");
 
         info!(expected_graffiti_string, found_graffiti_string, "results");
-        println!("expected_graffiti_string: '{}'", expected_graffiti_string);
-        println!("found_graffiti_string:    '{}'", found_graffiti_string);
+        println!("expected_graffiti_string: '{expected_graffiti_string}'");
+        println!("found_graffiti_string:    '{found_graffiti_string}'");
 
         assert_eq!(expected_graffiti_string, found_graffiti_string);
 

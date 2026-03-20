@@ -987,10 +987,7 @@ impl TestRig {
                 // Parent chain sends blocks one by one
                 assert_eq!(work.work_type(), beacon_processor::WorkType::RpcBlock);
             }
-            other => panic!(
-                "Expected rpc_block from chain segment process, found {:?}",
-                other
-            ),
+            other => panic!("Expected rpc_block from chain segment process, found {other:?}"),
         }
     }
 
@@ -1010,8 +1007,8 @@ impl TestRig {
     fn expect_empty_beacon_processor(&mut self) {
         match self.beacon_processor_rx.try_recv() {
             Err(mpsc::error::TryRecvError::Empty) => {} // ok
-            Ok(event) => panic!("expected empty beacon processor: {:?}", event),
-            other => panic!("unexpected err {:?}", other),
+            Ok(event) => panic!("expected empty beacon processor: {event:?}"),
+            other => panic!("unexpected err {other:?}"),
         }
     }
 

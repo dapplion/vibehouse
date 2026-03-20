@@ -98,7 +98,7 @@ mod tests {
     #[test]
     fn error_debug() {
         let err = Error::FinalizedNodeUnknown(Hash256::zero());
-        let dbg = format!("{:?}", err);
+        let dbg = format!("{err:?}");
         assert!(dbg.contains("FinalizedNodeUnknown"));
     }
 
@@ -210,8 +210,8 @@ mod tests {
         };
 
         // Just verify they're constructable and debuggable
-        assert!(format!("{:?}", err1).contains("InvalidAncestor"));
-        assert!(format!("{:?}", err2).contains("ValidExecution"));
-        assert!(format!("{:?}", err3).contains("ParentExecution"));
+        assert!(format!("{err1:?}").contains("InvalidAncestor"));
+        assert!(format!("{err2:?}").contains("ValidExecution"));
+        assert!(format!("{err3:?}").contains("ParentExecution"));
     }
 }

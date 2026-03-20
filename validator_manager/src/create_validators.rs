@@ -315,7 +315,7 @@ impl ValidatorsAndDeposits {
         }
 
         if count == 0 {
-            return Err(format!("--{} cannot be 0", COUNT_FLAG));
+            return Err(format!("--{COUNT_FLAG} cannot be 0"));
         }
 
         let bn_http_client = if let Some(bn_url) = bn_url {
@@ -328,10 +328,10 @@ impl ValidatorsAndDeposits {
             let version = bn_http_client
                 .get_node_version()
                 .await
-                .map_err(|e| format!("Failed to test connection to beacon node: {:?}", e))?
+                .map_err(|e| format!("Failed to test connection to beacon node: {e:?}"))?
                 .data
                 .version;
-            eprintln!("Connected to beacon node running version {}", version);
+            eprintln!("Connected to beacon node running version {version}");
 
             /*
              * Attempt to ensure that the beacon node is on the same network.
@@ -339,17 +339,17 @@ impl ValidatorsAndDeposits {
             let bn_config = bn_http_client
                 .get_config_spec::<types::Config>()
                 .await
-                .map_err(|e| format!("Failed to get spec from beacon node: {:?}", e))?
+                .map_err(|e| format!("Failed to get spec from beacon node: {e:?}"))?
                 .data;
             if let Some(config_name) = &bn_config.config_name {
-                eprintln!("Beacon node is on {} network", config_name);
+                eprintln!("Beacon node is on {config_name} network");
             }
             let bn_spec = bn_config
                 .apply_to_chain_spec::<E>(&E::default_spec())
                 .ok_or("Beacon node appears to be on an incorrect network")?;
             if bn_spec.genesis_fork_version != spec.genesis_fork_version {
                 if let Some(config_name) = bn_spec.config_name {
-                    eprintln!("Beacon node is on {} network", config_name);
+                    eprintln!("Beacon node is on {config_name} network");
                 }
                 return Err("Beacon node appears to be on the wrong network".to_string());
             }
@@ -378,17 +378,16 @@ impl ValidatorsAndDeposits {
         let withdrawal_keystore_password = random_password_string();
         let mut wallet =
             WalletBuilder::from_mnemonic(&mnemonic, wallet_password.as_ref(), String::new())
-                .map_err(|e| format!("Unable create seed from mnemonic: {:?}", e))?
+                .map_err(|e| format!("Unable create seed from mnemonic: {e:?}"))?
                 .build()
-                .map_err(|e| format!("Unable to create wallet: {:?}", e))?;
+                .map_err(|e| format!("Unable to create wallet: {e:?}"))?;
 
         /*
          * Start deriving individual validators.
          */
 
         eprintln!(
-            "Starting derivation of {} keystores. Each keystore may take several seconds.",
-            count
+            "Starting derivation of {count} keystores. Each keystore may take several seconds."
         );
 
         let mut validators = Vec::with_capacity(count as usize);
@@ -404,7 +403,7 @@ impl ValidatorsAndDeposits {
             // Set the wallet to the appropriate derivation index.
             wallet
                 .set_nextaccount(derivation_index)
-                .map_err(|e| format!("Failure to set validator derivation index: {:?}", e))?;
+                .map_err(|e| format!("Failure to set validator derivation index: {e:?}"))?;
 
             // Derive the keystore from the HD wallet.
             let keystores = wallet
@@ -413,13 +412,11 @@ impl ValidatorsAndDeposits {
                     voting_keystore_password.as_ref(),
                     withdrawal_keystore_password.as_ref(),
                 )
-                .map_err(|e| format!("Failed to derive keystore {}: {:?}", i, e))?;
+                .map_err(|e| format!("Failed to derive keystore {i}: {e:?}"))?;
             let voting_keystore = keystores.voting;
             let voting_public_key = voting_keystore
                 .public_key()
-                .ok_or_else(|| {
-                    format!("Validator keystore at index {} is missing a public key", i)
-                })?
+                .ok_or_else(|| format!("Validator keystore at index {i} is missing a public key"))?
                 .into();
 
             // If the user has provided a beacon node URL, check that the validator doesn't already
@@ -434,20 +431,18 @@ impl ValidatorsAndDeposits {
                 {
                     Ok(Some(_)) => {
                         return Err(format!(
-                            "Validator {:?} at derivation index {} already exists in the beacon chain. \
+                            "Validator {voting_public_key:?} at derivation index {derivation_index} already exists in the beacon chain. \
                             This indicates a slashing risk, be sure to never run the same validator on two \
                             different validator clients. If you understand the risks and are certain you \
-                            wish to generate this validator again, omit the --{} flag.",
-                            voting_public_key, derivation_index, BEACON_NODE_FLAG
+                            wish to generate this validator again, omit the --{BEACON_NODE_FLAG} flag."
                         ))?;
                     }
                     Ok(None) => {
-                        eprintln!("{:?} was not found in the beacon chain", voting_public_key);
+                        eprintln!("{voting_public_key:?} was not found in the beacon chain");
                     }
                     Err(e) => {
                         return Err(format!(
-                            "Error checking if validator exists in beacon chain: {:?}",
-                            e
+                            "Error checking if validator exists in beacon chain: {e:?}"
                         ));
                     }
                 }
@@ -457,33 +452,31 @@ impl ValidatorsAndDeposits {
                 // Decrypt the voting keystore so a deposit message can be signed.
                 let voting_keypair = voting_keystore
                     .decrypt_keypair(voting_keystore_password.as_ref())
-                    .map_err(|e| format!("Failed to decrypt voting keystore {}: {:?}", i, e))?;
+                    .map_err(|e| format!("Failed to decrypt voting keystore {i}: {e:?}"))?;
 
                 // Sanity check to ensure the keystore is reporting the correct public key.
                 if PublicKeyBytes::from(voting_keypair.pk.clone()) != voting_public_key {
                     return Err(format!(
                         "Mismatch for keystore public key and derived public key \
-                        for derivation index {}",
-                        derivation_index
+                        for derivation index {derivation_index}"
                     ));
                 }
 
-                let withdrawal_credentials =
-                    if let Some(eth1_withdrawal_address) = eth1_withdrawal_address {
-                        WithdrawalCredentials::eth1(eth1_withdrawal_address, spec)
-                    } else {
-                        // Decrypt the withdrawal keystore so withdrawal credentials can be created. It's
-                        // not strictly necessary to decrypt the keystore since we can read the pubkey
-                        // directly from the keystore. However we decrypt the keystore to be more certain
-                        // that we have access to the withdrawal keys.
-                        let withdrawal_keypair = keystores
-                            .withdrawal
-                            .decrypt_keypair(withdrawal_keystore_password.as_ref())
-                            .map_err(|e| {
-                                format!("Failed to decrypt withdrawal keystore {}: {:?}", i, e)
-                            })?;
-                        WithdrawalCredentials::bls(&withdrawal_keypair.pk, spec)
-                    };
+                let withdrawal_credentials = if let Some(eth1_withdrawal_address) =
+                    eth1_withdrawal_address
+                {
+                    WithdrawalCredentials::eth1(eth1_withdrawal_address, spec)
+                } else {
+                    // Decrypt the withdrawal keystore so withdrawal credentials can be created. It's
+                    // not strictly necessary to decrypt the keystore since we can read the pubkey
+                    // directly from the keystore. However we decrypt the keystore to be more certain
+                    // that we have access to the withdrawal keys.
+                    let withdrawal_keypair = keystores
+                        .withdrawal
+                        .decrypt_keypair(withdrawal_keystore_password.as_ref())
+                        .map_err(|e| format!("Failed to decrypt withdrawal keystore {i}: {e:?}"))?;
+                    WithdrawalCredentials::bls(&withdrawal_keypair.pk, spec)
+                };
 
                 // Create a JSON structure equivalent to the one generated by
                 // `ethstaker-deposit-cli`.
@@ -548,23 +541,21 @@ async fn run<E: EthSpec>(config: CreateConfig, spec: &ChainSpec) -> Result<(), S
 
     if !output_path.exists() {
         fs::create_dir(&output_path)
-            .map_err(|e| format!("Failed to create {:?} directory: {:?}", output_path, e))?;
+            .map_err(|e| format!("Failed to create {output_path:?} directory: {e:?}"))?;
     } else if !output_path.is_dir() {
-        return Err(format!("{:?} must be a directory", output_path));
+        return Err(format!("{output_path:?} must be a directory"));
     }
 
     let validators_path = output_path.join(VALIDATORS_FILENAME);
     if validators_path.exists() {
         return Err(format!(
-            "{:?} already exists, refusing to overwrite",
-            validators_path
+            "{validators_path:?} already exists, refusing to overwrite"
         ));
     }
     let deposits_path = output_path.join(DEPOSITS_FILENAME);
     if deposits_path.exists() {
         return Err(format!(
-            "{:?} already exists, refusing to overwrite",
-            deposits_path
+            "{deposits_path:?} already exists, refusing to overwrite"
         ));
     }
 

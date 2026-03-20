@@ -96,12 +96,12 @@ fn import_single_remotekey<T: SlotClock + 'static, E: EthSpec>(
     handle: Handle,
 ) -> Result<ImportRemotekeyStatus, String> {
     if let Err(url_err) = Url::parse(&url) {
-        return Err(format!("failed to parse remotekey URL: {}", url_err));
+        return Err(format!("failed to parse remotekey URL: {url_err}"));
     }
 
     let pubkey = pubkey
         .decompress()
-        .map_err(|_| format!("invalid pubkey: {}", pubkey))?;
+        .map_err(|_| format!("invalid pubkey: {pubkey}"))?;
 
     if let Some(def) = validator_store
         .initialized_validators()
@@ -139,7 +139,7 @@ fn import_single_remotekey<T: SlotClock + 'static, E: EthSpec>(
     };
     handle
         .block_on(validator_store.add_validator(web3signer_validator))
-        .map_err(|e| format!("failed to initialize validator: {:?}", e))?;
+        .map_err(|e| format!("failed to initialize validator: {e:?}"))?;
 
     Ok(ImportRemotekeyStatus::Imported)
 }
@@ -185,7 +185,7 @@ pub fn delete<T: SlotClock + 'static, E: EthSpec>(
     if let Some(handle) = task_executor.handle() {
         handle
             .block_on(initialized_validators.update_validators())
-            .map_err(|e| ApiError::ServerError(format!("unable to update key cache: {:?}", e)))?;
+            .map_err(|e| ApiError::ServerError(format!("unable to update key cache: {e:?}")))?;
     }
 
     Ok(DeleteRemotekeysResponse { data: statuses })
@@ -199,14 +199,14 @@ fn delete_single_remotekey(
     if let Some(handle) = task_executor.handle() {
         let pubkey = pubkey_bytes
             .decompress()
-            .map_err(|e| format!("invalid pubkey, {:?}: {:?}", pubkey_bytes, e))?;
+            .map_err(|e| format!("invalid pubkey, {pubkey_bytes:?}: {e:?}"))?;
 
         match handle.block_on(initialized_validators.delete_definition_and_keystore(&pubkey, false))
         {
             Ok(_) => Ok(DeleteRemotekeyStatus::Deleted),
             Err(e) => match e {
                 Error::ValidatorNotInitialized(_) => Ok(DeleteRemotekeyStatus::NotFound),
-                _ => Err(format!("unable to disable and delete: {:?}", e)),
+                _ => Err(format!("unable to disable and delete: {e:?}")),
             },
         }
     } else {

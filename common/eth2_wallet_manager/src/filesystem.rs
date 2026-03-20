@@ -89,7 +89,7 @@ pub fn create<P: AsRef<Path>>(wallet_dir: P, wallet: &Wallet) -> Result<(), Erro
 }
 
 fn wallet_json_backup_path<P: AsRef<Path>>(wallet_dir: P, uuid: &Uuid) -> PathBuf {
-    wallet_dir.as_ref().join(format!("{}.backup", uuid))
+    wallet_dir.as_ref().join(format!("{uuid}.backup"))
 }
 
 fn wallet_json_path<P: AsRef<Path>>(wallet_dir: P, uuid: &Uuid) -> PathBuf {

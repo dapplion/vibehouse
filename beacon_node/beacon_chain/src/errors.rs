@@ -354,7 +354,7 @@ mod tests {
     #[test]
     fn beacon_chain_error_debug_format() {
         let err = BeaconChainError::UnableToReadSlot;
-        let debug = format!("{:?}", err);
+        let debug = format!("{err:?}");
         assert!(debug.contains("UnableToReadSlot"));
     }
 
@@ -407,7 +407,7 @@ mod tests {
     #[test]
     fn block_production_error_debug_format() {
         let err = BlockProductionError::UnableToReadSlot;
-        let debug = format!("{:?}", err);
+        let debug = format!("{err:?}");
         assert!(debug.contains("UnableToReadSlot"));
     }
 

@@ -143,7 +143,7 @@ async fn metrics_handler<T: BeaconChainTypes>(
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             [("Content-Type", "text/plain")],
-            format!("Unable to gather metrics: {:?}", e),
+            format!("Unable to gather metrics: {e:?}"),
         ),
     }
 }
@@ -171,8 +171,8 @@ fn build_cors_layer(
         }
     } else {
         let origin = match listen_addr {
-            IpAddr::V4(_) => format!("http://{}:{}", listen_addr, listen_port),
-            IpAddr::V6(_) => format!("http://[{}]:{}", listen_addr, listen_port),
+            IpAddr::V4(_) => format!("http://{listen_addr}:{listen_port}"),
+            IpAddr::V6(_) => format!("http://[{listen_addr}]:{listen_port}"),
         };
         let header_value: axum::http::HeaderValue = origin
             .parse()

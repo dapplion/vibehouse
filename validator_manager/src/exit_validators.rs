@@ -164,13 +164,13 @@ async fn run<E: EthSpec>(config: ExitConfig) -> Result<(), String> {
             .iter()
             .any(|validator| validator.validating_pubkey == validator_to_exit)
         {
-            return Err(format!("Validator {} doesn't exist", validator_to_exit));
+            return Err(format!("Validator {validator_to_exit} doesn't exist"));
         }
 
         let exit_message = http_client
             .post_validator_voluntary_exit(&validator_to_exit, exit_epoch)
             .await
-            .map_err(|e| format!("Failed to generate voluntary exit message: {}", e))?;
+            .map_err(|e| format!("Failed to generate voluntary exit message: {e}"))?;
 
         if presign {
             let exit_message_json = serde_json::to_string(&exit_message.data);
@@ -178,13 +178,13 @@ async fn run<E: EthSpec>(config: ExitConfig) -> Result<(), String> {
             match exit_message_json {
                 Ok(json) => {
                     // Save the exit message to JSON file(s)
-                    let file_path = format!("{}.json", validator_to_exit);
+                    let file_path = format!("{validator_to_exit}.json");
                     write(&file_path, json).map_err(|e| {
-                        format!("Failed to write voluntary exit message to file: {}", e)
+                        format!("Failed to write voluntary exit message to file: {e}")
                     })?;
-                    println!("Voluntary exit message saved to {}", file_path);
+                    println!("Voluntary exit message saved to {file_path}");
                 }
-                Err(e) => eprintln!("Failed to serialize voluntary exit message: {}", e),
+                Err(e) => eprintln!("Failed to serialize voluntary exit message: {e}"),
             }
         }
 
@@ -192,14 +192,14 @@ async fn run<E: EthSpec>(config: ExitConfig) -> Result<(), String> {
         if let Some(ref beacon_url) = beacon_url {
             let beacon_node = BeaconNodeHttpClient::new(
                 SensitiveUrl::parse(beacon_url.as_ref())
-                    .map_err(|e| format!("Failed to parse beacon http server: {:?}", e))?,
+                    .map_err(|e| format!("Failed to parse beacon http server: {e:?}"))?,
                 Timeouts::set_all(Duration::from_secs(12)),
             );
 
             if beacon_node
                 .get_node_syncing()
                 .await
-                .map_err(|e| format!("Failed to get beacon node sync status: {:?}", e))?
+                .map_err(|e| format!("Failed to get beacon node sync status: {e:?}"))?
                 .data
                 .is_syncing
             {
@@ -212,13 +212,13 @@ async fn run<E: EthSpec>(config: ExitConfig) -> Result<(), String> {
             let genesis_data = beacon_node
                 .get_beacon_genesis()
                 .await
-                .map_err(|e| format!("Failed to get genesis data: {}", e))?
+                .map_err(|e| format!("Failed to get genesis data: {e}"))?
                 .data;
 
             let config_and_preset = beacon_node
                 .get_config_spec::<ConfigAndPreset>()
                 .await
-                .map_err(|e| format!("Failed to get config spec: {}", e))?
+                .map_err(|e| format!("Failed to get config spec: {e}"))?
                 .data;
 
             let spec = ChainSpec::from_config::<E>(config_and_preset.config())
@@ -230,13 +230,12 @@ async fn run<E: EthSpec>(config: ExitConfig) -> Result<(), String> {
                     &ValidatorId::PublicKey(validator_to_exit),
                 )
                 .await
-                .map_err(|e| format!("Failed to get validator details: {:?}", e))?
+                .map_err(|e| format!("Failed to get validator details: {e:?}"))?
                 .ok_or_else(|| {
                     format!(
-                        "Validator {} is not present in the beacon state. \
+                        "Validator {validator_to_exit} is not present in the beacon state. \
                         Please ensure that your beacon node is synced \
-                        and the validator has been deposited.",
-                        validator_to_exit
+                        and the validator has been deposited."
                     )
                 })?
                 .data;
@@ -264,10 +263,9 @@ async fn run<E: EthSpec>(config: ExitConfig) -> Result<(), String> {
                 beacon_node
                     .post_beacon_pool_voluntary_exits(&exit_message.data)
                     .await
-                    .map_err(|e| format!("Failed to publish voluntary exit: {}", e))?;
+                    .map_err(|e| format!("Failed to publish voluntary exit: {e}"))?;
                 eprintln!(
-                    "Successfully validated and published voluntary exit for validator {}",
-                    validator_to_exit
+                    "Successfully validated and published voluntary exit for validator {validator_to_exit}"
                 );
             }
         }

@@ -278,7 +278,7 @@ impl<T: BeaconChainTypes> SlasherService<T> {
     ) -> Result<(), String> {
         let outcome = beacon_chain
             .verify_attester_slashing_for_gossip(slashing)
-            .map_err(|e| format!("gossip verification error: {:?}", e))?;
+            .map_err(|e| format!("gossip verification error: {e:?}"))?;
 
         if let ObservationOutcome::New(slashing) = outcome {
             network_sender
@@ -287,7 +287,7 @@ impl<T: BeaconChainTypes> SlasherService<T> {
                         slashing.into_inner(),
                     ))],
                 })
-                .map_err(|e| format!("network error: {:?}", e))?;
+                .map_err(|e| format!("network error: {e:?}"))?;
         }
         Ok(())
     }
@@ -299,7 +299,7 @@ impl<T: BeaconChainTypes> SlasherService<T> {
     ) -> Result<(), String> {
         let outcome = beacon_chain
             .verify_proposer_slashing_for_gossip(slashing)
-            .map_err(|e| format!("gossip verification error: {:?}", e))?;
+            .map_err(|e| format!("gossip verification error: {e:?}"))?;
 
         if let ObservationOutcome::New(slashing) = outcome {
             network_sender
@@ -308,7 +308,7 @@ impl<T: BeaconChainTypes> SlasherService<T> {
                         slashing.into_inner(),
                     ))],
                 })
-                .map_err(|e| format!("network error: {:?}", e))?;
+                .map_err(|e| format!("network error: {e:?}"))?;
         }
         Ok(())
     }

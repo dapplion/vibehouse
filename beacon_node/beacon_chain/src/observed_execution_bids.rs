@@ -219,7 +219,7 @@ mod tests {
                 assert_eq!(existing_bid_root, bid_root_1);
                 assert_eq!(new_bid_root, bid_root_2);
             }
-            _ => panic!("Expected equivocation, got {:?}", outcome),
+            _ => panic!("Expected equivocation, got {outcome:?}"),
         }
     }
 

@@ -374,7 +374,7 @@ mod gloas_per_slot_tests {
             if i == next_slot_index {
                 assert!(!bit, "next slot bit should be cleared");
             } else {
-                assert!(bit, "bit {} should remain true", i);
+                assert!(bit, "bit {i} should remain true");
             }
         }
     }
@@ -607,8 +607,7 @@ mod gloas_per_slot_tests {
                     .execution_payload_availability
                     .get(cleared_index % slots_per_hist)
                     .unwrap(),
-                "bit at index {} should be cleared after skip slots",
-                cleared_index
+                "bit at index {cleared_index} should be cleared after skip slots"
             );
         }
 
@@ -619,8 +618,7 @@ mod gloas_per_slot_tests {
             }
             assert!(
                 gloas.execution_payload_availability.get(i).unwrap(),
-                "bit at index {} should remain true (not a skip slot target)",
-                i
+                "bit at index {i} should remain true (not a skip slot target)"
             );
         }
     }

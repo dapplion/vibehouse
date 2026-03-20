@@ -230,7 +230,7 @@ impl std::fmt::Display for GossipKind {
                 write!(f, "sync_committee_{}", **subnet_id)
             }
             GossipKind::BlobSidecar(blob_index) => {
-                write!(f, "{}{}", BLOB_SIDECAR_PREFIX, blob_index)
+                write!(f, "{BLOB_SIDECAR_PREFIX}{blob_index}")
             }
             GossipKind::DataColumnSidecar(column_subnet_id) => {
                 write!(f, "{}{}", DATA_COLUMN_SIDECAR_PREFIX, **column_subnet_id)
@@ -279,7 +279,7 @@ impl GossipTopic {
         let topic_parts: Vec<&str> = topic.split('/').collect();
         if topic_parts.len() == 5 && topic_parts[1] == TOPIC_PREFIX {
             let digest_bytes = hex::decode(topic_parts[2])
-                .map_err(|e| format!("Could not decode fork_digest hex: {}", e))?;
+                .map_err(|e| format!("Could not decode fork_digest hex: {e}"))?;
 
             if digest_bytes.len() != 4 {
                 return Err(format!(
@@ -293,7 +293,7 @@ impl GossipTopic {
 
             let encoding = match topic_parts[4] {
                 SSZ_SNAPPY_ENCODING_POSTFIX => GossipEncoding::SSZSnappy,
-                _ => return Err(format!("Unknown encoding: {}", topic)),
+                _ => return Err(format!("Unknown encoding: {topic}")),
             };
             let kind = match topic_parts[3] {
                 BEACON_BLOCK_TOPIC => GossipKind::BeaconBlock,
@@ -311,7 +311,7 @@ impl GossipTopic {
                 PROPOSER_PREFERENCES_TOPIC => GossipKind::ProposerPreferences,
                 topic => match subnet_topic_index(topic) {
                     Some(kind) => kind,
-                    None => return Err(format!("Unknown topic: {}", topic)),
+                    None => return Err(format!("Unknown topic: {topic}")),
                 },
             };
 
@@ -322,7 +322,7 @@ impl GossipTopic {
             });
         }
 
-        Err(format!("Unknown topic: {}", topic))
+        Err(format!("Unknown topic: {topic}"))
     }
 
     pub fn subnet_id(&self) -> Option<Subnet> {
@@ -367,7 +367,7 @@ impl std::fmt::Display for GossipTopic {
                 format!("{}{}", SYNC_COMMITTEE_PREFIX_TOPIC, *index)
             }
             GossipKind::BlobSidecar(blob_index) => {
-                format!("{}{}", BLOB_SIDECAR_PREFIX, blob_index)
+                format!("{BLOB_SIDECAR_PREFIX}{blob_index}")
             }
             GossipKind::DataColumnSidecar(column_subnet_id) => {
                 format!("{}{}", DATA_COLUMN_SIDECAR_PREFIX, *column_subnet_id)
@@ -469,7 +469,7 @@ mod tests {
     }
 
     fn create_topic(prefix: &str, fork_digest: &str, kind: &str, encoding: &str) -> String {
-        format!("/{}/{}/{}/{}", prefix, fork_digest, kind, encoding)
+        format!("/{prefix}/{fork_digest}/{kind}/{encoding}")
     }
 
     #[test]
@@ -651,8 +651,7 @@ mod tests {
         for expected_topic in expected_topics {
             assert!(
                 topics.contains(&expected_topic),
-                "Should contain {:?}",
-                expected_topic
+                "Should contain {expected_topic:?}"
             );
         }
     }

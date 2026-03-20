@@ -39,8 +39,8 @@ fn verify_contract(
     bytecode_file: &str,
     bytecode_checksum: &str,
 ) {
-    let abi_path = contracts_dir().join(format!("{}_{}", TAG, abi_file));
-    let bytecode_path = contracts_dir().join(format!("{}_{}", TAG, bytecode_file));
+    let abi_path = contracts_dir().join(format!("{TAG}_{abi_file}"));
+    let bytecode_path = contracts_dir().join(format!("{TAG}_{bytecode_file}"));
 
     let abi_bytes = std::fs::read(&abi_path).unwrap_or_else(|e| {
         panic!(
@@ -68,8 +68,7 @@ fn verify_checksum(bytes: &[u8], expected_checksum: &str) {
     let checksum = hex::encode(&result[..]);
     assert_eq!(
         &checksum, expected_checksum,
-        "Checksum {} did not match {}",
-        checksum, expected_checksum
+        "Checksum {checksum} did not match {expected_checksum}"
     );
 }
 

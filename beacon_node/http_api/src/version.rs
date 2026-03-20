@@ -128,11 +128,11 @@ pub fn add_consensus_block_value_header(
 }
 
 pub fn inconsistent_fork_rejection(error: InconsistentFork) -> ApiError {
-    ApiError::server_error(format!("wrong fork: {:?}", error))
+    ApiError::server_error(format!("wrong fork: {error:?}"))
 }
 
 pub fn unsupported_version_rejection(version: EndpointVersion) -> ApiError {
-    ApiError::bad_request(format!("Unsupported endpoint version: {}", version))
+    ApiError::bad_request(format!("Unsupported endpoint version: {version}"))
 }
 
 #[cfg(test)]

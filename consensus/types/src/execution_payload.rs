@@ -145,14 +145,12 @@ impl<'de, E: EthSpec> ContextDeserialize<'de, ForkName> for ExecutionPayload<E> 
     where
         D: Deserializer<'de>,
     {
-        let convert_err = |e| {
-            serde::de::Error::custom(format!("ExecutionPayload failed to deserialize: {:?}", e))
-        };
+        let convert_err =
+            |e| serde::de::Error::custom(format!("ExecutionPayload failed to deserialize: {e:?}"));
         Ok(match context {
             ForkName::Base | ForkName::Altair => {
                 return Err(serde::de::Error::custom(format!(
-                    "ExecutionPayload failed to deserialize: unsupported fork '{}'",
-                    context
+                    "ExecutionPayload failed to deserialize: unsupported fork '{context}'"
                 )));
             }
             ForkName::Bellatrix => {

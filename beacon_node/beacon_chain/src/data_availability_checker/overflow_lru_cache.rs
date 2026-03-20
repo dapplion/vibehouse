@@ -1223,8 +1223,7 @@ mod test {
             .expect("should put block");
         assert!(
             matches!(availability, Availability::Available(_)),
-            "block should be available: {:?}",
-            availability
+            "block should be available: {availability:?}"
         );
         assert!(
             cache.critical.read().len() == 2,

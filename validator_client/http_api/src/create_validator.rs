@@ -40,12 +40,12 @@ pub async fn create_validators_mnemonic<P: AsRef<Path>, T: 'static + SlotClock, 
         WalletBuilder::from_mnemonic(&mnemonic, wallet_password.as_bytes(), String::new())
             .and_then(account_utils::eth2_wallet::WalletBuilder::build)
             .map_err(|e| {
-                ApiError::ServerError(format!("unable to create EIP-2386 wallet: {:?}", e))
+                ApiError::ServerError(format!("unable to create EIP-2386 wallet: {e:?}"))
             })?;
 
     if let Some(nextaccount) = key_derivation_path_offset {
         wallet.set_nextaccount(nextaccount).map_err(|e| {
-            ApiError::ServerError(format!("unable to set wallet nextaccount: {:?}", e))
+            ApiError::ServerError(format!("unable to set wallet nextaccount: {e:?}"))
         })?;
     }
 
@@ -56,7 +56,7 @@ pub async fn create_validators_mnemonic<P: AsRef<Path>, T: 'static + SlotClock, 
         let withdrawal_password = random_password();
         let voting_password_string = Zeroizing::from(
             String::from_utf8(voting_password.as_bytes().to_vec()).map_err(|e| {
-                ApiError::ServerError(format!("locally generated password is not utf8: {:?}", e))
+                ApiError::ServerError(format!("locally generated password is not utf8: {e:?}"))
             })?,
         );
 
@@ -67,7 +67,7 @@ pub async fn create_validators_mnemonic<P: AsRef<Path>, T: 'static + SlotClock, 
                 withdrawal_password.as_bytes(),
             )
             .map_err(|e| {
-                ApiError::ServerError(format!("unable to create validator keys: {:?}", e))
+                ApiError::ServerError(format!("unable to create validator keys: {e:?}"))
             })?;
 
         keystores
@@ -79,7 +79,7 @@ pub async fn create_validators_mnemonic<P: AsRef<Path>, T: 'static + SlotClock, 
 
         let voting_pubkey = format!("0x{}", keystores.voting.pubkey())
             .parse()
-            .map_err(|e| ApiError::ServerError(format!("created invalid public key: {:?}", e)))?;
+            .map_err(|e| ApiError::ServerError(format!("created invalid public key: {e:?}")))?;
 
         let voting_password_storage =
             get_voting_password_storage(&secrets_dir, &keystores.voting, &voting_password_string)?;
@@ -92,13 +92,13 @@ pub async fn create_validators_mnemonic<P: AsRef<Path>, T: 'static + SlotClock, 
             .store_withdrawal_keystore(false)
             .build()
             .map_err(|e| {
-                ApiError::ServerError(format!("failed to build validator directory: {:?}", e))
+                ApiError::ServerError(format!("failed to build validator directory: {e:?}"))
             })?;
 
         let eth1_deposit_data = validator_dir
             .eth1_deposit_data()
             .map_err(|e| {
-                ApiError::ServerError(format!("failed to read local deposit data: {:?}", e))
+                ApiError::ServerError(format!("failed to read local deposit data: {e:?}"))
             })?
             .ok_or_else(|| {
                 ApiError::ServerError("failed to create local deposit data: {:?}".to_string())
@@ -128,9 +128,7 @@ pub async fn create_validators_mnemonic<P: AsRef<Path>, T: 'static + SlotClock, 
                 request.prefer_builder_proposals,
             )
             .await
-            .map_err(|e| {
-                ApiError::ServerError(format!("failed to initialize validator: {:?}", e))
-            })?;
+            .map_err(|e| ApiError::ServerError(format!("failed to initialize validator: {e:?}")))?;
 
         validators.push(api_types::CreatedValidator {
             enabled: request.enable,
@@ -156,9 +154,7 @@ pub async fn create_validators_web3signer<T: 'static + SlotClock, E: EthSpec>(
         validator_store
             .add_validator(validator)
             .await
-            .map_err(|e| {
-                ApiError::ServerError(format!("failed to initialize validator: {:?}", e))
-            })?;
+            .map_err(|e| ApiError::ServerError(format!("failed to initialize validator: {e:?}")))?;
     }
 
     Ok(())

@@ -67,18 +67,13 @@ pub fn cli_run(matches: &ArgMatches, validator_dir: PathBuf) -> Result<(), Strin
         Some((DISABLE, sub_matches)) => (false, sub_matches),
         Some((unknown, _)) => {
             return Err(format!(
-                "{} does not have a {} command. See --help",
-                CMD, unknown
+                "{CMD} does not have a {unknown} command. See --help"
             ));
         }
-        _ => return Err(format!("No command provided for {}. See --help", CMD)),
+        _ => return Err(format!("No command provided for {CMD}. See --help")),
     };
-    let mut defs = ValidatorDefinitions::open(&validator_dir).map_err(|e| {
-        format!(
-            "No validator definitions found in {:?}: {:?}",
-            validator_dir, e
-        )
-    })?;
+    let mut defs = ValidatorDefinitions::open(&validator_dir)
+        .map_err(|e| format!("No validator definitions found in {validator_dir:?}: {e:?}"))?;
     let pubkeys_to_modify = if sub_matches.get_flag(ALL) {
         defs.as_slice()
             .iter()
@@ -102,7 +97,7 @@ pub fn cli_run(matches: &ArgMatches, validator_dir: PathBuf) -> Result<(), Strin
     }
 
     defs.save(&validator_dir)
-        .map_err(|e| format!("Unable to modify validator definitions: {:?}", e))?;
+        .map_err(|e| format!("Unable to modify validator definitions: {e:?}"))?;
 
     eprintln!("\nSuccessfully modified validator_definitions.yml");
     Ok(())

@@ -452,25 +452,19 @@ mod tests {
             assert_eq!(
                 payment.weight,
                 quorum + 100,
-                "slot {} should have second-half payment weight",
-                i
+                "slot {i} should have second-half payment weight"
             );
             assert_eq!(
                 payment.withdrawal.amount,
                 (i + 10) as u64 * 1_000_000_000,
-                "slot {} should have second-half payment amount",
-                i
+                "slot {i} should have second-half payment amount"
             );
         }
 
         // Second half should be cleared
         for i in 8..16 {
             let payment = gloas.builder_pending_payments.get(i).unwrap();
-            assert_eq!(
-                payment.weight, 0,
-                "second half slot {} should be cleared",
-                i
-            );
+            assert_eq!(payment.weight, 0, "second half slot {i} should be cleared");
         }
     }
 
@@ -495,15 +489,14 @@ mod tests {
             assert_eq!(
                 payment.withdrawal.amount,
                 (i + 9) as u64 * 1_000_000_000,
-                "first half slot {} should have old second-half amount",
-                i
+                "first half slot {i} should have old second-half amount"
             );
         }
 
         // Second half all cleared
         for i in 8..16 {
             let payment = gloas.builder_pending_payments.get(i).unwrap();
-            assert_eq!(payment.weight, 0, "second half slot {} should be zero", i);
+            assert_eq!(payment.weight, 0, "second half slot {i} should be zero");
             assert_eq!(payment.withdrawal.amount, 0);
         }
     }
@@ -882,8 +875,7 @@ mod tests {
             assert_eq!(
                 gloas.builder_pending_payments.get(i).unwrap().weight,
                 0,
-                "second half index {} should be cleared after rotation",
-                i
+                "second half index {i} should be cleared after rotation"
             );
         }
     }

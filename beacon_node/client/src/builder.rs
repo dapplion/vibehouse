@@ -180,13 +180,13 @@ where
         let execution_layer = if let Some(config) = config.execution_layer.clone() {
             let context = runtime_context.service_context("exec".into());
             let execution_layer = ExecutionLayer::from_config(config, context.executor)
-                .map_err(|e| format!("unable to start execution layer endpoints: {:?}", e))?;
+                .map_err(|e| format!("unable to start execution layer endpoints: {e:?}"))?;
             Some(execution_layer)
         } else {
             None
         };
 
-        let kzg_err_msg = |e| format!("Failed to load trusted setup: {:?}", e);
+        let kzg_err_msg = |e| format!("Failed to load trusted setup: {e:?}");
         let kzg = if spec.is_peer_das_scheduled() {
             Kzg::new_from_trusted_setup(&config.trusted_setup).map_err(kzg_err_msg)?
         } else {
@@ -194,9 +194,8 @@ where
         };
 
         let ordered_custody_column_indices =
-            compute_ordered_custody_column_indices::<E>(node_id, &spec).map_err(|e| {
-                format!("Failed to compute ordered custody column indices: {:?}", e)
-            })?;
+            compute_ordered_custody_column_indices::<E>(node_id, &spec)
+                .map_err(|e| format!("Failed to compute ordered custody column indices: {e:?}"))?;
 
         let builder = BeaconChainBuilder::new(eth_spec_instance, Arc::new(kzg))
             .store(store)
@@ -214,7 +213,7 @@ where
             .validator_monitor_config(config.validator_monitor.clone())
             .rng(Box::new(
                 StdRng::try_from_rng(&mut OsRng)
-                    .map_err(|e| format!("Failed to create RNG: {:?}", e))?,
+                    .map_err(|e| format!("Failed to create RNG: {e:?}"))?,
             ));
 
         let builder = if let Some(slasher) = self.slasher.clone() {
@@ -355,9 +354,9 @@ where
                 }
 
                 let anchor_state = BeaconState::from_ssz_bytes(&anchor_state_bytes, &spec)
-                    .map_err(|e| format!("Unable to parse weak subj state SSZ: {:?}", e))?;
+                    .map_err(|e| format!("Unable to parse weak subj state SSZ: {e:?}"))?;
                 let anchor_block = SignedBeaconBlock::from_ssz_bytes(&anchor_block_bytes, &spec)
-                    .map_err(|e| format!("Unable to parse weak subj block SSZ: {:?}", e))?;
+                    .map_err(|e| format!("Unable to parse weak subj block SSZ: {e:?}"))?;
 
                 // `BlobSidecar` is no longer used from Fulu onwards (superseded by `DataColumnSidecar`),
                 // which will be fetched via rpc instead (unimplemented).
@@ -404,7 +403,7 @@ where
                 let state = remote
                     .get_debug_beacon_states_ssz::<E>(StateId::Finalized, &spec)
                     .await
-                    .map_err(|e| format!("Error loading checkpoint state from remote: {:?}", e))?
+                    .map_err(|e| format!("Error loading checkpoint state from remote: {e:?}"))?
                     .ok_or_else(|| "Checkpoint state missing from remote".to_string())?;
 
                 debug!(slot = ?state.slot(), "Downloaded finalized state");
@@ -417,11 +416,10 @@ where
                     .await
                     .map_err(|e| match e {
                         ApiError::InvalidSsz(e) => format!(
-                            "Unable to parse SSZ: {:?}. Ensure the checkpoint-sync-url refers to a \
-                            node for the correct network",
-                            e
+                            "Unable to parse SSZ: {e:?}. Ensure the checkpoint-sync-url refers to a \
+                            node for the correct network"
                         ),
-                        e => format!("Error fetching finalized block from remote: {:?}", e),
+                        e => format!("Error fetching finalized block from remote: {e:?}"),
                     })?
                     .ok_or("Finalized block missing from remote, it returned 404")?;
                 let block_root = block.canonical_root();
@@ -511,7 +509,7 @@ where
             local_keypair,
         )
         .await
-        .map_err(|e| format!("Failed to start network: {:?}", e))?;
+        .map_err(|e| format!("Failed to start network: {e:?}"))?;
 
         self.network_globals = Some(network_globals);
         self.network_senders = Some(network_senders);
@@ -533,7 +531,7 @@ where
             .ok_or("node timer requires a beacon chain")?;
 
         spawn_timer(context.executor, beacon_chain)
-            .map_err(|e| format!("Unable to start node timer: {}", e))?;
+            .map_err(|e| format!("Unable to start node timer: {e}"))?;
 
         Ok(self)
     }
@@ -613,7 +611,7 @@ where
             network_globals,
             seconds_per_slot,
         )
-        .map_err(|e| format!("Unable to start slot notifier: {}", e))?;
+        .map_err(|e| format!("Unable to start slot notifier: {e}"))?;
 
         Ok(self)
     }
@@ -652,7 +650,7 @@ where
             let exit = runtime_context.executor.exit();
 
             let (listen_addr, server) = http_api::serve(ctx, exit)
-                .map_err(|e| format!("Unable to start HTTP API server: {:?}", e))?;
+                .map_err(|e| format!("Unable to start HTTP API server: {e:?}"))?;
 
             let http_api_task = async move {
                 server.await;
@@ -682,7 +680,7 @@ where
             let exit = runtime_context.executor.exit();
 
             let (listen_addr, server) = http_metrics::serve(ctx, exit)
-                .map_err(|e| format!("Unable to start HTTP metrics server: {:?}", e))?;
+                .map_err(|e| format!("Unable to start HTTP metrics server: {e:?}"))?;
 
             runtime_context
                 .executor
@@ -851,7 +849,7 @@ where
             )
             .shutdown_sender(context.executor.shutdown_sender())
             .build()
-            .map_err(|e| format!("Failed to build beacon chain: {}", e))?;
+            .map_err(|e| format!("Failed to build beacon chain: {e}"))?;
 
         self.beacon_chain = Some(Arc::new(chain));
         self.beacon_chain_builder = None;
@@ -894,7 +892,7 @@ where
             config,
             spec,
         )
-        .map_err(|e| format!("Unable to open database: {:?}", e))?;
+        .map_err(|e| format!("Unable to open database: {e:?}"))?;
         self.store = Some(store);
         Ok(self)
     }

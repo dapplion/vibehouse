@@ -528,7 +528,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
             Ok(v) => v,
             Err(e) => {
                 self.components_by_range_requests.remove(&id);
-                return Err(format!("{:?}", e));
+                return Err(format!("{e:?}"));
             }
         };
 
@@ -556,7 +556,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
             Ok(v) => v,
             Err(e) => {
                 self.components_by_range_requests.remove(&id);
-                return Err(format!("{:?}", e));
+                return Err(format!("{e:?}"));
             }
         };
 
@@ -1424,7 +1424,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
             .unwrap_or_default();
 
         let current_epoch = self.chain.epoch().map_err(|e| {
-            RpcRequestSendError::InternalError(format!("Unable to read slot clock {:?}", e))
+            RpcRequestSendError::InternalError(format!("Unable to read slot clock {e:?}"))
         })?;
 
         // Include only the blob indexes not yet imported (received through gossip)

@@ -757,7 +757,7 @@ fn main() {
     match result {
         Ok(()) => process::exit(0),
         Err(e) => {
-            println!("Failed to run lcli: {}", e);
+            println!("Failed to run lcli: {e}");
             process::exit(1)
         }
     }
@@ -767,7 +767,7 @@ fn run<E: EthSpec>(env_builder: EnvironmentBuilder<E>, matches: &ArgMatches) -> 
     let (env_builder, file_logging_layer, stdout_logging_layer, _sse_logging_layer_opt) =
         env_builder
             .multi_threaded_tokio_runtime()
-            .map_err(|e| format!("should start tokio runtime: {:?}", e))?
+            .map_err(|e| format!("should start tokio runtime: {e:?}"))?
             .init_tracing(
                 LoggerConfig {
                     path: None,
@@ -791,7 +791,7 @@ fn run<E: EthSpec>(env_builder: EnvironmentBuilder<E>, matches: &ArgMatches) -> 
 
     let env = env_builder
         .build()
-        .map_err(|e| format!("should build env: {:?}", e))?;
+        .map_err(|e| format!("should build env: {e:?}"))?;
 
     let mut logging_layers = vec![file_logging_layer];
     if let Some(stdout) = stdout_logging_layer {
@@ -834,56 +834,56 @@ fn run<E: EthSpec>(env_builder: EnvironmentBuilder<E>, matches: &ArgMatches) -> 
         Some(("transition-blocks", matches)) => {
             let network_config = get_network_config()?;
             transition_blocks::run::<E>(env, network_config, matches)
-                .map_err(|e| format!("Failed to transition blocks: {}", e))
+                .map_err(|e| format!("Failed to transition blocks: {e}"))
         }
         Some(("skip-slots", matches)) => {
             let network_config = get_network_config()?;
             skip_slots::run::<E>(env, network_config, matches)
-                .map_err(|e| format!("Failed to skip slots: {}", e))
+                .map_err(|e| format!("Failed to skip slots: {e}"))
         }
         Some(("pretty-ssz", matches)) => {
             let network_config = get_network_config()?;
             run_parse_ssz::<E>(network_config, matches)
-                .map_err(|e| format!("Failed to pretty print hex: {}", e))
+                .map_err(|e| format!("Failed to pretty print hex: {e}"))
         }
         Some(("check-deposit-data", matches)) => check_deposit_data::run(matches)
-            .map_err(|e| format!("Failed to run check-deposit-data command: {}", e)),
+            .map_err(|e| format!("Failed to run check-deposit-data command: {e}")),
         Some(("generate-bootnode-enr", matches)) => {
             generate_bootnode_enr::run::<E>(matches, &env.eth2_config.spec)
-                .map_err(|e| format!("Failed to run generate-bootnode-enr command: {}", e))
+                .map_err(|e| format!("Failed to run generate-bootnode-enr command: {e}"))
         }
         Some(("mnemonic-validators", matches)) => mnemonic_validators::run(matches)
-            .map_err(|e| format!("Failed to run mnemonic-validators command: {}", e)),
+            .map_err(|e| format!("Failed to run mnemonic-validators command: {e}")),
         Some(("indexed-attestations", matches)) => indexed_attestations::run::<E>(matches)
-            .map_err(|e| format!("Failed to run indexed-attestations command: {}", e)),
+            .map_err(|e| format!("Failed to run indexed-attestations command: {e}")),
         Some(("block-root", matches)) => {
             let network_config = get_network_config()?;
             block_root::run::<E>(env, network_config, matches)
-                .map_err(|e| format!("Failed to run block-root command: {}", e))
+                .map_err(|e| format!("Failed to run block-root command: {e}"))
         }
         Some(("state-root", matches)) => {
             let network_config = get_network_config()?;
             state_root::run::<E>(env, network_config, matches)
-                .map_err(|e| format!("Failed to run state-root command: {}", e))
+                .map_err(|e| format!("Failed to run state-root command: {e}"))
         }
         Some(("mock-el", matches)) => mock_el::run::<E>(env, matches)
-            .map_err(|e| format!("Failed to run mock-el command: {}", e)),
+            .map_err(|e| format!("Failed to run mock-el command: {e}")),
         Some(("http-sync", matches)) => {
             let network_config = get_network_config()?;
             http_sync::run::<E>(env, network_config, matches)
-                .map_err(|e| format!("Failed to run http-sync command: {}", e))
+                .map_err(|e| format!("Failed to run http-sync command: {e}"))
         }
         Some(("submit-builder-bid", matches)) => {
             let network_config = get_network_config()?;
             submit_builder_bid::run::<E>(env, network_config, matches)
-                .map_err(|e| format!("Failed to run submit-builder-bid command: {}", e))
+                .map_err(|e| format!("Failed to run submit-builder-bid command: {e}"))
         }
         Some(("inject-slashing", matches)) => {
             let network_config = get_network_config()?;
             inject_slashing::run::<E>(env, network_config, matches)
-                .map_err(|e| format!("Failed to run inject-slashing command: {}", e))
+                .map_err(|e| format!("Failed to run inject-slashing command: {e}"))
         }
-        Some((other, _)) => Err(format!("Unknown subcommand {}. See --help.", other)),
+        Some((other, _)) => Err(format!("Unknown subcommand {other}. See --help.")),
         _ => Err("No subcommand provided. See --help.".to_string()),
     }
 }

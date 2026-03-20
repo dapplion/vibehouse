@@ -39,9 +39,9 @@ pub enum Error {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
-            Error::Reqwest(e) => write!(f, "Reqwest error: {}", e),
+            Error::Reqwest(e) => write!(f, "Reqwest error: {e}"),
             // Print the debug value
-            e => write!(f, "{:?}", e),
+            e => write!(f, "{e:?}"),
         }
     }
 }
@@ -81,7 +81,7 @@ impl MonitoringHttpClient {
                 config.update_period_secs.unwrap_or(DEFAULT_UPDATE_DURATION),
             ),
             monitoring_endpoint: SensitiveUrl::parse(&config.monitoring_endpoint)
-                .map_err(|e| format!("Invalid monitoring endpoint: {:?}", e))?,
+                .map_err(|e| format!("Invalid monitoring endpoint: {e:?}"))?,
         })
     }
 

@@ -284,8 +284,7 @@ impl<T: BeaconChainTypes> AppState<T> {
                     Ok(())
                 } else {
                     Err(ApiError::service_unavailable(format!(
-                        "head slot is {}, current slot is {}",
-                        head_slot, current_slot
+                        "head slot is {head_slot}, current slot is {current_slot}"
                     )))
                 }
             }
@@ -351,14 +350,14 @@ async fn prometheus_metrics_middleware(request: axum::extract::Request, next: Ne
 
 fn bucket_api_path(path: &str) -> &'static str {
     let equals = |s: &'static str| -> Option<&'static str> {
-        if path == format!("/{}/{}", API_PREFIX, s) {
+        if path == format!("/{API_PREFIX}/{s}") {
             Some(s)
         } else {
             None
         }
     };
     let starts_with = |s: &'static str| -> Option<&'static str> {
-        if path.starts_with(&format!("/{}/{}", API_PREFIX, s)) {
+        if path.starts_with(&format!("/{API_PREFIX}/{s}")) {
             Some(s)
         } else {
             None
@@ -1170,8 +1169,7 @@ async fn get_beacon_state_validators_id<T: BeaconChainTypes>(
                                 })
                                 .ok_or_else(|| {
                                     ApiError::not_found(format!(
-                                        "unknown validator: {}",
-                                        validator_id
+                                        "unknown validator: {validator_id}"
                                     ))
                                 })?,
                             execution_optimistic,
@@ -1252,8 +1250,7 @@ async fn get_beacon_state_committees<T: BeaconChainTypes>(
                                         if epoch < current_epoch {
                                             ApiError::bad_request(format!(
                                                 "epoch out of bounds, \
-                                                 try state at slot {}",
-                                                first_subsequent_restore_point_slot,
+                                                 try state at slot {first_subsequent_restore_point_slot}",
                                             ))
                                         } else {
                                             ApiError::bad_request(
@@ -1293,8 +1290,7 @@ async fn get_beacon_state_committees<T: BeaconChainTypes>(
                         for slot in slots {
                             if slot.epoch(T::EthSpec::slots_per_epoch()) != epoch {
                                 return Err(ApiError::bad_request(format!(
-                                    "{} is not in epoch {}",
-                                    slot, epoch
+                                    "{slot} is not in epoch {epoch}"
                                 )));
                             }
 
@@ -1303,8 +1299,7 @@ async fn get_beacon_state_committees<T: BeaconChainTypes>(
                                     .get_beacon_committee(slot, index)
                                     .ok_or_else(|| {
                                     ApiError::bad_request(format!(
-                                        "committee index {} does not exist in epoch {}",
-                                        index, epoch
+                                        "committee index {index} does not exist in epoch {epoch}"
                                     ))
                                 })?;
 
@@ -1354,15 +1349,13 @@ async fn get_beacon_state_sync_committees<T: BeaconChainTypes>(
                                 .map_err(|e| match e {
                                     BeaconStateError::SyncCommitteeNotKnown { .. } => {
                                         ApiError::bad_request(format!(
-                                            "state at epoch {} has no \
-                                             sync committee for epoch {}",
-                                            current_epoch, epoch
+                                            "state at epoch {current_epoch} has no \
+                                             sync committee for epoch {epoch}"
                                         ))
                                     }
                                     BeaconStateError::IncorrectStateVariant => {
                                         ApiError::bad_request(format!(
-                                            "state at epoch {} is not activated for Altair",
-                                            current_epoch,
+                                            "state at epoch {current_epoch} is not activated for Altair",
                                         ))
                                     }
                                     e => ApiError::beacon_state_error(e),
@@ -1646,8 +1639,7 @@ async fn get_beacon_headers<T: BeaconChainTypes>(
                             .map_err(ApiError::unhandled_error)?
                             .ok_or_else(|| {
                                 ApiError::not_found(format!(
-                                    "child of block with root {}",
-                                    parent_root
+                                    "child of block with root {parent_root}"
                                 ))
                             })?;
                         BlockId::from_root(root).blinded_block(&chain).map(
@@ -1665,8 +1657,7 @@ async fn get_beacon_headers<T: BeaconChainTypes>(
                             && block.parent_root() != parent_root
                         {
                             return Err(ApiError::not_found(format!(
-                                "no canonical block at slot {} with parent root {}",
-                                slot, parent_root
+                                "no canonical block at slot {slot} with parent root {parent_root}"
                             )));
                         }
                         (root, block, execution_optimistic, finalized)
@@ -1917,9 +1908,7 @@ async fn get_beacon_block<T: BeaconChainTypes>(
                     .status(200)
                     .body(axum::body::Body::from(block.as_ssz_bytes()))
                     .map(|res| add_ssz_content_type_header(res.into_response()))
-                    .map_err(|e| {
-                        ApiError::server_error(format!("failed to create response: {}", e))
-                    }),
+                    .map_err(|e| ApiError::server_error(format!("failed to create response: {e}"))),
                 _ => execution_optimistic_finalized_beacon_response(
                     require_version,
                     execution_optimistic,
@@ -2017,9 +2006,7 @@ async fn get_beacon_blinded_block<T: BeaconChainTypes>(
                     .status(200)
                     .body(axum::body::Body::from(block.as_ssz_bytes()))
                     .map(|res| add_ssz_content_type_header(res.into_response()))
-                    .map_err(|e| {
-                        ApiError::server_error(format!("failed to create response: {}", e))
-                    }),
+                    .map_err(|e| ApiError::server_error(format!("failed to create response: {e}"))),
                 _ => execution_optimistic_finalized_beacon_response(
                     ResponseIncludesVersion::Yes(fork_name),
                     execution_optimistic,
@@ -2058,9 +2045,7 @@ async fn get_blob_sidecars<T: BeaconChainTypes>(
                         blob_sidecar_list_filtered.as_ssz_bytes(),
                     ))
                     .map(|res| add_ssz_content_type_header(res.into_response()))
-                    .map_err(|e| {
-                        ApiError::server_error(format!("failed to create response: {}", e))
-                    }),
+                    .map_err(|e| ApiError::server_error(format!("failed to create response: {e}"))),
                 _ => {
                     let res = execution_optimistic_finalized_beacon_response(
                         ResponseIncludesVersion::Yes(fork_name),
@@ -2095,9 +2080,7 @@ async fn get_blobs<T: BeaconChainTypes>(
                     .status(200)
                     .body(axum::body::Body::from(response.data.as_ssz_bytes()))
                     .map(|res| add_ssz_content_type_header(res.into_response()))
-                    .map_err(|e| {
-                        ApiError::server_error(format!("failed to create response: {}", e))
-                    }),
+                    .map_err(|e| ApiError::server_error(format!("failed to create response: {e}"))),
                 _ => {
                     let res = execution_optimistic_finalized_beacon_response(
                         ResponseIncludesVersion::No,
@@ -2230,7 +2213,7 @@ async fn post_beacon_pool_attester_slashings<T: BeaconChainTypes>(
             let outcome = chain
                 .verify_attester_slashing_for_gossip(slashing.clone())
                 .map_err(|e| {
-                    ApiError::object_invalid(format!("gossip verification failed: {:?}", e))
+                    ApiError::object_invalid(format!("gossip verification failed: {e:?}"))
                 })?;
 
             chain
@@ -2319,7 +2302,7 @@ async fn post_beacon_pool_proposer_slashings<T: BeaconChainTypes>(
             let outcome = chain
                 .verify_proposer_slashing_for_gossip(slashing.clone())
                 .map_err(|e| {
-                    ApiError::object_invalid(format!("gossip verification failed: {:?}", e))
+                    ApiError::object_invalid(format!("gossip verification failed: {e:?}"))
                 })?;
 
             chain
@@ -2367,7 +2350,7 @@ async fn post_beacon_pool_voluntary_exits<T: BeaconChainTypes>(
             let outcome = chain
                 .verify_voluntary_exit_for_gossip(exit.clone())
                 .map_err(|e| {
-                    ApiError::object_invalid(format!("gossip verification failed: {:?}", e))
+                    ApiError::object_invalid(format!("gossip verification failed: {e:?}"))
                 })?;
 
             chain
@@ -2521,7 +2504,7 @@ async fn post_beacon_pool_payload_attestations<T: BeaconChainTypes>(
                         )?;
                     }
                     Err(e) => {
-                        failures.push(api_types::Failure::new(index, format!("invalid: {:?}", e)));
+                        failures.push(api_types::Failure::new(index, format!("invalid: {e:?}")));
                     }
                 }
             }
@@ -2665,7 +2648,7 @@ async fn post_beacon_rewards_attestations<T: BeaconChainTypes>(
                     BeaconChainError::ValidatorPubkeyUnknown(pubkey) => {
                         ApiError::bad_request(format!("validator pubkey is unknown: {pubkey:?}"))
                     }
-                    e => ApiError::server_error(format!("unexpected error: {:?}", e)),
+                    e => ApiError::server_error(format!("unexpected error: {e:?}")),
                 })?;
             let execution_optimistic = chain.is_optimistic_or_invalid_head().unwrap_or_default();
 
@@ -2722,9 +2705,7 @@ async fn get_expected_withdrawals_handler<T: BeaconChainTypes>(
                     .status(200)
                     .body(withdrawals.as_ssz_bytes().into())
                     .map(add_ssz_content_type_header)
-                    .map_err(|e| {
-                        ApiError::server_error(format!("failed to create response: {}", e))
-                    }),
+                    .map_err(|e| ApiError::server_error(format!("failed to create response: {e}"))),
                 _ => Ok(Json(api_types::ExecutionOptimisticFinalizedResponse {
                     data: withdrawals,
                     execution_optimistic: Some(execution_optimistic),
@@ -2943,9 +2924,7 @@ async fn get_beacon_light_client_optimistic_update<T: BeaconChainTypes>(
                     .status(200)
                     .body(update.as_ssz_bytes().into())
                     .map(add_ssz_content_type_header)
-                    .map_err(|e| {
-                        ApiError::server_error(format!("failed to create response: {}", e))
-                    }),
+                    .map_err(|e| ApiError::server_error(format!("failed to create response: {e}"))),
                 _ => Ok(Json(beacon_response(
                     ResponseIncludesVersion::Yes(fork_name),
                     update,
@@ -2980,9 +2959,7 @@ async fn get_beacon_light_client_finality_update<T: BeaconChainTypes>(
                     .status(200)
                     .body(update.as_ssz_bytes().into())
                     .map(add_ssz_content_type_header)
-                    .map_err(|e| {
-                        ApiError::server_error(format!("failed to create response: {}", e))
-                    }),
+                    .map_err(|e| ApiError::server_error(format!("failed to create response: {e}"))),
                 _ => Ok(Json(beacon_response(
                     ResponseIncludesVersion::Yes(fork_name),
                     update,
@@ -3079,9 +3056,7 @@ async fn get_debug_data_column_sidecars<T: BeaconChainTypes>(
                     .status(200)
                     .body(data_columns.as_ssz_bytes().into())
                     .map(add_ssz_content_type_header)
-                    .map_err(|e| {
-                        ApiError::server_error(format!("failed to create response: {}", e))
-                    }),
+                    .map_err(|e| ApiError::server_error(format!("failed to create response: {e}"))),
                 _ => {
                     let res = execution_optimistic_finalized_beacon_response(
                         ResponseIncludesVersion::Yes(fork_name),
@@ -3127,9 +3102,7 @@ async fn get_debug_beacon_states<T: BeaconChainTypes>(
                     .body(response_bytes.into())
                     .map(add_ssz_content_type_header)
                     .map(|resp| add_consensus_version_header(resp, fork_name))
-                    .map_err(|e| {
-                        ApiError::server_error(format!("failed to create response: {}", e))
-                    })
+                    .map_err(|e| ApiError::server_error(format!("failed to create response: {e}")))
             }
             _ => state_id.map_state_and_execution_optimistic_and_finalized(
                 &chain,
@@ -3360,7 +3333,7 @@ async fn get_node_peers_by_id<T: BeaconChainTypes>(
             let peer_id = PeerId::from_bytes(
                 &bs58::decode(requested_peer_id.as_str())
                     .into_vec()
-                    .map_err(|e| ApiError::bad_request(format!("invalid peer id: {}", e)))?,
+                    .map_err(|e| ApiError::bad_request(format!("invalid peer id: {e}")))?,
             )
             .map_err(|_| ApiError::bad_request("invalid peer id."))?;
 
@@ -3652,7 +3625,7 @@ async fn get_validator_sync_committee_contribution<T: BeaconChainTypes>(
             chain
                 .get_aggregated_sync_committee_contribution(&sync_committee_data)
                 .map_err(|e| {
-                    ApiError::bad_request(format!("unable to fetch sync contribution: {:?}", e))
+                    ApiError::bad_request(format!("unable to fetch sync contribution: {e:?}"))
                 })?
                 .map(api_types::GenericResponse::from)
                 .ok_or_else(|| ApiError::not_found("no matching sync contribution found"))
@@ -3759,7 +3732,7 @@ AttnError::AggregatorAlreadyKnown(_)) => {}
                             attestation_slot = %aggregate.message().aggregate().data().slot,
                             "Failure verifying aggregate and proofs"
                         );
-                        failures.push(api_types::Failure::new(index, format!("Verification: {:?}", e)));
+                        failures.push(api_types::Failure::new(index, format!("Verification: {e:?}")));
                     }
                 }
             }
@@ -3778,7 +3751,7 @@ AttnError::AggregatorAlreadyKnown(_)) => {}
                         attestation_slot = %verified_aggregate.attestation().data().slot,
                         "Failure applying verified aggregate attestation to fork choice"
                     );
-                    failures.push(api_types::Failure::new(index, format!("Fork choice: {:?}", e)));
+                    failures.push(api_types::Failure::new(index, format!("Fork choice: {e:?}")));
                 }
                 if let Err(e) = chain.add_to_block_inclusion_pool(verified_aggregate) {
                     warn!(
@@ -3786,7 +3759,7 @@ AttnError::AggregatorAlreadyKnown(_)) => {}
                         request_index = index,
                         "Could not add verified aggregate attestation to the inclusion pool"
                     );
-                    failures.push(api_types::Failure::new(index, format!("Op pool: {:?}", e)));
+                    failures.push(api_types::Failure::new(index, format!("Op pool: {e:?}")));
                 }
             }
 
@@ -3910,7 +3883,7 @@ async fn post_validator_prepare_beacon_proposer<T: BeaconChainTypes>(
                 .prepare_beacon_proposer(current_slot)
                 .await
                 .map_err(|e| {
-                    ApiError::bad_request(format!("error updating proposer preparations: {:?}", e))
+                    ApiError::bad_request(format!("error updating proposer preparations: {e:?}"))
                 })?;
 
             if chain.spec.is_peer_das_scheduled() {
@@ -4041,7 +4014,7 @@ async fn post_validator_register_validator<T: BeaconChainTypes>(
                 .prepare_beacon_proposer(current_slot)
                 .await
                 .map_err(|e| {
-                    ApiError::bad_request(format!("error updating proposer preparations: {:?}", e))
+                    ApiError::bad_request(format!("error updating proposer preparations: {e:?}"))
                 })?;
 
             info!(
@@ -4147,8 +4120,7 @@ async fn post_validator_liveness_epoch<T: BeaconChainTypes>(
 
             if epoch < prev_epoch || epoch > next_epoch {
                 return Err(ApiError::bad_request(format!(
-                    "request epoch {} is more than one epoch from the current epoch {}",
-                    epoch, current_epoch
+                    "request epoch {epoch} is more than one epoch from the current epoch {current_epoch}"
                 )));
             }
 
@@ -4553,7 +4525,7 @@ async fn post_vibehouse_add_peer<T: BeaconChainTypes>(
         .task_spawner()
         .blocking_json_task(Priority::P0, move || {
             let enr = Enr::from_str(&request_data.enr)
-                .map_err(|e| ApiError::bad_request(format!("invalid enr error {}", e)))?;
+                .map_err(|e| ApiError::bad_request(format!("invalid enr error {e}")))?;
             info!(
                 peer_id = %enr.peer_id(),
                 multiaddr = ?enr.multiaddr(),
@@ -4578,7 +4550,7 @@ async fn post_vibehouse_remove_peer<T: BeaconChainTypes>(
         .task_spawner()
         .blocking_json_task(Priority::P0, move || {
             let enr = Enr::from_str(&request_data.enr)
-                .map_err(|e| ApiError::bad_request(format!("invalid enr error {}", e)))?;
+                .map_err(|e| ApiError::bad_request(format!("invalid enr error {e}")))?;
             info!(
                 peer_id = %enr.peer_id(),
                 multiaddr = ?enr.multiaddr(),
@@ -4829,13 +4801,13 @@ fn build_cors_layer(
             let len = if listen_addr.is_loopback() { 2 } else { 1 };
             let mut origins = Vec::with_capacity(len);
             origins.push(
-                format!("http://{}:{}", listen_addr, listen_port)
+                format!("http://{listen_addr}:{listen_port}")
                     .parse::<axum::http::HeaderValue>()
                     .map_err(|e| Error::Other(format!("invalid CORS origin: {e}")))?,
             );
             if listen_addr.is_loopback() {
                 origins.push(
-                    format!("http://localhost:{}", listen_port)
+                    format!("http://localhost:{listen_port}")
                         .parse::<axum::http::HeaderValue>()
                         .map_err(|e| Error::Other(format!("invalid CORS origin: {e}")))?,
                 );
@@ -4910,5 +4882,5 @@ fn publish_network_message<E: EthSpec>(
 ) -> Result<(), ApiError> {
     network_tx
         .send(message)
-        .map_err(|e| ApiError::server_error(format!("unable to publish to network channel: {}", e)))
+        .map_err(|e| ApiError::server_error(format!("unable to publish to network channel: {e}")))
 }

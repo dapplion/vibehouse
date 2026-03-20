@@ -81,7 +81,7 @@ mod tests {
     #[test]
     fn debug_format() {
         let id = make_id(1, 0x00);
-        let dbg = format!("{:?}", id);
+        let dbg = format!("{id:?}");
         assert!(dbg.contains("SyncAggregateId"));
     }
 }

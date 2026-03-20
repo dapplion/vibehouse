@@ -1176,7 +1176,7 @@ mod test {
             let sidecar = make_gloas_sidecar(0, 2, 2);
             let commitments = make_commitments(2);
             let result = verify_data_column_sidecar_with_commitments(&sidecar, &commitments, &spec);
-            assert!(result.is_ok(), "valid sidecar should pass: {:?}", result);
+            assert!(result.is_ok(), "valid sidecar should pass: {result:?}");
         }
 
         #[test]
@@ -1188,8 +1188,7 @@ mod test {
             let result = verify_data_column_sidecar_with_commitments(&sidecar, &commitments, &spec);
             assert!(
                 matches!(result, Err(GossipDataColumnError::InvalidColumnIndex(idx)) if idx == invalid_index),
-                "column index at limit should be rejected: {:?}",
-                result,
+                "column index at limit should be rejected: {result:?}",
             );
         }
 
@@ -1201,8 +1200,7 @@ mod test {
             let result = verify_data_column_sidecar_with_commitments(&sidecar, &commitments, &spec);
             assert!(
                 matches!(result, Err(GossipDataColumnError::UnexpectedDataColumn)),
-                "empty column should be rejected: {:?}",
-                result,
+                "empty column should be rejected: {result:?}",
             );
         }
 
@@ -1220,8 +1218,7 @@ mod test {
                         commitments_len: 2,
                     })
                 ),
-                "cells/commitments length mismatch should be rejected: {:?}",
-                result,
+                "cells/commitments length mismatch should be rejected: {result:?}",
             );
         }
 
@@ -1239,8 +1236,7 @@ mod test {
                         proofs_len: 3,
                     })
                 ),
-                "cells/proofs length mismatch should be rejected: {:?}",
-                result,
+                "cells/proofs length mismatch should be rejected: {result:?}",
             );
         }
 
@@ -1259,8 +1255,7 @@ mod test {
                     result,
                     Err(GossipDataColumnError::MaxBlobsPerBlockExceeded { .. })
                 ),
-                "exceeding max blobs should be rejected: {:?}",
-                result,
+                "exceeding max blobs should be rejected: {result:?}",
             );
         }
 
@@ -1272,8 +1267,7 @@ mod test {
             let result = verify_data_column_sidecar_with_commitments(&sidecar, &commitments, &spec);
             assert!(
                 result.is_ok(),
-                "single blob sidecar should pass: {:?}",
-                result,
+                "single blob sidecar should pass: {result:?}",
             );
         }
 
@@ -1286,8 +1280,7 @@ mod test {
             let result = verify_data_column_sidecar_with_commitments(&sidecar, &commitments, &spec);
             assert!(
                 result.is_ok(),
-                "max valid column index should pass: {:?}",
-                result,
+                "max valid column index should pass: {result:?}",
             );
         }
     }

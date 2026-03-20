@@ -529,13 +529,13 @@ mod tests {
     #[test]
     fn health_tier_display() {
         let tier = BeaconNodeHealthTier::new(3, Slot::new(5), SyncDistanceTier::Synced);
-        assert_eq!(format!("{}", tier), "Tier3(5)");
+        assert_eq!(format!("{tier}"), "Tier3(5)");
     }
 
     #[test]
     fn health_tier_display_zero() {
         let tier = BeaconNodeHealthTier::new(1, Slot::new(0), SyncDistanceTier::Synced);
-        assert_eq!(format!("{}", tier), "Tier1(0)");
+        assert_eq!(format!("{tier}"), "Tier1(0)");
     }
 
     #[test]

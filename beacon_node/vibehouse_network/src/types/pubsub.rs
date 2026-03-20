@@ -180,7 +180,7 @@ impl<E: EthSpec> PubsubMessage<E> {
         fork_context: &ForkContext,
     ) -> Result<Self, String> {
         match GossipTopic::decode(topic.as_str()) {
-            Err(_) => Err(format!("Unknown gossipsub topic: {:?}", topic)),
+            Err(_) => Err(format!("Unknown gossipsub topic: {topic:?}")),
             Ok(gossip_topic) => {
                 // All topics are currently expected to be compressed and decompressed with snappy.
                 // This is done in the `SnappyTransform` struct.
@@ -197,12 +197,12 @@ impl<E: EthSpec> PubsubMessage<E> {
                                 if fork_name.electra_enabled() {
                                     SignedAggregateAndProof::Electra(
                                         SignedAggregateAndProofElectra::from_ssz_bytes(data)
-                                            .map_err(|e| format!("{:?}", e))?,
+                                            .map_err(|e| format!("{e:?}"))?,
                                     )
                                 } else {
                                     SignedAggregateAndProof::Base(
                                         SignedAggregateAndProofBase::from_ssz_bytes(data)
-                                            .map_err(|e| format!("{:?}", e))?,
+                                            .map_err(|e| format!("{e:?}"))?,
                                     )
                                 }
                             }
@@ -219,7 +219,7 @@ impl<E: EthSpec> PubsubMessage<E> {
                     }
                     GossipKind::Attestation(subnet_id) => {
                         let attestation = SingleAttestation::from_ssz_bytes(data)
-                            .map_err(|e| format!("{:?}", e))?;
+                            .map_err(|e| format!("{e:?}"))?;
                         Ok(PubsubMessage::Attestation(Box::new((
                             *subnet_id,
                             attestation,
@@ -231,35 +231,35 @@ impl<E: EthSpec> PubsubMessage<E> {
                         {
                             Some(ForkName::Base) => SignedBeaconBlock::<E>::Base(
                                 SignedBeaconBlockBase::from_ssz_bytes(data)
-                                    .map_err(|e| format!("{:?}", e))?,
+                                    .map_err(|e| format!("{e:?}"))?,
                             ),
                             Some(ForkName::Altair) => SignedBeaconBlock::<E>::Altair(
                                 SignedBeaconBlockAltair::from_ssz_bytes(data)
-                                    .map_err(|e| format!("{:?}", e))?,
+                                    .map_err(|e| format!("{e:?}"))?,
                             ),
                             Some(ForkName::Bellatrix) => SignedBeaconBlock::<E>::Bellatrix(
                                 SignedBeaconBlockBellatrix::from_ssz_bytes(data)
-                                    .map_err(|e| format!("{:?}", e))?,
+                                    .map_err(|e| format!("{e:?}"))?,
                             ),
                             Some(ForkName::Capella) => SignedBeaconBlock::<E>::Capella(
                                 SignedBeaconBlockCapella::from_ssz_bytes(data)
-                                    .map_err(|e| format!("{:?}", e))?,
+                                    .map_err(|e| format!("{e:?}"))?,
                             ),
                             Some(ForkName::Deneb) => SignedBeaconBlock::<E>::Deneb(
                                 SignedBeaconBlockDeneb::from_ssz_bytes(data)
-                                    .map_err(|e| format!("{:?}", e))?,
+                                    .map_err(|e| format!("{e:?}"))?,
                             ),
                             Some(ForkName::Electra) => SignedBeaconBlock::<E>::Electra(
                                 SignedBeaconBlockElectra::from_ssz_bytes(data)
-                                    .map_err(|e| format!("{:?}", e))?,
+                                    .map_err(|e| format!("{e:?}"))?,
                             ),
                             Some(ForkName::Fulu) => SignedBeaconBlock::<E>::Fulu(
                                 SignedBeaconBlockFulu::from_ssz_bytes(data)
-                                    .map_err(|e| format!("{:?}", e))?,
+                                    .map_err(|e| format!("{e:?}"))?,
                             ),
                             Some(ForkName::Gloas) => SignedBeaconBlock::<E>::Gloas(
                                 SignedBeaconBlockGloas::from_ssz_bytes(data)
-                                    .map_err(|e| format!("{:?}", e))?,
+                                    .map_err(|e| format!("{e:?}"))?,
                             ),
                             None => {
                                 return Err(format!(
@@ -276,8 +276,7 @@ impl<E: EthSpec> PubsubMessage<E> {
                             && fork_name.deneb_enabled()
                         {
                             let blob_sidecar = Arc::new(
-                                BlobSidecar::from_ssz_bytes(data)
-                                    .map_err(|e| format!("{:?}", e))?,
+                                BlobSidecar::from_ssz_bytes(data).map_err(|e| format!("{e:?}"))?,
                             );
                             return Ok(PubsubMessage::BlobSidecar(Box::new((
                                 *blob_index,
@@ -295,7 +294,7 @@ impl<E: EthSpec> PubsubMessage<E> {
                             Some(fork) if fork.fulu_enabled() => {
                                 let col_sidecar = Arc::new(
                                     DataColumnSidecar::any_from_ssz_bytes(data)
-                                        .map_err(|e| format!("{:?}", e))?,
+                                        .map_err(|e| format!("{e:?}"))?,
                                 );
                                 Ok(PubsubMessage::DataColumnSidecar(Box::new((
                                     *subnet_id,
@@ -310,12 +309,12 @@ impl<E: EthSpec> PubsubMessage<E> {
                     }
                     GossipKind::VoluntaryExit => {
                         let voluntary_exit = SignedVoluntaryExit::from_ssz_bytes(data)
-                            .map_err(|e| format!("{:?}", e))?;
+                            .map_err(|e| format!("{e:?}"))?;
                         Ok(PubsubMessage::VoluntaryExit(Box::new(voluntary_exit)))
                     }
                     GossipKind::ProposerSlashing => {
-                        let proposer_slashing = ProposerSlashing::from_ssz_bytes(data)
-                            .map_err(|e| format!("{:?}", e))?;
+                        let proposer_slashing =
+                            ProposerSlashing::from_ssz_bytes(data).map_err(|e| format!("{e:?}"))?;
                         Ok(PubsubMessage::ProposerSlashing(Box::new(proposer_slashing)))
                     }
                     GossipKind::AttesterSlashing => {
@@ -326,12 +325,12 @@ impl<E: EthSpec> PubsubMessage<E> {
                                 if fork_name.electra_enabled() {
                                     AttesterSlashing::Electra(
                                         AttesterSlashingElectra::from_ssz_bytes(data)
-                                            .map_err(|e| format!("{:?}", e))?,
+                                            .map_err(|e| format!("{e:?}"))?,
                                     )
                                 } else {
                                     AttesterSlashing::Base(
                                         AttesterSlashingBase::from_ssz_bytes(data)
-                                            .map_err(|e| format!("{:?}", e))?,
+                                            .map_err(|e| format!("{e:?}"))?,
                                     )
                                 }
                             }
@@ -346,14 +345,14 @@ impl<E: EthSpec> PubsubMessage<E> {
                     }
                     GossipKind::SignedContributionAndProof => {
                         let sync_aggregate = SignedContributionAndProof::from_ssz_bytes(data)
-                            .map_err(|e| format!("{:?}", e))?;
+                            .map_err(|e| format!("{e:?}"))?;
                         Ok(PubsubMessage::SignedContributionAndProof(Box::new(
                             sync_aggregate,
                         )))
                     }
                     GossipKind::SyncCommitteeMessage(subnet_id) => {
                         let sync_committee = SyncCommitteeMessage::from_ssz_bytes(data)
-                            .map_err(|e| format!("{:?}", e))?;
+                            .map_err(|e| format!("{e:?}"))?;
                         Ok(PubsubMessage::SyncCommitteeMessage(Box::new((
                             *subnet_id,
                             sync_committee,
@@ -362,7 +361,7 @@ impl<E: EthSpec> PubsubMessage<E> {
                     GossipKind::BlsToExecutionChange => {
                         let bls_to_execution_change =
                             SignedBlsToExecutionChange::from_ssz_bytes(data)
-                                .map_err(|e| format!("{:?}", e))?;
+                                .map_err(|e| format!("{e:?}"))?;
                         Ok(PubsubMessage::BlsToExecutionChange(Box::new(
                             bls_to_execution_change,
                         )))
@@ -373,7 +372,7 @@ impl<E: EthSpec> PubsubMessage<E> {
                         {
                             Some(&fork_name) => {
                                 LightClientFinalityUpdate::from_ssz_bytes(data, fork_name)
-                                    .map_err(|e| format!("{:?}", e))?
+                                    .map_err(|e| format!("{e:?}"))?
                             }
                             None => {
                                 return Err(format!(
@@ -392,7 +391,7 @@ impl<E: EthSpec> PubsubMessage<E> {
                         {
                             Some(&fork_name) => {
                                 LightClientOptimisticUpdate::from_ssz_bytes(data, fork_name)
-                                    .map_err(|e| format!("{:?}", e))?
+                                    .map_err(|e| format!("{e:?}"))?
                             }
                             None => {
                                 return Err(format!(
@@ -409,7 +408,7 @@ impl<E: EthSpec> PubsubMessage<E> {
                         match fork_context.get_fork_from_context_bytes(gossip_topic.fork_digest) {
                             Some(fork) if fork.gloas_enabled() => {
                                 let execution_bid = SignedExecutionPayloadBid::from_ssz_bytes(data)
-                                    .map_err(|e| format!("{:?}", e))?;
+                                    .map_err(|e| format!("{e:?}"))?;
                                 Ok(PubsubMessage::ExecutionBid(Box::new(execution_bid)))
                             }
                             Some(_) | None => Err(format!(
@@ -423,7 +422,7 @@ impl<E: EthSpec> PubsubMessage<E> {
                             Some(fork) if fork.gloas_enabled() => {
                                 let execution_payload =
                                     SignedExecutionPayloadEnvelope::from_ssz_bytes(data)
-                                        .map_err(|e| format!("{:?}", e))?;
+                                        .map_err(|e| format!("{e:?}"))?;
                                 Ok(PubsubMessage::ExecutionPayload(Box::new(execution_payload)))
                             }
                             Some(_) | None => Err(format!(
@@ -436,7 +435,7 @@ impl<E: EthSpec> PubsubMessage<E> {
                         match fork_context.get_fork_from_context_bytes(gossip_topic.fork_digest) {
                             Some(fork) if fork.gloas_enabled() => {
                                 let message = PayloadAttestationMessage::from_ssz_bytes(data)
-                                    .map_err(|e| format!("{:?}", e))?;
+                                    .map_err(|e| format!("{e:?}"))?;
                                 Ok(PubsubMessage::PayloadAttestation(Box::new(message)))
                             }
                             Some(_) | None => Err(format!(
@@ -449,7 +448,7 @@ impl<E: EthSpec> PubsubMessage<E> {
                         match fork_context.get_fork_from_context_bytes(gossip_topic.fork_digest) {
                             Some(fork) if fork.gloas_enabled() => {
                                 let preferences = SignedProposerPreferences::from_ssz_bytes(data)
-                                    .map_err(|e| format!("{:?}", e))?;
+                                    .map_err(|e| format!("{e:?}"))?;
                                 Ok(PubsubMessage::ProposerPreferences(Box::new(preferences)))
                             }
                             Some(_) | None => Err(format!(
@@ -463,7 +462,7 @@ impl<E: EthSpec> PubsubMessage<E> {
                             Some(fork) if fork.gloas_enabled() => {
                                 let proof = Arc::new(
                                     ExecutionProof::from_ssz_bytes(data)
-                                        .map_err(|e| format!("{:?}", e))?,
+                                        .map_err(|e| format!("{e:?}"))?,
                                 );
                                 Ok(PubsubMessage::ExecutionProof(Box::new((*subnet_id, proof))))
                             }

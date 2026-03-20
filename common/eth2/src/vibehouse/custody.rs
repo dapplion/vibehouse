@@ -60,7 +60,7 @@ mod tests {
             custody_group_count: 2,
             custody_columns: vec![1],
         };
-        let dbg = format!("{:?}", info);
+        let dbg = format!("{info:?}");
         assert!(dbg.contains("CustodyInfo"));
     }
 }

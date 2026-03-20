@@ -489,7 +489,7 @@ mod tests {
         ];
         for i in 0..keys.len() {
             for j in (i + 1)..keys.len() {
-                assert_ne!(keys[i], keys[j], "keys at index {} and {} collide", i, j);
+                assert_ne!(keys[i], keys[j], "keys at index {i} and {j} collide");
             }
         }
     }

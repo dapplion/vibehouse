@@ -27,7 +27,7 @@ impl TryFrom<String> for CipherFunction {
     fn try_from(s: String) -> Result<Self, Self::Error> {
         match s.as_ref() {
             "aes-128-ctr" => Ok(CipherFunction::Aes128Ctr),
-            other => Err(format!("Unsupported cipher function: {}", other)),
+            other => Err(format!("Unsupported cipher function: {other}")),
         }
     }
 }

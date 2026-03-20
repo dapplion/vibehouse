@@ -101,7 +101,7 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
         validator_client_config: &ValidatorClient,
     ) -> Result<Self, String> {
         let config = Config::from_cli(cli_args, validator_client_config)
-            .map_err(|e| format!("Unable to initialize config: {}", e))?;
+            .map_err(|e| format!("Unable to initialize config: {e}"))?;
         Self::new(context, config).await
     }
 
@@ -112,7 +112,7 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
         // `linux` - raise soft fd limit to hard
         // `macos` - raise soft fd limit to `min(kernel limit, hard fd limit)`
         // `windows` & rest - noop
-        match fdlimit::raise_fd_limit().map_err(|e| format!("Unable to raise fd limit: {}", e))? {
+        match fdlimit::raise_fd_limit().map_err(|e| format!("Unable to raise fd limit: {e}"))? {
             fdlimit::Outcome::LimitRaised { from, to } => {
                 debug!(
                     old_limit = from,
@@ -148,7 +148,7 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
             let exit = context.executor.exit();
 
             let (_listen_addr, server) = validator_http_metrics::serve(ctx.clone(), exit)
-                .map_err(|e| format!("Unable to start metrics API server: {:?}", e))?;
+                .map_err(|e| format!("Unable to start metrics API server: {e:?}"))?;
 
             context
                 .clone()
@@ -172,17 +172,14 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
         }
 
         let mut validator_defs = ValidatorDefinitions::open_or_create(&config.validator_dir)
-            .map_err(|e| format!("Unable to open or create validator definitions: {:?}", e))?;
+            .map_err(|e| format!("Unable to open or create validator definitions: {e:?}"))?;
 
         if !config.disable_auto_discover {
             let new_validators = validator_defs
                 .discover_local_keystores(&config.validator_dir, &config.secrets_dir)
-                .map_err(|e| format!("Unable to discover local validator keystores: {:?}", e))?;
+                .map_err(|e| format!("Unable to discover local validator keystores: {e:?}"))?;
             validator_defs.save(&config.validator_dir).map_err(|e| {
-                format!(
-                    "Provide --suggested-fee-recipient or update validator definitions: {:?}",
-                    e
-                )
+                format!("Provide --suggested-fee-recipient or update validator definitions: {e:?}")
             })?;
             info!(new_validators, "Completed validator discovery");
         }
@@ -196,11 +193,11 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
             .map_err(|e| {
                 match e {
                     UnableToOpenVotingKeystore(err) => {
-                        format!("Unable to initialize validators: {:?}. If you have recently moved the location of your data directory \
-                    make sure to update the location of voting_keystore_path in your validator_definitions.yml", err)
+                        format!("Unable to initialize validators: {err:?}. If you have recently moved the location of your data directory \
+                    make sure to update the location of voting_keystore_path in your validator_definitions.yml")
                     },
                     err => {
-                        format!("Unable to initialize validators: {:?}", err)}
+                        format!("Unable to initialize validators: {err:?}")}
                 }
             })?;
 
@@ -229,10 +226,7 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
         let slashing_db_path = config.validator_dir.join(SLASHING_PROTECTION_FILENAME);
         let slashing_protection = if config.init_slashing_protection || voting_pubkeys.is_empty() {
             SlashingDatabase::open_or_create(&slashing_db_path).map_err(|e| {
-                format!(
-                    "Failed to open or create slashing protection database: {:?}",
-                    e
-                )
+                format!("Failed to open or create slashing protection database: {e:?}")
             })
         } else {
             SlashingDatabase::open(&slashing_db_path).map_err(|e| {
@@ -248,7 +242,7 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
         if config.init_slashing_protection {
             slashing_protection
                 .register_validators(voting_pubkeys.iter().copied())
-                .map_err(|e| format!("Error while registering slashing protection: {:?}", e))?;
+                .map_err(|e| format!("Error while registering slashing protection: {e:?}"))?;
         } else {
             slashing_protection
                 .check_validator_registrations(voting_pubkeys.iter().copied())
@@ -257,8 +251,7 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
                         "One or more validators not found in slashing protection database.\n\
                          Ensure you haven't misplaced your slashing protection database, or \
                          carefully consider running with --init-slashing-protection (see --help). \
-                         Error: {:?}",
-                        e
+                         Error: {e:?}"
                     )
                 })?;
         }
@@ -288,7 +281,7 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
                 // Set default timeout to be the full slot duration.
                 .timeout(slot_duration)
                 .build()
-                .map_err(|e| format!("Unable to build HTTP client: {:?}", e))?;
+                .map_err(|e| format!("Unable to build HTTP client: {e:?}"))?;
 
             // Use quicker timeouts if a fallback beacon node exists.
             let timeouts = if i < last_beacon_node_index && !config.use_long_timeouts {
@@ -586,7 +579,7 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
             let exit = self.context.executor.exit();
 
             let (listen_addr, server) = validator_http_api::serve::<_, E>(ctx, exit)
-                .map_err(|e| format!("Unable to start HTTP API server: {:?}", e))?;
+                .map_err(|e| format!("Unable to start HTTP API server: {e:?}"))?;
 
             self.context
                 .clone()
@@ -607,27 +600,27 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
         self.block_service
             .clone()
             .start_update_service(block_service_rx)
-            .map_err(|e| format!("Unable to start block service: {}", e))?;
+            .map_err(|e| format!("Unable to start block service: {e}"))?;
 
         self.attestation_service
             .clone()
             .start_update_service(&self.context.eth2_config.spec)
-            .map_err(|e| format!("Unable to start attestation service: {}", e))?;
+            .map_err(|e| format!("Unable to start attestation service: {e}"))?;
 
         self.payload_attestation_service
             .clone()
             .start_update_service(&self.context.eth2_config.spec)
-            .map_err(|e| format!("Unable to start payload attestation service: {}", e))?;
+            .map_err(|e| format!("Unable to start payload attestation service: {e}"))?;
 
         self.sync_committee_service
             .clone()
             .start_update_service(&self.context.eth2_config.spec)
-            .map_err(|e| format!("Unable to start sync committee service: {}", e))?;
+            .map_err(|e| format!("Unable to start sync committee service: {e}"))?;
 
         self.preparation_service
             .clone()
             .start_update_service(&self.context.eth2_config.spec)
-            .map_err(|e| format!("Unable to start preparation service: {}", e))?;
+            .map_err(|e| format!("Unable to start preparation service: {e}"))?;
 
         if let Some(doppelganger_service) = self.doppelganger_service.clone() {
             DoppelgangerService::start_update_service(
@@ -638,7 +631,7 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
                 self.duties_service.beacon_nodes.clone(),
                 self.duties_service.slot_clock.clone(),
             )
-            .map_err(|e| format!("Unable to start doppelganger service: {}", e))?;
+            .map_err(|e| format!("Unable to start doppelganger service: {e}"))?;
         } else {
             info!("Doppelganger protection disabled.");
         }
@@ -649,7 +642,7 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
             context.executor,
             &self.context.eth2_config.spec,
         )
-        .map_err(|e| format!("Failed to start notifier: {}", e))?;
+        .map_err(|e| format!("Failed to start notifier: {e}"))?;
 
         if self.config.enable_latency_measurement_service {
             latency_service::start_latency_service(
@@ -749,7 +742,7 @@ async fn init_from_beacon_node<E: EthSpec>(
 async fn wait_for_genesis(genesis_time: u64) -> Result<(), String> {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map_err(|e| format!("Unable to read system time: {:?}", e))?;
+        .map_err(|e| format!("Unable to read system time: {e:?}"))?;
     let genesis_time = Duration::from_secs(genesis_time);
 
     // If the time now is less than (prior to) genesis, then delay until the
@@ -790,7 +783,7 @@ async fn poll_whilst_waiting_for_genesis(genesis_time: Duration) -> Result<(), S
     loop {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .map_err(|e| format!("Unable to read system time: {:?}", e))?;
+            .map_err(|e| format!("Unable to read system time: {e:?}"))?;
 
         if now < genesis_time {
             info!(
@@ -807,8 +800,8 @@ async fn poll_whilst_waiting_for_genesis(genesis_time: Duration) -> Result<(), S
 pub fn load_pem_certificate<P: AsRef<Path>>(pem_path: P) -> Result<Certificate, String> {
     let mut buf = Vec::new();
     File::open(&pem_path)
-        .map_err(|e| format!("Unable to open certificate path: {}", e))?
+        .map_err(|e| format!("Unable to open certificate path: {e}"))?
         .read_to_end(&mut buf)
-        .map_err(|e| format!("Unable to read certificate file: {}", e))?;
-    Certificate::from_pem(&buf).map_err(|e| format!("Unable to parse certificate: {}", e))
+        .map_err(|e| format!("Unable to read certificate file: {e}"))?;
+    Certificate::from_pem(&buf).map_err(|e| format!("Unable to parse certificate: {e}"))
 }

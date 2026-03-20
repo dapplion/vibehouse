@@ -341,8 +341,7 @@ mod gloas_genesis_tests {
         for i in 0..E::slots_per_historical_root() {
             assert!(
                 state_gloas.execution_payload_availability.get(i).unwrap(),
-                "execution_payload_availability bit {} should be set",
-                i
+                "execution_payload_availability bit {i} should be set"
             );
         }
 

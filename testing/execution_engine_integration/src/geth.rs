@@ -43,7 +43,7 @@ pub fn build(execution_clients_dir: &Path) {
 pub fn clean(execution_clients_dir: &Path) {
     let repo_dir = execution_clients_dir.join("go-ethereum");
     if let Err(e) = fs::remove_dir_all(repo_dir) {
-        eprintln!("Error while deleting folder: {}", e);
+        eprintln!("Error while deleting folder: {e}");
     }
 }
 

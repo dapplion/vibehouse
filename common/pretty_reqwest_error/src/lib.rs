@@ -14,7 +14,7 @@ impl fmt::Debug for PrettyReqwestError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(url) = self.0.url() {
             if let Ok(url) = SensitiveUrl::new(url.clone()) {
-                write!(f, "url: {}", url)?;
+                write!(f, "url: {url}")?;
             } else {
                 write!(f, "url: unable_to_parse")?;
             }
@@ -39,14 +39,14 @@ impl fmt::Debug for PrettyReqwestError {
         } else {
             "unknown"
         };
-        write!(f, ", kind: {}", kind)?;
+        write!(f, ", kind: {kind}")?;
 
         if let Some(status) = self.0.status() {
-            write!(f, ", status_code: {}", status)?;
+            write!(f, ", status_code: {status}")?;
         }
 
         if let Some(ref source) = self.0.source() {
-            write!(f, ", detail: {}", source)?;
+            write!(f, ", detail: {source}")?;
         } else {
             write!(f, ", source: unknown")?;
         }
@@ -57,7 +57,7 @@ impl fmt::Debug for PrettyReqwestError {
 
 impl fmt::Display for PrettyReqwestError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 

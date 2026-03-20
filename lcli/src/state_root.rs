@@ -46,10 +46,10 @@ pub fn run<E: EthSpec>(
                     client
                         .get_debug_beacon_states::<E>(state_id)
                         .await
-                        .map_err(|e| format!("Failed to download state: {:?}", e))
+                        .map_err(|e| format!("Failed to download state: {e:?}"))
                 })
-                .map_err(|e| format!("Failed to complete task: {:?}", e))?
-                .ok_or_else(|| format!("Unable to locate state at {:?}", state_id))?
+                .map_err(|e| format!("Failed to complete task: {e:?}"))?
+                .ok_or_else(|| format!("Unable to locate state at {state_id:?}"))?
                 .into_data()
         }
         _ => return Err("must supply either --state-path or --beacon-url".into()),

@@ -54,7 +54,7 @@ impl<E> Drop for ExecutionEngine<E> {
     fn drop(&mut self) {
         // Ensure the EE process is killed on drop.
         if let Err(e) = self.child.kill() {
-            eprintln!("failed to kill child: {:?}", e);
+            eprintln!("failed to kill child: {e:?}");
         }
     }
 }
@@ -66,7 +66,7 @@ impl<E: GenericExecutionEngine> ExecutionEngine<E> {
         let http_port = unused_tcp4_port().unwrap();
         let http_auth_port = unused_tcp4_port().unwrap();
         let child = E::start_client(&datadir, http_port, http_auth_port, jwt_secret_path);
-        let url: reqwest::Url = format!("http://localhost:{}", http_port)
+        let url: reqwest::Url = format!("http://localhost:{http_port}")
             .parse()
             .expect("failed to parse provider URL");
         let provider = ProviderBuilder::new().connect_http(url);

@@ -498,11 +498,11 @@ impl<E: EthSpec> ExecutionLayer<E> {
         let jwt_key = if secret_file.exists() {
             // Read secret from file if it already exists
             std::fs::read_to_string(&secret_file)
-                .map_err(|e| format!("Failed to read JWT secret file. Error: {:?}", e))
+                .map_err(|e| format!("Failed to read JWT secret file. Error: {e:?}"))
                 .and_then(|ref s| {
                     let secret = JwtKey::from_slice(
                         &hex::decode(strip_prefix(s.trim_end()))
-                            .map_err(|e| format!("Invalid hex string: {:?}", e))?,
+                            .map_err(|e| format!("Invalid hex string: {e:?}"))?,
                     )?;
                     Ok(secret)
                 })
@@ -514,11 +514,11 @@ impl<E: EthSpec> ExecutionLayer<E> {
                 .write(true)
                 .create_new(true)
                 .open(&secret_file)
-                .map_err(|e| format!("Failed to open JWT secret file. Error: {:?}", e))
+                .map_err(|e| format!("Failed to open JWT secret file. Error: {e:?}"))
                 .and_then(|mut f| {
                     let secret = auth::JwtKey::random();
                     f.write_all(secret.hex_string().as_bytes())
-                        .map_err(|e| format!("Failed to write to JWT secret file: {:?}", e))?;
+                        .map_err(|e| format!("Failed to write to JWT secret file: {e:?}"))?;
                     Ok(secret)
                 })
                 .map_err(Error::InvalidJWTSecret)
@@ -2103,24 +2103,23 @@ impl fmt::Display for InvalidBuilderPayload {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             InvalidBuilderPayload::ParentHash { payload, expected } => {
-                write!(f, "payload block hash was {} not {}", payload, expected)
+                write!(f, "payload block hash was {payload} not {expected}")
             }
             InvalidBuilderPayload::PrevRandao { payload, expected } => {
-                write!(f, "payload prev randao was {} not {}", payload, expected)
+                write!(f, "payload prev randao was {payload} not {expected}")
             }
             InvalidBuilderPayload::Timestamp { payload, expected } => {
-                write!(f, "payload timestamp was {} not {}", payload, expected)
+                write!(f, "payload timestamp was {payload} not {expected}")
             }
             InvalidBuilderPayload::BlockNumber { payload, expected } => {
-                write!(f, "payload block number was {} not {:?}", payload, expected)
+                write!(f, "payload block number was {payload} not {expected:?}")
             }
             InvalidBuilderPayload::Fork { payload, expected } => {
-                write!(f, "payload fork was {} not {}", payload, expected)
+                write!(f, "payload fork was {payload} not {expected}")
             }
             InvalidBuilderPayload::Signature { signature, pubkey } => write!(
                 f,
-                "invalid payload signature {} for pubkey {}",
-                signature, pubkey
+                "invalid payload signature {signature} for pubkey {pubkey}"
             ),
             InvalidBuilderPayload::WithdrawalsRoot { payload, expected } => {
                 let opt_string = |opt_hash: &Option<Hash256>| {
@@ -2136,7 +2135,7 @@ impl fmt::Display for InvalidBuilderPayload {
                 )
             }
             InvalidBuilderPayload::GasLimitMismatch { payload, expected } => {
-                write!(f, "payload gas limit was {} not {}", payload, expected)
+                write!(f, "payload gas limit was {payload} not {expected}")
             }
         }
     }

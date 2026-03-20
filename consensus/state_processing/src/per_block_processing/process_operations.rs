@@ -3206,8 +3206,7 @@ mod gloas_operations_tests {
             .weight;
         assert!(
             updated_weight > 0,
-            "same-slot attestation should add weight (got {})",
-            updated_weight
+            "same-slot attestation should add weight (got {updated_weight})"
         );
         assert_eq!(
             updated_weight, 32_000_000_000,
@@ -3546,8 +3545,7 @@ mod gloas_operations_tests {
         let expected_weight = committee_len as u64 * 32_000_000_000;
         assert_eq!(
             weight, expected_weight,
-            "weight should be sum of all attesting validators' effective_balances ({} validators)",
-            committee_len
+            "weight should be sum of all attesting validators' effective_balances ({committee_len} validators)"
         );
     }
 

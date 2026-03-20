@@ -28,7 +28,7 @@ impl Case for BlsBatchVerify {
             .input
             .messages
             .iter()
-            .map(|s| Hash256::from_str(s).map_err(|e| Error::FailedToParseTest(format!("{:?}", e))))
+            .map(|s| Hash256::from_str(s).map_err(|e| Error::FailedToParseTest(format!("{e:?}"))))
             .collect::<Result<Vec<_>, _>>()?;
 
         let pubkeys = self
@@ -45,9 +45,7 @@ impl Case for BlsBatchVerify {
             .input
             .signatures
             .iter()
-            .map(|s| {
-                Signature::from_str(s).map_err(|e| Error::FailedToParseTest(format!("{:?}", e)))
-            })
+            .map(|s| Signature::from_str(s).map_err(|e| Error::FailedToParseTest(format!("{e:?}"))))
             .collect::<Result<Vec<_>, _>>()?;
 
         let signature_set = messages

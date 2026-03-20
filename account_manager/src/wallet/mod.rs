@@ -36,15 +36,14 @@ pub fn cli_run(matches: &ArgMatches) -> Result<(), String> {
     };
     create_dir_all(&wallet_base_dir).map_err(|_| "Could not create wallet base dir")?;
 
-    eprintln!("wallet-dir path: {:?}", wallet_base_dir);
+    eprintln!("wallet-dir path: {wallet_base_dir:?}");
 
     match matches.subcommand() {
         Some((create::CMD, matches)) => create::cli_run(matches, wallet_base_dir),
         Some((list::CMD, _)) => list::cli_run(wallet_base_dir),
         Some((recover::CMD, matches)) => recover::cli_run(matches, wallet_base_dir),
         Some((unknown, _)) => Err(format!(
-            "{} does not have a {} command. See --help",
-            CMD, unknown
+            "{CMD} does not have a {unknown} command. See --help"
         )),
         _ => Err("No subcommand provided, see --help for options".to_string()),
     }

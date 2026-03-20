@@ -306,8 +306,7 @@ impl<E: EthSpec> SSZSnappyOutboundCodec<E> {
         // packet size for ssz container corresponding to `ErrorType`.
         if length > self.max_packet_size || length > *ERROR_TYPE_MAX || length < *ERROR_TYPE_MIN {
             return Err(RPCError::InvalidData(format!(
-                "RPC Error length is out of bounds, length {}",
-                length
+                "RPC Error length is out of bounds, length {length}"
             )));
         }
 
@@ -451,8 +450,7 @@ fn handle_error<T>(
             // Report as `InvalidData` so that malicious peer gets banned.
             if num_bytes >= max_compressed_len {
                 Err(RPCError::InvalidData(format!(
-                    "Received malicious snappy message, num_bytes {}, max_compressed_len {}",
-                    num_bytes, max_compressed_len
+                    "Received malicious snappy message, num_bytes {num_bytes}, max_compressed_len {max_compressed_len}"
                 )))
             } else {
                 // Haven't received enough bytes to decode yet, wait for more
@@ -675,10 +673,7 @@ fn handle_rpc_response<E: EthSpec>(
             }
             None => Err(RPCError::ErrorResponse(
                 RpcErrorResponse::InvalidRequest,
-                format!(
-                    "No context bytes provided for {:?} response",
-                    versioned_protocol
-                ),
+                format!("No context bytes provided for {versioned_protocol:?} response"),
             )),
         },
         SupportedProtocol::BlobsByRootV1 => match fork_name {
@@ -696,10 +691,7 @@ fn handle_rpc_response<E: EthSpec>(
             }
             None => Err(RPCError::ErrorResponse(
                 RpcErrorResponse::InvalidRequest,
-                format!(
-                    "No context bytes provided for {:?} response",
-                    versioned_protocol
-                ),
+                format!("No context bytes provided for {versioned_protocol:?} response"),
             )),
         },
         SupportedProtocol::DataColumnsByRootV1 => match fork_name {
@@ -717,10 +709,7 @@ fn handle_rpc_response<E: EthSpec>(
             }
             None => Err(RPCError::ErrorResponse(
                 RpcErrorResponse::InvalidRequest,
-                format!(
-                    "No context bytes provided for {:?} response",
-                    versioned_protocol
-                ),
+                format!("No context bytes provided for {versioned_protocol:?} response"),
             )),
         },
         SupportedProtocol::DataColumnsByRangeV1 => match fork_name {
@@ -738,10 +727,7 @@ fn handle_rpc_response<E: EthSpec>(
             }
             None => Err(RPCError::ErrorResponse(
                 RpcErrorResponse::InvalidRequest,
-                format!(
-                    "No context bytes provided for {:?} response",
-                    versioned_protocol
-                ),
+                format!("No context bytes provided for {versioned_protocol:?} response"),
             )),
         },
         SupportedProtocol::PingV1 => Ok(Some(RpcSuccessResponse::Pong(Ping {
@@ -756,10 +742,7 @@ fn handle_rpc_response<E: EthSpec>(
             )))),
             None => Err(RPCError::ErrorResponse(
                 RpcErrorResponse::InvalidRequest,
-                format!(
-                    "No context bytes provided for {:?} response",
-                    versioned_protocol
-                ),
+                format!("No context bytes provided for {versioned_protocol:?} response"),
             )),
         },
         SupportedProtocol::LightClientOptimisticUpdateV1 => match fork_name {
@@ -771,10 +754,7 @@ fn handle_rpc_response<E: EthSpec>(
             ))),
             None => Err(RPCError::ErrorResponse(
                 RpcErrorResponse::InvalidRequest,
-                format!(
-                    "No context bytes provided for {:?} response",
-                    versioned_protocol
-                ),
+                format!("No context bytes provided for {versioned_protocol:?} response"),
             )),
         },
         SupportedProtocol::LightClientFinalityUpdateV1 => match fork_name {
@@ -786,10 +766,7 @@ fn handle_rpc_response<E: EthSpec>(
             ))),
             None => Err(RPCError::ErrorResponse(
                 RpcErrorResponse::InvalidRequest,
-                format!(
-                    "No context bytes provided for {:?} response",
-                    versioned_protocol
-                ),
+                format!("No context bytes provided for {versioned_protocol:?} response"),
             )),
         },
         SupportedProtocol::LightClientUpdatesByRangeV1 => match fork_name {
@@ -801,10 +778,7 @@ fn handle_rpc_response<E: EthSpec>(
             ))),
             None => Err(RPCError::ErrorResponse(
                 RpcErrorResponse::InvalidRequest,
-                format!(
-                    "No context bytes provided for {:?} response",
-                    versioned_protocol
-                ),
+                format!("No context bytes provided for {versioned_protocol:?} response"),
             )),
         },
         SupportedProtocol::ExecutionPayloadEnvelopesByRootV1 => match fork_name {
@@ -824,10 +798,7 @@ fn handle_rpc_response<E: EthSpec>(
             }
             None => Err(RPCError::ErrorResponse(
                 RpcErrorResponse::InvalidRequest,
-                format!(
-                    "No context bytes provided for {:?} response",
-                    versioned_protocol
-                ),
+                format!("No context bytes provided for {versioned_protocol:?} response"),
             )),
         },
         // MetaData V2/V3 responses have no context bytes, so behave similarly to V1 responses
@@ -871,10 +842,7 @@ fn handle_rpc_response<E: EthSpec>(
             )))),
             None => Err(RPCError::ErrorResponse(
                 RpcErrorResponse::InvalidRequest,
-                format!(
-                    "No context bytes provided for {:?} response",
-                    versioned_protocol
-                ),
+                format!("No context bytes provided for {versioned_protocol:?} response"),
             )),
         },
         SupportedProtocol::BlocksByRootV2 => match fork_name {
@@ -910,10 +878,7 @@ fn handle_rpc_response<E: EthSpec>(
             )))),
             None => Err(RPCError::ErrorResponse(
                 RpcErrorResponse::InvalidRequest,
-                format!(
-                    "No context bytes provided for {:?} response",
-                    versioned_protocol
-                ),
+                format!("No context bytes provided for {versioned_protocol:?} response"),
             )),
         },
     }
@@ -931,10 +896,7 @@ fn context_bytes_to_fork_name(
             let encoded = hex::encode(context_bytes);
             RPCError::ErrorResponse(
                 RpcErrorResponse::InvalidRequest,
-                format!(
-                    "Context bytes {} do not correspond to a valid fork",
-                    encoded
-                ),
+                format!("Context bytes {encoded} do not correspond to a valid fork"),
             )
         })
 }
@@ -1268,8 +1230,7 @@ mod tests {
 
         let decoded = inbound_codec.decode(&mut buf).unwrap().unwrap_or_else(|| {
             panic!(
-                "Should correctly decode the request {} over protocol {:?} and fork {}",
-                req, protocol, fork_name
+                "Should correctly decode the request {req} over protocol {protocol:?} and fork {fork_name}"
             )
         });
         match req {
@@ -2386,8 +2347,7 @@ mod tests {
         let err = result.unwrap_err();
         assert!(
             matches!(err, RPCError::InvalidData(_)),
-            "Should return invalid data variant {}",
-            err
+            "Should return invalid data variant {err}"
         );
     }
 }

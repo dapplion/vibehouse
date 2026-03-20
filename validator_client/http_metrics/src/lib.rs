@@ -150,7 +150,7 @@ async fn metrics_handler<E: EthSpec>(State(ctx): State<Arc<Context<E>>>) -> impl
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             [("Content-Type", "text/plain")],
-            format!("Unable to gather metrics: {:?}", e),
+            format!("Unable to gather metrics: {e:?}"),
         ),
     }
 }
@@ -208,7 +208,7 @@ pub fn gather_prometheus_metrics<E: EthSpec>(
         .encode(&metrics::gather(), &mut buffer)
         .map_err(|e| format!("{e:?}"))?;
 
-    String::from_utf8(buffer).map_err(|e| format!("Failed to encode prometheus info: {:?}", e))
+    String::from_utf8(buffer).map_err(|e| format!("Failed to encode prometheus info: {e:?}"))
 }
 
 fn build_cors_layer(
@@ -234,8 +234,8 @@ fn build_cors_layer(
         }
     } else {
         let origin = match listen_addr {
-            IpAddr::V4(_) => format!("http://{}:{}", listen_addr, listen_port),
-            IpAddr::V6(_) => format!("http://[{}]:{}", listen_addr, listen_port),
+            IpAddr::V4(_) => format!("http://{listen_addr}:{listen_port}"),
+            IpAddr::V6(_) => format!("http://[{listen_addr}]:{listen_port}"),
         };
         let header_value: axum::http::HeaderValue = origin
             .parse()

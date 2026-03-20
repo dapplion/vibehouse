@@ -1695,7 +1695,7 @@ fn test_active_requests() {
                         app_request_id: _,
                         peer_id: _,
                         error,
-                    } => panic!("RPC failed: {:?}", error),
+                    } => panic!("RPC failed: {error:?}"),
                     _ => {}
                 }
 

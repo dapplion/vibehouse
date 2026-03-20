@@ -22,14 +22,14 @@ pub fn run<E: EthSpec>(matches: &ArgMatches) -> Result<(), String> {
     let attestations_file: PathBuf = parse_required(matches, "attestations")?;
 
     let mut state = BeaconState::<E>::from_ssz_bytes(&read_file_bytes(&state_file)?, spec)
-        .map_err(|e| format!("Invalid state: {:?}", e))?;
+        .map_err(|e| format!("Invalid state: {e:?}"))?;
     state
         .build_all_committee_caches(spec)
-        .map_err(|e| format!("{:?}", e))?;
+        .map_err(|e| format!("{e:?}"))?;
 
     let attestations: Vec<Attestation<E>> =
         serde_json::from_slice(&read_file_bytes(&attestations_file)?)
-            .map_err(|e| format!("Invalid attestation list: {:?}", e))?;
+            .map_err(|e| format!("Invalid attestation list: {e:?}"))?;
 
     let indexed_attestations = attestations
         .into_iter()
@@ -43,11 +43,11 @@ pub fn run<E: EthSpec>(matches: &ArgMatches) -> Result<(), String> {
             }
         })
         .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| format!("Error constructing indexed attestation: {:?}", e))?;
+        .map_err(|e| format!("Error constructing indexed attestation: {e:?}"))?;
 
     let string_output = serde_json::to_string_pretty(&indexed_attestations)
-        .map_err(|e| format!("Unable to convert to JSON: {:?}", e))?;
-    println!("{}", string_output);
+        .map_err(|e| format!("Unable to convert to JSON: {e:?}"))?;
+    println!("{string_output}");
 
     Ok(())
 }

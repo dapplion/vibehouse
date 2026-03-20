@@ -379,7 +379,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> AttestationService<S, 
                 beacon_node
                     .get_validator_attestation_data(slot, committee_index)
                     .await
-                    .map_err(|e| format!("Failed to produce attestation data: {:?}", e))
+                    .map_err(|e| format!("Failed to produce attestation data: {e:?}"))
                     .map(|result| result.data)
             })
             .await
@@ -582,10 +582,8 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> AttestationService<S, 
                             committee_index,
                         )
                         .await
-                        .map_err(|e| {
-                            format!("Failed to produce an aggregate attestation: {:?}", e)
-                        })?
-                        .ok_or_else(|| format!("No aggregate available for {:?}", attestation_data))
+                        .map_err(|e| format!("Failed to produce an aggregate attestation: {e:?}"))?
+                        .ok_or_else(|| format!("No aggregate available for {attestation_data:?}"))
                         .map(types::BeaconResponse::into_data)
                 } else {
                     beacon_node
@@ -594,10 +592,8 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> AttestationService<S, 
                             attestation_data.tree_hash_root(),
                         )
                         .await
-                        .map_err(|e| {
-                            format!("Failed to produce an aggregate attestation: {:?}", e)
-                        })?
-                        .ok_or_else(|| format!("No aggregate available for {:?}", attestation_data))
+                        .map_err(|e| format!("Failed to produce an aggregate attestation: {e:?}"))?
+                        .ok_or_else(|| format!("No aggregate available for {attestation_data:?}"))
                         .map(|result| result.data)
                 }
             })

@@ -351,12 +351,7 @@ mod tests {
         // Each entry should be a valid validator index (< num_validators)
         for i in 0..lookahead.len() {
             let idx = *lookahead.get(i).unwrap();
-            assert!(
-                idx < 8,
-                "proposer index {} at slot {} is out of range",
-                idx,
-                i
-            );
+            assert!(idx < 8, "proposer index {idx} at slot {i} is out of range");
         }
     }
 
@@ -380,8 +375,7 @@ mod tests {
             assert_eq!(
                 la1.get(i).unwrap(),
                 la2.get(i).unwrap(),
-                "proposer lookahead mismatch at index {}",
-                i
+                "proposer lookahead mismatch at index {i}"
             );
         }
     }

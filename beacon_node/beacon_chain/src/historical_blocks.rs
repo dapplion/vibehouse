@@ -385,7 +385,7 @@ mod tests {
     #[test]
     fn debug_format() {
         let err = HistoricalBlockError::InvalidSignature;
-        let debug = format!("{:?}", err);
+        let debug = format!("{err:?}");
         assert!(debug.contains("InvalidSignature"));
     }
 

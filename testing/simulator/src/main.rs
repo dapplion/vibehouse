@@ -29,14 +29,14 @@ fn main() {
         Some("basic-sim") => match basic_sim::run_basic_sim(&matches) {
             Ok(()) => println!("Simulation exited successfully"),
             Err(e) => {
-                eprintln!("Simulation exited with error: {}", e);
+                eprintln!("Simulation exited with error: {e}");
                 std::process::exit(1)
             }
         },
         Some("fallback-sim") => match fallback_sim::run_fallback_sim(&matches) {
             Ok(()) => println!("Simulation exited successfully"),
             Err(e) => {
-                eprintln!("Simulation exited with error: {}", e);
+                eprintln!("Simulation exited with error: {e}");
                 std::process::exit(1)
             }
         },

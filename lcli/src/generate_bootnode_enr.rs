@@ -20,10 +20,7 @@ pub fn run<E: EthSpec>(matches: &ArgMatches, spec: &ChainSpec) -> Result<(), Str
         clap_utils::parse_ssz_required(matches, "genesis-fork-version")?;
 
     if output_dir.exists() {
-        return Err(format!(
-            "{:?} already exists, will not override",
-            output_dir
-        ));
+        return Err(format!("{output_dir:?} already exists, will not override"));
     }
 
     let mut config = NetworkConfig::default();
@@ -47,23 +44,23 @@ pub fn run<E: EthSpec>(matches: &ArgMatches, spec: &ChainSpec) -> Result<(), Str
         genesis_fork_digest,
         spec,
     )
-    .map_err(|e| format!("Unable to create ENR: {:?}", e))?;
+    .map_err(|e| format!("Unable to create ENR: {e:?}"))?;
 
-    fs::create_dir_all(&output_dir).map_err(|e| format!("Unable to create output-dir: {:?}", e))?;
+    fs::create_dir_all(&output_dir).map_err(|e| format!("Unable to create output-dir: {e:?}"))?;
 
     let mut enr_file = File::create(output_dir.join(ENR_FILENAME))
-        .map_err(|e| format!("Unable to create {}: {:?}", ENR_FILENAME, e))?;
+        .map_err(|e| format!("Unable to create {ENR_FILENAME}: {e:?}"))?;
     enr_file
         .write_all(enr.to_base64().as_bytes())
-        .map_err(|e| format!("Unable to write ENR to {}: {:?}", ENR_FILENAME, e))?;
+        .map_err(|e| format!("Unable to write ENR to {ENR_FILENAME}: {e:?}"))?;
 
     let mut key_file = File::create(output_dir.join(NETWORK_KEY_FILENAME))
-        .map_err(|e| format!("Unable to create {}: {:?}", NETWORK_KEY_FILENAME, e))?;
+        .map_err(|e| format!("Unable to create {NETWORK_KEY_FILENAME}: {e:?}"))?;
 
     let secret_bytes = secp256k1_keypair.secret().to_bytes();
     key_file
         .write_all(&secret_bytes)
-        .map_err(|e| format!("Unable to write key to {}: {:?}", NETWORK_KEY_FILENAME, e))?;
+        .map_err(|e| format!("Unable to write key to {NETWORK_KEY_FILENAME}: {e:?}"))?;
 
     Ok(())
 }

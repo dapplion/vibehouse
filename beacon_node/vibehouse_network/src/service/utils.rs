@@ -87,7 +87,7 @@ fn keypair_from_hex(hex_bytes: &str) -> Result<Keypair, String> {
     };
 
     hex::decode(hex_bytes)
-        .map_err(|e| format!("Failed to parse p2p secret key bytes: {:?}", e))
+        .map_err(|e| format!("Failed to parse p2p secret key bytes: {e:?}"))
         .and_then(keypair_from_bytes)
 }
 
@@ -97,7 +97,7 @@ fn keypair_from_bytes(mut bytes: Vec<u8>) -> Result<Keypair, String> {
             let keypair: secp256k1::Keypair = secret.into();
             keypair.into()
         })
-        .map_err(|e| format!("Unable to parse p2p secret key: {:?}", e))
+        .map_err(|e| format!("Unable to parse p2p secret key: {e:?}"))
 }
 
 /// Loads a private key from disk. If this fails, a new key is

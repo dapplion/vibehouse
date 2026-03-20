@@ -465,8 +465,7 @@ mod tests {
         #[cfg(not(feature = "mdbx"))]
         assert!(
             matches!(result, DatabaseBackendOverride::Failure(_)),
-            "expected Failure, got {:?}",
-            result,
+            "expected Failure, got {result:?}",
         );
     }
 

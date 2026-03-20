@@ -69,7 +69,7 @@ pub async fn verify_all_finalized_at<E: EthSpec>(
                     .get_beacon_states_finality_checkpoints(StateId::Head)
                     .await
                     .map(|body| body.unwrap().data.finalized.epoch)
-                    .map_err(|e| format!("Get head via http failed: {:?}", e))?,
+                    .map_err(|e| format!("Get head via http failed: {e:?}"))?,
             );
         }
         epochs
@@ -77,8 +77,7 @@ pub async fn verify_all_finalized_at<E: EthSpec>(
 
     if epochs.iter().any(|node_epoch| *node_epoch != epoch) {
         Err(format!(
-            "Nodes are not finalized at epoch {}. Finalized epochs: {:?}",
-            epoch, epochs
+            "Nodes are not finalized at epoch {epoch}. Finalized epochs: {epochs:?}"
         ))
     } else {
         Ok(())
@@ -98,7 +97,7 @@ async fn verify_validator_count<E: EthSpec>(
                 .get_debug_beacon_states::<E>(StateId::Head)
                 .await
                 .map(|body| body.unwrap().into_data())
-                .map_err(|e| format!("Get state root via http failed: {:?}", e))?
+                .map_err(|e| format!("Get state root via http failed: {e:?}"))?
                 .validators()
                 .len();
             validator_counts.push(vc);
@@ -111,8 +110,7 @@ async fn verify_validator_count<E: EthSpec>(
         .any(|count| *count != expected_count)
     {
         Err(format!(
-            "Nodes do not all have {} validators in their state. Validator counts: {:?}",
-            expected_count, validator_counts
+            "Nodes do not all have {expected_count} validators in their state. Validator counts: {validator_counts:?}"
         ))
     } else {
         Ok(())
@@ -163,11 +161,10 @@ pub async fn verify_fork_version<E: EthSpec>(
             .get_beacon_states_fork(StateId::Head)
             .await
             .map(|resp| resp.unwrap().data.current_version)
-            .map_err(|e| format!("Failed to get fork from beacon node: {:?}", e))?;
+            .map_err(|e| format!("Failed to get fork from beacon node: {e:?}"))?;
         if fork_version != remote_fork_version {
             return Err(format!(
-                "Fork version after FORK_EPOCH is incorrect, got: {:?}, expected: {:?}",
-                remote_fork_version, fork_version,
+                "Fork version after FORK_EPOCH is incorrect, got: {remote_fork_version:?}, expected: {fork_version:?}",
             ));
         }
     }
@@ -192,10 +189,7 @@ pub async fn verify_full_sync_aggregates_up_to<E: EthSpec>(
             .await
             .map(|resp| {
                 resp.unwrap_or_else(|| {
-                    panic!(
-                        "Beacon block for slot {} not returned from Beacon API",
-                        slot
-                    )
+                    panic!("Beacon block for slot {slot} not returned from Beacon API")
                 })
                 .data()
                 .message()
@@ -203,8 +197,8 @@ pub async fn verify_full_sync_aggregates_up_to<E: EthSpec>(
                 .sync_aggregate()
                 .map(types::SyncAggregate::num_set_bits)
             })
-            .map_err(|e| format!("Error while getting beacon block: {:?}", e))?
-            .map_err(|_| format!("Altair block {} should have sync aggregate", slot))?;
+            .map_err(|e| format!("Error while getting beacon block: {e:?}"))?
+            .map_err(|_| format!("Altair block {slot} should have sync aggregate"))?;
 
         if sync_aggregate_count != E::sync_committee_size() {
             return Err(format!(
@@ -236,11 +230,11 @@ pub async fn verify_transition_block_finalized<E: EthSpec>(
             .get_beacon_blocks::<E>(BlockId::Finalized)
             .await
             .map(|body| body.unwrap().into_data())
-            .map_err(|e| format!("Get state root via http failed: {:?}", e))?
+            .map_err(|e| format!("Get state root via http failed: {e:?}"))?
             .message()
             .execution_payload()
             .map(|payload| payload.block_hash())
-            .map_err(|e| format!("Execution payload does not exist: {:?}", e))?;
+            .map_err(|e| format!("Execution payload does not exist: {e:?}"))?;
         block_hashes.push(execution_block_hash);
     }
 
@@ -249,8 +243,7 @@ pub async fn verify_transition_block_finalized<E: EthSpec>(
         Ok(())
     } else {
         Err(format!(
-            "Terminal block not finalized on all nodes Finalized block hashes:{:?}",
-            block_hashes
+            "Terminal block not finalized on all nodes Finalized block hashes:{block_hashes:?}"
         ))
     }
 }
@@ -306,7 +299,7 @@ pub(crate) async fn verify_light_client_updates<E: EthSpec>(
         let signature_slot = client
             .get_beacon_light_client_optimistic_update::<E>()
             .await
-            .map_err(|e| format!("Error while getting light client updates: {:?}", e))?
+            .map_err(|e| format!("Error while getting light client updates: {e:?}"))?
             .ok_or_else(|| format!("Light client optimistic update not found {slot:?}"))?
             .data()
             .signature_slot();
@@ -337,7 +330,7 @@ pub(crate) async fn verify_light_client_updates<E: EthSpec>(
         let signature_slot = client
             .get_beacon_light_client_finality_update::<E>()
             .await
-            .map_err(|e| format!("Error while getting light client updates: {:?}", e))?
+            .map_err(|e| format!("Error while getting light client updates: {e:?}"))?
             .ok_or_else(|| format!("Light client finality update not found {slot:?}"))?
             .data()
             .signature_slot();
@@ -351,7 +344,7 @@ pub(crate) async fn verify_light_client_updates<E: EthSpec>(
         let light_client_updates = client
             .get_beacon_light_client_updates::<E>(sync_committee_period, 1)
             .await
-            .map_err(|e| format!("Error while getting light client update: {:?}", e))?
+            .map_err(|e| format!("Error while getting light client update: {e:?}"))?
             .ok_or_else(|| format!("Light client update not found {slot:?}"))?;
 
         // Ensure we're only storing a single light client update for the given sync committee period
@@ -514,11 +507,11 @@ pub async fn check_attestation_correctness<E: EthSpec>(
     let target_percent = target_successes / total * 100.0;
     let source_percent = source_successes / total * 100.0;
 
-    eprintln!("Total Attestations: {}", total);
-    eprintln!("Active: {}: {}%", active_successes, active_percent);
-    eprintln!("Head: {}: {}%", head_successes, head_percent);
-    eprintln!("Target: {}: {}%", target_successes, target_percent);
-    eprintln!("Source: {}: {}%", source_successes, source_percent);
+    eprintln!("Total Attestations: {total}");
+    eprintln!("Active: {active_successes}: {active_percent}%");
+    eprintln!("Head: {head_successes}: {head_percent}%");
+    eprintln!("Target: {target_successes}: {target_percent}%");
+    eprintln!("Source: {source_successes}: {source_percent}%");
 
     if active_percent < acceptable_attestation_performance {
         return Err("Active percent was below required level".to_string());

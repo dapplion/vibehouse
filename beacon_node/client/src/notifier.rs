@@ -369,7 +369,7 @@ pub fn spawn_notifier<T: BeaconChainTypes>(
 
                 let block_hash = match beacon_chain.canonical_head.head_execution_status() {
                     Ok(ExecutionStatus::Irrelevant(_)) => "n/a".to_string(),
-                    Ok(ExecutionStatus::Valid(hash)) => format!("{} (verified)", hash),
+                    Ok(ExecutionStatus::Valid(hash)) => format!("{hash} (verified)"),
                     Ok(ExecutionStatus::Optimistic(hash)) => {
                         warn!(
                             info = "chain not fully verified, \
@@ -377,7 +377,7 @@ pub fn spawn_notifier<T: BeaconChainTypes>(
                         execution_block_hash = ?hash,
                             "Head is optimistic"
                         );
-                        format!("{} (unverified)", hash)
+                        format!("{hash} (unverified)")
                     }
                     Ok(ExecutionStatus::Invalid(hash)) => {
                         crit!(
@@ -385,7 +385,7 @@ pub fn spawn_notifier<T: BeaconChainTypes>(
                             execution_block_hash = ?hash,
                             "Head execution payload is invalid"
                         );
-                        format!("{} (invalid)", hash)
+                        format!("{hash} (invalid)")
                     }
                     Err(_) => "unknown".to_string(),
                 };
@@ -694,14 +694,14 @@ fn peer_count_pretty(peer_count: usize) -> String {
     if peer_count == usize::MAX {
         String::from("--")
     } else {
-        format!("{}", peer_count)
+        format!("{peer_count}")
     }
 }
 
 /// Returns a nicely formatted string describing the rate of slot imports per second.
 fn sync_speed_pretty(slots_per_second: Option<f64>) -> String {
     if let Some(slots_per_second) = slots_per_second {
-        format!("{:.2} slots/sec", slots_per_second)
+        format!("{slots_per_second:.2} slots/sec")
     } else {
         "--".into()
     }
@@ -771,7 +771,7 @@ fn seconds_pretty(secs: f64) -> String {
             min_string
         )
     } else {
-        format!("{:.0} {}", minutes, min_string)
+        format!("{minutes:.0} {min_string}")
     }
 }
 

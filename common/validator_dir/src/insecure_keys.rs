@@ -39,10 +39,10 @@ pub fn generate_deterministic_keystore(i: usize) -> Result<(Keystore, PlainText)
     let keypair = generate_deterministic_keypair(i);
 
     let keystore = KeystoreBuilder::new(&keypair, INSECURE_PASSWORD, String::new())
-        .map_err(|e| format!("Unable to create keystore builder: {:?}", e))?
+        .map_err(|e| format!("Unable to create keystore builder: {e:?}"))?
         .kdf(insecure_kdf())
         .build()
-        .map_err(|e| format!("Unable to build keystore: {:?}", e))?;
+        .map_err(|e| format!("Unable to build keystore: {e:?}"))?;
 
     Ok((keystore, INSECURE_PASSWORD.to_vec().into()))
 }
@@ -76,10 +76,10 @@ pub fn build_deterministic_validator_dirs(
         Builder::new(validators_dir.clone())
             .password_dir(password_dir.clone())
             .insecure_voting_keypair(i)
-            .map_err(|e| format!("Unable to generate insecure keypair: {:?}", e))?
+            .map_err(|e| format!("Unable to generate insecure keypair: {e:?}"))?
             .store_withdrawal_keystore(false)
             .build()
-            .map_err(|e| format!("Unable to build keystore: {:?}", e))?;
+            .map_err(|e| format!("Unable to build keystore: {e:?}"))?;
     }
 
     Ok(())

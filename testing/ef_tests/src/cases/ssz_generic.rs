@@ -250,8 +250,7 @@ fn ssz_generic_test<
     // Invalid
     else if let Ok(decoded) = T::from_ssz_bytes(&serialized) {
         return Err(Error::DidntFail(format!(
-            "Decoded invalid bytes into: {:?}",
-            decoded
+            "Decoded invalid bytes into: {decoded:?}"
         )));
     }
     Ok(())

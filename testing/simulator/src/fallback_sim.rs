@@ -82,13 +82,13 @@ pub fn run_fallback_sim(matches: &ArgMatches) -> Result<(), String> {
     let disable_stdout_logging = subcommand_matches.get_flag("disable-stdout-logging");
 
     println!("Fallback Simulator:");
-    println!(" vc-count: {}", vc_count);
-    println!(" validators-per-vc: {}", validators_per_vc);
-    println!(" bns-per-vc: {}", bns_per_vc);
-    println!(" speed-up-factor: {}", speed_up_factor);
-    println!(" continue-after-checks: {}", continue_after_checks);
-    println!(" log-dir: {:?}", log_dir);
-    println!(" disable-stdout-logging: {}", disable_stdout_logging);
+    println!(" vc-count: {vc_count}");
+    println!(" validators-per-vc: {validators_per_vc}");
+    println!(" bns-per-vc: {bns_per_vc}");
+    println!(" speed-up-factor: {speed_up_factor}");
+    println!(" continue-after-checks: {continue_after_checks}");
+    println!(" log-dir: {log_dir:?}");
+    println!(" disable-stdout-logging: {disable_stdout_logging}");
 
     // Generate the directories and keystores required for the validator clients.
     let validator_files = (0..vc_count)
@@ -247,7 +247,7 @@ pub fn run_fallback_sim(matches: &ArgMatches) -> Result<(), String> {
                     let mut validator_config = testing_validator_config();
                     validator_config.validator_store.fee_recipient =
                         Some(SUGGESTED_FEE_RECIPIENT.into());
-                    println!("Adding validator client {}", i);
+                    println!("Adding validator client {i}");
                     network_1
                         .add_validator_client_with_fallbacks(
                             validator_config,

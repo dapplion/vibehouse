@@ -29,15 +29,13 @@ pub fn ptc_duties<T: BeaconChainTypes>(
     // Only allow current or next epoch (PTC duties aren't useful for past epochs)
     if request_epoch > current_epoch + 1 {
         return Err(ApiError::bad_request(format!(
-            "request epoch {} is more than one epoch past the current epoch {}",
-            request_epoch, current_epoch
+            "request epoch {request_epoch} is more than one epoch past the current epoch {current_epoch}"
         )));
     }
 
     if request_epoch + 1 < current_epoch {
         return Err(ApiError::bad_request(format!(
-            "request epoch {} is too far in the past (current epoch {})",
-            request_epoch, current_epoch
+            "request epoch {request_epoch} is too far in the past (current epoch {current_epoch})"
         )));
     }
 

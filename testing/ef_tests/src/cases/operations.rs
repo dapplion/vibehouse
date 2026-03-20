@@ -590,7 +590,7 @@ impl<E: EthSpec, O: Operation<E>> LoadCase for Operations<E, O> {
         let post_filename = path.join("post.ssz_snappy");
         let post = if post_filename.is_file() {
             if let Some(bls_error) = bls_error {
-                panic!("input is unexpectedly invalid: {}", bls_error);
+                panic!("input is unexpectedly invalid: {bls_error}");
             }
             Some(ssz_decode_state(&post_filename, spec)?)
         } else {

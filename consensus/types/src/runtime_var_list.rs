@@ -134,8 +134,7 @@ impl<T: Decode> RuntimeVariableList<T> {
 
             if num_items > max_len {
                 return Err(ssz::DecodeError::BytesInvalid(format!(
-                    "RuntimeVariableList of {} items exceeds maximum of {}",
-                    num_items, max_len
+                    "RuntimeVariableList of {num_items} items exceeds maximum of {max_len}"
                 )));
             }
 

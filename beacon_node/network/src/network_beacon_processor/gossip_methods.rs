@@ -3346,10 +3346,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     .create_new(true)
                     .write(true)
                     .open(&path)
-                    .map_err(|e| format!("Failed to open file: {:?}", e))
+                    .map_err(|e| format!("Failed to open file: {e:?}"))
                     .map(|mut file| {
                         file.write_all(bytes)
-                            .map_err(|e| format!("Failed to write file: {:?}", e))
+                            .map_err(|e| format!("Failed to write file: {e:?}"))
                     });
                 if let Err(e) = write_result {
                     error!(

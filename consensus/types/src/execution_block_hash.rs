@@ -95,9 +95,7 @@ impl std::str::FromStr for ExecutionBlockHash {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Hash256::from_str(s)
-            .map(Self)
-            .map_err(|e| format!("{:?}", e))
+        Hash256::from_str(s).map(Self).map_err(|e| format!("{e:?}"))
     }
 }
 

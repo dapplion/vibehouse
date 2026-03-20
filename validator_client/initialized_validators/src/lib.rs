@@ -211,7 +211,7 @@ fn get_lockfile_path(file_path: &Path) -> Option<PathBuf> {
     file_path
         .file_name()
         .and_then(|os_str| os_str.to_str())
-        .map(|filename| file_path.with_file_name(format!("{}.lock", filename)))
+        .map(|filename| file_path.with_file_name(format!("{filename}.lock")))
 }
 
 impl InitializedValidator {
@@ -409,7 +409,7 @@ pub fn load_pkcs12_identity<P: AsRef<Path>>(
 }
 
 fn build_web3_signer_url(base_url: &str, voting_public_key: &PublicKey) -> Result<Url, ParseError> {
-    Url::parse(base_url)?.join(&format!("api/v1/eth2/sign/{}", voting_public_key))
+    Url::parse(base_url)?.join(&format!("api/v1/eth2/sign/{voting_public_key}"))
 }
 
 fn build_web3_signer_client(
@@ -457,18 +457,16 @@ fn unlock_keystore_via_stdin_password(
 ) -> Result<(Zeroizing<String>, Keypair), Error> {
     eprintln!();
     eprintln!(
-        "The {} file does not contain either of the following fields for {:?}:",
-        CONFIG_FILENAME, keystore_path
+        "The {CONFIG_FILENAME} file does not contain either of the following fields for {keystore_path:?}:"
     );
     eprintln!();
     eprintln!(" - voting_keystore_password");
     eprintln!(" - voting_keystore_password_path");
     eprintln!();
     eprintln!(
-        "You may exit and update {} or enter a password. \
+        "You may exit and update {CONFIG_FILENAME} or enter a password. \
                             If you choose to enter a password now then this prompt \
-                            will be raised next time the validator is started.",
-        CONFIG_FILENAME
+                            will be raised next time the validator is started."
     );
     eprintln!();
     eprintln!("Enter password (or press Ctrl+c to exit):");

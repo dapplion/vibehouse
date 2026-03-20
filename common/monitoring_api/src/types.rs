@@ -374,7 +374,7 @@ mod tests {
     #[test]
     fn client_version_extracts_semver() {
         if let Some(v) = client_version() {
-            assert!(v.contains('.'), "Expected semver, got: {}", v);
+            assert!(v.contains('.'), "Expected semver, got: {v}");
         }
     }
 

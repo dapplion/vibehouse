@@ -216,8 +216,7 @@ mod tests {
                 .unwrap();
             assert!(
                 !attested,
-                "validator {} should not have attested at genesis",
-                i
+                "validator {i} should not have attested at genesis"
             );
         }
     }
@@ -236,7 +235,7 @@ mod tests {
         // For epoch 0 and current_epoch 0: current_epoch == epoch → uses current_epoch_participation
         for i in 0..8u64 {
             let attested = cache.has_attested_in_epoch(i, prev_epoch).unwrap();
-            assert!(!attested, "validator {} should not have attested", i);
+            assert!(!attested, "validator {i} should not have attested");
         }
     }
 

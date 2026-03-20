@@ -94,13 +94,12 @@ impl Auth {
         std::fs::read_to_string(&jwt_path)
             .map_err(|e| {
                 Error::InvalidKey(format!(
-                    "Failed to read JWT secret file {:?}, error: {:?}",
-                    jwt_path, e
+                    "Failed to read JWT secret file {jwt_path:?}, error: {e:?}"
                 ))
             })
             .and_then(|ref s| {
                 let secret_bytes = hex::decode(strip_prefix(s.trim_end()))
-                    .map_err(|e| Error::InvalidKey(format!("Invalid hex string: {:?}", e)))?;
+                    .map_err(|e| Error::InvalidKey(format!("Invalid hex string: {e:?}")))?;
                 let secret = JwtKey::from_slice(&secret_bytes).map_err(Error::InvalidKey)?;
                 Ok(Self::new(secret, id, clv))
             })

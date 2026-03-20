@@ -123,12 +123,12 @@ impl FromStr for BlockId {
                 if other.starts_with("0x") {
                     Hash256::from_str(&s[2..])
                         .map(BlockId::Root)
-                        .map_err(|e| format!("{} cannot be parsed as a root", e))
+                        .map_err(|e| format!("{e} cannot be parsed as a root"))
                 } else {
                     u64::from_str(s)
                         .map(Slot::new)
                         .map(BlockId::Slot)
-                        .map_err(|_| format!("{} cannot be parsed as a parameter", s))
+                        .map_err(|_| format!("{s} cannot be parsed as a parameter"))
                 }
             }
         }
@@ -142,8 +142,8 @@ impl fmt::Display for BlockId {
             BlockId::Genesis => write!(f, "genesis"),
             BlockId::Finalized => write!(f, "finalized"),
             BlockId::Justified => write!(f, "justified"),
-            BlockId::Slot(slot) => write!(f, "{}", slot),
-            BlockId::Root(root) => write!(f, "{:?}", root),
+            BlockId::Slot(slot) => write!(f, "{slot}"),
+            BlockId::Root(root) => write!(f, "{root:?}"),
         }
     }
 }
@@ -171,12 +171,12 @@ impl FromStr for StateId {
                 if other.starts_with("0x") {
                     Hash256::from_str(&s[2..])
                         .map(StateId::Root)
-                        .map_err(|e| format!("{} cannot be parsed as a root", e))
+                        .map_err(|e| format!("{e} cannot be parsed as a root"))
                 } else {
                     u64::from_str(s)
                         .map(Slot::new)
                         .map(StateId::Slot)
-                        .map_err(|_| format!("{} cannot be parsed as a slot", s))
+                        .map_err(|_| format!("{s} cannot be parsed as a slot"))
                 }
             }
         }
@@ -190,8 +190,8 @@ impl fmt::Display for StateId {
             StateId::Genesis => write!(f, "genesis"),
             StateId::Finalized => write!(f, "finalized"),
             StateId::Justified => write!(f, "justified"),
-            StateId::Slot(slot) => write!(f, "{}", slot),
-            StateId::Root(root) => write!(f, "{:?}", root),
+            StateId::Slot(slot) => write!(f, "{slot}"),
+            StateId::Root(root) => write!(f, "{root:?}"),
         }
     }
 }
@@ -308,11 +308,11 @@ impl FromStr for ValidatorId {
         if s.starts_with("0x") {
             PublicKeyBytes::from_str(s)
                 .map(ValidatorId::PublicKey)
-                .map_err(|e| format!("{} cannot be parsed as a public key: {}", s, e))
+                .map_err(|e| format!("{s} cannot be parsed as a public key: {e}"))
         } else {
             u64::from_str(s)
                 .map(ValidatorId::Index)
-                .map_err(|e| format!("{} cannot be parsed as a slot: {}", s, e))
+                .map_err(|e| format!("{s} cannot be parsed as a slot: {e}"))
         }
     }
 }
@@ -320,8 +320,8 @@ impl FromStr for ValidatorId {
 impl fmt::Display for ValidatorId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ValidatorId::PublicKey(pubkey) => write!(f, "{:?}", pubkey),
-            ValidatorId::Index(index) => write!(f, "{}", index),
+            ValidatorId::PublicKey(pubkey) => write!(f, "{pubkey:?}"),
+            ValidatorId::Index(index) => write!(f, "{index}"),
         }
     }
 }
@@ -458,7 +458,7 @@ impl FromStr for ValidatorStatus {
             "pending" => Ok(ValidatorStatus::Pending),
             "exited" => Ok(ValidatorStatus::Exited),
             "withdrawal" => Ok(ValidatorStatus::Withdrawal),
-            _ => Err(format!("{} cannot be parsed as a validator status.", s)),
+            _ => Err(format!("{s} cannot be parsed as a validator status.")),
         }
     }
 }
@@ -1222,16 +1222,12 @@ impl<'de> ContextDeserialize<'de, ForkName> for SsePayloadAttributes {
         D: Deserializer<'de>,
     {
         let convert_err = |e| {
-            serde::de::Error::custom(format!(
-                "SsePayloadAttributes failed to deserialize: {:?}",
-                e
-            ))
+            serde::de::Error::custom(format!("SsePayloadAttributes failed to deserialize: {e:?}"))
         };
         Ok(match context {
             ForkName::Base | ForkName::Altair => {
                 return Err(serde::de::Error::custom(format!(
-                    "SsePayloadAttributes failed to deserialize: unsupported fork '{}'",
-                    context
+                    "SsePayloadAttributes failed to deserialize: unsupported fork '{context}'"
                 )));
             }
             ForkName::Bellatrix => {
@@ -1332,58 +1328,57 @@ impl<E: EthSpec> EventKind<E> {
     pub fn from_sse_bytes(event: &str, data: &str) -> Result<Self, ServerError> {
         match event {
             "attestation" => Ok(EventKind::Attestation(serde_json::from_str(data).map_err(
-                |e| ServerError::InvalidServerSentEvent(format!("Attestation: {:?}", e)),
+                |e| ServerError::InvalidServerSentEvent(format!("Attestation: {e:?}")),
             )?)),
             "single_attestation" => Ok(EventKind::SingleAttestation(
                 serde_json::from_str(data).map_err(|e| {
-                    ServerError::InvalidServerSentEvent(format!("SingleAttestation: {:?}", e))
+                    ServerError::InvalidServerSentEvent(format!("SingleAttestation: {e:?}"))
                 })?,
             )),
             "block" => Ok(EventKind::Block(serde_json::from_str(data).map_err(
-                |e| ServerError::InvalidServerSentEvent(format!("Block: {:?}", e)),
+                |e| ServerError::InvalidServerSentEvent(format!("Block: {e:?}")),
             )?)),
             "blob_sidecar" => Ok(EventKind::BlobSidecar(serde_json::from_str(data).map_err(
-                |e| ServerError::InvalidServerSentEvent(format!("Blob Sidecar: {:?}", e)),
+                |e| ServerError::InvalidServerSentEvent(format!("Blob Sidecar: {e:?}")),
             )?)),
             "data_column_sidecar" => Ok(EventKind::DataColumnSidecar(
                 serde_json::from_str(data).map_err(|e| {
-                    ServerError::InvalidServerSentEvent(format!("Data Column Sidecar: {:?}", e))
+                    ServerError::InvalidServerSentEvent(format!("Data Column Sidecar: {e:?}"))
                 })?,
             )),
             "chain_reorg" => Ok(EventKind::ChainReorg(serde_json::from_str(data).map_err(
-                |e| ServerError::InvalidServerSentEvent(format!("Chain Reorg: {:?}", e)),
+                |e| ServerError::InvalidServerSentEvent(format!("Chain Reorg: {e:?}")),
             )?)),
             "finalized_checkpoint" => Ok(EventKind::FinalizedCheckpoint(
                 serde_json::from_str(data).map_err(|e| {
-                    ServerError::InvalidServerSentEvent(format!("Finalized Checkpoint: {:?}", e))
+                    ServerError::InvalidServerSentEvent(format!("Finalized Checkpoint: {e:?}"))
                 })?,
             )),
             "head" => Ok(EventKind::Head(serde_json::from_str(data).map_err(
-                |e| ServerError::InvalidServerSentEvent(format!("Head: {:?}", e)),
+                |e| ServerError::InvalidServerSentEvent(format!("Head: {e:?}")),
             )?)),
             "late_head" => Ok(EventKind::LateHead(serde_json::from_str(data).map_err(
-                |e| ServerError::InvalidServerSentEvent(format!("Late Head: {:?}", e)),
+                |e| ServerError::InvalidServerSentEvent(format!("Late Head: {e:?}")),
             )?)),
             "voluntary_exit" => Ok(EventKind::VoluntaryExit(
                 serde_json::from_str(data).map_err(|e| {
-                    ServerError::InvalidServerSentEvent(format!("Voluntary Exit: {:?}", e))
+                    ServerError::InvalidServerSentEvent(format!("Voluntary Exit: {e:?}"))
                 })?,
             )),
             "contribution_and_proof" => Ok(EventKind::ContributionAndProof(Box::new(
                 serde_json::from_str(data).map_err(|e| {
-                    ServerError::InvalidServerSentEvent(format!("Contribution and Proof: {:?}", e))
+                    ServerError::InvalidServerSentEvent(format!("Contribution and Proof: {e:?}"))
                 })?,
             ))),
             "payload_attributes" => Ok(EventKind::PayloadAttributes(
                 serde_json::from_str(data).map_err(|e| {
-                    ServerError::InvalidServerSentEvent(format!("Payload Attributes: {:?}", e))
+                    ServerError::InvalidServerSentEvent(format!("Payload Attributes: {e:?}"))
                 })?,
             )),
             "light_client_finality_update" => Ok(EventKind::LightClientFinalityUpdate(Box::new(
                 BeaconResponse::ForkVersioned(serde_json::from_str(data).map_err(|e| {
                     ServerError::InvalidServerSentEvent(format!(
-                        "Light Client Finality Update: {:?}",
-                        e
+                        "Light Client Finality Update: {e:?}"
                     ))
                 })?),
             ))),
@@ -1391,55 +1386,51 @@ impl<E: EthSpec> EventKind<E> {
                 Ok(EventKind::LightClientOptimisticUpdate(Box::new(
                     BeaconResponse::ForkVersioned(serde_json::from_str(data).map_err(|e| {
                         ServerError::InvalidServerSentEvent(format!(
-                            "Light Client Optimistic Update: {:?}",
-                            e
+                            "Light Client Optimistic Update: {e:?}"
                         ))
                     })?),
                 )))
             }
             #[cfg(feature = "vibehouse")]
             "block_reward" => Ok(EventKind::BlockReward(serde_json::from_str(data).map_err(
-                |e| ServerError::InvalidServerSentEvent(format!("Block Reward: {:?}", e)),
+                |e| ServerError::InvalidServerSentEvent(format!("Block Reward: {e:?}")),
             )?)),
             "attester_slashing" => Ok(EventKind::AttesterSlashing(
                 serde_json::from_str(data).map_err(|e| {
-                    ServerError::InvalidServerSentEvent(format!("Attester Slashing: {:?}", e))
+                    ServerError::InvalidServerSentEvent(format!("Attester Slashing: {e:?}"))
                 })?,
             )),
             "proposer_slashing" => Ok(EventKind::ProposerSlashing(
                 serde_json::from_str(data).map_err(|e| {
-                    ServerError::InvalidServerSentEvent(format!("Proposer Slashing: {:?}", e))
+                    ServerError::InvalidServerSentEvent(format!("Proposer Slashing: {e:?}"))
                 })?,
             )),
             "bls_to_execution_change" => Ok(EventKind::BlsToExecutionChange(
                 serde_json::from_str(data).map_err(|e| {
-                    ServerError::InvalidServerSentEvent(format!("Bls To Execution Change: {:?}", e))
+                    ServerError::InvalidServerSentEvent(format!("Bls To Execution Change: {e:?}"))
                 })?,
             )),
             "block_gossip" => Ok(EventKind::BlockGossip(serde_json::from_str(data).map_err(
-                |e| ServerError::InvalidServerSentEvent(format!("Block Gossip: {:?}", e)),
+                |e| ServerError::InvalidServerSentEvent(format!("Block Gossip: {e:?}")),
             )?)),
             "execution_bid" => Ok(EventKind::ExecutionBid(
                 serde_json::from_str(data).map_err(|e| {
-                    ServerError::InvalidServerSentEvent(format!("Execution Bid: {:?}", e))
+                    ServerError::InvalidServerSentEvent(format!("Execution Bid: {e:?}"))
                 })?,
             )),
             "execution_payload" => Ok(EventKind::ExecutionPayload(
                 serde_json::from_str(data).map_err(|e| {
-                    ServerError::InvalidServerSentEvent(format!("Execution Payload: {:?}", e))
+                    ServerError::InvalidServerSentEvent(format!("Execution Payload: {e:?}"))
                 })?,
             )),
             "payload_attestation" => Ok(EventKind::PayloadAttestation(
                 serde_json::from_str(data).map_err(|e| {
-                    ServerError::InvalidServerSentEvent(format!("Payload Attestation: {:?}", e))
+                    ServerError::InvalidServerSentEvent(format!("Payload Attestation: {e:?}"))
                 })?,
             )),
             "execution_proof_received" => Ok(EventKind::ExecutionProofReceived(
                 serde_json::from_str(data).map_err(|e| {
-                    ServerError::InvalidServerSentEvent(format!(
-                        "Execution Proof Received: {:?}",
-                        e
-                    ))
+                    ServerError::InvalidServerSentEvent(format!("Execution Proof Received: {e:?}"))
                 })?,
             )),
             _ => Err(ServerError::InvalidServerSentEvent(
@@ -4304,7 +4295,7 @@ mod test {
                 PublishBlockRequest::Block(Arc::new(signed_beacon_block))
             };
             round_trip_test(request);
-            println!("fork_name: {:?} PASSED", fork_name);
+            println!("fork_name: {fork_name:?} PASSED");
         }
     }
 
@@ -4334,7 +4325,7 @@ mod test {
                 signed_execution_payload_envelope: None,
             };
             round_trip_test(block_contents);
-            println!("fork_name: {:?} PASSED", fork_name);
+            println!("fork_name: {fork_name:?} PASSED");
             if let Some(next_fork_name) = fork_name.next_fork() {
                 fork_name = next_fork_name;
             } else {

@@ -642,7 +642,7 @@ fn validate_auth(
     })?;
 
     Auth::validate_token(token, jwt_key)
-        .map_err(|e| (StatusCode::UNAUTHORIZED, format!("Auth failure: {:?}", e)))?;
+        .map_err(|e| (StatusCode::UNAUTHORIZED, format!("Auth failure: {e:?}")))?;
 
     Ok(())
 }
@@ -656,7 +656,7 @@ async fn auth_middleware<E: EthSpec>(
     validate_auth(req.headers(), &ctx.jwt_key).map_err(|(status, message)| {
         let body = serde_json::to_string(&ErrorMessage {
             code: status.as_u16(),
-            message: format!("Authorization error: {}", message),
+            message: format!("Authorization error: {message}"),
         })
         .unwrap_or_default();
         axum::response::Response::builder()

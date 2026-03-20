@@ -374,7 +374,7 @@ async fn auth_middleware<T: 'static + SlotClock + Clone, E: EthSpec>(
             if state.auth_header_values.iter().any(|v| v == header) {
                 next.run(request).await
             } else {
-                ApiError::Forbidden(format!("Invalid auth token: {}", header)).into_response()
+                ApiError::Forbidden(format!("Invalid auth token: {header}")).into_response()
             }
         }
         _ => ApiError::Unauthorized("missing Authorization header".to_string()).into_response(),
@@ -506,9 +506,7 @@ async fn get_vibehouse_validators_pubkey<T: 'static + SlotClock + Clone, E: EthS
                 description: def.description.clone(),
                 voting_pubkey: PublicKeyBytes::from(&def.voting_public_key),
             })
-            .ok_or_else(|| {
-                ApiError::NotFound(format!("no validator for {:?}", validator_pubkey))
-            })?;
+            .ok_or_else(|| ApiError::NotFound(format!("no validator for {validator_pubkey:?}")))?;
 
         Ok(GenericResponse::from(validator))
     })
@@ -609,8 +607,7 @@ async fn get_fee_recipient<T: 'static + SlotClock + Clone, E: EthSpec>(
             .is_none()
         {
             return Err(ApiError::NotFound(format!(
-                "no validator found with pubkey {:?}",
-                validator_pubkey
+                "no validator found with pubkey {validator_pubkey:?}"
             )));
         }
         validator_store
@@ -639,8 +636,7 @@ async fn get_gas_limit<T: 'static + SlotClock + Clone, E: EthSpec>(
             .is_none()
         {
             return Err(ApiError::NotFound(format!(
-                "no validator found with pubkey {:?}",
-                validator_pubkey
+                "no validator found with pubkey {validator_pubkey:?}"
             )));
         }
         Ok(GenericResponse::from(GetGasLimitResponse {
@@ -743,7 +739,7 @@ async fn post_validators_mnemonic<T: 'static + SlotClock + Clone, E: EthSpec>(
         let secrets_dir = store_passwords_in_secrets_dir.then_some(secrets_dir);
         if let Some(handle) = task_executor.handle() {
             let mnemonic = mnemonic_from_phrase(body.mnemonic.as_str())
-                .map_err(|e| ApiError::BadRequest(format!("invalid mnemonic: {:?}", e)))?;
+                .map_err(|e| ApiError::BadRequest(format!("invalid mnemonic: {e:?}")))?;
             let (validators, _mnemonic) =
                 handle.block_on(create_validators_mnemonic::<_, _, E>(
                     Some(mnemonic),
@@ -776,7 +772,7 @@ async fn post_validators_keystore<T: 'static + SlotClock + Clone, E: EthSpec>(
         let keypair = body
             .keystore
             .decrypt_keypair(body.password.as_ref())
-            .map_err(|e| ApiError::BadRequest(format!("invalid keystore: {:?}", e)))?;
+            .map_err(|e| ApiError::BadRequest(format!("invalid keystore: {e:?}")))?;
 
         let secrets_dir = store_passwords_in_secrets_dir.then_some(secrets_dir);
         let password_storage =
@@ -788,7 +784,7 @@ async fn post_validators_keystore<T: 'static + SlotClock + Clone, E: EthSpec>(
             .store_withdrawal_keystore(false)
             .build()
             .map_err(|e| {
-                ApiError::ServerError(format!("failed to build validator directory: {:?}", e))
+                ApiError::ServerError(format!("failed to build validator directory: {e:?}"))
             })?;
 
         // Drop validator dir so that `add_validator_keystore` can re-lock the keystore.
@@ -816,7 +812,7 @@ async fn post_validators_keystore<T: 'static + SlotClock + Clone, E: EthSpec>(
                         prefer_builder_proposals,
                     ))
                     .map_err(|e| {
-                        ApiError::ServerError(format!("failed to initialize validator: {:?}", e))
+                        ApiError::ServerError(format!("failed to initialize validator: {e:?}"))
                     })?
             } else {
                 return Err(ApiError::ServerError("vibehouse shutting down".into()));
@@ -887,15 +883,14 @@ async fn post_fee_recipient<T: 'static + SlotClock + Clone, E: EthSpec>(
             .is_none()
         {
             return Err(ApiError::NotFound(format!(
-                "no validator found with pubkey {:?}",
-                validator_pubkey
+                "no validator found with pubkey {validator_pubkey:?}"
             )));
         }
         validator_store
             .initialized_validators()
             .write()
             .set_validator_fee_recipient(&validator_pubkey, request.ethaddress)
-            .map_err(|e| ApiError::ServerError(format!("Error persisting fee recipient: {:?}", e)))
+            .map_err(|e| ApiError::ServerError(format!("Error persisting fee recipient: {e:?}")))
     })
     .await
     .map(|reply| (StatusCode::ACCEPTED, reply))
@@ -915,15 +910,14 @@ async fn post_gas_limit<T: 'static + SlotClock + Clone, E: EthSpec>(
             .is_none()
         {
             return Err(ApiError::NotFound(format!(
-                "no validator found with pubkey {:?}",
-                validator_pubkey
+                "no validator found with pubkey {validator_pubkey:?}"
             )));
         }
         validator_store
             .initialized_validators()
             .write()
             .set_validator_gas_limit(&validator_pubkey, request.gas_limit)
-            .map_err(|e| ApiError::ServerError(format!("Error persisting gas limit: {:?}", e)))
+            .map_err(|e| ApiError::ServerError(format!("Error persisting gas limit: {e:?}")))
     })
     .await
     .map(|reply| (StatusCode::ACCEPTED, reply))
@@ -1064,8 +1058,7 @@ async fn patch_validators<T: 'static + SlotClock + Clone, E: EthSpec>(
             initialized_validators.validator(&validator_pubkey.compress()),
         ) {
             (None, _) => Err(ApiError::NotFound(format!(
-                "no validator for {:?}",
-                validator_pubkey
+                "no validator for {validator_pubkey:?}"
             ))),
             (Some(is_enabled), Some(initialized_validator))
                 if equal_or_none(Some(is_enabled), body.enabled)
@@ -1113,10 +1106,7 @@ async fn patch_validators<T: 'static + SlotClock + Clone, E: EthSpec>(
                             ),
                         )
                         .map_err(|e| {
-                            ApiError::ServerError(format!(
-                                "unable to set validator status: {:?}",
-                                e
-                            ))
+                            ApiError::ServerError(format!("unable to set validator status: {e:?}"))
                         })?;
                     Ok(())
                 } else {
@@ -1162,8 +1152,7 @@ async fn delete_fee_recipient<T: 'static + SlotClock + Clone, E: EthSpec>(
             .is_none()
         {
             return Err(ApiError::NotFound(format!(
-                "no validator found with pubkey {:?}",
-                validator_pubkey
+                "no validator found with pubkey {validator_pubkey:?}"
             )));
         }
         validator_store
@@ -1171,7 +1160,7 @@ async fn delete_fee_recipient<T: 'static + SlotClock + Clone, E: EthSpec>(
             .write()
             .delete_validator_fee_recipient(&validator_pubkey)
             .map_err(|e| {
-                ApiError::ServerError(format!("Error persisting fee recipient removal: {:?}", e))
+                ApiError::ServerError(format!("Error persisting fee recipient removal: {e:?}"))
             })
     })
     .await
@@ -1191,8 +1180,7 @@ async fn delete_gas_limit<T: 'static + SlotClock + Clone, E: EthSpec>(
             .is_none()
         {
             return Err(ApiError::NotFound(format!(
-                "no validator found with pubkey {:?}",
-                validator_pubkey
+                "no validator found with pubkey {validator_pubkey:?}"
             )));
         }
         validator_store
@@ -1200,7 +1188,7 @@ async fn delete_gas_limit<T: 'static + SlotClock + Clone, E: EthSpec>(
             .write()
             .delete_validator_gas_limit(&validator_pubkey)
             .map_err(|e| {
-                ApiError::ServerError(format!("Error persisting gas limit removal: {:?}", e))
+                ApiError::ServerError(format!("Error persisting gas limit removal: {e:?}"))
             })
     })
     .await
@@ -1257,9 +1245,9 @@ async fn get_log_events<T: 'static + SlotClock + Clone, E: EthSpec>(
     let stream = BroadcastStream::new(logging_components.sender.subscribe()).map(|msg| match msg {
         Ok(data) => match serde_json::to_string(&data) {
             Ok(json) => Ok(Event::default().data(json)),
-            Err(e) => Ok(Event::default().data(format!("serialization error: {:?}", e))),
+            Err(e) => Ok(Event::default().data(format!("serialization error: {e:?}"))),
         },
-        Err(e) => Ok(Event::default().data(format!("receive error: {:?}", e))),
+        Err(e) => Ok(Event::default().data(format!("receive error: {e:?}"))),
     });
 
     Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
@@ -1298,8 +1286,8 @@ fn build_cors_layer(
         }
     } else {
         let origin = match listen_addr {
-            IpAddr::V4(_) => format!("http://{}:{}", listen_addr, listen_port),
-            IpAddr::V6(_) => format!("http://[{}]:{}", listen_addr, listen_port),
+            IpAddr::V4(_) => format!("http://{listen_addr}:{listen_port}"),
+            IpAddr::V6(_) => format!("http://[{listen_addr}]:{listen_port}"),
         };
         let header_value: axum::http::HeaderValue = origin
             .parse()

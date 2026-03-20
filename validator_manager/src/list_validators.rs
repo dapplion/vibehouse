@@ -135,17 +135,15 @@ async fn run<E: EthSpec>(config: ListConfig) -> Result<Vec<SingleKeystoreRespons
         for validator in &validators_to_display {
             let beacon_node = BeaconNodeHttpClient::new(
                 SensitiveUrl::parse(beacon_url.as_ref())
-                    .map_err(|e| format!("Failed to parse beacon http server: {:?}", e))?,
+                    .map_err(|e| format!("Failed to parse beacon http server: {e:?}"))?,
                 Timeouts::set_all(Duration::from_secs(12)),
             );
 
             let validator_data = beacon_node
                 .get_beacon_states_validator_id(StateId::Head, &ValidatorId::PublicKey(*validator))
                 .await
-                .map_err(|e| format!("Failed to get updated validator details: {:?}", e))?
-                .ok_or_else(|| {
-                    format!("Validator {} is not present in the beacon state", validator)
-                })?
+                .map_err(|e| format!("Failed to get updated validator details: {e:?}"))?
+                .ok_or_else(|| format!("Validator {validator} is not present in the beacon state"))?
                 .data;
 
             match validator_data.status {
@@ -156,13 +154,13 @@ async fn run<E: EthSpec>(config: ListConfig) -> Result<Vec<SingleKeystoreRespons
                     let genesis_data = beacon_node
                         .get_beacon_genesis()
                         .await
-                        .map_err(|e| format!("Failed to get genesis data: {}", e))?
+                        .map_err(|e| format!("Failed to get genesis data: {e}"))?
                         .data;
 
                     let config_and_preset = beacon_node
                         .get_config_spec::<ConfigAndPreset>()
                         .await
-                        .map_err(|e| format!("Failed to get config spec: {}", e))?
+                        .map_err(|e| format!("Failed to get config spec: {e}"))?
                         .data;
 
                     let spec = ChainSpec::from_config::<E>(config_and_preset.config())
@@ -172,15 +170,13 @@ async fn run<E: EthSpec>(config: ListConfig) -> Result<Vec<SingleKeystoreRespons
                         .ok_or("Failed to get current epoch. Please check your system time")?;
 
                     eprintln!(
-                        "Voluntary exit for validator {} has been accepted into the beacon chain. \
+                        "Voluntary exit for validator {validator} has been accepted into the beacon chain. \
                         Note that the voluntary exit is subject chain finalization. \
                         Before the chain has finalized, there is a low \
-                        probability that the exit may be reverted.",
-                        validator
+                        probability that the exit may be reverted."
                     );
                     eprintln!(
-                        "Current epoch: {}, Exit epoch: {}, Withdrawable epoch: {}",
-                        current_epoch, exit_epoch, withdrawal_epoch
+                        "Current epoch: {current_epoch}, Exit epoch: {exit_epoch}, Withdrawable epoch: {withdrawal_epoch}"
                     );
                     eprintln!("Please keep your validator running till exit epoch");
                     eprintln!(

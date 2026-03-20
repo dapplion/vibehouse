@@ -154,13 +154,13 @@ pub mod deposit_log {
 
             let deposit_data = DepositData {
                 pubkey: PublicKeyBytes::from_ssz_bytes(pubkey)
-                    .map_err(|e| format!("Invalid pubkey ssz: {:?}", e))?,
+                    .map_err(|e| format!("Invalid pubkey ssz: {e:?}"))?,
                 withdrawal_credentials: Hash256::from_ssz_bytes(withdrawal_credentials)
-                    .map_err(|e| format!("Invalid withdrawal_credentials ssz: {:?}", e))?,
+                    .map_err(|e| format!("Invalid withdrawal_credentials ssz: {e:?}"))?,
                 amount: u64::from_ssz_bytes(amount)
-                    .map_err(|e| format!("Invalid amount ssz: {:?}", e))?,
+                    .map_err(|e| format!("Invalid amount ssz: {e:?}"))?,
                 signature: SignatureBytes::from_ssz_bytes(signature)
-                    .map_err(|e| format!("Invalid signature ssz: {:?}", e))?,
+                    .map_err(|e| format!("Invalid signature ssz: {e:?}"))?,
             };
 
             let signature_is_valid = deposit_pubkey_signature_message(&deposit_data, spec)
@@ -170,7 +170,7 @@ pub mod deposit_log {
                 deposit_data,
                 block_number: self.block_number,
                 index: u64::from_ssz_bytes(index)
-                    .map_err(|e| format!("Invalid index ssz: {:?}", e))?,
+                    .map_err(|e| format!("Invalid index ssz: {e:?}"))?,
                 signature_is_valid,
             })
         }
@@ -293,7 +293,7 @@ pub mod deposit_methods {
         fn from_str(s: &str) -> Result<Self, Self::Err> {
             s.parse::<u64>()
                 .map(Into::into)
-                .map_err(|e| format!("Failed to parse eth1 network id {}", e))
+                .map_err(|e| format!("Failed to parse eth1 network id {e}"))
         }
     }
 
@@ -311,8 +311,8 @@ pub mod deposit_methods {
             match self {
                 RpcError::NoResultField => write!(f, "No result field in response"),
                 RpcError::Eip155Error => write!(f, "Not synced past EIP-155"),
-                RpcError::InvalidJson(e) => write!(f, "Malformed JSON received: {}", e),
-                RpcError::Error(s) => write!(f, "{}", s),
+                RpcError::InvalidJson(e) => write!(f, "Malformed JSON received: {e}"),
+                RpcError::Error(s) => write!(f, "{s}"),
             }
         }
     }
@@ -331,15 +331,14 @@ pub mod deposit_methods {
     /// E.g., `0x01 == 1`
     fn hex_to_u64_be(hex: &str) -> Result<u64, String> {
         u64::from_str_radix(strip_prefix(hex)?, 16)
-            .map_err(|e| format!("Failed to parse hex as u64: {:?}", e))
+            .map_err(|e| format!("Failed to parse hex as u64: {e:?}"))
     }
 
     /// Parses a `0x`-prefixed, big-endian hex string as bytes.
     ///
     /// E.g., `0x0102 == vec![1, 2]`
     fn hex_to_bytes(hex: &str) -> Result<Vec<u8>, String> {
-        hex::decode(strip_prefix(hex)?)
-            .map_err(|e| format!("Failed to parse hex as bytes: {:?}", e))
+        hex::decode(strip_prefix(hex)?).map_err(|e| format!("Failed to parse hex as bytes: {e:?}"))
     }
 
     /// Removes the `0x` prefix from some bytes. Returns an error if the prefix is not present.
@@ -357,7 +356,7 @@ pub mod deposit_methods {
             let chain_id: String = self
                 .rpc_request("eth_chainId", json!([]), timeout)
                 .await
-                .map_err(|e| format!("eth_chainId call failed {:?}", e))?;
+                .map_err(|e| format!("eth_chainId call failed {e:?}"))?;
             hex_to_u64_be(chain_id.as_str()).map(Into::into)
         }
 
@@ -366,9 +365,8 @@ pub mod deposit_methods {
             let response: String = self
                 .rpc_request("eth_blockNumber", json!([]), timeout)
                 .await
-                .map_err(|e| format!("eth_blockNumber call failed {:?}", e))?;
-            hex_to_u64_be(response.as_str())
-                .map_err(|e| format!("Failed to get block number: {}", e))
+                .map_err(|e| format!("eth_blockNumber call failed {e:?}"))?;
+            hex_to_u64_be(response.as_str()).map_err(|e| format!("Failed to get block number: {e}"))
         }
 
         /// Gets a block hash by block number.
@@ -379,9 +377,9 @@ pub mod deposit_methods {
         ) -> Result<Block, String> {
             let (method, query_param) = match query {
                 BlockQuery::Number(block_number) => {
-                    ("eth_getBlockByNumber", format!("0x{:x}", block_number))
+                    ("eth_getBlockByNumber", format!("0x{block_number:x}"))
                 }
-                BlockQuery::Hash(block_hash) => ("eth_getBlockByHash", format!("{:?}", block_hash)),
+                BlockQuery::Hash(block_hash) => ("eth_getBlockByHash", format!("{block_hash:?}")),
                 BlockQuery::Latest => ("eth_getBlockByNumber", "latest".to_string()),
             };
             let params = json!([
@@ -392,7 +390,7 @@ pub mod deposit_methods {
             let response: Value = self
                 .rpc_request(method, params, timeout)
                 .await
-                .map_err(|e| format!("{} call failed {:?}", method, e))?;
+                .map_err(|e| format!("{method} call failed {e:?}"))?;
 
             let hash: Vec<u8> = hex_to_bytes(
                 response
@@ -404,7 +402,7 @@ pub mod deposit_methods {
             let hash: Hash256 = if hash.len() == 32 {
                 Hash256::from_slice(&hash)
             } else {
-                return Err(format!("Block hash was not 32 bytes: {:?}", hash));
+                return Err(format!("Block hash was not 32 bytes: {hash:?}"));
             };
 
             let timestamp = hex_to_u64_be(
@@ -430,9 +428,9 @@ pub mod deposit_methods {
                     number,
                 })
             } else {
-                Err(format!("Block number {} is larger than a usize", number))
+                Err(format!("Block number {number} is larger than a usize"))
             }
-            .map_err(|e| format!("Failed to get block number: {}", e))
+            .map_err(|e| format!("Failed to get block number: {e}"))
         }
 
         /// Returns the value of the `get_deposit_count()` call at the given `address` for the given
@@ -459,8 +457,7 @@ pub mod deposit_methods {
                         Ok(Some(u64::from_le_bytes(array)))
                     } else {
                         Err(format!(
-                            "Deposit count response was not {} bytes: {:?}",
-                            DEPOSIT_COUNT_RESPONSE_BYTES, bytes
+                            "Deposit count response was not {DEPOSIT_COUNT_RESPONSE_BYTES} bytes: {bytes:?}"
                         ))
                     }
                 }
@@ -488,8 +485,7 @@ pub mod deposit_methods {
                         Ok(Some(Hash256::from_slice(&bytes)))
                     } else {
                         Err(format!(
-                            "Deposit root response was not {} bytes: {:?}",
-                            DEPOSIT_ROOT_BYTES, bytes
+                            "Deposit root response was not {DEPOSIT_ROOT_BYTES} bytes: {bytes:?}"
                         ))
                     }
                 }
@@ -518,7 +514,7 @@ pub mod deposit_methods {
             let response: Option<String> = self
                 .rpc_request("eth_call", params, timeout)
                 .await
-                .map_err(|e| format!("eth_call call failed {:?}", e))?;
+                .map_err(|e| format!("eth_call call failed {e:?}"))?;
 
             response.map(|s| hex_to_bytes(&s)).transpose()
         }
@@ -543,7 +539,7 @@ pub mod deposit_methods {
             let response: Value = self
                 .rpc_request("eth_getLogs", params, timeout)
                 .await
-                .map_err(|e| format!("eth_getLogs call failed {:?}", e))?;
+                .map_err(|e| format!("eth_getLogs call failed {e:?}"))?;
             response
                 .as_array()
                 .cloned()
@@ -568,7 +564,7 @@ pub mod deposit_methods {
                     })
                 })
                 .collect::<Result<Vec<Log>, String>>()
-                .map_err(|e| format!("Failed to get logs in range: {}", e))
+                .map_err(|e| format!("Failed to get logs in range: {e}"))
         }
     }
 }
@@ -945,8 +941,7 @@ impl HttpJsonRpc {
                     .map_err(Error::BadResponse)
             }
             _ => Err(Error::UnsupportedForkVariant(format!(
-                "called get_payload_v2 with {}",
-                fork_name
+                "called get_payload_v2 with {fork_name}"
             ))),
         }
     }
@@ -972,8 +967,7 @@ impl HttpJsonRpc {
                     .map_err(Error::BadResponse)
             }
             _ => Err(Error::UnsupportedForkVariant(format!(
-                "called get_payload_v3 with {}",
-                fork_name
+                "called get_payload_v3 with {fork_name}"
             ))),
         }
     }
@@ -999,8 +993,7 @@ impl HttpJsonRpc {
                     .map_err(Error::BadResponse)
             }
             _ => Err(Error::UnsupportedForkVariant(format!(
-                "called get_payload_v4 with {}",
-                fork_name
+                "called get_payload_v4 with {fork_name}"
             ))),
         }
     }
@@ -1038,8 +1031,7 @@ impl HttpJsonRpc {
                     .map_err(Error::BadResponse)
             }
             _ => Err(Error::UnsupportedForkVariant(format!(
-                "called get_payload_v5 with {}",
-                fork_name
+                "called get_payload_v5 with {fork_name}"
             ))),
         }
     }
@@ -1372,8 +1364,7 @@ impl HttpJsonRpc {
                 }
             }
             ForkName::Base | ForkName::Altair => Err(Error::UnsupportedForkVariant(format!(
-                "called get_payload with {}",
-                fork_name
+                "called get_payload with {fork_name}"
             ))),
         }
     }
@@ -1487,8 +1478,7 @@ mod test {
                 serde_json::from_slice(&request_bytes).expect("request was not valid json");
             if request_json != expected_json {
                 panic!(
-                    "json mismatch!\n\nobserved: {}\n\nexpected: {}\n\n",
-                    request_json, expected_json,
+                    "json mismatch!\n\nobserved: {request_json}\n\nexpected: {expected_json}\n\n",
                 )
             }
             self
@@ -1502,10 +1492,7 @@ mod test {
         {
             let res = request_func(self.echo_client.clone()).await;
             if !matches!(res, Err(Error::Auth(_))) {
-                panic!(
-                    "No authentication provided, rpc call should have failed.\nResult: {:?}",
-                    res
-                )
+                panic!("No authentication provided, rpc call should have failed.\nResult: {res:?}")
             }
             self
         }
@@ -1583,14 +1570,12 @@ mod test {
         assert_eq!(
             encode_transactions::<E>(as_obj.clone()).unwrap(),
             as_json,
-            "encoding for {}",
-            name
+            "encoding for {name}"
         );
         assert_eq!(
             decode_transactions::<E>(as_json).unwrap(),
             as_obj,
-            "decoding for {}",
-            name
+            "decoding for {name}"
         );
     }
 
@@ -1914,7 +1899,7 @@ mod test {
     }
 
     fn str_to_payload_id(s: &str) -> PayloadId {
-        serde_json::from_str::<TransparentJsonPayloadId>(&format!("\"{}\"", s))
+        serde_json::from_str::<TransparentJsonPayloadId>(&format!("\"{s}\""))
             .unwrap()
             .into()
     }

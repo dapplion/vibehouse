@@ -189,118 +189,118 @@ impl<E: EthSpec> LoadCase for ForkChoiceTest<E> {
         let steps: Vec<Step<String, String, Vec<String>, String, String, String, String>> =
             yaml_decode_file(&path.join("steps.yaml"))?;
         // Resolve the object names in `steps.yaml` into actual decoded block/attestation objects.
-        let steps = steps
-            .into_iter()
-            .map(|step| match step {
-                Step::Tick { tick } => Ok(Step::Tick { tick }),
-                Step::ValidBlock { block } => {
-                    ssz_decode_file_with(&path.join(format!("{}.ssz_snappy", block)), |bytes| {
-                        SignedBeaconBlock::from_ssz_bytes(bytes, spec)
-                    })
-                    .map(|block| Step::ValidBlock { block })
-                }
-                Step::MaybeValidBlockAndBlobs {
-                    block,
-                    blobs,
-                    proofs,
-                    valid,
-                } => {
-                    let block =
+        let steps =
+            steps
+                .into_iter()
+                .map(|step| match step {
+                    Step::Tick { tick } => Ok(Step::Tick { tick }),
+                    Step::ValidBlock { block } => {
                         ssz_decode_file_with(&path.join(format!("{block}.ssz_snappy")), |bytes| {
                             SignedBeaconBlock::from_ssz_bytes(bytes, spec)
-                        })?;
-                    let blobs = blobs
-                        .map(|blobs| ssz_decode_file(&path.join(format!("{blobs}.ssz_snappy"))))
-                        .transpose()?;
-                    Ok(Step::MaybeValidBlockAndBlobs {
+                        })
+                        .map(|block| Step::ValidBlock { block })
+                    }
+                    Step::MaybeValidBlockAndBlobs {
                         block,
                         blobs,
                         proofs,
                         valid,
-                    })
-                }
-                Step::Attestation { attestation } => {
-                    if fork_name.electra_enabled() {
-                        ssz_decode_file(&path.join(format!("{}.ssz_snappy", attestation))).map(
-                            |attestation| Step::Attestation {
-                                attestation: Attestation::Electra(attestation),
-                            },
-                        )
-                    } else {
-                        ssz_decode_file(&path.join(format!("{}.ssz_snappy", attestation))).map(
-                            |attestation| Step::Attestation {
-                                attestation: Attestation::Base(attestation),
-                            },
-                        )
+                    } => {
+                        let block = ssz_decode_file_with(
+                            &path.join(format!("{block}.ssz_snappy")),
+                            |bytes| SignedBeaconBlock::from_ssz_bytes(bytes, spec),
+                        )?;
+                        let blobs = blobs
+                            .map(|blobs| ssz_decode_file(&path.join(format!("{blobs}.ssz_snappy"))))
+                            .transpose()?;
+                        Ok(Step::MaybeValidBlockAndBlobs {
+                            block,
+                            blobs,
+                            proofs,
+                            valid,
+                        })
                     }
-                }
-                Step::AttesterSlashing { attester_slashing } => {
-                    if fork_name.electra_enabled() {
-                        ssz_decode_file(&path.join(format!("{}.ssz_snappy", attester_slashing)))
-                            .map(|attester_slashing| Step::AttesterSlashing {
-                                attester_slashing: AttesterSlashing::Electra(attester_slashing),
-                            })
-                    } else {
-                        ssz_decode_file(&path.join(format!("{}.ssz_snappy", attester_slashing)))
-                            .map(|attester_slashing| Step::AttesterSlashing {
-                                attester_slashing: AttesterSlashing::Base(attester_slashing),
-                            })
+                    Step::Attestation { attestation } => {
+                        if fork_name.electra_enabled() {
+                            ssz_decode_file(&path.join(format!("{attestation}.ssz_snappy"))).map(
+                                |attestation| Step::Attestation {
+                                    attestation: Attestation::Electra(attestation),
+                                },
+                            )
+                        } else {
+                            ssz_decode_file(&path.join(format!("{attestation}.ssz_snappy"))).map(
+                                |attestation| Step::Attestation {
+                                    attestation: Attestation::Base(attestation),
+                                },
+                            )
+                        }
                     }
-                }
-                Step::PowBlock { pow_block } => {
-                    ssz_decode_file(&path.join(format!("{}.ssz_snappy", pow_block)))
-                        .map(|pow_block| Step::PowBlock { pow_block })
-                }
-                Step::OnPayloadInfo {
-                    block_hash,
-                    payload_status,
-                } => Ok(Step::OnPayloadInfo {
-                    block_hash,
-                    payload_status,
-                }),
-                Step::OnExecutionPayload {
-                    execution_payload,
-                    valid,
-                } => ssz_decode_file(&path.join(format!("{execution_payload}.ssz_snappy"))).map(
-                    |execution_payload| Step::OnExecutionPayload {
+                    Step::AttesterSlashing { attester_slashing } => {
+                        if fork_name.electra_enabled() {
+                            ssz_decode_file(&path.join(format!("{attester_slashing}.ssz_snappy")))
+                                .map(|attester_slashing| Step::AttesterSlashing {
+                                    attester_slashing: AttesterSlashing::Electra(attester_slashing),
+                                })
+                        } else {
+                            ssz_decode_file(&path.join(format!("{attester_slashing}.ssz_snappy")))
+                                .map(|attester_slashing| Step::AttesterSlashing {
+                                    attester_slashing: AttesterSlashing::Base(attester_slashing),
+                                })
+                        }
+                    }
+                    Step::PowBlock { pow_block } => {
+                        ssz_decode_file(&path.join(format!("{pow_block}.ssz_snappy")))
+                            .map(|pow_block| Step::PowBlock { pow_block })
+                    }
+                    Step::OnPayloadInfo {
+                        block_hash,
+                        payload_status,
+                    } => Ok(Step::OnPayloadInfo {
+                        block_hash,
+                        payload_status,
+                    }),
+                    Step::OnExecutionPayload {
                         execution_payload,
                         valid,
-                    },
-                ),
-                Step::Checks { checks } => Ok(Step::Checks { checks }),
-                Step::MaybeValidBlockAndColumns {
-                    block,
-                    columns,
-                    valid,
-                } => {
-                    let block =
-                        ssz_decode_file_with(&path.join(format!("{block}.ssz_snappy")), |bytes| {
-                            SignedBeaconBlock::from_ssz_bytes(bytes, spec)
-                        })?;
-                    let columns = columns
-                        .map(|columns_vec| {
-                            columns_vec
-                                .into_iter()
-                                .map(|column| {
-                                    ssz_decode_file_with(
-                                        &path.join(format!("{column}.ssz_snappy")),
-                                        |bytes| {
-                                            DataColumnSidecar::any_from_ssz_bytes(bytes)
-                                                .map(Arc::new)
-                                        },
-                                    )
-                                })
-                                .collect::<Result<Vec<_>, _>>()
-                        })
-                        .transpose()?;
-                    Ok(Step::MaybeValidBlockAndColumns {
+                    } => ssz_decode_file(&path.join(format!("{execution_payload}.ssz_snappy")))
+                        .map(|execution_payload| Step::OnExecutionPayload {
+                            execution_payload,
+                            valid,
+                        }),
+                    Step::Checks { checks } => Ok(Step::Checks { checks }),
+                    Step::MaybeValidBlockAndColumns {
                         block,
                         columns,
                         valid,
-                    })
-                }
-            })
-            .collect::<Result<_, _>>()?;
+                    } => {
+                        let block = ssz_decode_file_with(
+                            &path.join(format!("{block}.ssz_snappy")),
+                            |bytes| SignedBeaconBlock::from_ssz_bytes(bytes, spec),
+                        )?;
+                        let columns = columns
+                            .map(|columns_vec| {
+                                columns_vec
+                                    .into_iter()
+                                    .map(|column| {
+                                        ssz_decode_file_with(
+                                            &path.join(format!("{column}.ssz_snappy")),
+                                            |bytes| {
+                                                DataColumnSidecar::any_from_ssz_bytes(bytes)
+                                                    .map(Arc::new)
+                                            },
+                                        )
+                                    })
+                                    .collect::<Result<Vec<_>, _>>()
+                            })
+                            .transpose()?;
+                        Ok(Step::MaybeValidBlockAndColumns {
+                            block,
+                            columns,
+                            valid,
+                        })
+                    }
+                })
+                .collect::<Result<_, _>>()?;
         let anchor_state = ssz_decode_state(&path.join("anchor_state.ssz_snappy"), spec)?;
         let anchor_block = ssz_decode_file_with(&path.join("anchor_block.ssz_snappy"), |bytes| {
             BeaconBlock::from_ssz_bytes(bytes, spec)
@@ -737,7 +737,7 @@ impl<E: EthSpec> Tester<E> {
                     if block.fork_name_unchecked().gloas_enabled() {
                         return Ok(());
                     }
-                    panic!("get_state failed for block {:?}: {:?}", block_root, e);
+                    panic!("get_state failed for block {block_root:?}: {e:?}");
                 }
             };
 
@@ -774,8 +774,7 @@ impl<E: EthSpec> Tester<E> {
 
             if result.is_ok() {
                 return Err(Error::DidntFail(format!(
-                    "block with root {} should fail on_block",
-                    block_root,
+                    "block with root {block_root} should fail on_block",
                 )));
             }
         }
@@ -788,7 +787,7 @@ impl<E: EthSpec> Tester<E> {
             &self.harness.chain,
             attestation.to_ref(),
         )
-        .map_err(|e| Error::InternalError(format!("attestation indexing failed with {:?}", e)))?;
+        .map_err(|e| Error::InternalError(format!("attestation indexing failed with {e:?}")))?;
         let verified_attestation: ManuallyVerifiedAttestation<EphemeralHarnessType<E>> =
             ManuallyVerifiedAttestation {
                 attestation,
@@ -798,7 +797,7 @@ impl<E: EthSpec> Tester<E> {
         self.harness
             .chain
             .apply_attestation_to_fork_choice(&verified_attestation)
-            .map_err(|e| Error::InternalError(format!("attestation import failed with {:?}", e)))
+            .map_err(|e| Error::InternalError(format!("attestation import failed with {e:?}")))
     }
 
     pub fn process_attester_slashing(&self, attester_slashing: AttesterSlashingRef<E>) {
@@ -843,14 +842,12 @@ impl<E: EthSpec> Tester<E> {
         if valid {
             result.map_err(|e| {
                 Error::InternalError(format!(
-                    "on_execution_payload failed for block root {:?}: {:?}",
-                    beacon_block_root, e
+                    "on_execution_payload failed for block root {beacon_block_root:?}: {e:?}"
                 ))
             })?;
         } else if result.is_ok() {
             return Err(Error::DidntFail(format!(
-                "on_execution_payload for block root {:?} should have failed",
-                beacon_block_root
+                "on_execution_payload for block root {beacon_block_root:?} should have failed"
             )));
         }
 
@@ -872,8 +869,7 @@ impl<E: EthSpec> Tester<E> {
                 )])
                 .map_err(|e| {
                     Error::InternalError(format!(
-                        "Failed to persist envelope for {:?}: {:?}",
-                        beacon_block_root, e
+                        "Failed to persist envelope for {beacon_block_root:?}: {e:?}"
                     ))
                 })?;
         }
@@ -912,9 +908,10 @@ impl<E: EthSpec> Tester<E> {
     }
 
     pub fn check_time(&self, expected_time: u64) -> Result<(), Error> {
-        let slot = self.harness.chain.slot().map_err(|e| {
-            Error::InternalError(format!("reading current slot failed with {:?}", e))
-        })?;
+        let slot =
+            self.harness.chain.slot().map_err(|e| {
+                Error::InternalError(format!("reading current slot failed with {e:?}"))
+            })?;
         let expected_slot = self.tick_to_slot(expected_time)?;
         check_equal("time", slot, expected_slot)
     }
@@ -1112,7 +1109,7 @@ impl<E: EthSpec> Tester<E> {
 ///
 /// <https://github.com/ethereum/consensus-specs/issues/2566>
 fn assert_checkpoints_eq(name: &str, head: Checkpoint, fc: Checkpoint) {
-    assert_eq!(head, fc, "{}", name);
+    assert_eq!(head, fc, "{name}");
 }
 
 /// Convenience function to create `Error` messages.
@@ -1121,8 +1118,7 @@ fn check_equal<T: Debug + PartialEq>(check: &str, result: T, expected: T) -> Res
         Ok(())
     } else {
         Err(Error::NotEqual(format!(
-            "{} check failed: Got {:?} | Expected {:?}",
-            check, result, expected
+            "{check} check failed: Got {result:?} | Expected {expected:?}"
         )))
     }
 }

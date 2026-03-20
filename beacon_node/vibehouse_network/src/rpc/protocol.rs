@@ -993,18 +993,16 @@ impl From<io::Error> for RPCError {
 impl std::fmt::Display for RPCError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
-            RPCError::SSZDecodeError(ref err) => write!(f, "Error while decoding ssz: {:?}", err),
-            RPCError::InvalidData(ref err) => write!(f, "Peer sent unexpected data: {}", err),
-            RPCError::IoError(ref err) => write!(f, "IO Error: {}", err),
-            RPCError::ErrorResponse(ref code, ref reason) => write!(
-                f,
-                "RPC response was an error: {} with reason: {}",
-                code, reason
-            ),
+            RPCError::SSZDecodeError(ref err) => write!(f, "Error while decoding ssz: {err:?}"),
+            RPCError::InvalidData(ref err) => write!(f, "Peer sent unexpected data: {err}"),
+            RPCError::IoError(ref err) => write!(f, "IO Error: {err}"),
+            RPCError::ErrorResponse(ref code, ref reason) => {
+                write!(f, "RPC response was an error: {code} with reason: {reason}")
+            }
             RPCError::StreamTimeout => write!(f, "Stream Timeout"),
             RPCError::UnsupportedProtocol => write!(f, "Peer does not support the protocol"),
             RPCError::IncompleteStream => write!(f, "Stream ended unexpectedly"),
-            RPCError::InternalError(ref err) => write!(f, "Internal error: {}", err),
+            RPCError::InternalError(ref err) => write!(f, "Internal error: {err}"),
             RPCError::NegotiationTimeout => write!(f, "Negotiation timeout"),
             RPCError::HandlerRejected => write!(f, "Handler rejected the request"),
             RPCError::Disconnected => write!(f, "Gracefully Disconnected"),
@@ -1022,15 +1020,15 @@ impl std::error::Error for RPCError {
 impl<E: EthSpec> std::fmt::Display for RequestType<E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RequestType::Status(status) => write!(f, "Status Message: {}", status),
-            RequestType::Goodbye(reason) => write!(f, "Goodbye: {}", reason),
-            RequestType::BlocksByRange(req) => write!(f, "Blocks by range: {}", req),
-            RequestType::BlocksByRoot(req) => write!(f, "Blocks by root: {:?}", req),
-            RequestType::BlobsByRange(req) => write!(f, "Blobs by range: {:?}", req),
-            RequestType::BlobsByRoot(req) => write!(f, "Blobs by root: {:?}", req),
-            RequestType::DataColumnsByRoot(req) => write!(f, "Data columns by root: {:?}", req),
+            RequestType::Status(status) => write!(f, "Status Message: {status}"),
+            RequestType::Goodbye(reason) => write!(f, "Goodbye: {reason}"),
+            RequestType::BlocksByRange(req) => write!(f, "Blocks by range: {req}"),
+            RequestType::BlocksByRoot(req) => write!(f, "Blocks by root: {req:?}"),
+            RequestType::BlobsByRange(req) => write!(f, "Blobs by range: {req:?}"),
+            RequestType::BlobsByRoot(req) => write!(f, "Blobs by root: {req:?}"),
+            RequestType::DataColumnsByRoot(req) => write!(f, "Data columns by root: {req:?}"),
             RequestType::DataColumnsByRange(req) => {
-                write!(f, "Data columns by range: {:?}", req)
+                write!(f, "Data columns by range: {req:?}")
             }
             RequestType::Ping(ping) => write!(f, "Ping: {}", ping.data),
             RequestType::MetaData(_) => write!(f, "MetaData request"),
@@ -1422,11 +1420,7 @@ mod tests {
         ];
         for sp in context_protocols {
             let pid = ProtocolId::new(sp, Encoding::SSZSnappy);
-            assert!(
-                pid.has_context_bytes(),
-                "{:?} should have context bytes",
-                sp
-            );
+            assert!(pid.has_context_bytes(), "{sp:?} should have context bytes");
         }
     }
 
@@ -1447,8 +1441,7 @@ mod tests {
             let pid = ProtocolId::new(sp, Encoding::SSZSnappy);
             assert!(
                 !pid.has_context_bytes(),
-                "{:?} should NOT have context bytes",
-                sp
+                "{sp:?} should NOT have context bytes"
             );
         }
     }
@@ -1489,7 +1482,7 @@ mod tests {
     fn block_limits_min_less_than_max() {
         for fork in ForkName::list_all() {
             let limits = rpc_block_limits_by_fork(fork);
-            assert!(limits.min <= limits.max, "min > max for fork {:?}", fork);
+            assert!(limits.min <= limits.max, "min > max for fork {fork:?}");
         }
     }
 
@@ -1685,7 +1678,7 @@ mod tests {
         let rpc_err: RPCError = io_err.into();
         match rpc_err {
             RPCError::IoError(msg) => assert!(msg.contains("reset")),
-            other => panic!("expected IoError, got {:?}", other),
+            other => panic!("expected IoError, got {other:?}"),
         }
     }
 

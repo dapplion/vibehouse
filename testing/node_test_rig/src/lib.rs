@@ -60,7 +60,7 @@ impl<E: EthSpec> LocalBeaconNode<E> {
             ProductionBeaconNode::new(context, client_config),
         )
         .await
-        .map_err(|_| format!("Beacon node startup timed out after {:?}", STARTUP_TIMEOUT))?
+        .map_err(|_| format!("Beacon node startup timed out after {STARTUP_TIMEOUT:?}"))?
         .map(move |client| Self {
             client: client.into_inner(),
             datadir,
@@ -80,11 +80,11 @@ impl<E: EthSpec> LocalBeaconNode<E> {
         let beacon_node_url: SensitiveUrl = SensitiveUrl::parse(
             format!("http://{}:{}", listen_addr.ip(), listen_addr.port()).as_str(),
         )
-        .map_err(|e| format!("Unable to parse beacon node URL: {:?}", e))?;
+        .map_err(|e| format!("Unable to parse beacon node URL: {e:?}"))?;
         let beacon_node_http_client = ClientBuilder::new()
             .timeout(HTTP_TIMEOUT)
             .build()
-            .map_err(|e| format!("Unable to build HTTP client: {:?}", e))?;
+            .map_err(|e| format!("Unable to build HTTP client: {e:?}"))?;
         Ok(BeaconNodeHttpClient::from_components(
             beacon_node_url,
             beacon_node_http_client,
@@ -148,12 +148,12 @@ impl ValidatorFiles {
         let datadir = TempBuilder::new()
             .prefix("vibehouse-validator-client")
             .tempdir()
-            .map_err(|e| format!("Unable to create VC data dir: {:?}", e))?;
+            .map_err(|e| format!("Unable to create VC data dir: {e:?}"))?;
 
         let secrets_dir = TempBuilder::new()
             .prefix("vibehouse-validator-client-secrets")
             .tempdir()
-            .map_err(|e| format!("Unable to create VC secrets dir: {:?}", e))?;
+            .map_err(|e| format!("Unable to create VC secrets dir: {e:?}"))?;
 
         Ok(Self {
             validator_dir: datadir,
@@ -170,7 +170,7 @@ impl ValidatorFiles {
             this.secrets_dir.path().into(),
             keypair_indices,
         )
-        .map_err(|e| format!("Unable to build validator directories: {:?}", e))?;
+        .map_err(|e| format!("Unable to build validator directories: {e:?}"))?;
 
         Ok(this)
     }
@@ -246,7 +246,7 @@ impl<E: EthSpec> LocalExecutionNode<E> {
             .expect("should create temp directory for client datadir");
         let jwt_file_path = datadir.path().join("jwt.hex");
         if let Err(e) = std::fs::write(jwt_file_path, config.jwt_key.hex_string()) {
-            panic!("Failed to write jwt file {}", e);
+            panic!("Failed to write jwt file {e}");
         }
         let spec = context.eth2_config.spec.clone();
         Self {

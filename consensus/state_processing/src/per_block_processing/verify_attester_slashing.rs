@@ -310,8 +310,7 @@ mod tests {
                 err,
                 BlockOperationError::Invalid(Invalid::NoSlashableIndices)
             ),
-            "expected NoSlashableIndices, got {:?}",
-            err
+            "expected NoSlashableIndices, got {err:?}"
         );
     }
 
@@ -353,8 +352,7 @@ mod tests {
                 err,
                 BlockOperationError::Invalid(Invalid::UnknownValidator(99))
             ),
-            "expected UnknownValidator(99), got {:?}",
-            err
+            "expected UnknownValidator(99), got {err:?}"
         );
     }
 
@@ -452,8 +450,7 @@ mod tests {
                 .unwrap_err();
         assert!(
             matches!(err, BlockOperationError::Invalid(Invalid::NotSlashable)),
-            "expected NotSlashable, got {:?}",
-            err
+            "expected NotSlashable, got {err:?}"
         );
     }
 

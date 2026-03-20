@@ -430,9 +430,8 @@ fn main() {
         && let Err(e) = configure_memory_allocator()
     {
         eprintln!(
-            "Unable to configure the memory allocator: {} \n\
-                Try providing the --{} flag",
-            e, DISABLE_MALLOC_TUNING_FLAG
+            "Unable to configure the memory allocator: {e} \n\
+                Try providing the --{DISABLE_MALLOC_TUNING_FLAG} flag"
         );
         exit(1)
     }
@@ -467,10 +466,7 @@ fn main() {
             EthSpecId::Minimal => run(EnvironmentBuilder::minimal(), &matches, eth2_network_config),
             #[cfg(not(all(feature = "spec-minimal", feature = "gnosis")))]
             other => {
-                eprintln!(
-                    "Eth spec `{}` is not supported by this build of vibehouse",
-                    other
-                );
+                eprintln!("Eth spec `{other}` is not supported by this build of vibehouse");
                 eprintln!("You must compile with a feature flag to enable this spec variant");
                 exit(1);
             }
@@ -484,7 +480,7 @@ fn main() {
     match result {
         Ok(()) => exit(0),
         Err(e) => {
-            eprintln!("{}", e);
+            eprintln!("{e}");
             drop(e);
             exit(1)
         }
@@ -537,13 +533,13 @@ fn run<E: EthSpec>(
         .get_one::<String>("logfile-max-size")
         .ok_or("Expected --logfile-max-size flag")?
         .parse()
-        .map_err(|e| format!("Failed to parse `logfile-max-size`: {:?}", e))?;
+        .map_err(|e| format!("Failed to parse `logfile-max-size`: {e:?}"))?;
 
     let logfile_max_number: usize = matches
         .get_one::<String>("logfile-max-number")
         .ok_or("Expected --logfile-max-number flag")?
         .parse()
-        .map_err(|e| format!("Failed to parse `logfile-max-number`: {:?}", e))?;
+        .map_err(|e| format!("Failed to parse `logfile-max-number`: {e:?}"))?;
 
     let logfile_compress = matches.get_flag("logfile-compress");
 
@@ -663,7 +659,7 @@ fn run<E: EthSpec>(
                 .with_tls_config(ClientTlsConfig::new().with_native_roots())
                 .with_endpoint(telemetry_collector_url)
                 .build()
-                .map_err(|e| format!("Failed to create OTLP exporter: {:?}", e))?;
+                .map_err(|e| format!("Failed to create OTLP exporter: {e:?}"))?;
 
             let service_name = matches
                 .get_one::<String>("telemetry-service-name")
@@ -755,7 +751,7 @@ fn run<E: EthSpec>(
     };
 
     if let Some(sub_matches) = matches.subcommand_matches(account_manager::CMD) {
-        eprintln!("Running account manager for {} network", network_name);
+        eprintln!("Running account manager for {network_name} network");
         // Pass the entire `environment` to the account manager so it can run blocking operations.
         account_manager::run(sub_matches, environment)?;
 
@@ -764,7 +760,7 @@ fn run<E: EthSpec>(
     }
 
     if let Some(sub_matches) = matches.subcommand_matches(validator_manager::CMD) {
-        eprintln!("Running validator manager for {} network", network_name);
+        eprintln!("Running validator manager for {network_name} network");
 
         // Pass the entire `environment` to the account manager so it can run blocking operations.
         validator_manager::run::<E>(sub_matches, environment)?;
@@ -783,7 +779,7 @@ fn run<E: EthSpec>(
             let context = environment.core_context();
             let executor = context.executor.clone();
             let config = validator_client::Config::from_cli(matches, &validator_client_config)
-                .map_err(|e| format!("Unable to initialize validator config: {}", e))?;
+                .map_err(|e| format!("Unable to initialize validator config: {e}"))?;
             // Dump configs if `dump-config` or `dump-chain-config` flags are set
             clap_utils::check_dump_configs::<_, E>(matches, &config, &context.eth2_config.spec)?;
 

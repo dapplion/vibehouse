@@ -635,8 +635,7 @@ mod tests {
                 result,
                 Err(Error::ValidatorIndexTooHigh(idx)) if idx == limit
             ),
-            "expected ValidatorIndexTooHigh, got {:?}",
-            result,
+            "expected ValidatorIndexTooHigh, got {result:?}",
         );
     }
 

@@ -132,7 +132,7 @@ pub fn use_or_load_enr(
                             // so a non default value in persisted enr will also update sequence number.
                             let new_seq_no = disk_enr.seq().checked_add(1).ok_or("ENR sequence number on file is too large. Remove it to generate a new NodeId")?;
                             local_enr.set_seq(new_seq_no, enr_key).map_err(|e| {
-                                format!("Could not update ENR sequence number: {:?}", e)
+                                format!("Could not update ENR sequence number: {e:?}")
                             })?;
                             debug!(seq = new_seq_no, "ENR sequence number increased");
                         }
@@ -307,7 +307,7 @@ pub fn build_enr<E: EthSpec>(
 
     builder
         .build(enr_key)
-        .map_err(|e| format!("Could not build Local ENR: {:?}", e))
+        .map_err(|e| format!("Could not build Local ENR: {e:?}"))
 }
 
 /// Defines the conditions under which we use the locally built ENR or the one stored on disk.
@@ -339,13 +339,12 @@ fn compare_enr(local_enr: &Enr, disk_enr: &Enr) -> bool {
 /// Loads enr from the given directory
 pub fn load_enr_from_disk(dir: &Path) -> Result<Enr, String> {
     let enr_f = dir.join(ENR_FILENAME);
-    let mut enr_file =
-        File::open(enr_f).map_err(|e| format!("Failed to open enr file: {:?}", e))?;
+    let mut enr_file = File::open(enr_f).map_err(|e| format!("Failed to open enr file: {e:?}"))?;
     let mut enr_string = String::new();
     match enr_file.read_to_string(&mut enr_string) {
         Err(_) => Err("Could not read ENR from file".to_string()),
         Ok(_) => Enr::from_str(&enr_string)
-            .map_err(|e| format!("ENR from file could not be decoded: {:?}", e)),
+            .map_err(|e| format!("ENR from file could not be decoded: {e:?}")),
     }
 }
 

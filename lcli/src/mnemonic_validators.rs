@@ -18,19 +18,15 @@ pub fn generate_validator_dirs(
 ) -> Result<(), String> {
     if !validators_dir.exists() {
         fs::create_dir_all(&validators_dir)
-            .map_err(|e| format!("Unable to create validators dir: {:?}", e))?;
+            .map_err(|e| format!("Unable to create validators dir: {e:?}"))?;
     }
 
     if !secrets_dir.exists() {
         fs::create_dir_all(&secrets_dir)
-            .map_err(|e| format!("Unable to create secrets dir: {:?}", e))?;
+            .map_err(|e| format!("Unable to create secrets dir: {e:?}"))?;
     }
-    let mnemonic = Mnemonic::from_phrase(mnemonic_phrase, Language::English).map_err(|e| {
-        format!(
-            "Unable to derive mnemonic from string {:?}: {:?}",
-            mnemonic_phrase, e
-        )
-    })?;
+    let mnemonic = Mnemonic::from_phrase(mnemonic_phrase, Language::English)
+        .map_err(|e| format!("Unable to derive mnemonic from string {mnemonic_phrase:?}: {e:?}"))?;
 
     let seed = Seed::new(&mnemonic, "");
 
@@ -45,15 +41,15 @@ pub fn generate_validator_dirs(
                     *index as u32,
                     key_type,
                 )
-                .map_err(|e| format!("Unable to recover validator keys: {:?}", e))?;
+                .map_err(|e| format!("Unable to recover validator keys: {e:?}"))?;
 
                 let keypair = keypair_from_secret(secret.as_bytes())
-                    .map_err(|e| format!("Unable build keystore: {:?}", e))?;
+                    .map_err(|e| format!("Unable build keystore: {e:?}"))?;
 
                 KeystoreBuilder::new(&keypair, password, path.to_string())
-                    .map_err(|e| format!("Unable build keystore: {:?}", e))?
+                    .map_err(|e| format!("Unable build keystore: {e:?}"))?
                     .build()
-                    .map_err(|e| format!("Unable build keystore: {:?}", e))
+                    .map_err(|e| format!("Unable build keystore: {e:?}"))
             };
 
             let voting_keystore = derive(KeyType::Voting, voting_password.as_bytes()).unwrap();
@@ -65,7 +61,7 @@ pub fn generate_validator_dirs(
                 .store_withdrawal_keystore(false)
                 .voting_keystore(voting_keystore, voting_password.as_bytes())
                 .build()
-                .map_err(|e| format!("Unable to build validator: {:?}", e))
+                .map_err(|e| format!("Unable to build validator: {e:?}"))
                 .unwrap()
         })
         .collect();

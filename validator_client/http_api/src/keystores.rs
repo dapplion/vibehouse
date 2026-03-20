@@ -112,7 +112,7 @@ pub fn import<T: SlotClock + 'static, E: EthSpec>(
             // error status.
             Status::error(
                 ImportKeystoreStatus::Error,
-                format!("slashing protection import failed: {:?}", e),
+                format!("slashing protection import failed: {e:?}"),
             )
         } else if let Some(handle) = task_executor.handle() {
             // Import the keystore.
@@ -201,14 +201,14 @@ fn import_single_keystore<T: SlotClock + 'static, E: EthSpec>(
     // wrong password indefinitely).
     keystore
         .decrypt_keypair(password.as_ref())
-        .map_err(|e| format!("incorrect password: {:?}", e))?;
+        .map_err(|e| format!("incorrect password: {e:?}"))?;
 
     let validator_dir = ValidatorDirBuilder::new(validator_dir_path)
         .password_dir_opt(secrets_dir)
         .voting_keystore(keystore, password.as_ref())
         .store_withdrawal_keystore(false)
         .build()
-        .map_err(|e| format!("failed to build validator directory: {:?}", e))?;
+        .map_err(|e| format!("failed to build validator directory: {e:?}"))?;
 
     // Drop validator dir so that `add_validator_keystore` can re-lock the keystore.
     let voting_keystore_path = validator_dir.voting_keystore_path();
@@ -226,7 +226,7 @@ fn import_single_keystore<T: SlotClock + 'static, E: EthSpec>(
             None,
             None,
         ))
-        .map_err(|e| format!("failed to initialize validator: {:?}", e))?;
+        .map_err(|e| format!("failed to initialize validator: {e:?}"))?;
 
     Ok(ImportKeystoreStatus::Imported)
 }
@@ -303,14 +303,14 @@ pub fn export<T: SlotClock + 'static, E: EthSpec>(
     if let Some(handle) = task_executor.handle() {
         handle
             .block_on(initialized_validators.update_validators())
-            .map_err(|e| ApiError::ServerError(format!("unable to update key cache: {:?}", e)))?;
+            .map_err(|e| ApiError::ServerError(format!("unable to update key cache: {e:?}")))?;
     }
 
     // Export the slashing protection data.
     let slashing_protection = validator_store
         .export_slashing_protection_for_keys(&request.pubkeys)
         .map_err(|e| {
-            ApiError::ServerError(format!("error exporting slashing protection: {:?}", e))
+            ApiError::ServerError(format!("error exporting slashing protection: {e:?}"))
         })?;
 
     // Update stasuses based on availability of slashing protection data.
@@ -339,7 +339,7 @@ fn delete_single_keystore(
     if let Some(handle) = task_executor.handle() {
         let pubkey = pubkey_bytes
             .decompress()
-            .map_err(|e| format!("invalid pubkey, {:?}: {:?}", pubkey_bytes, e))?;
+            .map_err(|e| format!("invalid pubkey, {pubkey_bytes:?}: {e:?}"))?;
 
         match handle.block_on(initialized_validators.delete_definition_and_keystore(&pubkey, true))
         {
@@ -359,7 +359,7 @@ fn delete_single_keystore(
                     validating_keystore: None,
                     validating_keystore_password: None,
                 }),
-                _ => Err(format!("unable to disable and delete: {:?}", e)),
+                _ => Err(format!("unable to disable and delete: {e:?}")),
             },
         }
     } else {

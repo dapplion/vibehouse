@@ -233,62 +233,48 @@ async fn run(config: ImportConfig) -> Result<(), String> {
         &validators_file_path
     {
         if !validators_format_path.exists() {
-            return Err(format!(
-                "Unable to find file at {:?}",
-                validators_format_path
-            ));
+            return Err(format!("Unable to find file at {validators_format_path:?}"));
         }
 
         let validators_file = fs::OpenOptions::new()
             .read(true)
             .create(false)
             .open(validators_format_path)
-            .map_err(|e| format!("Unable to open {:?}: {:?}", validators_format_path, e))?;
+            .map_err(|e| format!("Unable to open {validators_format_path:?}: {e:?}"))?;
 
         // Define validators as mutable so that if a relevant flag is supplied, the fields can be overridden.
         let mut validators: Vec<ValidatorSpecification> = serde_json::from_reader(&validators_file)
-            .map_err(|e| {
-                format!(
-                    "Unable to parse JSON in {:?}: {:?}",
-                    validators_format_path, e
-                )
-            })?;
+            .map_err(|e| format!("Unable to parse JSON in {validators_format_path:?}: {e:?}"))?;
 
         // Log the overridden note when one or more flags is supplied
         if let Some(override_fee_recipient) = fee_recipient {
             eprintln!(
-                "Please note! --suggested-fee-recipient is provided. This will override existing fee recipient defined in validators.json with: {:?}",
-                override_fee_recipient
+                "Please note! --suggested-fee-recipient is provided. This will override existing fee recipient defined in validators.json with: {override_fee_recipient:?}"
             );
         }
         if let Some(override_gas_limit) = gas_limit {
             eprintln!(
-                "Please note! --gas-limit is provided. This will override existing gas limit defined in validators.json with: {}",
-                override_gas_limit
+                "Please note! --gas-limit is provided. This will override existing gas limit defined in validators.json with: {override_gas_limit}"
             );
         }
         if let Some(override_builder_proposals) = builder_proposals {
             eprintln!(
-                "Please note! --builder-proposals is provided. This will override existing builder proposal setting defined in validators.json with: {}",
-                override_builder_proposals
+                "Please note! --builder-proposals is provided. This will override existing builder proposal setting defined in validators.json with: {override_builder_proposals}"
             );
         }
         if let Some(override_builder_boost_factor) = builder_boost_factor {
             eprintln!(
-                "Please note! --builder-boost-factor is provided. This will override existing builder boost factor defined in validators.json with: {}",
-                override_builder_boost_factor
+                "Please note! --builder-boost-factor is provided. This will override existing builder boost factor defined in validators.json with: {override_builder_boost_factor}"
             );
         }
         if let Some(override_prefer_builder_proposals) = prefer_builder_proposals {
             eprintln!(
-                "Please note! --prefer-builder-proposals is provided. This will override existing prefer builder proposal setting defined in validators.json with: {}",
-                override_prefer_builder_proposals
+                "Please note! --prefer-builder-proposals is provided. This will override existing prefer builder proposal setting defined in validators.json with: {override_prefer_builder_proposals}"
             );
         }
         if let Some(override_enabled) = enabled {
             eprintln!(
-                "Please note! --enabled flag is provided. This will override existing setting defined in validators.json with: {}",
-                override_enabled
+                "Please note! --enabled flag is provided. This will override existing setting defined in validators.json with: {override_enabled}"
             );
         }
 
@@ -342,8 +328,7 @@ async fn run(config: ImportConfig) -> Result<(), String> {
     let (http_client, _keystores) = vc_http_client(vc_url.clone(), &vc_token_path).await?;
 
     eprintln!(
-        "Starting to submit {} validators to VC, each validator may take several seconds",
-        count
+        "Starting to submit {count} validators to VC, each validator may take several seconds"
     );
 
     for (i, validator) in validators.into_iter().enumerate() {
@@ -381,63 +366,54 @@ async fn run(config: ImportConfig) -> Result<(), String> {
                 }
             },
             e @ Err(UploadError::InvalidPublicKey) => {
-                eprintln!("Validator {} has an invalid public key", i);
-                return Err(format!("{:?}", e));
+                eprintln!("Validator {i} has an invalid public key");
+                return Err(format!("{e:?}"));
             }
             ref e @ Err(UploadError::DuplicateValidator(voting_public_key)) => {
                 eprintln!(
-                    "Duplicate validator {:?} already exists on the destination validator client. \
+                    "Duplicate validator {voting_public_key:?} already exists on the destination validator client. \
                     This may indicate that some validators are running in two places at once, which \
-                    can lead to slashing. If you are certain that there is no risk, add the --{} flag.",
-                    voting_public_key, IGNORE_DUPLICATES_FLAG
+                    can lead to slashing. If you are certain that there is no risk, add the --{IGNORE_DUPLICATES_FLAG} flag."
                 );
-                return Err(format!("{:?}", e));
+                return Err(format!("{e:?}"));
             }
             Err(UploadError::FailedToListKeys(e)) => {
                 eprintln!(
                     "Failed to list keystores. Some keys may have been imported whilst \
                     others may not have been imported. A potential solution is run this command again \
-                    using the --{} flag, however care should be taken to ensure that there are no \
-                    duplicate deposits submitted.",
-                    IGNORE_DUPLICATES_FLAG
+                    using the --{IGNORE_DUPLICATES_FLAG} flag, however care should be taken to ensure that there are no \
+                    duplicate deposits submitted."
                 );
-                return Err(format!("{:?}", e));
+                return Err(format!("{e:?}"));
             }
             Err(UploadError::KeyUploadFailed(e)) => {
                 eprintln!(
                     "Failed to upload keystore. Some keys may have been imported whilst \
                     others may not have been imported. A potential solution is run this command again \
-                    using the --{} flag, however care should be taken to ensure that there are no \
-                    duplicate deposits submitted.",
-                    IGNORE_DUPLICATES_FLAG
+                    using the --{IGNORE_DUPLICATES_FLAG} flag, however care should be taken to ensure that there are no \
+                    duplicate deposits submitted."
                 );
-                return Err(format!("{:?}", e));
+                return Err(format!("{e:?}"));
             }
             Err(UploadError::IncorrectStatusCount(count)) => {
                 eprintln!(
                     "Keystore was uploaded, however the validator client returned an invalid response. \
-                    A potential solution is run this command again using the --{} flag, however care \
-                    should be taken to ensure that there are no duplicate deposits submitted.",
-                    IGNORE_DUPLICATES_FLAG
+                    A potential solution is run this command again using the --{IGNORE_DUPLICATES_FLAG} flag, however care \
+                    should be taken to ensure that there are no duplicate deposits submitted."
                 );
-                return Err(format!(
-                    "Invalid status count in import response: {}",
-                    count
-                ));
+                return Err(format!("Invalid status count in import response: {count}"));
             }
             Err(UploadError::FeeRecipientUpdateFailed(e)) => {
                 eprintln!(
-                    "Failed to set fee recipient for validator {}. This value may need \
-                    to be set manually. Continuing with other validators. Error was {:?}",
-                    i, e
+                    "Failed to set fee recipient for validator {i}. This value may need \
+                    to be set manually. Continuing with other validators. Error was {e:?}"
                 );
             }
             Err(UploadError::PatchValidatorFailed(e)) => {
                 eprintln!(
-                    "Failed to set some values on validator {} (e.g., builder, enabled or gas limit. \
+                    "Failed to set some values on validator {i} (e.g., builder, enabled or gas limit. \
                     These values value may need to be set manually. Continuing with other validators. \
-                    Error was {:?}",
-                    i, e
+                    Error was {e:?}"
                 );
             }
         }

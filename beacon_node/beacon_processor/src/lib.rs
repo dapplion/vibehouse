@@ -156,7 +156,7 @@ impl BeaconProcessorQueueLengths {
                 Ok(indices) => indices.len(),
                 Err(_) => state
                     .get_active_validator_indices(state.current_epoch(), spec)
-                    .map_err(|e| format!("Error computing active indices: {:?}", e))?
+                    .map_err(|e| format!("Error computing active indices: {e:?}"))?
                     .len(),
             };
         let active_validator_count =

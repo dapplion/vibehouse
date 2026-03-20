@@ -95,8 +95,8 @@ pub fn check_serialization<T: SszStaticType>(
 }
 
 pub fn check_tree_hash(expected_str: &str, actual_root: &[u8]) -> Result<(), Error> {
-    let expected_root = hex::decode(&expected_str[2..])
-        .map_err(|e| Error::FailedToParseTest(format!("{:?}", e)))?;
+    let expected_root =
+        hex::decode(&expected_str[2..]).map_err(|e| Error::FailedToParseTest(format!("{e:?}")))?;
     let expected_root = Hash256::from_slice(&expected_root);
     let tree_hash_root = Hash256::from_slice(actual_root);
     compare_result::<Hash256, Error>(&Ok(tree_hash_root), &Some(expected_root))

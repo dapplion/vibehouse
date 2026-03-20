@@ -58,10 +58,7 @@ impl FromStr for GraffitiString {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.len() > GRAFFITI_BYTES_LEN {
-            return Err(format!(
-                "Graffiti exceeds max length {}",
-                GRAFFITI_BYTES_LEN
-            ));
+            return Err(format!("Graffiti exceeds max length {GRAFFITI_BYTES_LEN}"));
         }
         Ok(Self(s.to_string()))
     }
@@ -234,7 +231,7 @@ mod tests {
         let mut bytes = [0u8; GRAFFITI_BYTES_LEN];
         bytes[0] = 0xFF;
         let g = Graffiti::from(bytes);
-        let s = format!("{}", g);
+        let s = format!("{g}");
         assert!(s.starts_with("0x"));
         assert!(s.contains("ff"));
     }

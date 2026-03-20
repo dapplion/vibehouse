@@ -226,9 +226,8 @@ impl<'de, E: EthSpec> context_deserialize::ContextDeserialize<'de, ForkName>
     where
         D: Deserializer<'de>,
     {
-        let convert_err = |e| {
-            serde::de::Error::custom(format!("DataColumnSidecar failed to deserialize: {:?}", e))
-        };
+        let convert_err =
+            |e| serde::de::Error::custom(format!("DataColumnSidecar failed to deserialize: {e:?}"));
         Ok(match context {
             ForkName::Fulu => {
                 Self::Fulu(Deserialize::deserialize(deserializer).map_err(convert_err)?)
@@ -238,8 +237,7 @@ impl<'de, E: EthSpec> context_deserialize::ContextDeserialize<'de, ForkName>
             }
             _ => {
                 return Err(serde::de::Error::custom(format!(
-                    "DataColumnSidecar failed to deserialize: unsupported fork '{}'",
-                    context
+                    "DataColumnSidecar failed to deserialize: unsupported fork '{context}'"
                 )));
             }
         })

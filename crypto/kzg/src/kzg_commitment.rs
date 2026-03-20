@@ -38,11 +38,11 @@ impl Display for KzgCommitment {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "0x")?;
         for i in &self.0[0..2] {
-            write!(f, "{:02x}", i)?;
+            write!(f, "{i:02x}")?;
         }
         write!(f, "…")?;
         for i in &self.0[BYTES_PER_COMMITMENT - 2..BYTES_PER_COMMITMENT] {
-            write!(f, "{:02x}", i)?;
+            write!(f, "{i:02x}")?;
         }
         Ok(())
     }
@@ -71,7 +71,7 @@ impl Serialize for KzgCommitment {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&format!("{:?}", self))
+        serializer.serialize_str(&format!("{self:?}"))
     }
 }
 
@@ -181,7 +181,7 @@ mod tests {
     #[test]
     fn debug_format() {
         let c = sample_commitment();
-        let debug = format!("{:?}", c);
+        let debug = format!("{c:?}");
         assert_eq!(debug, sample_hex());
     }
 
