@@ -10,7 +10,12 @@ use reqwest::{Client, header::ACCEPT};
 use std::path::PathBuf;
 use std::sync::Arc;
 use task_executor::TaskExecutor;
-use types::*;
+use types::{
+    AbstractExecPayload, AggregateAndProofRef, AttestationData, BeaconBlock, ChainSpec,
+    ContributionAndProof, Domain, Epoch, EthSpec, ExecutionPayloadEnvelope, Fork, FullPayload,
+    Hash256, Keypair, PayloadAttestationData, ProposerPreferences, PublicKey, Signature,
+    SignedRoot, Slot, SyncAggregatorSelectionData, ValidatorRegistrationData, VoluntaryExit,
+};
 use url::Url;
 use web3signer::{ForkInfo, MessageType, SigningRequest, SigningResponse};
 

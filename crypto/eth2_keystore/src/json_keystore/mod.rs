@@ -16,7 +16,7 @@ pub use kdf_module::{EmptyString, Kdf, KdfModule, Pbkdf2, Prf, Scrypt};
 pub use uuid::Uuid;
 
 use serde::{Deserialize, Serialize};
-use serde_repr::*;
+use serde_repr::{Deserialize_repr, Serialize_repr};
 
 /// JSON representation of [EIP-2335](https://eips.ethereum.org/EIPS/eip-2335) keystore.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

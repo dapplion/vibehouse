@@ -1,4 +1,6 @@
-use crate::*;
+use crate::{
+    Hash256, InvalidAttestation, InvalidBlock, NotSafe, PublicKeyBytes, Safe, SlashingDatabase,
+};
 use tempfile::{TempDir, tempdir};
 use types::{AttestationData, BeaconBlockHeader, test_utils::generate_deterministic_keypair};
 

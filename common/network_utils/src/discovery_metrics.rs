@@ -1,4 +1,7 @@
-use metrics::*;
+use metrics::{
+    Gauge, IntGauge, IntGaugeVec, Result, set_float_gauge, set_gauge, set_gauge_vec,
+    try_create_float_gauge, try_create_int_gauge, try_create_int_gauge_vec,
+};
 use std::sync::LazyLock;
 
 pub static NAT_OPEN: LazyLock<Result<IntGaugeVec>> = LazyLock::new(|| {

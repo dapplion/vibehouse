@@ -2,7 +2,11 @@
 
 use super::Error;
 use serde::{Deserialize, Serialize};
-use types::*;
+use types::{
+    AbstractExecPayload, AggregateAndProofRef, AttestationData, BeaconBlock, BeaconBlockHeader,
+    ContributionAndProof, Epoch, EthSpec, Fork, Hash256, PublicKeyBytes, Signature, Slot,
+    SyncAggregatorSelectionData, ValidatorRegistrationData, VoluntaryExit,
+};
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -164,7 +168,7 @@ pub struct SigningResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use types::MinimalEthSpec;
+    use types::{FixedBytesExtended, FullPayload, MinimalEthSpec};
 
     type E = MinimalEthSpec;
 

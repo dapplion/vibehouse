@@ -3,8 +3,10 @@
 use crate::{
     config::MEGABYTE,
     database::{
+        ATTESTERS_DB, ATTESTERS_MAX_TARGETS_DB, CURRENT_EPOCHS_DB, Config, Cow, Error,
+        INDEXED_ATTESTATION_DB, INDEXED_ATTESTATION_ID_DB, MAX_NUM_DBS, MAX_TARGETS_DB,
+        METADATA_DB, MIN_TARGETS_DB, OpenDatabases, PROPOSERS_DB, PhantomData,
         interface::{Key, Value},
-        *,
     },
 };
 use lmdb::{Cursor as _, DatabaseFlags, Transaction, WriteFlags};
