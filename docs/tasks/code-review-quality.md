@@ -2637,3 +2637,16 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
 
 No actionable work found. All priorities 1-6 complete. Codebase stable.
+
+### Run 1994 (2026-03-20)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since #5005 (March 15). Open Gloas PRs: #4979 (PTC lookbehind — two competing approaches: #4979 full cache 256KB, #4992 2-committee cache 8KB), #4747 (Fast Confirmation Rule), #5022 (on_payload_attestation block check), #5023 (block root filenames + comptests). None merged, none actionable.
+- **PTC lookbehind deep-dive**: Investigated #4979 bug impact on vibehouse. Confirmed our `get_ptc_committee()` uses current state's effective balances, so PTC computed at epoch boundaries can differ from the PTC at the previous slot. Test `ptc_committee_changes_when_effective_balances_change` already documents this. Fix blocked on spec decision (#4992 vs #4979).
+- **Bid filtering key (#5001)**: Confirmed already implemented — `ObservedExecutionBids.highest_bid_values` uses `(Slot, ExecutionBlockHash, Hash256)` key, test coverage includes cross-fork isolation.
+- **Fork choice tests (#4940)**: Already included in alpha.3 test vectors, all passing.
+- **CI**: Latest run — check+clippy+fmt ✓, ef-tests ✓, http_api ✓, network+op_pool ✓, unit-tests and beacon_chain in progress.
+- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
+
+No actionable work found. All priorities 1-6 complete. Codebase stable.
