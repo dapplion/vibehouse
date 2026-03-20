@@ -2341,3 +2341,15 @@ Full audit:
 - **unsafe blocks**: All legitimate (blst FFI, libc/jemalloc FFI, set_var in main.rs).
 
 No actionable work found. All priorities 1-6 complete. Codebase stable.
+
+### Run 1967 (2026-03-20)
+
+**Monitoring + validation run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs. Open Gloas PRs unchanged: #5022 (block known check — already implemented), #5023 (test fixture filenames), #5020 (PTC lookbehind — still open, high-impact). No new releases.
+- **CI**: All jobs green on `f131ef6f5`.
+- **cargo audit**: Same as previous — 1 rsa vulnerability (no fix, low risk), 5 unmaintained crate warnings (all transitive).
+- **GitHub issues**: #36 remaining items all blocked or non-critical. #29 (ROCQ) lowest priority. #27 (validator messaging) speculative feature request.
+- **Devnet**: SUCCESS — 4-node network finalized epoch 8 (slot 80, epoch 10) through Gloas fork boundary. Validates full stack integrity after pedantic clippy batch (runs 1955-1963).
+
+No actionable work found. Codebase stable and validated.
