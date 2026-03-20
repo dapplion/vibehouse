@@ -2254,3 +2254,20 @@ Key areas:
 6. **Remaining** (45 files across common, consensus, testing, validator_client, account_manager, etc.)
 
 Spec v1.7.0-alpha.3 still latest — no new releases. 4991 workspace tests pass (8 web3signer timeouts = external). 1593 targeted consensus tests pass. lint-full passes. Committed `10004d8a8`.
+
+### Run 1960 (2026-03-20)
+
+**Derived `Eq` alongside `PartialEq` across 130 files** (`clippy::derive_partial_eq_without_eq`): When a type derives `PartialEq` and all its fields implement `Eq`, the type should also derive `Eq`. This enables use in more contexts (e.g., `HashMap` keys, `assert_eq!` with better error messages) and is semantically correct — these types all have reflexive equality.
+
+Applied via `cargo clippy --fix` for 95 files, then manual fixes for 35 files where auto-fix couldn't apply (types crate generics, crypto crates, superstruct-generated code). Reverted `Eq` on `LightClientHeader` — its `execution` field uses `educe(PartialEq)` (not `derive`), so the inner `ExecutionPayloadHeader` variants don't implement `Eq`.
+
+Key areas:
+1. **Consensus types** (47 files) — attestation_duty, beacon_committee, fork, graffiti, payload, preset, sync types, etc.
+2. **Beacon chain** (15 files) — block_verification, execution_payload, data_availability, builder, etc.
+3. **Network** (10 files) — rpc methods, sync modules, peer manager
+4. **HTTP API** (5 files) — ui, types, std_types
+5. **Execution layer** (5 files) — engine API, json structures, test utils
+6. **Crypto** (5 files) — eth2_keystore cipher/kdf modules, eth2_wallet
+7. **Remaining** (43 files across store, validator_client, common, proto_array, etc.)
+
+Spec v1.7.0-alpha.3 still latest — no new releases. 4991 workspace tests pass (9 web3signer timeouts = external). lint-full passes. Committed `018024abd`.
