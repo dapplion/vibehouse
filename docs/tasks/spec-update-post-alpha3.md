@@ -244,3 +244,17 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - cargo audit: same known advisory (RUSTSEC-2023-0071 rsa/jsonwebtoken), no fix available
 - Mar 17 nightly flake (finalized_sync_not_enough_custody_peers_on_start) already fixed — flaky assertion removed
 - **No action needed. Will implement #4979 or #4843 when merged.**
+
+### run 2027 (Mar 20) — spec check + PTC lookbehind analysis
+
+- No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
+- Open Gloas PRs unchanged: 3 competing PTC lookbehind approaches (#4979, #4992, #5020), none approved
+  - #4979: full 2-epoch PTC cache (256KB, `Vector[Vector[ValidatorIndex, PTC_SIZE], 2*SLOTS_PER_EPOCH]`)
+  - #5020: minimal approach (previous_epoch_last_ptc only, 4KB, once-per-epoch update)
+  - #4992: per-slot cache (current_ptc + previous_ptc, updated every slot)
+- #5022 (block-known check in on_payload_attestation_message): already handled via `UnknownBeaconBlockRoot` at fork_choice.rs:1432
+- #5023 (fix block root filenames + Gloas comptests): test infrastructure only, no vibehouse impact
+- #4926 (SECONDS_PER_SLOT → SLOT_DURATION_MS): already handled — we have `slot_duration_ms` field with backward compat for `seconds_per_slot`
+- CI green (all workflows), clippy clean, zero warnings
+- Verified all non-test wildcard imports cleaned up — only idiomatic preludes and re-exports remain
+- **No action needed. PTC lookbehind design not settled — will implement when one approach merges.**
