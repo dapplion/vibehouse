@@ -182,7 +182,7 @@ impl<E: EthSpec> Slasher<E> {
         debug!(num_stored, ?num_valid, "Stored attestations in slasher DB");
         metrics::set_gauge(
             &SLASHER_NUM_ATTESTATIONS_STORED_PER_BATCH,
-            num_stored as i64,
+            i64::from(num_stored),
         );
 
         // Group attestations into chunked batches and process them.

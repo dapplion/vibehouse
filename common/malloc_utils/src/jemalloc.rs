@@ -77,7 +77,7 @@ pub fn scrape_jemalloc_metrics_fallible() -> Result<(), Error> {
     epoch::advance()?;
 
     let num_arenas = arenas::narenas::read()?;
-    set_gauge(&NUM_ARENAS, num_arenas as i64);
+    set_gauge(&NUM_ARENAS, i64::from(num_arenas));
     set_gauge(&BYTES_ALLOCATED, stats::allocated::read()? as i64);
     set_gauge(&BYTES_ACTIVE, stats::active::read()? as i64);
     set_gauge(&BYTES_MAPPED, stats::mapped::read()? as i64);

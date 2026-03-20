@@ -892,7 +892,7 @@ impl<E: EthSpec> Tester<E> {
 
         check_equal(
             "head_payload_status",
-            payload_status as u64,
+            u64::from(payload_status),
             expected_status,
         )
     }

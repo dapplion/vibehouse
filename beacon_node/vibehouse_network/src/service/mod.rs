@@ -174,6 +174,13 @@ impl<E: EthSpec> Network<E> {
         custody_group_count: u64,
         local_keypair: Keypair,
     ) -> Result<(Self, Arc<NetworkGlobals<E>>), String> {
+        struct Executor(task_executor::TaskExecutor);
+        impl libp2p::swarm::Executor for Executor {
+            fn exec(&self, f: Pin<Box<dyn futures::Future<Output = ()> + Send>>) {
+                self.0.spawn(f, "libp2p");
+            }
+        }
+
         let config = ctx.config.clone();
         trace!("Libp2p Service starting");
 
@@ -455,14 +462,6 @@ impl<E: EthSpec> Network<E> {
         // Set up the transport - tcp/quic with noise and mplex
         let transport = build_transport(local_keypair.clone(), !config.disable_quic_support)
             .map_err(|e| format!("Failed to build transport: {e:?}"))?;
-
-        // use the executor for libp2p
-        struct Executor(task_executor::TaskExecutor);
-        impl libp2p::swarm::Executor for Executor {
-            fn exec(&self, f: Pin<Box<dyn futures::Future<Output = ()> + Send>>) {
-                self.0.spawn(f, "libp2p");
-            }
-        }
 
         // sets up the libp2p swarm.
 

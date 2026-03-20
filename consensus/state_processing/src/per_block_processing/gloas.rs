@@ -458,7 +458,7 @@ pub fn get_ptc_committee<E: EthSpec>(
                 PayloadAttestationInvalid::AttesterIndexOutOfBounds,
             ),
         )?;
-        let random_value = u16::from_le_bytes([random_byte_0, random_byte_1]) as u64;
+        let random_value = u64::from(u16::from_le_bytes([random_byte_0, random_byte_1]));
 
         let effective_balance = state
             .validators()
@@ -2246,7 +2246,7 @@ mod tests {
                 .builder_pending_withdrawals
                 .push(BuilderPendingWithdrawal {
                     fee_recipient: Address::repeat_byte(0xDD + i),
-                    amount: (i as u64 + 1) * 1_000_000_000,
+                    amount: (u64::from(i) + 1) * 1_000_000_000,
                     builder_index: 0,
                 })
                 .unwrap();
@@ -5284,7 +5284,7 @@ mod tests {
                     pubkey: types::PublicKeyBytes::empty(),
                     version: 0x03,
                     execution_address: Address::repeat_byte(0xC0 + i),
-                    balance: (i as u64 + 1) * 1_000_000_000,
+                    balance: (u64::from(i) + 1) * 1_000_000_000,
                     deposit_epoch: Epoch::new(0),
                     withdrawable_epoch: Epoch::new(0), // exited
                 })

@@ -92,20 +92,19 @@ impl MultiTestCase {
                         "test `{}` failed to import some records: {:#?}",
                         self.name, import_outcomes
                     );
-                    if !test_case.should_succeed {
-                        panic!(
-                            "test `{}` succeeded on import when it should have failed",
-                            self.name
-                        );
-                    }
+                    assert!(
+                        test_case.should_succeed,
+                        "test `{}` succeeded on import when it should have failed",
+                        self.name
+                    )
                 }
                 Err(e) => {
-                    if test_case.should_succeed && !allow_import_failure {
-                        panic!(
-                            "test `{}` failed on import when it should have succeeded, error: {:?}",
-                            self.name, e
-                        );
-                    }
+                    assert!(
+                        !test_case.should_succeed || allow_import_failure,
+                        "test `{}` failed on import when it should have succeeded, error: {:?}",
+                        self.name,
+                        e
+                    );
                     break;
                 }
             }

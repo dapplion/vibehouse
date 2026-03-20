@@ -1090,12 +1090,14 @@ impl<E: EthSpec> BeaconState<E> {
                     .ok_or(Error::ShuffleIndexOutOfBounds(offset))?
                     .try_into()
                     .map_err(|_| Error::ShuffleIndexOutOfBounds(offset))?;
-                u16::from_le_bytes(bytes) as u64
+                u64::from(u16::from_le_bytes(bytes))
             } else {
                 let index = i.safe_rem(32)?;
-                *random_bytes
-                    .get(index)
-                    .ok_or(Error::ShuffleIndexOutOfBounds(index))? as u64
+                u64::from(
+                    *random_bytes
+                        .get(index)
+                        .ok_or(Error::ShuffleIndexOutOfBounds(index))?,
+                )
             };
 
             // Use the epoch cache for O(1) balance lookups when available,
@@ -1413,12 +1415,14 @@ impl<E: EthSpec> BeaconState<E> {
                     .ok_or(Error::ShuffleIndexOutOfBounds(offset))?
                     .try_into()
                     .map_err(|_| Error::ShuffleIndexOutOfBounds(offset))?;
-                u16::from_le_bytes(bytes) as u64
+                u64::from(u16::from_le_bytes(bytes))
             } else {
                 let index = i.safe_rem(32)?;
-                *random_bytes
-                    .get(index)
-                    .ok_or(Error::ShuffleIndexOutOfBounds(index))? as u64
+                u64::from(
+                    *random_bytes
+                        .get(index)
+                        .ok_or(Error::ShuffleIndexOutOfBounds(index))?,
+                )
             };
 
             let effective_balance = self.get_validator(candidate_index)?.effective_balance;
@@ -1845,6 +1849,11 @@ impl<E: EthSpec> BeaconState<E> {
         domain_type: Domain,
         spec: &ChainSpec,
     ) -> Result<Hash256, Error> {
+        const NUM_DOMAIN_BYTES: usize = 4;
+        const NUM_EPOCH_BYTES: usize = 8;
+        const MIX_OFFSET: usize = NUM_DOMAIN_BYTES + NUM_EPOCH_BYTES;
+        const NUM_MIX_BYTES: usize = 32;
+
         // Bypass the safe getter for RANDAO so we can gracefully handle the scenario where `epoch
         // == 0`.
         let mix = {
@@ -1859,11 +1868,6 @@ impl<E: EthSpec> BeaconState<E> {
         };
         let domain_bytes = int_to_bytes4(spec.get_domain_constant(domain_type));
         let epoch_bytes = int_to_bytes8(epoch.as_u64());
-
-        const NUM_DOMAIN_BYTES: usize = 4;
-        const NUM_EPOCH_BYTES: usize = 8;
-        const MIX_OFFSET: usize = NUM_DOMAIN_BYTES + NUM_EPOCH_BYTES;
-        const NUM_MIX_BYTES: usize = 32;
 
         let mut preimage = [0; NUM_DOMAIN_BYTES + NUM_EPOCH_BYTES + NUM_MIX_BYTES];
         preimage[0..NUM_DOMAIN_BYTES].copy_from_slice(&domain_bytes);

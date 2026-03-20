@@ -1125,11 +1125,12 @@ mod test {
 
     #[test]
     fn gloas_from_blinded_preserves_signature() {
+        use crate::test_utils::{SeedableRng, XorShiftRng};
+
         type E = MainnetEthSpec;
         let spec = &E::default_spec();
 
         // Use a non-empty signature for this test
-        use crate::test_utils::{SeedableRng, XorShiftRng};
         let rng = &mut XorShiftRng::from_seed([99; 16]);
         let sig = Signature::random_for_test(rng);
 

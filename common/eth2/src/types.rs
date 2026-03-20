@@ -1562,18 +1562,18 @@ impl FromStr for Accept {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        const APPLICATION: &str = names::APPLICATION.as_str();
+        const OCTET_STREAM: &str = names::OCTET_STREAM.as_str();
+        const JSON: &str = names::JSON.as_str();
+        const STAR: &str = names::_STAR.as_str();
+        const Q: &str = names::Q.as_str();
+
         let media_type_list = MediaTypeList::new(s);
 
         // [q-factor weighting]: https://datatracker.ietf.org/doc/html/rfc7231#section-5.3.2
         // find the highest q-factor supported accept type
         let mut highest_q = 0_u16;
         let mut accept_type = None;
-
-        const APPLICATION: &str = names::APPLICATION.as_str();
-        const OCTET_STREAM: &str = names::OCTET_STREAM.as_str();
-        const JSON: &str = names::JSON.as_str();
-        const STAR: &str = names::_STAR.as_str();
-        const Q: &str = names::Q.as_str();
 
         media_type_list.into_iter().for_each(|item| {
             if let Ok(MediaType {

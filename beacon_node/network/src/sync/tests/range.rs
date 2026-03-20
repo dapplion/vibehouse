@@ -243,9 +243,10 @@ impl TestRig {
             }) {
                 data_columns_requests.push(data_columns_request);
             }
-            if data_columns_requests.is_empty() {
-                panic!("Found zero DataColumnsByRange requests, filter {request_filter:?}");
-            }
+            assert!(
+                !data_columns_requests.is_empty(),
+                "Found zero DataColumnsByRange requests, filter {request_filter:?}"
+            );
             ByRangeDataRequestIds::PostPeerDAS(data_columns_requests)
         } else if self.after_deneb() {
             let (id, peer) = self

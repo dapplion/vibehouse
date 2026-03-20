@@ -257,13 +257,14 @@ pub(crate) fn create_whitelist_filter(
 ) -> gossipsub::WhitelistSubscriptionFilter {
     let mut possible_hashes = HashSet::new();
     for fork_digest in possible_fork_digests {
+        use GossipKind::*;
+
         let mut add = |kind| {
             let topic: gossipsub::IdentTopic =
                 GossipTopic::new(kind, GossipEncoding::SSZSnappy, fork_digest).into();
             possible_hashes.insert(topic.hash());
         };
 
-        use GossipKind::*;
         add(BeaconBlock);
         add(BeaconAggregateAndProof);
         add(VoluntaryExit);

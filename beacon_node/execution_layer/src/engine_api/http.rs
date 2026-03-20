@@ -1476,11 +1476,10 @@ mod test {
             let request_bytes = self.server.last_echo_request();
             let request_json: serde_json::Value =
                 serde_json::from_slice(&request_bytes).expect("request was not valid json");
-            if request_json != expected_json {
-                panic!(
-                    "json mismatch!\n\nobserved: {request_json}\n\nexpected: {expected_json}\n\n",
-                )
-            }
+            assert!(
+                request_json == expected_json,
+                "json mismatch!\n\nobserved: {request_json}\n\nexpected: {expected_json}\n\n",
+            );
             self
         }
 
@@ -1491,9 +1490,10 @@ mod test {
             T: std::fmt::Debug,
         {
             let res = request_func(self.echo_client.clone()).await;
-            if !matches!(res, Err(Error::Auth(_))) {
-                panic!("No authentication provided, rpc call should have failed.\nResult: {res:?}")
-            }
+            assert!(
+                matches!(res, Err(Error::Auth(_))),
+                "No authentication provided, rpc call should have failed.\nResult: {res:?}"
+            );
             self
         }
 

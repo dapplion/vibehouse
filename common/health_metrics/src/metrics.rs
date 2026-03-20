@@ -152,7 +152,7 @@ pub fn scrape_system_health_metrics() {
         set_gauge(&SYSTEM_VIRT_MEM_FREE, health.sys_virt_mem_free as i64);
         set_float_gauge(
             &SYSTEM_VIRT_MEM_PERCENTAGE,
-            health.sys_virt_mem_percent as f64,
+            f64::from(health.sys_virt_mem_percent),
         );
         set_float_gauge(&SYSTEM_LOADAVG_1, health.sys_loadavg_1);
         set_float_gauge(&SYSTEM_LOADAVG_5, health.sys_loadavg_5);

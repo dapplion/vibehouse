@@ -803,11 +803,6 @@ mod tests {
 
     #[tokio::test]
     async fn check_candidate_order() {
-        // These fields are irrelevant for sorting. They are set to arbitrary values.
-        let head = Slot::new(99);
-        let optimistic_status = IsOptimistic::No;
-        let execution_status = ExecutionEngineHealth::Healthy;
-
         fn new_candidate(index: usize) -> CandidateBeaconNode {
             let beacon_node = BeaconNodeHttpClient::new(
                 SensitiveUrl::parse(&format!("http://example_{index}.com")).unwrap(),
@@ -815,6 +810,11 @@ mod tests {
             );
             CandidateBeaconNode::new(beacon_node, index)
         }
+
+        // These fields are irrelevant for sorting. They are set to arbitrary values.
+        let head = Slot::new(99);
+        let optimistic_status = IsOptimistic::No;
+        let execution_status = ExecutionEngineHealth::Healthy;
 
         let candidate_1 = new_candidate(1);
         let expected_candidate_1 = new_candidate(1);

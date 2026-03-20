@@ -2242,6 +2242,12 @@ mod test_compute_deltas {
     /// *checkpoint*, not just the finalized *block*.
     #[test]
     fn finalized_descendant_edge_case() {
+        struct TestBlock {
+            slot: u64,
+            root: u64,
+            parent_root: u64,
+        }
+
         let get_block_root = Hash256::from_low_u64_be;
         let genesis_slot = Slot::new(0);
         let junk_state_root = Hash256::zero();
@@ -2265,12 +2271,6 @@ mod test_compute_deltas {
             execution_status,
         )
         .unwrap();
-
-        struct TestBlock {
-            slot: u64,
-            root: u64,
-            parent_root: u64,
-        }
 
         let insert_block = |fc: &mut ProtoArrayForkChoice, block: TestBlock| {
             fc.proto_array

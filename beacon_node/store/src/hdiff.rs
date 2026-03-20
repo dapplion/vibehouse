@@ -338,7 +338,7 @@ impl BytesDiff {
                 Ok(bytes) => {
                     metrics::observe(
                         &metrics::BEACON_HDIFF_BUFFER_COMPUTE_RESIZES,
-                        num_resizes as f64,
+                        f64::from(num_resizes),
                     );
                     return Ok(Self { bytes });
                 }
@@ -370,7 +370,7 @@ impl BytesDiff {
 
                     metrics::observe(
                         &metrics::BEACON_HDIFF_BUFFER_APPLY_RESIZES,
-                        num_resizes as f64,
+                        f64::from(num_resizes),
                     );
                     return Ok(());
                 }

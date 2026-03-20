@@ -346,7 +346,7 @@ mod tests {
                         req_id: i,
                     },
                 }),
-                RequestType::Ping(Ping { data: i as u64 }),
+                RequestType::Ping(Ping { data: u64::from(i) }),
             );
         }
 
@@ -418,7 +418,7 @@ mod tests {
                         req_id: i,
                     },
                 }),
-                RequestType::Ping(Ping { data: i as u64 }),
+                RequestType::Ping(Ping { data: u64::from(i) }),
             );
 
             // Check that the limiter allows the first two requests.
@@ -497,7 +497,7 @@ mod tests {
                             req_id: i,
                         },
                     }),
-                    RequestType::Ping(Ping { data: i as u64 }),
+                    RequestType::Ping(Ping { data: u64::from(i) }),
                 );
 
                 // Check that the limiter allows the first two requests.

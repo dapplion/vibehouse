@@ -1495,13 +1495,13 @@ fn quic_test_goodbye_rpc() {
 // Test that the receiver delays the responses during response rate-limiting.
 #[test]
 fn test_delayed_rpc_response() {
+    // Allow 1 token to be use used every 3 seconds.
+    const QUOTA_SEC: u64 = 3;
+
     // Set up the logging.
     let _subscriber = build_tracing_subscriber("debug", true);
     let rt = Arc::new(Runtime::new().unwrap());
     let spec = Arc::new(spec_with_all_forks_enabled());
-
-    // Allow 1 token to be use used every 3 seconds.
-    const QUOTA_SEC: u64 = 3;
 
     rt.block_on(async {
         // get sender/receiver
@@ -1637,6 +1637,9 @@ fn test_active_requests() {
     let spec = Arc::new(spec_with_all_forks_enabled());
 
     rt.block_on(async {
+        // Number of requests.
+        const REQUESTS: u8 = 10;
+
         // Get sender/receiver.
         let (mut sender, mut receiver) = common::build_node_pair(
             Arc::downgrade(&rt),
@@ -1667,9 +1670,6 @@ fn test_active_requests() {
             head_slot: Slot::new(1),
             earliest_available_slot: Slot::new(0),
         }));
-
-        // Number of requests.
-        const REQUESTS: u8 = 10;
 
         // Build the sender future.
         let sender_future = async {

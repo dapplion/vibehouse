@@ -94,9 +94,10 @@ impl ManualSlotClock {
 
 impl SlotClock for ManualSlotClock {
     fn new(genesis_slot: Slot, genesis_duration: Duration, slot_duration: Duration) -> Self {
-        if slot_duration.as_millis() == 0 {
-            panic!("ManualSlotClock cannot have a < 1ms slot duration");
-        }
+        assert!(
+            slot_duration.as_millis() != 0,
+            "ManualSlotClock cannot have a < 1ms slot duration"
+        );
 
         Self {
             genesis_slot,

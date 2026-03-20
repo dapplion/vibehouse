@@ -1625,7 +1625,7 @@ impl<E: EthSpec> PeerManager<E> {
             metrics::set_gauge_vec(
                 &metrics::PEERS_PER_CLIENT,
                 &[client_kind.as_ref()],
-                *value as i64,
+                i64::from(*value),
             );
         }
 
@@ -1635,9 +1635,11 @@ impl<E: EthSpec> PeerManager<E> {
                 metrics::set_gauge_vec(
                     &metrics::PEERS_CONNECTED_MULTI,
                     &[direction, transport],
-                    *peers_connected_multi
-                        .get(&(direction, transport))
-                        .unwrap_or(&0) as i64,
+                    i64::from(
+                        *peers_connected_multi
+                            .get(&(direction, transport))
+                            .unwrap_or(&0),
+                    ),
                 );
             }
         }

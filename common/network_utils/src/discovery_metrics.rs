@@ -40,6 +40,14 @@ pub fn scrape_discovery_metrics() {
     set_gauge(&DISCOVERY_SESSIONS, metrics.active_sessions as i64);
     set_gauge_vec(&DISCOVERY_BYTES, &["inbound"], metrics.bytes_recv as i64);
     set_gauge_vec(&DISCOVERY_BYTES, &["outbound"], metrics.bytes_sent as i64);
-    set_gauge_vec(&NAT_OPEN, &["discv5_ipv4"], metrics.ipv4_contactable as i64);
-    set_gauge_vec(&NAT_OPEN, &["discv5_ipv6"], metrics.ipv6_contactable as i64);
+    set_gauge_vec(
+        &NAT_OPEN,
+        &["discv5_ipv4"],
+        i64::from(metrics.ipv4_contactable),
+    );
+    set_gauge_vec(
+        &NAT_OPEN,
+        &["discv5_ipv6"],
+        i64::from(metrics.ipv6_contactable),
+    );
 }

@@ -72,7 +72,7 @@ pub fn get_attestation_participation_flag_indices<E: EthSpec>(
                 .map(|s| {
                     s.execution_payload_availability
                         .get(slot_index)
-                        .map(|b| b as u64)
+                        .map(u64::from)
                         .unwrap_or(0)
                 })
                 .unwrap_or(0);

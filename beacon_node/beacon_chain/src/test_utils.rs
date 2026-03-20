@@ -1280,9 +1280,10 @@ where
 
         let aggregation_bits = attestation.get_aggregation_bits();
 
-        if aggregation_bits.len() != 1 {
-            panic!("Must be an unaggregated attestation")
-        }
+        assert!(
+            aggregation_bits.len() == 1,
+            "Must be an unaggregated attestation"
+        );
 
         let aggregation_bit = *aggregation_bits.first().unwrap();
 
@@ -2589,9 +2590,10 @@ where
             for (attn, subnet) in unaggregated_attestations {
                 let aggregation_bits = attn.get_aggregation_bits();
 
-                if aggregation_bits.len() != 1 {
-                    panic!("Must be an unaggregated attestation")
-                }
+                assert!(
+                    aggregation_bits.len() == 1,
+                    "Must be an unaggregated attestation"
+                );
 
                 let aggregation_bit = *aggregation_bits.first().unwrap();
 

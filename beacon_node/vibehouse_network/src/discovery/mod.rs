@@ -736,7 +736,7 @@ impl<E: EthSpec> Discovery<E> {
     fn at_capacity(&self) -> bool {
         self.active_queries
             .len()
-            .saturating_sub(self.find_peer_active as usize) // We only count active subnet queries
+            .saturating_sub(usize::from(self.find_peer_active)) // We only count active subnet queries
             >= MAX_CONCURRENT_SUBNET_QUERIES
     }
 

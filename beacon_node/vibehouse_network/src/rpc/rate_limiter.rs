@@ -469,7 +469,7 @@ impl<Key: Hash + Eq + Clone> Limiter<Key> {
             return Err("Replenish time must be positive");
         }
         let t = tau
-            .checked_div(quota.max_tokens.get() as u128)
+            .checked_div(u128::from(quota.max_tokens.get()))
             .expect("Division by zero never occurs, since Quota::max_token is of type NonZeroU64.")
             .try_into()
             .map_err(|_| "total replenish time is too long")?;

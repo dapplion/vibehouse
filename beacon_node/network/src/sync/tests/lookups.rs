@@ -289,9 +289,10 @@ impl TestRig {
 
     fn assert_lookup_is_active(&self, block_root: Hash256) {
         let lookups = self.sync_manager.active_single_lookups();
-        if !lookups.iter().any(|l| l.1 == block_root) {
-            panic!("Expected lookup {block_root} to be the only active: {lookups:?}");
-        }
+        assert!(
+            lookups.iter().any(|l| l.1 == block_root),
+            "Expected lookup {block_root} to be the only active: {lookups:?}"
+        )
     }
 
     fn assert_lookup_peers(&self, block_root: Hash256, mut expected_peers: Vec<PeerId>) {
@@ -315,16 +316,18 @@ impl TestRig {
 
     fn assert_not_ignored_chain(&mut self, chain_hash: Hash256) {
         let chains = self.sync_manager.get_ignored_chains();
-        if chains.contains(&chain_hash) {
-            panic!("ignored chains contain {chain_hash:?}: {chains:?}");
-        }
+        assert!(
+            !chains.contains(&chain_hash),
+            "ignored chains contain {chain_hash:?}: {chains:?}"
+        )
     }
 
     fn assert_ignored_chain(&mut self, chain_hash: Hash256) {
         let chains = self.sync_manager.get_ignored_chains();
-        if !chains.contains(&chain_hash) {
-            panic!("expected ignored chains to contain {chain_hash:?}: {chains:?}");
-        }
+        assert!(
+            chains.contains(&chain_hash),
+            "expected ignored chains to contain {chain_hash:?}: {chains:?}"
+        )
     }
 
     fn find_single_lookup_for(&self, block_root: Hash256) -> Id {
@@ -785,12 +788,11 @@ impl TestRig {
 
     pub fn expect_empty_processor(&mut self) {
         self.drain_processor_rx();
-        if !self.beacon_processor_rx_queue.is_empty() {
-            panic!(
-                "Expected processor to be empty, but has events: {:?}",
-                self.beacon_processor_rx_queue
-            );
-        }
+        assert!(
+            self.beacon_processor_rx_queue.is_empty(),
+            "Expected processor to be empty, but has events: {:?}",
+            self.beacon_processor_rx_queue
+        )
     }
 
     fn find_block_lookup_request(
@@ -975,9 +977,10 @@ impl TestRig {
                 _ => None,
             })
             .collect::<Vec<_>>();
-        if !downscore_events.is_empty() {
-            panic!("Some downscore events for {peer_id}: {downscore_events:?}");
-        }
+        assert!(
+            downscore_events.is_empty(),
+            "Some downscore events for {peer_id}: {downscore_events:?}"
+        )
     }
 
     #[track_caller]

@@ -21,9 +21,7 @@ use test_rig::TestRig;
 const SUPPRESS_LOGS: bool = false;
 
 fn main() {
-    if cfg!(windows) {
-        panic!("windows is not supported, only linux");
-    }
+    const { assert!(!cfg!(windows), "windows is not supported, only linux") };
 
     test_geth();
     test_nethermind();

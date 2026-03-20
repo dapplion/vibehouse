@@ -342,6 +342,16 @@ impl BeaconNodeHttpClient {
         Meta: DeserializeOwned,
         Ctx: Clone,
     {
+        #[derive(serde::Deserialize)]
+        struct Helper {
+            // Default for checkpointz compat — it omits `version` (see #31)
+            #[serde(default = "ForkName::latest_stable")]
+            version: ForkName,
+            #[serde(flatten)]
+            metadata: serde_json::Value,
+            data: serde_json::Value,
+        }
+
         let response = self
             .get_response(url, |b| b.accept(Accept::Json))
             .await
@@ -352,16 +362,6 @@ impl BeaconNodeHttpClient {
         };
 
         let bytes = resp.bytes().await?;
-
-        #[derive(serde::Deserialize)]
-        struct Helper {
-            // Default for checkpointz compat — it omits `version` (see #31)
-            #[serde(default = "ForkName::latest_stable")]
-            version: ForkName,
-            #[serde(flatten)]
-            metadata: serde_json::Value,
-            data: serde_json::Value,
-        }
 
         let helper: Helper = serde_json::from_slice(&bytes).map_err(Error::InvalidJson)?;
 

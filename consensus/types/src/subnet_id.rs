@@ -102,7 +102,7 @@ impl SubnetId {
         spec: &ChainSpec,
     ) -> impl Iterator<Item = SubnetId> {
         // The bits of the node-id we are using to define the subnets.
-        let prefix_bits = spec.attestation_subnet_prefix_bits as u32;
+        let prefix_bits = u32::from(spec.attestation_subnet_prefix_bits);
 
         let node_id = U256::from_be_slice(&raw_node_id);
         // calculate the prefixes used to compute the subnet and shuffling
@@ -117,8 +117,9 @@ impl SubnetId {
             ..
         } = spec;
 
-        (0..subnets_per_node)
-            .map(move |idx| SubnetId::new((node_id_prefix + idx as u64) % attestation_subnet_count))
+        (0..subnets_per_node).map(move |idx| {
+            SubnetId::new((node_id_prefix + u64::from(idx)) % attestation_subnet_count)
+        })
     }
 }
 

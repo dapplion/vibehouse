@@ -1486,9 +1486,10 @@ mod tests {
 
     #[test]
     fn test_disconnected_removed_in_correct_order() {
+        use std::collections::BTreeMap;
+
         let mut pdb = get_db();
 
-        use std::collections::BTreeMap;
         let mut peer_list = BTreeMap::new();
         for id in 0..=MAX_DC_PEERS {
             let new_peer = PeerId::random();
@@ -1522,9 +1523,10 @@ mod tests {
 
     #[test]
     fn new_connection_should_remain() {
+        use std::collections::BTreeMap;
+
         let mut pdb = get_db();
 
-        use std::collections::BTreeMap;
         let mut peer_list = BTreeMap::new();
         for id in 0..MAX_DC_PEERS + 20 {
             let new_peer = PeerId::random();

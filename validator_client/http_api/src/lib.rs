@@ -1038,6 +1038,11 @@ async fn patch_validators<T: 'static + SlotClock + Clone, E: EthSpec>(
     let graffiti_file = state.ctx.graffiti_file.clone();
     let task_executor = state.ctx.task_executor.clone();
     blocking_json(move || {
+        // Do not make any changes if all fields are identical or unchanged.
+        fn equal_or_none<T: PartialEq>(current_value: Option<T>, new_value: Option<T>) -> bool {
+            new_value.is_none() || current_value == new_value
+        }
+
         if body.graffiti.is_some() && graffiti_file.is_some() {
             return Err(ApiError::BadRequest(
                 "Unable to update graffiti as the \"--graffiti-file\" flag is set".to_string(),
@@ -1047,11 +1052,6 @@ async fn patch_validators<T: 'static + SlotClock + Clone, E: EthSpec>(
         let maybe_graffiti = body.graffiti.clone().map(Into::into);
         let initialized_validators_rw_lock = validator_store.initialized_validators();
         let initialized_validators = initialized_validators_rw_lock.upgradable_read();
-
-        // Do not make any changes if all fields are identical or unchanged.
-        fn equal_or_none<T: PartialEq>(current_value: Option<T>, new_value: Option<T>) -> bool {
-            new_value.is_none() || current_value == new_value
-        }
 
         match (
             initialized_validators.is_enabled(&validator_pubkey),

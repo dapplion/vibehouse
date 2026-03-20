@@ -658,7 +658,7 @@ mod tests {
     #[test]
     fn epoch_distance_large_valid() {
         let base = Epoch::new(100);
-        let target = Epoch::new(100 + MAX_DISTANCE as u64 - 1);
+        let target = Epoch::new(100 + u64::from(MAX_DISTANCE) - 1);
         let d = Chunk::epoch_distance(target, base).unwrap();
         assert_eq!(d, MAX_DISTANCE - 1);
     }
@@ -666,7 +666,7 @@ mod tests {
     #[test]
     fn epoch_distance_at_max_fails() {
         let base = Epoch::new(100);
-        let target = Epoch::new(100 + MAX_DISTANCE as u64);
+        let target = Epoch::new(100 + u64::from(MAX_DISTANCE));
         assert!(matches!(
             Chunk::epoch_distance(target, base),
             Err(Error::DistanceTooLarge)

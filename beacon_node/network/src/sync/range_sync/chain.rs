@@ -1308,7 +1308,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
         for mut batch_index in 0..BATCH_BUFFER_SIZE {
             if let Some(batch) = self
                 .batches
-                .get(&(self.processing_target + batch_index as u64 * EPOCHS_PER_BATCH))
+                .get(&(self.processing_target + u64::from(batch_index) * EPOCHS_PER_BATCH))
             {
                 visualization_string.push(batch.visualize());
                 if batch_index != BATCH_BUFFER_SIZE {
