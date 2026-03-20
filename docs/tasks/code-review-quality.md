@@ -2684,3 +2684,13 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
 
 No actionable work found. All priorities 1-6 complete. Codebase stable.
+
+### Run 1999 (2026-03-20)
+
+**Wildcard import cleanup — code shipped.**
+
+- Replaced `use types::*` / `use super::*` / `use crate::*` wildcard imports with explicit imports across 9 files (common/eth2, common/network_utils, crypto/eth2_keystore, crypto/eth2_wallet, slasher, validator_client/signing_method, validator_client/slashing_protection).
+- `consensus/types/` and `consensus/state_processing/` wildcard imports cannot be safely auto-fixed: superstruct macros require `use crate::*`, and test modules depend on `use super::*` from parent modules. These remain as-is.
+- `beacon_node/` wildcard imports also have test module dependencies; left for a future pass if needed.
+- All tests pass (605/605 in affected crates). Clippy clean. CI green.
+- **Spec**: No new changes since March 15 (v1.7.0-alpha.3 still latest). No new releases.
