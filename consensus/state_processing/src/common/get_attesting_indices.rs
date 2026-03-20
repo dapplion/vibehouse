@@ -1,8 +1,11 @@
-use types::*;
+use types::{AttestationRef, BeaconState, BeaconStateError, EthSpec};
 
 pub mod attesting_indices_base {
     use crate::per_block_processing::errors::{AttestationInvalid as Invalid, BlockOperationError};
-    use types::*;
+    use types::{
+        AttestationBase, BeaconStateError, BitList, EthSpec, IndexedAttestation,
+        IndexedAttestationBase, VariableList,
+    };
 
     /// Convert `attestation` to (almost) indexed-verifiable form.
     ///
@@ -46,7 +49,11 @@ pub mod attesting_indices_base {
 pub mod attesting_indices_electra {
     use crate::per_block_processing::errors::{AttestationInvalid as Invalid, BlockOperationError};
     use safe_arith::SafeArith;
-    use types::*;
+    use types::{
+        AttestationElectra, BeaconCommittee, BeaconState, BeaconStateError, BitList, BitVector,
+        CommitteeIndex, Error, EthSpec, IndexedAttestation, IndexedAttestationElectra,
+        VariableList,
+    };
 
     /// Compute an Electra IndexedAttestation given a list of committees.
     ///

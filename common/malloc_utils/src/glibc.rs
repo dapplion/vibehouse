@@ -4,7 +4,7 @@
 //! <https://www.gnu.org/software/libc/manual/html_node/The-GNU-Allocator.html>
 //!
 //! These functions are generally only suitable for Linux systems.
-use metrics::*;
+use metrics::{IntGauge, set_gauge, try_create_int_gauge};
 use parking_lot::Mutex;
 use std::env;
 use std::os::raw::c_int;

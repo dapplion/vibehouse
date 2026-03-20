@@ -3,7 +3,7 @@ use crate::per_block_processing::signature_sets::deposit_pubkey_signature_messag
 use merkle_proof::verify_merkle_proof;
 use safe_arith::SafeArith;
 use tree_hash::TreeHash;
-use types::*;
+use types::{BeaconState, ChainSpec, Deposit, DepositData, EthSpec, PublicKeyBytes};
 
 type Result<T> = std::result::Result<T, BlockOperationError<DepositInvalid>>;
 
