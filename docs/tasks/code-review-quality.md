@@ -2556,3 +2556,15 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since #5005 (March 15). Open Gloas PRs unchanged.
 - **CI**: All jobs green. Nightly and spec-test-version-check passed.
 - **Verification**: 781/781 targeted tests passed (types, eth2, vibehouse_network, beacon_processor, execution_layer, eth2_keystore), full workspace clippy clean, cargo fmt clean, pre-push lint-full passes.
+
+### Run 1987 (2026-03-20)
+
+**Pedantic clippy fix: 4 lint categories across 19 files.**
+
+- `ip_constant` (14 instances, 9 files): `Ipv4Addr::new(127,0,0,1)` → `Ipv4Addr::LOCALHOST`, `Ipv4Addr::new(0,0,0,0)` → `Ipv4Addr::UNSPECIFIED`, `Ipv4Addr::new(255,255,255,255)` → `Ipv4Addr::BROADCAST` — across http_api, http_metrics, execution_layer, validator_client, vibehouse_network, network_utils
+- `stable_sort_primitive` (4 instances, 3 files): `.sort()` → `.sort_unstable()` for primitive types — payload_attestation_service, get_custody_groups, store
+- `should_panic_without_expect` (5 instances, 3 files): added expected panic message strings to `#[should_panic]` attributes — committee_cache tests, account_utils, slot_clock
+- `inconsistent_struct_constructor` (5 instances, 4 files): reordered struct fields in constructors to match definitions — http_client, service/mod.rs, test_rig, migrate.rs
+- **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since #5005 (March 15). Open Gloas PRs unchanged.
+- **CI**: All jobs green. Nightly and spec-test-version-check passed.
+- **Verification**: targeted tests passed (types, account_utils, slot_clock), full workspace clippy clean, cargo fmt clean, make lint clean, pre-push lint-full passes.
