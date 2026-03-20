@@ -2939,3 +2939,15 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
 
 No actionable work found. All priorities 1-6 complete. Codebase stable.
+
+### Run 2021 (2026-03-20)
+
+**Wildcard import cleanup — last production file.**
+
+- Replaced `use crate::*;` with explicit `use crate::per_slot_processing::{self, per_slot_processing};` in `consensus/state_processing/src/state_advance.rs`.
+- This was the last remaining wildcard import in production code across the entire codebase. All non-test, non-re-export Rust files are now wildcard-free.
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (March 15). Open Gloas PRs: #4979 (PTC lookbehind), #4843 (variable PTC deadline), #4992 (cached PTCs), #5022 (payload attestation block check), #5023 (block root filenames), #5008 (field name fix). None merged.
+- **CI**: Prior commit all green. New commit pushed, awaiting CI.
+- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority.
+
+**Wildcard import cleanup summary**: All production code across the codebase is now wildcard-free. Remaining wildcards are exclusively in test modules (`#[cfg(test)] mod tests`) and `pub use types::*` re-exports (intentional API surface design in store/lib.rs, eth2/types.rs, vibehouse_vc/types.rs).
