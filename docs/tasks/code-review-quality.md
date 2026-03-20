@@ -2706,3 +2706,15 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - Remaining wildcard imports (168→~0 in fixed files): only consensus/types and state_processing test modules remain (unfixable without breaking superstruct).
 - **Tests**: 3270/3270 passed (1719 types/proto_array/store/op_pool/clap_utils/health_metrics/monitoring_api/validator_manager/state_transition_vectors + 1551 beacon_chain/execution_layer/vibehouse_network). Zero warnings. Full lint-full clean.
 - **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since March 15.
+
+### Run 2001 (2026-03-20)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since March 15. Open Gloas PRs: #5023 (block root filenames + comptests), #5022 (on_payload_attestation block check — we already handle), #5020/#4979/#4992 (PTC lookbehind — competing approaches, still under discussion), #4960 (fork choice test for new validator deposit), #4939 (request missing payload envelopes). None merged, none actionable.
+- **CI**: All jobs green. Latest run (wildcard import cleanup commit) — check+clippy+fmt ✓, remaining jobs in progress. Previous run fully green.
+- **Nightly**: March 17 had a flaky `finalized_sync_not_enough_custody_peers_on_start` failure (commit 4dee3c87b had `expect_empty_network()` assertion that occasionally failed when deterministic peer happened to cover all custody columns). Already fixed in commit 8f8faa7de — removed flaky assertion. March 18-20 nightlies all green.
+- **#[allow(dead_code)] audit**: 22 files with dead_code allows — all are intentional patterns: error enum variant data fields (for Debug/Display), lifetime-managing fields, test-only helpers. None actionable.
+- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
+
+No actionable work found. All priorities 1-6 complete. Codebase stable.
