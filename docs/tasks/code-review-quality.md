@@ -2314,3 +2314,16 @@ Spec v1.7.0-alpha.3 still latest — no new releases. Recent merged spec PRs: #5
 Reviewed all tracked open spec PRs: #5022 (block known check in on_payload_attestation_message) — already handled by our `InvalidPayloadAttestation::UnknownBeaconBlockRoot` error at fork_choice.rs:1426-1432. #5008 (field name fix) — prose-only, our code already uses `beacon_block_root`. #5020/#4992 (PTC lookbehind/cached PTCs) — still open, high-impact if merged. #4954 (fork choice milliseconds) — still open, pervasive if merged. #4898/#4892 (fork choice cleanup) — still open, minor.
 
 Clippy clean. No new spec releases. All pedantic lint work at diminishing returns — remaining ~5000 warnings are noise-level (`missing_errors_doc`, `must_use_candidate`, `doc_markdown`, `cast_possible_truncation`) or from generated code. No code changes this run.
+
+### Run 1965 (2026-03-20)
+
+**Validation run — no code changes needed.**
+
+Re-downloaded v1.7.0-alpha.3 EF test vectors (fresh download includes Gloas fork choice tests from spec PR #4940, merged same day as release). Full results:
+- **79/79 real crypto tests pass** — includes new Gloas fork choice: get_head, on_block, ex_ante, reorg, withholding, on_execution_payload
+- **139/139 fake_crypto tests pass**
+- **check_all_files_accessed: 210795 files accessed** (132271 intentionally excluded)
+- **Devnet: SUCCESS** — 4-node network finalized epoch 8 through Gloas fork boundary (validates stack integrity after clippy pedantic batch)
+- **lint-full: clean**
+
+Open spec PRs unchanged: #5022, #5020/#4992, #4954, #4898/#4892 — all still open. No new merged PRs since last check. No code changes this run.
