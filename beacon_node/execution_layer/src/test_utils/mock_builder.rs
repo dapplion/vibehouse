@@ -834,7 +834,7 @@ impl<E: EthSpec> MockBuilder<E> {
             .ok_or_else(|| "missing head block".to_string())?
             .into_data();
 
-        let head_block_root = head_block_root.unwrap_or(head.canonical_root());
+        let head_block_root = head_block_root.unwrap_or_else(|| head.canonical_root());
 
         let head_execution_payload = head
             .message()

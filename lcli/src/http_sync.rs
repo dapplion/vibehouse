@@ -41,7 +41,7 @@ pub async fn run_async<T: EthSpec>(
     let maybe_common_ancestor_block: Option<BlockId> =
         parse_optional(matches, "known–common-ancestor")?;
     let cache_dir_path: PathBuf =
-        parse_optional(matches, "block-cache-dir")?.unwrap_or(DEFAULT_CACHE_DIR.into());
+        parse_optional(matches, "block-cache-dir")?.unwrap_or_else(|| DEFAULT_CACHE_DIR.into());
 
     let source = BeaconNodeHttpClient::new(source_url, Timeouts::set_all(HTTP_TIMEOUT));
     let target = BeaconNodeHttpClient::new(target_url, Timeouts::set_all(HTTP_TIMEOUT));

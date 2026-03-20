@@ -1561,7 +1561,7 @@ where
     values
         .into_iter()
         .next()
-        .ok_or(format!("Must provide at least one value to {}", flag_name))
+        .ok_or_else(|| format!("Must provide at least one value to {}", flag_name))
 }
 
 /// Remove chain, freezer and blobs db.

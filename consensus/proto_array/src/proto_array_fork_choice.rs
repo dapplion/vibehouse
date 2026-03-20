@@ -1005,11 +1005,10 @@ impl ProtoArrayForkChoice {
                                 .ok_or("Overflow when adding weight to ancestor")?;
 
                             if let Some(parent_index) = node_or_ancestor.parent {
-                                node_or_ancestor = self
-                                    .proto_array
-                                    .nodes
-                                    .get_mut(parent_index)
-                                    .ok_or(format!("Missing parent index: {}", parent_index))?;
+                                node_or_ancestor =
+                                    self.proto_array.nodes.get_mut(parent_index).ok_or_else(
+                                        || format!("Missing parent index: {}", parent_index),
+                                    )?;
                             } else {
                                 // This is either the finalized block or a block that does not
                                 // descend from the finalized block.

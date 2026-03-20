@@ -822,12 +822,12 @@ impl<T: BeaconChainTypes> NetworkService<T> {
     fn update_next_fork_digest(&mut self) {
         let new_enr_fork_id = self.beacon_chain.enr_fork_id();
         // if we are unable to read the slot clock we assume that it is prior to genesis
-        let current_epoch = self.beacon_chain.epoch().unwrap_or(
+        let current_epoch = self.beacon_chain.epoch().unwrap_or_else(|_| {
             self.beacon_chain
                 .spec
                 .genesis_slot
-                .epoch(T::EthSpec::slots_per_epoch()),
-        );
+                .epoch(T::EthSpec::slots_per_epoch())
+        });
         let new_fork_digest = new_enr_fork_id.fork_digest;
 
         let fork_context = &self.fork_context;

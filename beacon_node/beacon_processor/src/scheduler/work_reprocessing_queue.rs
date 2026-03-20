@@ -889,9 +889,10 @@ impl<S: SlotClock> ReprocessQueue<S> {
                 let millis_from_slot_start = self
                     .slot_clock
                     .millis_from_current_slot_start()
-                    .map_or("null".to_string(), |duration| {
-                        duration.as_millis().to_string()
-                    });
+                    .map_or_else(
+                        || "null".to_string(),
+                        |duration| duration.as_millis().to_string(),
+                    );
 
                 debug!(%millis_from_slot_start, "Sending scheduled backfill work");
 

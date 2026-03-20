@@ -5695,7 +5695,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             return Err(self
                 .handle_import_block_db_write_error(fork_choice)
                 .err()
-                .unwrap_or(e.into()));
+                .unwrap_or_else(|| e.into()));
         }
 
         drop(db_span);
@@ -6581,12 +6581,12 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let re_org_head_threshold = self
             .config
             .re_org_head_threshold
-            .ok_or(Box::new(DoNotReOrg::ReOrgsDisabled.into()))?;
+            .ok_or_else(|| Box::new(DoNotReOrg::ReOrgsDisabled.into()))?;
 
         let re_org_parent_threshold = self
             .config
             .re_org_parent_threshold
-            .ok_or(Box::new(DoNotReOrg::ReOrgsDisabled.into()))?;
+            .ok_or_else(|| Box::new(DoNotReOrg::ReOrgsDisabled.into()))?;
 
         let head_block_root = canonical_forkchoice_params.head_root;
 

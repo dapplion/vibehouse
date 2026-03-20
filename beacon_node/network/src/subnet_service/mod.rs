@@ -324,7 +324,7 @@ impl<T: BeaconChainTypes> SubnetService<T> {
                                 .beacon_chain
                                 .slot_clock
                                 .now()
-                                .unwrap_or(Slot::from(0u64));
+                                .unwrap_or_else(|| Slot::from(0u64));
                             warn!(
                                 ?subnet,
                                 ?current_slot,

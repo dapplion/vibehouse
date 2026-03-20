@@ -79,10 +79,8 @@ pub fn parse_blob<E: EthSpec>(blob: &str) -> Result<Blob<E>, Error> {
 }
 
 fn strip_0x(s: &str) -> Result<&str, Error> {
-    s.strip_prefix("0x").ok_or(Error::FailedToParseTest(format!(
-        "Hex is missing 0x prefix: {}",
-        s
-    )))
+    s.strip_prefix("0x")
+        .ok_or_else(|| Error::FailedToParseTest(format!("Hex is missing 0x prefix: {}", s)))
 }
 
 #[derive(Debug, Clone, Deserialize)]

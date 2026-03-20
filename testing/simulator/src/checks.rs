@@ -307,7 +307,7 @@ pub(crate) async fn verify_light_client_updates<E: EthSpec>(
             .get_beacon_light_client_optimistic_update::<E>()
             .await
             .map_err(|e| format!("Error while getting light client updates: {:?}", e))?
-            .ok_or(format!("Light client optimistic update not found {slot:?}"))?
+            .ok_or_else(|| format!("Light client optimistic update not found {slot:?}"))?
             .data()
             .signature_slot();
         let signature_slot_distance = slot - signature_slot;
@@ -326,7 +326,7 @@ pub(crate) async fn verify_light_client_updates<E: EthSpec>(
                 .get_beacon_states_finality_checkpoints(StateId::Head)
                 .await
                 .map_err(|e| format!("Unable to get beacon state finality checkpoint: {e:?}"))?
-                .ok_or("Unable to get head state".to_string())?
+                .ok_or_else(|| "Unable to get head state".to_string())?
                 .data;
             if !finalized.root.is_zero() {
                 // Wait for another slot before we check the first finality update to avoid race condition.
@@ -338,7 +338,7 @@ pub(crate) async fn verify_light_client_updates<E: EthSpec>(
             .get_beacon_light_client_finality_update::<E>()
             .await
             .map_err(|e| format!("Error while getting light client updates: {:?}", e))?
-            .ok_or(format!("Light client finality update not found {slot:?}"))?
+            .ok_or_else(|| format!("Light client finality update not found {slot:?}"))?
             .data()
             .signature_slot();
         let signature_slot_distance = slot - signature_slot;
@@ -352,7 +352,7 @@ pub(crate) async fn verify_light_client_updates<E: EthSpec>(
             .get_beacon_light_client_updates::<E>(sync_committee_period, 1)
             .await
             .map_err(|e| format!("Error while getting light client update: {:?}", e))?
-            .ok_or(format!("Light client update not found {slot:?}"))?;
+            .ok_or_else(|| format!("Light client update not found {slot:?}"))?;
 
         // Ensure we're only storing a single light client update for the given sync committee period
         if light_client_updates.len() != 1 {
@@ -386,7 +386,7 @@ pub async fn ensure_node_synced_up_to_slot<E: EthSpec>(
         .await
         .ok()
         .flatten()
-        .ok_or(format!("No head block exists on node {node_index}"))?
+        .ok_or_else(|| format!("No head block exists on node {node_index}"))?
         .into_data();
 
     // Check the head block is synced with the rest of the network.

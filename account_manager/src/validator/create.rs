@@ -150,7 +150,7 @@ pub fn cli_run<E: EthSpec>(
             wallet_base_dir,
             matches
                 .get_one::<String>("network")
-                .unwrap_or(&String::from("<NETWORK>")),
+                .map_or("<NETWORK>", |s| s.as_str()),
             crate::CMD,
             crate::wallet::CMD,
             crate::wallet::create::CMD

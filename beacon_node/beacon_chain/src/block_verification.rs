@@ -2308,7 +2308,7 @@ pub fn verify_header_signature<T: BeaconChainTypes, Err: BlockBlobError>(
     let proposer_pubkey = get_validator_pubkey_cache(chain)?
         .get(header.message.proposer_index as usize)
         .cloned()
-        .ok_or(Err::unknown_validator_error(header.message.proposer_index))?;
+        .ok_or_else(|| Err::unknown_validator_error(header.message.proposer_index))?;
     let head_fork = chain.canonical_head.cached_head().head_fork();
 
     if header.verify_signature::<T::EthSpec>(

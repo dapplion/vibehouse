@@ -189,9 +189,9 @@ impl<E: EthSpec> LoadCase for KzgInclusionMerkleProofValidity<E> {
         let file_name = path
             .file_name()
             .and_then(|file_name| file_name.to_str())
-            .ok_or(Error::InternalError(
-                "failed to read file name from path".to_string(),
-            ))?;
+            .ok_or_else(|| {
+                Error::InternalError("failed to read file name from path".to_string())
+            })?;
 
         let proof_type = if file_name.starts_with("blob_kzg_commitments") {
             KzgInclusionProofType::List

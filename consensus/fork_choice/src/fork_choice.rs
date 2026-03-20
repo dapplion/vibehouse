@@ -1134,7 +1134,7 @@ where
         let block = self
             .proto_array
             .get_block(&indexed_attestation.data().beacon_block_root)
-            .ok_or(InvalidAttestation::UnknownHeadBlock {
+            .ok_or_else(|| InvalidAttestation::UnknownHeadBlock {
                 beacon_block_root: indexed_attestation.data().beacon_block_root,
             })?;
 

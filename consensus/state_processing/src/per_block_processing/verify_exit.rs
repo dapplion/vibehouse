@@ -39,7 +39,7 @@ pub fn verify_exit<E: EthSpec>(
     verify_signatures: VerifySignatures,
     spec: &ChainSpec,
 ) -> Result<bool> {
-    let current_epoch = current_epoch.unwrap_or(state.current_epoch());
+    let current_epoch = current_epoch.unwrap_or_else(|| state.current_epoch());
     let exit = &signed_exit.message;
 
     // Exits must specify an epoch when they become valid; they are not valid before then.

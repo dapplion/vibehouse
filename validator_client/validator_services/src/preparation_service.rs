@@ -244,9 +244,12 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> PreparationService<S, 
     /// This avoids spamming the BN with preparations before the Bellatrix fork epoch, which may
     /// cause errors if it doesn't support the preparation API.
     fn should_publish_at_current_slot(&self, spec: &ChainSpec) -> bool {
-        let current_epoch = self.slot_clock.now().map_or(S::E::genesis_epoch(), |slot| {
-            slot.epoch(S::E::slots_per_epoch())
-        });
+        let current_epoch = self
+            .slot_clock
+            .now()
+            .map_or_else(S::E::genesis_epoch, |slot| {
+                slot.epoch(S::E::slots_per_epoch())
+            });
         spec.bellatrix_fork_epoch.is_some_and(|fork_epoch| {
             current_epoch + PROPOSER_PREPARATION_LOOKAHEAD_EPOCHS >= fork_epoch
         })

@@ -18,9 +18,11 @@ pub fn get_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
         )),
         Some(_) => {
             let Some(graffiti) = initialized_validators.graffiti(&validator_pubkey.into()) else {
-                return graffiti_flag.ok_or(ApiError::ServerError(
-                    "No graffiti found, unable to return the process-wide default".to_string(),
-                ));
+                return graffiti_flag.ok_or_else(|| {
+                    ApiError::ServerError(
+                        "No graffiti found, unable to return the process-wide default".to_string(),
+                    )
+                });
             };
             Ok(graffiti)
         }

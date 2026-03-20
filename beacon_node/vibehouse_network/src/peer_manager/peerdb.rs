@@ -69,8 +69,7 @@ impl<E: EthSpec> PeerDB<E> {
     pub fn score(&self, peer_id: &PeerId) -> f64 {
         self.peers
             .get(peer_id)
-            .map_or(&Score::default(), |info| info.score())
-            .score()
+            .map_or_else(|| Score::default().score(), |info| info.score().score())
     }
 
     /// Returns an iterator over all peers in the db.

@@ -135,7 +135,7 @@ impl<T: BeaconChainTypes> ActiveCustodyRequest<T> {
                     let column_request = self
                         .column_requests
                         .get_mut(column_index)
-                        .ok_or(Error::BadState("unknown column_index".to_owned()))?;
+                        .ok_or_else(|| Error::BadState("unknown column_index".to_owned()))?;
 
                     if let Some(data_column) = data_columns.remove(column_index) {
                         column_request.on_download_success(
@@ -180,7 +180,7 @@ impl<T: BeaconChainTypes> ActiveCustodyRequest<T> {
                 for column_index in &batch_request.indices {
                     self.column_requests
                         .get_mut(column_index)
-                        .ok_or(Error::BadState("unknown column_index".to_owned()))?
+                        .ok_or_else(|| Error::BadState("unknown column_index".to_owned()))?
                         .on_download_error_and_mark_failure(req_id)?;
                 }
             }
@@ -216,7 +216,10 @@ impl<T: BeaconChainTypes> ActiveCustodyRequest<T> {
                 .collect::<Result<Vec<_>, _>>()?;
 
             let peer_group = PeerGroup::from_set(peers);
-            let max_seen_timestamp = seen_timestamps.into_iter().max().unwrap_or(timestamp_now());
+            let max_seen_timestamp = seen_timestamps
+                .into_iter()
+                .max()
+                .unwrap_or_else(timestamp_now);
             return Ok(Some((columns, peer_group, max_seen_timestamp)));
         }
 
@@ -308,7 +311,7 @@ impl<T: BeaconChainTypes> ActiveCustodyRequest<T> {
                             .column_requests
                             .get_mut(column_index)
                             // Should never happen: column_index is iterated from column_requests
-                            .ok_or(Error::BadState("unknown column_index".to_owned()))?;
+                            .ok_or_else(|| Error::BadState("unknown column_index".to_owned()))?;
 
                         column_request.on_download_start(req_id)?;
                     }

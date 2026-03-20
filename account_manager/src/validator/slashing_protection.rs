@@ -97,10 +97,16 @@ pub fn cli_run<E: EthSpec>(
                 })?;
 
             let display_slot = |slot: Option<Slot>| {
-                slot.map_or("none".to_string(), |slot| format!("slot {}", slot.as_u64()))
+                slot.map_or_else(
+                    || "none".to_string(),
+                    |slot| format!("slot {}", slot.as_u64()),
+                )
             };
             let display_epoch = |epoch: Option<Epoch>| {
-                epoch.map_or("?".to_string(), |epoch| format!("epoch {}", epoch.as_u64()))
+                epoch.map_or_else(
+                    || "?".to_string(),
+                    |epoch| format!("epoch {}", epoch.as_u64()),
+                )
             };
             let display_attestation = |source, target| match (source, target) {
                 (None, None) => "none".to_string(),

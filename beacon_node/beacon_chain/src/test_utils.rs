@@ -2270,7 +2270,7 @@ where
             self.chain
                 .import_bls_to_execution_change(verified_bls_change, ReceivedPreCapella::No)
                 .then_some(())
-                .ok_or("should import BLS to execution change to the op pool".to_string())
+                .ok_or_else(|| "should import BLS to execution change to the op pool".to_string())
         } else {
             Err("should observe new BLS to execution change".to_string())
         }

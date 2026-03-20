@@ -77,7 +77,7 @@ impl BuilderHttpClient {
         builder_header_timeout: Option<Duration>,
         disable_ssz: bool,
     ) -> Result<Self, Error> {
-        let user_agent = user_agent.unwrap_or(DEFAULT_USER_AGENT.to_string());
+        let user_agent = user_agent.unwrap_or_else(|| DEFAULT_USER_AGENT.to_string());
         let client = reqwest::Client::builder().user_agent(&user_agent).build()?;
         Ok(Self {
             client,

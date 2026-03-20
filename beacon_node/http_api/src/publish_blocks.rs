@@ -405,7 +405,7 @@ fn spawn_build_data_sidecar_task<T: BeaconChainTypes>(
             },
             "build_data_sidecars",
         )
-        .ok_or(ApiError::server_error("runtime shutdown".to_string()))
+        .ok_or_else(|| ApiError::server_error("runtime shutdown".to_string()))
         .map(|r| {
             r.map_err(|_| ApiError::server_error("join error".to_string()))
                 .and_then(|output| async move { output })
@@ -786,7 +786,7 @@ pub async fn reconstruct_block<T: BeaconChainTypes>(
         // built.
         None => block
             .try_into_full_block(None)
-            .ok_or("Failed to build full block with payload".to_string())
+            .ok_or_else(|| "Failed to build full block with payload".to_string())
             .map(|full_block| ProvenancedBlock::local(Arc::new(full_block), None)),
         Some(ProvenancedPayload::Local(full_payload_contents)) => {
             into_full_block_and_blobs::<T>(block, full_payload_contents)
@@ -881,7 +881,7 @@ pub fn into_full_block_and_blobs<T: BeaconChainTypes>(
         FullPayloadContents::Payload(execution_payload) => {
             let signed_block = blinded_block
                 .try_into_full_block(Some(execution_payload))
-                .ok_or("Failed to build full block with payload".to_string())?;
+                .ok_or_else(|| "Failed to build full block with payload".to_string())?;
             Ok((Arc::new(signed_block), None))
         }
         // This variant implies a post-deneb block
@@ -892,7 +892,7 @@ pub fn into_full_block_and_blobs<T: BeaconChainTypes>(
             } = payload_and_blobs;
             let signed_block = blinded_block
                 .try_into_full_block(Some(execution_payload))
-                .ok_or("Failed to build full block with payload".to_string())?;
+                .ok_or_else(|| "Failed to build full block with payload".to_string())?;
 
             let BlobsBundle {
                 commitments: _,

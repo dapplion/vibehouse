@@ -2190,7 +2190,7 @@ async fn get_beacon_pool_attestations_inner<T: BeaconChainTypes>(
             let current_slot = chain
                 .slot_clock
                 .now()
-                .ok_or(ApiError::server_error("unable to read slot clock"))?;
+                .ok_or_else(|| ApiError::server_error("unable to read slot clock"))?;
             let fork_name = chain.spec.fork_name_at_slot::<T::EthSpec>(current_slot);
             let attestations = attestations
                 .into_iter()
@@ -2265,7 +2265,7 @@ async fn get_beacon_pool_attester_slashings<T: BeaconChainTypes>(
             let current_slot = chain
                 .slot_clock
                 .now()
-                .ok_or(ApiError::server_error("unable to read slot clock"))?;
+                .ok_or_else(|| ApiError::server_error("unable to read slot clock"))?;
             let fork_name = chain.spec.fork_name_at_slot::<T::EthSpec>(current_slot);
             let slashings = slashings
                 .into_iter()
@@ -2711,7 +2711,9 @@ async fn get_expected_withdrawals_handler<T: BeaconChainTypes>(
         .task_spawner()
         .blocking_response_task(Priority::P1, move || {
             let (beacon_state, execution_optimistic, finalized) = state_id.state(&chain)?;
-            let proposal_slot = query.proposal_slot.unwrap_or(beacon_state.slot() + 1);
+            let proposal_slot = query
+                .proposal_slot
+                .unwrap_or_else(|| beacon_state.slot() + 1);
             let withdrawals =
                 get_next_withdrawals::<T>(&chain, beacon_state, state_id, proposal_slot)?;
 

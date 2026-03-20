@@ -258,7 +258,7 @@ fn build_log_json(
     let module_path = meta.module_path().unwrap_or("<unknown_module>");
     let line_number = meta
         .line()
-        .map_or("<unknown_line>".to_string(), |l| l.to_string());
+        .map_or_else(|| "<unknown_line>".to_string(), |l| l.to_string());
     let module_field = format!("{}:{}", module_path, line_number);
     log_map.insert("module".to_string(), Value::String(module_field));
 
@@ -274,8 +274,8 @@ fn build_log_json(
         } else {
             &val
         };
-        let parsed_val =
-            serde_json::from_str(cleaned_value).unwrap_or(Value::String(cleaned_value.to_string()));
+        let parsed_val = serde_json::from_str(cleaned_value)
+            .unwrap_or_else(|_| Value::String(cleaned_value.to_string()));
         log_map.insert(key, parsed_val);
     }
 
@@ -383,7 +383,7 @@ fn parse_field(val: &str) -> Value {
     } else {
         val
     };
-    serde_json::from_str(cleaned).unwrap_or(Value::String(cleaned.to_string()))
+    serde_json::from_str(cleaned).unwrap_or_else(|_| Value::String(cleaned.to_string()))
 }
 
 #[cfg(test)]

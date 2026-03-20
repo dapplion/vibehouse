@@ -48,7 +48,7 @@ pub fn run_basic_sim(matches: &ArgMatches) -> Result<(), String> {
         .expect("missing nodes default");
     let proposer_nodes = subcommand_matches
         .get_one::<String>("proposer-nodes")
-        .unwrap_or(&String::from("0"))
+        .map_or("0", |s| s.as_str())
         .parse::<usize>()
         .unwrap_or(0);
     // extra beacon node added with delay

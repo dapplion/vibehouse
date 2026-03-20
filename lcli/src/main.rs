@@ -826,7 +826,7 @@ fn run<E: EthSpec>(env_builder: EnvironmentBuilder<E>, matches: &ArgMatches) -> 
             })
         } else {
             let network_name = network_name.ok_or("no network name or testnet-dir provided")?;
-            Eth2NetworkConfig::constant(&network_name)?.ok_or("invalid network name".into())
+            Eth2NetworkConfig::constant(&network_name)?.ok_or_else(|| "invalid network name".into())
         }
     };
 

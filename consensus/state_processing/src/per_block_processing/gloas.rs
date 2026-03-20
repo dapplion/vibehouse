@@ -187,7 +187,7 @@ pub fn process_execution_payload_bid<E: EthSpec>(
         *state_gloas
             .builder_pending_payments
             .get_mut(slot_index)
-            .ok_or(BlockProcessingError::PayloadBidInvalid {
+            .ok_or_else(|| BlockProcessingError::PayloadBidInvalid {
                 reason: format!(
                     "slot index {} out of bounds for builder_pending_payments",
                     slot_index

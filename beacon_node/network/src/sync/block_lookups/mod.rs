@@ -405,7 +405,8 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
         debug!(
             ?peers,
             ?block_root,
-            awaiting_parent = awaiting_parent.map_or("none".to_owned(), |root| root.to_string()),
+            awaiting_parent =
+                awaiting_parent.map_or_else(|| "none".to_owned(), |root| root.to_string()),
             id = lookup.id,
             "Created block lookup"
         );
@@ -980,7 +981,7 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
         let lookup = self
             .single_block_lookups
             .get_mut(&lookup_id)
-            .ok_or(format!("Unknown lookup for id {lookup_id}"))?;
+            .ok_or_else(|| format!("Unknown lookup for id {lookup_id}"))?;
 
         let mut added_some_peer = false;
         for peer in peers {

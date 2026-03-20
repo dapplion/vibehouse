@@ -260,7 +260,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
             RangeBlockDataRequest::DataColumns { requests, .. } => {
                 let req = requests
                     .get_mut(&req_id)
-                    .ok_or(format!("unknown data columns by range req_id {req_id}"))?;
+                    .ok_or_else(|| format!("unknown data columns by range req_id {req_id}"))?;
                 req.finish(req_id, columns)
             }
         }

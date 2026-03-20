@@ -67,9 +67,7 @@ pub fn get_light_client_bootstrap<T: BeaconChainTypes>(
             };
             ApiError::not_found(error_message)
         })?
-        .ok_or(ApiError::not_found(
-            "No LightClientBootstrap found".to_string(),
-        ))?;
+        .ok_or_else(|| ApiError::not_found("No LightClientBootstrap found".to_string()))?;
 
     match accept_header {
         Some(api_types::Accept::Ssz) => axum::http::Response::builder()
@@ -113,9 +111,7 @@ pub fn validate_light_client_updates_request<T: BeaconChainTypes>(
     let earliest_altair_sync_committee = chain
         .spec
         .altair_fork_epoch
-        .ok_or(ApiError::server_error(
-            "failed to get altair fork epoch".to_string(),
-        ))?
+        .ok_or_else(|| ApiError::server_error("failed to get altair fork epoch".to_string()))?
         .sync_committee_period(&chain.spec)
         .map_err(|_| {
             ApiError::server_error("failed to get earliest altair sync committee".to_string())

@@ -310,20 +310,20 @@ pub(crate) fn build_data_column_sidecars<E: EthSpec>(
         for col in 0..number_of_columns {
             let cell = blob_cells
                 .get(col)
-                .ok_or(format!("Missing blob cell at index {col}"))?;
+                .ok_or_else(|| format!("Missing blob cell at index {col}"))?;
             let cell: Vec<u8> = cell.to_vec();
             let cell = Cell::<E>::from(cell);
 
             let proof = blob_cell_proofs
                 .get(col)
-                .ok_or(format!("Missing blob cell KZG proof at index {col}"))?;
+                .ok_or_else(|| format!("Missing blob cell KZG proof at index {col}"))?;
 
             let column = columns
                 .get_mut(col)
-                .ok_or(format!("Missing data column at index {col}"))?;
+                .ok_or_else(|| format!("Missing data column at index {col}"))?;
             let column_proofs = column_kzg_proofs
                 .get_mut(col)
-                .ok_or(format!("Missing data column proofs at index {col}"))?;
+                .ok_or_else(|| format!("Missing data column proofs at index {col}"))?;
 
             column.push(cell);
             column_proofs.push(*proof);
@@ -376,7 +376,7 @@ pub fn reconstruct_blobs<E: EthSpec>(
     // The data columns are from the database, so we assume their correctness.
     let first_data_column = data_columns
         .first()
-        .ok_or("data_columns should have at least one element".to_string())?;
+        .ok_or_else(|| "data_columns should have at least one element".to_string())?;
 
     let kzg_commitments = first_data_column.kzg_commitments().map_err(|_| {
         "Gloas data columns do not embed kzg_commitments; blob reconstruction is not supported"
@@ -400,7 +400,7 @@ pub fn reconstruct_blobs<E: EthSpec>(
                 let cell = data_column
                     .column()
                     .get(row_index)
-                    .ok_or(format!("Missing data column at row index {row_index}"))
+                    .ok_or_else(|| format!("Missing data column at row index {row_index}"))
                     .and_then(|cell| {
                         ssz_cell_to_crypto_cell::<E>(cell).map_err(|e| format!("{e:?}"))
                     })?;
@@ -467,11 +467,11 @@ pub fn reconstruct_data_columns<E: EthSpec>(
     // Sort data columns by index to ensure ascending order for KZG operations
     data_columns.sort_unstable_by_key(|dc| dc.index());
 
-    let first_data_column = data_columns
-        .first()
-        .ok_or(KzgError::InconsistentArrayLength(
+    let first_data_column = data_columns.first().ok_or_else(|| {
+        KzgError::InconsistentArrayLength(
             "data_columns should have at least one element".to_string(),
-        ))?;
+        )
+    })?;
 
     let kzg_commitments = first_data_column.kzg_commitments().map_err(|_| {
         KzgError::InconsistentArrayLength(
@@ -499,11 +499,11 @@ pub fn reconstruct_data_columns<E: EthSpec>(
             let mut cells: Vec<KzgCellRef> = Vec::with_capacity(data_columns.len());
             let mut cell_ids: Vec<u64> = Vec::with_capacity(data_columns.len());
             for data_column in &data_columns {
-                let cell = data_column.column().get(row_index).ok_or(
+                let cell = data_column.column().get(row_index).ok_or_else(|| {
                     KzgError::InconsistentArrayLength(format!(
                         "Missing data column at row index {row_index}"
-                    )),
-                )?;
+                    ))
+                })?;
 
                 cells.push(ssz_cell_to_crypto_cell::<E>(cell)?);
                 cell_ids.push(data_column.index());

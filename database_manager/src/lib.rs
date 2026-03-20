@@ -463,7 +463,7 @@ pub fn run<E: EthSpec>(
             )
             .ok_or("Shutting down")?
             .map_err(|e| format!("Error getting genesis state: {e}"))?
-            .ok_or("Genesis state missing".to_string())
+            .ok_or_else(|| "Genesis state missing".to_string())
     };
 
     match &db_manager_config.subcommand {
