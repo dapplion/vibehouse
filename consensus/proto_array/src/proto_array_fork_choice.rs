@@ -8837,4 +8837,133 @@ mod test_gloas_fork_choice {
             "tree with even one invalid node should return true"
         );
     }
+
+    #[test]
+    fn find_head_transitions_from_pre_gloas_to_gloas_at_fork_boundary() {
+        // Gloas fork at epoch 1 (slot 8 for minimal preset with 8 slots/epoch).
+        // Before epoch 1: traditional fork choice (no payload status).
+        // At epoch 1: Gloas fork choice (with EMPTY/FULL/PENDING virtual nodes).
+        let mut spec = MinimalEthSpec::default_spec();
+        spec.gloas_fork_epoch = Some(Epoch::new(1));
+        let slots_per_epoch = MinimalEthSpec::slots_per_epoch();
+
+        let fc = ProtoArrayForkChoice::new::<MinimalEthSpec>(
+            Slot::new(0),
+            Slot::new(0),
+            Hash256::zero(),
+            genesis_checkpoint(),
+            genesis_checkpoint(),
+            junk_shuffling_id(),
+            junk_shuffling_id(),
+            ExecutionStatus::irrelevant(),
+        )
+        .unwrap();
+
+        // Before fork: no Gloas payload status
+        assert_eq!(fc.gloas_head_payload_status(), None);
+
+        // Insert a pre-Gloas block at last slot of epoch 0 (slot 7)
+        let pre_gloas_slot = slots_per_epoch - 1; // slot 7
+        let mut fc = fc;
+        fc.proto_array
+            .on_block::<MinimalEthSpec>(
+                Block {
+                    slot: Slot::new(pre_gloas_slot),
+                    root: root(1),
+                    parent_root: Some(root(0)),
+                    state_root: Hash256::zero(),
+                    target_root: root(0),
+                    current_epoch_shuffling_id: junk_shuffling_id(),
+                    next_epoch_shuffling_id: junk_shuffling_id(),
+                    justified_checkpoint: genesis_checkpoint(),
+                    finalized_checkpoint: genesis_checkpoint(),
+                    execution_status: ExecutionStatus::irrelevant(),
+                    unrealized_justified_checkpoint: Some(genesis_checkpoint()),
+                    unrealized_finalized_checkpoint: Some(genesis_checkpoint()),
+                    // Pre-Gloas block: no bid fields
+                    builder_index: None,
+                    payload_revealed: false,
+                    ptc_weight: 0,
+                    ptc_blob_data_available_weight: 0,
+                    payload_data_available: false,
+                    bid_block_hash: None,
+                    bid_parent_block_hash: None,
+                    proposer_index: 0,
+                    ptc_timely: false,
+                    envelope_received: false,
+                },
+                Slot::new(pre_gloas_slot),
+            )
+            .unwrap();
+
+        let balances = balances(1);
+
+        // Vote for the pre-Gloas block
+        fc.process_attestation(
+            0,
+            root(1),
+            Epoch::new(0),
+            Slot::new(pre_gloas_slot + 1),
+            false,
+        )
+        .unwrap();
+
+        // find_head at slot 7 (epoch 0, pre-Gloas): uses traditional algorithm
+        let head = fc
+            .find_head::<MinimalEthSpec>(
+                genesis_checkpoint(),
+                genesis_checkpoint(),
+                &balances,
+                Hash256::zero(),
+                &BTreeSet::new(),
+                Slot::new(pre_gloas_slot),
+                &spec,
+            )
+            .unwrap();
+        assert_eq!(head, root(1), "pre-Gloas head should be the voted block");
+        assert_eq!(
+            fc.gloas_head_payload_status(),
+            None,
+            "no Gloas payload status before fork"
+        );
+
+        // Now insert a Gloas block at slot 8 (first slot of epoch 1)
+        let gloas_slot = slots_per_epoch; // slot 8
+        insert_gloas_block(
+            &mut fc,
+            gloas_slot,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            Some(exec_hash(1)),
+            true, // payload revealed (self-build)
+        );
+
+        // Vote for the Gloas block
+        fc.process_attestation(0, root(2), Epoch::new(1), Slot::new(gloas_slot + 1), true)
+            .unwrap();
+
+        // find_head at slot 9 (epoch 1, Gloas): uses Gloas algorithm
+        let head = fc
+            .find_head::<MinimalEthSpec>(
+                genesis_checkpoint(),
+                genesis_checkpoint(),
+                &balances,
+                Hash256::zero(),
+                &BTreeSet::new(),
+                Slot::new(gloas_slot + 1),
+                &spec,
+            )
+            .unwrap();
+
+        // Head should be root(2) (the Gloas block) — the Gloas algorithm sees its
+        // FULL virtual child as the best head because payload_revealed=true
+        assert_eq!(head, root(2), "Gloas head should be the first Gloas block");
+
+        // Now Gloas payload status should be set
+        assert!(
+            fc.gloas_head_payload_status().is_some(),
+            "Gloas payload status should be set after fork activation"
+        );
+    }
 }
