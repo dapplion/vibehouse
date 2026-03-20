@@ -2650,3 +2650,16 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
 
 No actionable work found. All priorities 1-6 complete. Codebase stable.
+
+### Run 1995 (2026-03-20)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since #5005 (March 15). Open Gloas PRs unchanged: #4979/#5020/#4992 (PTC lookbehind — still competing approaches), #4747 (Fast Confirmation Rule), #5022 (on_payload_attestation block check — we already handle), #5023 (block root filenames + comptests), #4954 (millisecond fork choice store), #4892 (remove impossible branch — we already have `==` not `<=`). None merged, none actionable.
+- **Field name fix (#5008)**: Verified our `ExecutionPayloadEnvelope` already uses `beacon_block_root` (correct name). PR is doc-only fix in spec markdown.
+- **EF test vectors**: No new release — latest is v1.6.0-beta.0 (Sep 2025). v1.7.0-alpha.3 vectors not yet published.
+- **CI**: All jobs green. Latest run (run 1990 commit) fully passed. Nightly passing (3 consecutive days).
+- **Security**: cargo audit unchanged (1 rsa/RUSTSEC-2023-0071, no fix available). Dependencies at latest compatible versions.
+- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
+
+No actionable work found. All priorities 1-6 complete. Codebase stable.
