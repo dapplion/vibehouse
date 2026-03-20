@@ -2997,3 +2997,15 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
 
 No actionable work found. All priorities 1-6 complete. Codebase stable.
+
+### Run 2026 (2026-03-20)
+
+**Maintenance run — cached-ptc branch rebased.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. All tracked Gloas PRs remain OPEN. None merged since #5005 (March 15). Most active: #4843 (Variable PTC deadline — 1 approval, significant scope: renames `payload_present`→`payload_timely`, adds size-dependent deadline), #4992 (cached PTCs — 1 approval, 25 reviews), #4979 (PTC lookbehind). #5023 (block root filenames), #5022 (on_payload_attestation block check), #5008 (field name fix) — all test/docs-only, no code changes needed.
+- **CI**: Latest commit (fork boundary test) — all 7 jobs green. Nightly: all 26 jobs green (March 20).
+- **Branch maintenance**: Rebased `cached-ptc` branch onto main (was 3 commits behind — task doc updates only). Clean rebase, clippy clean, force-pushed.
+- **Test coverage audit**: Reviewed gloas_verification.rs (902 lines) untested paths. Gaps are defensive error paths (`NotGloasBlock`, `InvalidAggregationBits`, error wrappers) that require complex harness gymnastics to trigger. 61 integration tests provide strong coverage of actual validation logic. Not worth the effort.
+- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
+
+No actionable code changes. All priorities 1-6 complete. Codebase stable.
