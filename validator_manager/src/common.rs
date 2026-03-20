@@ -322,10 +322,10 @@ pub async fn vc_http_client<P: AsRef<Path>>(
     token_path: P,
 ) -> Result<(ValidatorClientHttpClient, Vec<SingleKeystoreResponse>), String> {
     let token_path = token_path.as_ref();
-    let token_bytes =
-        fs::read(token_path).map_err(|e| format!("Failed to read {token_path:?}: {e:?}"))?;
+    let token_bytes = fs::read(token_path)
+        .map_err(|e| format!("Failed to read {}: {e:?}", token_path.display()))?;
     let token_string = String::from_utf8(strip_off_newlines(token_bytes))
-        .map_err(|e| format!("Failed to parse {token_path:?} as utf8: {e:?}"))?;
+        .map_err(|e| format!("Failed to parse {} as utf8: {e:?}", token_path.display()))?;
     let http_client = ValidatorClientHttpClient::new(url.clone(), token_string)
         .map_err(|e| format!("Could not instantiate HTTP client from URL and secret: {e:?}"))?;
 
@@ -352,12 +352,17 @@ pub fn write_to_json_file<P: AsRef<Path>, S: Serialize>(
     path: P,
     contents: &S,
 ) -> Result<(), String> {
-    eprintln!("Writing {:?}", path.as_ref());
+    eprintln!("Writing {}", path.as_ref().display());
     let mut file = fs::OpenOptions::new()
         .write(true)
         .create_new(true)
         .open(&path)
-        .map_err(|e| format!("Failed to open {:?}: {:?}", path.as_ref(), e))?;
-    serde_json::to_writer(&mut file, contents)
-        .map_err(|e| format!("Failed to write JSON to {:?}: {:?}", path.as_ref(), e))
+        .map_err(|e| format!("Failed to open {}: {:?}", path.as_ref().display(), e))?;
+    serde_json::to_writer(&mut file, contents).map_err(|e| {
+        format!(
+            "Failed to write JSON to {}: {:?}",
+            path.as_ref().display(),
+            e
+        )
+    })
 }

@@ -92,16 +92,19 @@ fn write_vectors_to_file(title: &str, vectors: &[TestVector]) -> Result<(), Stri
         .join(title);
 
     if dir.exists() {
-        fs::remove_dir_all(&dir).map_err(|e| format!("Unable to remove {dir:?}: {e:?}"))?;
+        fs::remove_dir_all(&dir)
+            .map_err(|e| format!("Unable to remove {}: {e:?}", dir.display()))?;
     }
-    fs::create_dir_all(&dir).map_err(|e| format!("Unable to create {dir:?}: {e:?}"))?;
+    fs::create_dir_all(&dir).map_err(|e| format!("Unable to create {}: {e:?}", dir.display()))?;
 
     for vector in vectors {
         let dir = dir.clone().join(&vector.title);
         if dir.exists() {
-            fs::remove_dir_all(&dir).map_err(|e| format!("Unable to remove {dir:?}: {e:?}"))?;
+            fs::remove_dir_all(&dir)
+                .map_err(|e| format!("Unable to remove {}: {e:?}", dir.display()))?;
         }
-        fs::create_dir_all(&dir).map_err(|e| format!("Unable to create {dir:?}: {e:?}"))?;
+        fs::create_dir_all(&dir)
+            .map_err(|e| format!("Unable to create {}: {e:?}", dir.display()))?;
 
         write_to_ssz_file(&dir.clone().join("pre.ssz"), &vector.pre_state)?;
         write_to_ssz_file(&dir.clone().join("block.ssz"), &vector.block)?;
@@ -124,9 +127,9 @@ fn write_to_ssz_file<T: Encode>(path: &Path, item: &T) -> Result<(), String> {
 /// Write some bytes to file.
 fn write_to_file(path: &Path, item: &[u8]) -> Result<(), String> {
     File::create(path)
-        .map_err(|e| format!("Unable to create {path:?}: {e:?}"))
+        .map_err(|e| format!("Unable to create {}: {e:?}", path.display()))
         .and_then(|mut file| {
             file.write_all(item)
-                .map_err(|e| format!("Unable to write to {path:?}: {e:?}"))
+                .map_err(|e| format!("Unable to write to {}: {e:?}", path.display()))
         })
 }

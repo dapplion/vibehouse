@@ -417,10 +417,11 @@ pub fn load_from_ssz_with<T>(
     spec: &ChainSpec,
     decoder: impl FnOnce(&[u8], &ChainSpec) -> Result<T, ssz::DecodeError>,
 ) -> Result<T, String> {
-    let mut file = File::open(path).map_err(|e| format!("Unable to open file {path:?}: {e:?}"))?;
+    let mut file =
+        File::open(path).map_err(|e| format!("Unable to open file {}: {e:?}", path.display()))?;
     let mut bytes = vec![];
     file.read_to_end(&mut bytes)
-        .map_err(|e| format!("Unable to read from file {path:?}: {e:?}"))?;
+        .map_err(|e| format!("Unable to read from file {}: {e:?}", path.display()))?;
     let t = Instant::now();
     let result = decoder(&bytes, spec).map_err(|e| format!("Ssz decode failed: {e:?}"));
     debug!("SSZ decoding {}: {:?}", path.display(), t.elapsed());

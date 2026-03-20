@@ -94,7 +94,8 @@ impl Auth {
         std::fs::read_to_string(&jwt_path)
             .map_err(|e| {
                 Error::InvalidKey(format!(
-                    "Failed to read JWT secret file {jwt_path:?}, error: {e:?}"
+                    "Failed to read JWT secret file {}, error: {e:?}",
+                    jwt_path.display()
                 ))
             })
             .and_then(|ref s| {

@@ -359,8 +359,12 @@ fn load_voting_keypair(
     password_file_path: Option<&PathBuf>,
     stdin_inputs: bool,
 ) -> Result<Keypair, String> {
-    let keystore = Keystore::from_json_file(voting_keystore_path)
-        .map_err(|e| format!("Unable to read keystore JSON {voting_keystore_path:?}: {e:?}"))?;
+    let keystore = Keystore::from_json_file(voting_keystore_path).map_err(|e| {
+        format!(
+            "Unable to read keystore JSON {}: {e:?}",
+            voting_keystore_path.display()
+        )
+    })?;
 
     // Get password from password file.
     if let Some(password_file) = password_file_path {
@@ -369,7 +373,10 @@ fn load_voting_keypair(
     } else {
         // Prompt password from user.
         eprintln!();
-        eprintln!("{PASSWORD_PROMPT} for validator in {voting_keystore_path:?}: ");
+        eprintln!(
+            "{PASSWORD_PROMPT} for validator in {}: ",
+            voting_keystore_path.display()
+        );
         let password = account_utils::read_password_from_user(stdin_inputs)?;
         match keystore.decrypt_keypair(password.as_ref()) {
             Ok(keypair) => {

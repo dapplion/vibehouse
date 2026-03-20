@@ -29,7 +29,7 @@ impl From<WriteOptions> for redb::Durability {
 impl<E: EthSpec> Redb<E> {
     pub fn open(path: &Path) -> Result<Self, Error> {
         std::fs::create_dir_all(path).map_err(|e| Error::DBError {
-            message: format!("Failed to create directory {path:?}: {e}"),
+            message: format!("Failed to create directory {}: {e}", path.display()),
         })?;
         let db_file = path.join(DB_FILE_NAME);
         let db = redb::Database::create(db_file)?;

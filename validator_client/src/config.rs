@@ -176,8 +176,13 @@ impl Config {
         });
 
         if !config.validator_dir.exists() {
-            fs::create_dir_all(&config.validator_dir)
-                .map_err(|e| format!("Failed to create {:?}: {:?}", config.validator_dir, e))?;
+            fs::create_dir_all(&config.validator_dir).map_err(|e| {
+                format!(
+                    "Failed to create {}: {:?}",
+                    config.validator_dir.display(),
+                    e
+                )
+            })?;
         }
 
         if let Some(beacon_nodes) = validator_client_config.beacon_nodes.as_ref() {

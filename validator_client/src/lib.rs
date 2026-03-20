@@ -232,8 +232,9 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
             SlashingDatabase::open(&slashing_db_path).map_err(|e| {
                 format!(
                     "Failed to open slashing protection database: {:?}.\n\
-                     Ensure that `slashing_protection.sqlite` is in {:?} folder",
-                    e, config.validator_dir
+                     Ensure that `slashing_protection.sqlite` is in {} folder",
+                    e,
+                    config.validator_dir.display()
                 )
             })
         }?;

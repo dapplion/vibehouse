@@ -43,7 +43,7 @@ pub fn parse_testnet_dir(
 ) -> Result<Option<Eth2NetworkConfig>, String> {
     let path = parse_required::<PathBuf>(matches, name)?;
     Eth2NetworkConfig::load(path.clone())
-        .map_err(|e| format!("Unable to open testnet dir at {path:?}: {e}"))
+        .map_err(|e| format!("Unable to open testnet dir at {}: {e}", path.display()))
         .map(Some)
 }
 

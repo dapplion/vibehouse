@@ -89,12 +89,20 @@ pub fn cli_run(matches: &ArgMatches, validator_dir: PathBuf) -> Result<(), Strin
     let mnemonic_path: Option<PathBuf> = clap_utils::parse_optional(matches, MNEMONIC_FLAG)?;
     let stdin_inputs = cfg!(windows) || matches.get_flag(STDIN_INPUTS_FLAG);
 
-    eprintln!("secrets-dir path: {secrets_dir:?}");
+    eprintln!("secrets-dir path: {}", secrets_dir.display());
 
-    create_dir_all(&validator_dir)
-        .map_err(|e| format!("Could not create validator dir at {validator_dir:?}: {e:?}"))?;
-    create_dir_all(&secrets_dir)
-        .map_err(|e| format!("Could not create secrets dir at {secrets_dir:?}: {e:?}"))?;
+    create_dir_all(&validator_dir).map_err(|e| {
+        format!(
+            "Could not create validator dir at {}: {e:?}",
+            validator_dir.display()
+        )
+    })?;
+    create_dir_all(&secrets_dir).map_err(|e| {
+        format!(
+            "Could not create secrets dir at {}: {e:?}",
+            secrets_dir.display()
+        )
+    })?;
 
     eprintln!();
     eprintln!(

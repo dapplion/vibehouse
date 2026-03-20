@@ -20,7 +20,10 @@ pub fn run<E: EthSpec>(matches: &ArgMatches, spec: &ChainSpec) -> Result<(), Str
         clap_utils::parse_ssz_required(matches, "genesis-fork-version")?;
 
     if output_dir.exists() {
-        return Err(format!("{output_dir:?} already exists, will not override"));
+        return Err(format!(
+            "{} already exists, will not override",
+            output_dir.display()
+        ));
     }
 
     let mut config = NetworkConfig::default();

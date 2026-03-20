@@ -540,22 +540,28 @@ async fn run<E: EthSpec>(config: CreateConfig, spec: &ChainSpec) -> Result<(), S
     let output_path = config.output_path.clone();
 
     if !output_path.exists() {
-        fs::create_dir(&output_path)
-            .map_err(|e| format!("Failed to create {output_path:?} directory: {e:?}"))?;
+        fs::create_dir(&output_path).map_err(|e| {
+            format!(
+                "Failed to create {} directory: {e:?}",
+                output_path.display()
+            )
+        })?;
     } else if !output_path.is_dir() {
-        return Err(format!("{output_path:?} must be a directory"));
+        return Err(format!("{} must be a directory", output_path.display()));
     }
 
     let validators_path = output_path.join(VALIDATORS_FILENAME);
     if validators_path.exists() {
         return Err(format!(
-            "{validators_path:?} already exists, refusing to overwrite"
+            "{} already exists, refusing to overwrite",
+            validators_path.display()
         ));
     }
     let deposits_path = output_path.join(DEPOSITS_FILENAME);
     if deposits_path.exists() {
         return Err(format!(
-            "{deposits_path:?} already exists, refusing to overwrite"
+            "{} already exists, refusing to overwrite",
+            deposits_path.display()
         ));
     }
 

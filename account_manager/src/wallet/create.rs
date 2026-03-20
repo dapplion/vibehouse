@@ -127,7 +127,7 @@ pub fn cli_run(matches: &ArgMatches, wallet_base_dir: PathBuf) -> Result<(), Str
 
     if let Some(path) = mnemonic_output_path {
         create_with_600_perms(&path, mnemonic.phrase().as_bytes())
-            .map_err(|e| format!("Unable to write mnemonic to {path:?}: {e:?}"))?;
+            .map_err(|e| format!("Unable to write mnemonic to {}: {e:?}", path.display()))?;
     }
 
     println!("Your wallet's {mnemonic_length}-word BIP-39 mnemonic is:");
@@ -179,12 +179,13 @@ pub fn create_wallet_from_mnemonic(
                 // create a file with that name, we require that the password has a .pass suffix.
                 if path.extension() != Some(OsStr::new("pass")) {
                     return Err(format!(
-                        "Only creates a password file if that file ends in .pass: {path:?}"
+                        "Only creates a password file if that file ends in .pass: {}",
+                        path.display()
                     ));
                 }
 
                 create_with_600_perms(&path, random_password().as_bytes())
-                    .map_err(|e| format!("Unable to write to {path:?}: {e:?}"))?;
+                    .map_err(|e| format!("Unable to write to {}: {e:?}", path.display()))?;
             }
             read_new_wallet_password_from_cli(Some(path), stdin_inputs)?
         }
@@ -214,7 +215,7 @@ pub fn read_new_wallet_password_from_cli(
     match password_file_path {
         Some(path) => {
             let password: PlainText = fs::read(&path)
-                .map_err(|e| format!("Unable to read {path:?}: {e:?}"))
+                .map_err(|e| format!("Unable to read {}: {e:?}", path.display()))
                 .map(|bytes| strip_off_newlines(bytes).into())?;
 
             // Ensure the password meets the minimum requirements.

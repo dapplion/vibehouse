@@ -209,9 +209,12 @@ pub fn inspect_db<E: EthSpec>(
                             .map_err(|e| format!("Failed to write file: {e:?}"))
                     });
                 if let Err(e) = write_result {
-                    println!("Error writing values to file {file_path:?}: {e:?}");
+                    println!(
+                        "Error writing values to file {}: {e:?}",
+                        file_path.display()
+                    );
                 } else {
-                    println!("Successfully saved values to file: {file_path:?}");
+                    println!("Successfully saved values to file: {}", file_path.display());
                 }
             }
         }

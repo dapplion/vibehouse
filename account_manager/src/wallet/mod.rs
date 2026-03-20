@@ -36,7 +36,7 @@ pub fn cli_run(matches: &ArgMatches) -> Result<(), String> {
     };
     create_dir_all(&wallet_base_dir).map_err(|_| "Could not create wallet base dir")?;
 
-    eprintln!("wallet-dir path: {wallet_base_dir:?}");
+    eprintln!("wallet-dir path: {}", wallet_base_dir.display());
 
     match matches.subcommand() {
         Some((create::CMD, matches)) => create::cli_run(matches, wallet_base_dir),

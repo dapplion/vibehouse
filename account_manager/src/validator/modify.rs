@@ -72,8 +72,12 @@ pub fn cli_run(matches: &ArgMatches, validator_dir: PathBuf) -> Result<(), Strin
         }
         _ => return Err(format!("No command provided for {CMD}. See --help")),
     };
-    let mut defs = ValidatorDefinitions::open(&validator_dir)
-        .map_err(|e| format!("No validator definitions found in {validator_dir:?}: {e:?}"))?;
+    let mut defs = ValidatorDefinitions::open(&validator_dir).map_err(|e| {
+        format!(
+            "No validator definitions found in {}: {e:?}",
+            validator_dir.display()
+        )
+    })?;
     let pubkeys_to_modify = if sub_matches.get_flag(ALL) {
         defs.as_slice()
             .iter()

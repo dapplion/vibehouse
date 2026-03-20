@@ -55,7 +55,10 @@ impl<E: EthSpec> LoadCase for GenericMerkleProofValidity<E> {
                 .map(Box::new)
                 .map(GenericMerkleProofValidity::BeaconBlockBody)
         } else {
-            panic!("unsupported type for merkle proof test: {suite_name:?}")
+            panic!(
+                "unsupported type for merkle proof test: {}",
+                suite_name.display()
+            )
         }
     }
 }

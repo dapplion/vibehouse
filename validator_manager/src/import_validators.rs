@@ -233,18 +233,26 @@ async fn run(config: ImportConfig) -> Result<(), String> {
         &validators_file_path
     {
         if !validators_format_path.exists() {
-            return Err(format!("Unable to find file at {validators_format_path:?}"));
+            return Err(format!(
+                "Unable to find file at {}",
+                validators_format_path.display()
+            ));
         }
 
         let validators_file = fs::OpenOptions::new()
             .read(true)
             .create(false)
             .open(validators_format_path)
-            .map_err(|e| format!("Unable to open {validators_format_path:?}: {e:?}"))?;
+            .map_err(|e| format!("Unable to open {}: {e:?}", validators_format_path.display()))?;
 
         // Define validators as mutable so that if a relevant flag is supplied, the fields can be overridden.
         let mut validators: Vec<ValidatorSpecification> = serde_json::from_reader(&validators_file)
-            .map_err(|e| format!("Unable to parse JSON in {validators_format_path:?}: {e:?}"))?;
+            .map_err(|e| {
+                format!(
+                    "Unable to parse JSON in {}: {e:?}",
+                    validators_format_path.display()
+                )
+            })?;
 
         // Log the overridden note when one or more flags is supplied
         if let Some(override_fee_recipient) = fee_recipient {

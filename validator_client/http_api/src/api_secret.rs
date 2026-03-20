@@ -35,7 +35,8 @@ impl ApiSecret {
         // Check if the path is a directory
         if pk_path.is_dir() {
             return Err(format!(
-                "API token path {pk_path:?} is a directory, not a file"
+                "API token path {} is a directory, not a file",
+                pk_path.display()
             ));
         }
 
@@ -43,7 +44,10 @@ impl ApiSecret {
             // Create parent directories if they don't exist
             if let Some(parent) = pk_path.parent() {
                 std::fs::create_dir_all(parent).map_err(|e| {
-                    format!("Unable to create parent directories for {pk_path:?}: {e:?}")
+                    format!(
+                        "Unable to create parent directories for {}: {e:?}",
+                        pk_path.display()
+                    )
                 })?;
             }
 
@@ -56,7 +60,10 @@ impl ApiSecret {
 
             // Create and write the public key to file with appropriate permissions
             create_with_600_perms(pk_path, pk.as_bytes()).map_err(|e| {
-                format!("Unable to create file with permissions for {pk_path:?}: {e:?}")
+                format!(
+                    "Unable to create file with permissions for {}: {e:?}",
+                    pk_path.display()
+                )
             })?;
         }
 

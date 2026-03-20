@@ -301,7 +301,7 @@ impl Eth2NetworkConfig {
             let file = base_dir.join(GENESIS_STATE_FILE);
 
             File::create(&file)
-                .map_err(|e| format!("Unable to create {file:?}: {e:?}"))
+                .map_err(|e| format!("Unable to create {}: {e:?}", file.display()))
                 .and_then(|mut file| {
                     file.write_all(genesis_state_bytes.as_ref())
                         .map_err(|e| format!("Unable to write {file:?}: {e:?}"))
@@ -342,7 +342,7 @@ impl Eth2NetworkConfig {
         let (genesis_state_bytes, genesis_state_source) = if genesis_file_path.exists() {
             let mut bytes = vec![];
             File::open(&genesis_file_path)
-                .map_err(|e| format!("Unable to open {genesis_file_path:?}: {e:?}"))
+                .map_err(|e| format!("Unable to open {}: {e:?}", genesis_file_path.display()))
                 .and_then(|mut file| {
                     file.read_to_end(&mut bytes)
                         .map_err(|e| format!("Unable to read {file:?}: {e:?}"))

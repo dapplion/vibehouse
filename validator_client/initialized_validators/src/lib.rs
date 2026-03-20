@@ -456,7 +456,8 @@ fn unlock_keystore_via_stdin_password(
 ) -> Result<(Zeroizing<String>, Keypair), Error> {
     eprintln!();
     eprintln!(
-        "The {CONFIG_FILENAME} file does not contain either of the following fields for {keystore_path:?}:"
+        "The {CONFIG_FILENAME} file does not contain either of the following fields for {}:",
+        keystore_path.display()
     );
     eprintln!();
     eprintln!(" - voting_keystore_password");

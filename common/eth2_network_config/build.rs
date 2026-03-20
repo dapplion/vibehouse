@@ -31,8 +31,12 @@ fn uncompress_state(network: &Eth2NetArchiveAndDirectory<'static>) -> Result<(),
     if network.genesis_state_source == GenesisStateSource::IncludedBytes {
         // Extract genesis state from genesis.ssz.zip
         let archive_path = network.genesis_state_archive();
-        let archive_file = File::open(&archive_path)
-            .map_err(|e| format!("Failed to open archive file {archive_path:?}: {e:?}"))?;
+        let archive_file = File::open(&archive_path).map_err(|e| {
+            format!(
+                "Failed to open archive file {}: {e:?}",
+                archive_path.display()
+            )
+        })?;
 
         let mut archive =
             ZipArchive::new(archive_file).map_err(|e| format!("Error with zip file: {e}"))?;
@@ -40,10 +44,14 @@ fn uncompress_state(network: &Eth2NetArchiveAndDirectory<'static>) -> Result<(),
         let mut file = archive
             .by_name(GENESIS_FILE_NAME)
             .map_err(|e| format!("Error retrieving file {GENESIS_FILE_NAME} inside zip: {e}"))?;
-        let mut outfile = File::create(&genesis_ssz_path)
-            .map_err(|e| format!("Error while creating file {genesis_ssz_path:?}: {e}"))?;
+        let mut outfile = File::create(&genesis_ssz_path).map_err(|e| {
+            format!(
+                "Error while creating file {}: {e}",
+                genesis_ssz_path.display()
+            )
+        })?;
         io::copy(&mut file, &mut outfile)
-            .map_err(|e| format!("Error writing file {genesis_ssz_path:?}: {e}"))?;
+            .map_err(|e| format!("Error writing file {}: {e}", genesis_ssz_path.display()))?;
     } else {
         // Create empty genesis.ssz if genesis is unknown or to be downloaded via URL.
         // This is a bit of a hack to make `include_bytes!` easier to deal with.

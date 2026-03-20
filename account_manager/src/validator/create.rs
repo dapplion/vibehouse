@@ -146,8 +146,8 @@ pub fn cli_run<E: EthSpec>(
     // The command will always fail if the wallet dir does not exist.
     if !wallet_base_dir.exists() {
         return Err(format!(
-            "No wallet directory at {:?}. Use the `vibehouse --network {} {} {} {}` command to create a wallet",
-            wallet_base_dir,
+            "No wallet directory at {}. Use the `vibehouse --network {} {} {} {}` command to create a wallet",
+            wallet_base_dir.display(),
             matches
                 .get_one::<String>("network")
                 .map_or("<NETWORK>", |s| s.as_str()),
@@ -157,13 +157,21 @@ pub fn cli_run<E: EthSpec>(
         ));
     }
 
-    create_dir_all(&validator_dir)
-        .map_err(|e| format!("Could not create validator dir at {validator_dir:?}: {e:?}"))?;
-    create_dir_all(&secrets_dir)
-        .map_err(|e| format!("Could not create secrets dir at {secrets_dir:?}: {e:?}"))?;
+    create_dir_all(&validator_dir).map_err(|e| {
+        format!(
+            "Could not create validator dir at {}: {e:?}",
+            validator_dir.display()
+        )
+    })?;
+    create_dir_all(&secrets_dir).map_err(|e| {
+        format!(
+            "Could not create secrets dir at {}: {e:?}",
+            secrets_dir.display()
+        )
+    })?;
 
-    eprintln!("secrets-dir path {secrets_dir:?}");
-    eprintln!("wallets-dir path {wallet_base_dir:?}");
+    eprintln!("secrets-dir path {}", secrets_dir.display());
+    eprintln!("wallets-dir path {}", wallet_base_dir.display());
 
     let starting_validator_count = existing_validator_count(&validator_dir)?;
 
@@ -269,7 +277,7 @@ fn existing_validator_count<P: AsRef<Path>>(validator_dir: P) -> Result<usize, S
                 })
                 .count()
         })
-        .map_err(|e| format!("Unable to read {:?}: {}", validator_dir.as_ref(), e))
+        .map_err(|e| format!("Unable to read {}: {}", validator_dir.as_ref().display(), e))
 }
 
 /// Used when a user is accessing an existing wallet. Read in a wallet password from a file if the password file
@@ -281,7 +289,7 @@ pub fn read_wallet_password_from_cli(
 ) -> Result<PlainText, String> {
     if let Some(path) = password_file_path {
         fs::read(&path)
-            .map_err(|e| format!("Unable to read {path:?}: {e:?}"))
+            .map_err(|e| format!("Unable to read {}: {e:?}", path.display()))
             .map(|bytes| strip_off_newlines(bytes).into())
     } else {
         eprintln!();

@@ -117,10 +117,10 @@ pub fn cli_run(matches: &ArgMatches, validator_dir: PathBuf) -> Result<(), Strin
             let mut keystores = vec![];
 
             recursively_find_voting_keystores(&keystores_dir, &mut keystores)
-                .map_err(|e| format!("Unable to search {keystores_dir:?}: {e:?}"))?;
+                .map_err(|e| format!("Unable to search {}: {e:?}", keystores_dir.display()))?;
 
             if keystores.is_empty() {
-                eprintln!("No keystores found in {keystores_dir:?}");
+                eprintln!("No keystores found in {}", keystores_dir.display());
                 return Ok(());
             }
 
@@ -148,11 +148,15 @@ pub fn cli_run(matches: &ArgMatches, validator_dir: PathBuf) -> Result<(), Strin
     let mut previous_password: Option<Zeroizing<String>> = None;
 
     for src_keystore in &keystore_paths {
-        let keystore = Keystore::from_json_file(src_keystore)
-            .map_err(|e| format!("Unable to read keystore JSON {src_keystore:?}: {e:?}"))?;
+        let keystore = Keystore::from_json_file(src_keystore).map_err(|e| {
+            format!(
+                "Unable to read keystore JSON {}: {e:?}",
+                src_keystore.display()
+            )
+        })?;
 
         eprintln!();
-        eprintln!("Keystore found at {src_keystore:?}:");
+        eprintln!("Keystore found at {}:", src_keystore.display());
         eprintln!();
         eprintln!(" - Public key: 0x{}", keystore.pubkey());
         eprintln!(" - UUID: {}", keystore.uuid());
@@ -177,7 +181,7 @@ pub fn cli_run(matches: &ArgMatches, validator_dir: PathBuf) -> Result<(), Strin
 
             let password = if let Some(path) = keystore_password_path.as_ref() {
                 let password_from_file: Zeroizing<String> = fs::read_to_string(path)
-                    .map_err(|e| format!("Unable to read {path:?}: {e:?}"))?
+                    .map_err(|e| format!("Unable to read {}: {e:?}", path.display()))?
                     .into();
                 password_from_file
                     .trim_end_matches(['\r', '\n'])
@@ -232,7 +236,10 @@ pub fn cli_run(matches: &ArgMatches, validator_dir: PathBuf) -> Result<(), Strin
                 eprintln!("Password updated for public key {voting_pubkey}");
             }
 
-            eprintln!("Skipping import of keystore for existing public key: {src_keystore:?}");
+            eprintln!(
+                "Skipping import of keystore for existing public key: {}",
+                src_keystore.display()
+            );
             continue;
         }
 
@@ -244,7 +251,7 @@ pub fn cli_run(matches: &ArgMatches, validator_dir: PathBuf) -> Result<(), Strin
             .file_name()
             .and_then(|file_name| file_name.to_str())
             .map(|file_name_str| dest_dir.join(file_name_str))
-            .ok_or_else(|| format!("Badly formatted file name: {src_keystore:?}"))?;
+            .ok_or_else(|| format!("Badly formatted file name: {}", src_keystore.display()))?;
 
         // Copy the keystore to the new location.
         fs::copy(src_keystore, &dest_keystore)
