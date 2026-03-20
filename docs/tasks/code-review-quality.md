@@ -2973,7 +2973,7 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **Code audit**: Full codebase scan — zero TODOs, zero FIXMEs, zero HACKs in production code. No unwraps in non-test code (except debug dump function). Clippy clean across workspace.
 - **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
 
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
+No actionable code changes. All priorities 1-6 complete.
 
 ### Run 2024 (2026-03-20)
 
@@ -2986,3 +2986,14 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
 
 No actionable code changes. All priorities 1-6 complete. Codebase stable.
+
+### Run 2025 (2026-03-20)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since #5005 (March 15). All tracked open PRs remain open: #4843 (Variable PTC deadline), #4979 (PTC lookbehind), #4992 (cached PTCs), #5022 (on_payload_attestation block check), #5020 (PTC lookbehind minimal), #5008 (field name fix). None merged.
+- **CI**: Latest commit (fork boundary test) — all 7 jobs green: check+clippy+fmt, ef-tests, network+op_pool, http_api, beacon_chain, unit tests, ci-success. Nightly: 3 consecutive days green (March 18-20).
+- **Nightly flake review**: March 17 failure (`finalized_sync_not_enough_custody_peers_on_start`) was already fixed same day by commit 8f8faa7de. March 16 failure (`override_backend_with_mdbx_file_present`) is the known slasher CI flake with improved diagnostics. Both resolved.
+- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
+
+No actionable work found. All priorities 1-6 complete. Codebase stable.
