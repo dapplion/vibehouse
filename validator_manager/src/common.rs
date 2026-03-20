@@ -104,7 +104,7 @@ impl ValidatorSpecification {
             Err(e) => {
                 return Err(UploadError::FailedToListKeys(e));
             }
-        };
+        }
 
         let mut statuses = http_client
             .post_keystores(&request)

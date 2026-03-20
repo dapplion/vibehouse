@@ -243,6 +243,6 @@ pub async fn build_node_pair(
             debug!(address = ?receiver_multiaddr, "Sender dialed receiver");
         }
         Err(_) => error!("Dialing failed"),
-    };
+    }
     (sender, receiver)
 }

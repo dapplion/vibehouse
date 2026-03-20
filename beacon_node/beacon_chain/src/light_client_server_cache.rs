@@ -149,7 +149,7 @@ impl<T: BeaconChainTypes> LightClientServerCache<T> {
                 signature_slot,
                 chain_spec,
             )?);
-        };
+        }
 
         // Spec: Full nodes SHOULD provide the LightClientFinalityUpdate with the highest
         // attested_header.beacon.slot (if multiple, highest signature_slot) as selected by fork choice
@@ -223,7 +223,7 @@ impl<T: BeaconChainTypes> LightClientServerCache<T> {
             && latest_sync_committee == cached_parts.current_sync_committee
         {
             return Ok(());
-        };
+        }
 
         if finalized_period + 1 >= sync_committee_period {
             store.store_sync_committee(

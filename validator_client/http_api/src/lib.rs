@@ -201,7 +201,7 @@ pub fn serve<T: 'static + SlotClock + Clone, E: EthSpec>(
                 "Error canonicalizing token path"
             );
         }
-    };
+    }
 
     let auth_header_values = ctx.api_secret.auth_header_values();
 

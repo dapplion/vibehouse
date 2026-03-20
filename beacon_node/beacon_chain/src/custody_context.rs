@@ -167,7 +167,7 @@ impl ValidatorRegistrations {
 
             self.epoch_validator_custody_requirements
                 .insert(effective_epoch, latest_validator_custody_requirements);
-        };
+        }
     }
 }
 

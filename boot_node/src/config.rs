@@ -68,7 +68,7 @@ impl<E: EthSpec> BootNodeConfig<E> {
                         .map_err(|_| "boot node enr-udp-port not set and listening port is zero")?,
                 ),
             );
-        };
+        }
 
         if let Some(listening_addr_v6) = network_config.listen_addrs().v6()
             && network_config.enr_udp6_port.is_none()
@@ -81,7 +81,7 @@ impl<E: EthSpec> BootNodeConfig<E> {
                         .map_err(|_| "boot node enr-udp-port not set and listening port is zero")?,
                 ),
             );
-        };
+        }
 
         // By default this is enabled. If it is not set, revert to false.
         if !matches.get_flag("enable-enr-auto-update") {

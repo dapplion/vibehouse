@@ -158,7 +158,7 @@ pub async fn publish_attestations<T: BeaconChainTypes>(
                         })) => {
                             if !allow_reprocess {
                                 return PublishAttestationResult::Failure(Error::ReprocessDisabled);
-                            };
+                            }
                             // Re-process.
                             let (tx, rx) = oneshot::channel();
                             let reprocess_chain = chain.clone();

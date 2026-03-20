@@ -39,7 +39,7 @@ pub fn test_random_derive(input: TokenStream) -> TokenStream {
                 }
             }
             _ => panic!("test_random_derive only supports named struct fields."),
-        };
+        }
     }
 
     let output = quote! {

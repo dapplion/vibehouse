@@ -118,7 +118,7 @@ pub fn run_parse_ssz<E: EthSpec>(
         }
         "BlobSidecar" => decode_and_print(&bytes, BlobSidecar::<E>::from_ssz_bytes, format)?,
         other => return Err(format!("Unknown type: {}", other)),
-    };
+    }
 
     Ok(())
 }

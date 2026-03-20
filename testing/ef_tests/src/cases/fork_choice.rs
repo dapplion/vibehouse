@@ -584,7 +584,7 @@ impl<E: EthSpec> Tester<E> {
             if valid {
                 assert!(result.is_ok());
             }
-        };
+        }
 
         let block = Arc::new(block);
         let result: Result<Result<Hash256, ()>, _> = self
@@ -674,7 +674,7 @@ impl<E: EthSpec> Tester<E> {
                     assert!(result.is_ok());
                 }
             }
-        };
+        }
 
         let block = Arc::new(block);
         let result: Result<Result<Hash256, ()>, _> = self

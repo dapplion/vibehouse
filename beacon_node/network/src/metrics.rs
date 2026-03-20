@@ -824,7 +824,7 @@ pub fn update_gossip_metrics<E: EthSpec>(
                             get_int_gauge(&BEACON_BLOCK_MESH_PEERS_PER_CLIENT, &[client])
                         {
                             v.inc();
-                        };
+                        }
                     }
                 }
                 GossipKind::BeaconAggregateAndProof => {
@@ -839,7 +839,7 @@ pub fn update_gossip_metrics<E: EthSpec>(
                             &[client],
                         ) {
                             v.inc();
-                        };
+                        }
                     }
                 }
                 GossipKind::SyncCommitteeMessage(_subnet_id) => {}
@@ -857,7 +857,7 @@ pub fn update_sync_metrics<E: EthSpec>(network_globals: &Arc<NetworkGlobals<E>>)
         .is_err()
     {
         return;
-    };
+    }
 
     // count per sync status, the number of connected peers
     let mut peers_per_sync_type = FnvHashMap::default();

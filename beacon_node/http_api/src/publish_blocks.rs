@@ -200,7 +200,7 @@ pub async fn publish_block<T: BeaconChainTypes, B: IntoGossipVerifiedBlock<T>>(
                         seen_timestamp,
                     )?;
                 }
-            };
+            }
         }
 
         publish_fn_completed.store(true, Ordering::SeqCst);

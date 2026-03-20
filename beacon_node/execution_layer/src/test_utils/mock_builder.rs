@@ -696,7 +696,7 @@ impl<E: EthSpec> MockBuilder<E> {
 
         if *self.invalidate_signatures.read() {
             signature = Signature::empty();
-        };
+        }
         let signed_bid = SignedBuilderBid { message, signature };
         info!("Builder bid {:?}", &signed_bid.message.value());
         Ok(signed_bid)

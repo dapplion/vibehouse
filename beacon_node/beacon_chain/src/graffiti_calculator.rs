@@ -218,7 +218,7 @@ async fn engine_version_cache_refresh_service<T: BeaconChainTypes>(
                 // If we can't read the slot clock, just wait another slot.
                 tokio::time::sleep(slot_clock.slot_duration()).await;
             }
-        };
+        }
     }
 }
 

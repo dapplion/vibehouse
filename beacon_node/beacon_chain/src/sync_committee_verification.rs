@@ -320,7 +320,7 @@ impl<T: BeaconChainTypes> VerifiedSyncContribution<T> {
 
         if !sync_subcommittee_pubkeys.contains(&pubkey_bytes) {
             return Err(Error::AggregatorNotInCommittee { aggregator_index });
-        };
+        }
 
         // Ensure the valid sync contribution or its superset has not already been seen locally.
         let contribution_data_root = SyncCommitteeData {

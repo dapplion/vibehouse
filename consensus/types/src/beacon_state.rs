@@ -2439,7 +2439,7 @@ impl<E: EthSpec> BeaconState<E> {
                     any_pending_mutations |= self_field.has_pending_updates();
                 });
             }
-        };
+        }
         any_pending_mutations
     }
 

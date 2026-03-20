@@ -1179,7 +1179,7 @@ impl InitializedValidators {
                 }
                 // Remote signer validators don't interact with the key cache.
                 SigningDefinition::Web3Signer { .. } => (),
-            };
+            }
         }
 
         //decrypt
@@ -1364,12 +1364,10 @@ impl InitializedValidators {
 
         let validators_dir = self.validators_dir.clone();
         if has_local_definitions && key_cache.is_modified() {
-            tokio::task::spawn_blocking(move || {
-                match key_cache.save(validators_dir) {
-                    Err(e) => warn!(err = format!("{:?}", e), "Error during saving of key_cache"),
-                    Ok(true) => info!("Modified key_cache saved successfully"),
-                    _ => {}
-                };
+            tokio::task::spawn_blocking(move || match key_cache.save(validators_dir) {
+                Err(e) => warn!(err = format!("{:?}", e), "Error during saving of key_cache"),
+                Ok(true) => info!("Modified key_cache saved successfully"),
+                _ => {}
             })
             .await
             .map_err(Error::TokioJoin)?;
@@ -1420,7 +1418,7 @@ impl InitializedValidators {
                 }
                 // Remote signers don't have passwords.
                 SigningDefinition::Web3Signer { .. } => (),
-            };
+            }
         }
 
         self.definitions

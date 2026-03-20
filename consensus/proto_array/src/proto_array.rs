@@ -1066,7 +1066,7 @@ impl ProtoArray {
                 // Proto-array only prunes blocks prior to the finalized block,
                 // so this means the parent conflicts with finality.
                 return false;
-            };
+            }
         }
     }
 

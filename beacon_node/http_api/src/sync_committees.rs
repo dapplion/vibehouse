@@ -335,7 +335,7 @@ pub fn process_signed_contribution_and_proofs<T: BeaconChainTypes>(
                 "Unable to broadcast latest light client optimistic update"
             );
         });
-    };
+    }
 
     if let Some(latest_finality_update) = chain
         .light_client_server_cache
@@ -351,7 +351,7 @@ pub fn process_signed_contribution_and_proofs<T: BeaconChainTypes>(
                 "Unable to broadcast latest light client finality update"
             );
         });
-    };
+    }
 
     // Verify contributions & broadcast to the network.
     for (index, contribution) in signed_contribution_and_proofs.into_iter().enumerate() {

@@ -950,7 +950,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
                         "Request exceeded max retries, failing batch"
                     );
                     entry.remove();
-                };
+                }
             } else {
                 // also remove the entry only if it coupled successfully
                 // or if it isn't a column peer failure.

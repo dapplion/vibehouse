@@ -1101,7 +1101,7 @@ impl TestRig {
             Availability::MissingComponents(block_root) => {
                 self.log(&format!("inserted block to da_checker {block_root:?}"));
             }
-        };
+        }
     }
 
     fn insert_blob_to_da_checker(&mut self, blob: BlobSidecar<E>) {
@@ -1121,7 +1121,7 @@ impl TestRig {
             Availability::MissingComponents(block_root) => {
                 self.log(&format!("inserted blob to da_checker {block_root:?}"));
             }
-        };
+        }
     }
 
     fn insert_block_to_availability_cache(&mut self, block: Arc<SignedBeaconBlock<E>>) {

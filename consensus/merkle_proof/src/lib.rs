@@ -142,11 +142,11 @@ impl MerkleTree {
                                 *right = MerkleTree::create(&[elem], depth - 1);
                             }
                             Err(e) => return Err(e),
-                        };
+                        }
                     }
                     // All other possibilities are invalid MerkleTrees
                     (_, _) => return Err(MerkleTreeError::Invalid),
-                };
+                }
                 hash.copy_from_slice(&hash32_concat(
                     left.hash().as_slice(),
                     right.hash().as_slice(),

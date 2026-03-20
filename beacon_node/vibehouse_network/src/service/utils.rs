@@ -243,7 +243,7 @@ pub fn load_or_build_metadata<E: EthSpec>(
                 }
             }
         }
-    };
+    }
 
     debug!(seq_num = meta_data.seq_number, "Metadata sequence number");
     let meta_data = MetaData::V3(meta_data);

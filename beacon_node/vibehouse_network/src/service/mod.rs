@@ -556,7 +556,7 @@ impl<E: EthSpec> Network<E> {
                     );
                     return Err("Libp2p was unable to listen on the given listen address.".into());
                 }
-            };
+            }
         }
 
         // helper closure for dialing peers
@@ -568,7 +568,7 @@ impl<E: EthSpec> Network<E> {
                 Err(err) => {
                     debug!(address = %multiaddr, error = ?err, "Could not connect to peer");
                 }
-            };
+            }
         };
 
         // attempt to connect to user-input libp2p nodes
@@ -865,7 +865,7 @@ impl<E: EthSpec> Network<E> {
                                 &[subnet_id.as_ref()],
                             ) {
                                 v.inc();
-                            };
+                            }
                         }
                         kind => {
                             if let Some(v) = metrics::get_int_gauge(
@@ -873,7 +873,7 @@ impl<E: EthSpec> Network<E> {
                                 &[&format!("{:?}", kind)],
                             ) {
                                 v.inc();
-                            };
+                            }
                         }
                     }
 
@@ -1848,7 +1848,7 @@ impl<E: EthSpec> Network<E> {
                                 &[expired_topic.kind().as_ref()],
                             ) {
                                 v.inc();
-                            };
+                            }
                         }
                     }
                 }
@@ -1948,7 +1948,7 @@ impl<E: EthSpec> Network<E> {
                     Err(reason) => {
                         crit!(?addresses, ?reason, "Listener abruptly closed");
                     }
-                };
+                }
                 if Swarm::listeners(&self.swarm).count() == 0 {
                     Some(NetworkEvent::ZeroListeners)
                 } else {

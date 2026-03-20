@@ -98,7 +98,7 @@ where
                 .map(|c| if is_ascii_control(c) { b'_' } else { *c })
                 .collect::<Vec<u8>>();
             visitor.message = String::from_utf8(filtered).unwrap_or_default();
-        };
+        }
 
         let module = meta.module_path().unwrap_or("<unknown_module>");
         let file = meta.file().unwrap_or("<unknown_file>");

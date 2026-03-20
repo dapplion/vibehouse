@@ -397,7 +397,7 @@ async fn run(config: MoveConfig) -> Result<(), String> {
                             required."
                         );
                     }
-                };
+                }
 
                 return Err(format!("Deleting {:?} failed with {:?}", pubkey_to_move, e));
             }

@@ -1474,7 +1474,7 @@ impl<E: EthSpec> BeaconProcessor<E> {
                             }
                             Work::ApiRequestP0 { .. } => api_request_p0_queue.push(work, work_id),
                             Work::ApiRequestP1 { .. } => api_request_p1_queue.push(work, work_id),
-                        };
+                        }
                         Some(work_type)
                     }
                 };
@@ -1724,7 +1724,7 @@ impl<E: EthSpec> BeaconProcessor<E> {
                 BlockingOrAsync::Async(process_fn) => task_spawner.spawn_async(process_fn),
             },
             Work::Reprocess(_) => {}
-        };
+        }
     }
 }
 

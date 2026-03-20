@@ -99,7 +99,7 @@ impl BlockId {
                         "beacon block with root {}",
                         root
                     )));
-                };
+                }
                 if chain
                     .store
                     .block_exists(root)

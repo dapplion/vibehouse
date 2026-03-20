@@ -184,7 +184,7 @@ impl<T: BeaconChainTypes> ActiveCustodyRequest<T> {
                         .on_download_error_and_mark_failure(req_id)?;
                 }
             }
-        };
+        }
 
         self.continue_requests(cx)
     }

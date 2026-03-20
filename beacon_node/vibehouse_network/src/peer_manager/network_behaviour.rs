@@ -292,7 +292,7 @@ impl<E: EthSpec> PeerManager<E> {
                 self.events
                     .push(PeerManagerEvent::PeerConnectedOutgoing(peer_id));
             }
-        };
+        }
     }
 
     fn on_connection_closed(

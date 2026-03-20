@@ -171,7 +171,7 @@ impl<'a> Builder<'a> {
             && self.withdrawal_keystore.is_none()
         {
             return Err(Error::UninitializedWithdrawalKeystore);
-        };
+        }
 
         if let Some((withdrawal_keystore, withdrawal_password)) = self.withdrawal_keystore {
             // Attempt to decrypt the voting keypair.

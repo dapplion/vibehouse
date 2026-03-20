@@ -350,7 +350,7 @@ impl<T: BeaconChainTypes> SubnetService<T> {
             && let Err(e) = self.discover_peers_request(subnets_to_discover.into_iter())
         {
             warn!(error = e, "Discovery lookup request error");
-        };
+        }
     }
 
     /// Checks if we have subscribed aggregate validators for the subnet. If not, checks the gossip

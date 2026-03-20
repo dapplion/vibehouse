@@ -1624,7 +1624,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                         ?block_root,
                         "Failed to inform block import"
                     );
-                };
+                }
 
                 debug!(
                     ?block_root,
@@ -1727,7 +1727,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     "Invalid gossip beacon block ssz"
                 );
             }
-        };
+        }
 
         if let Err(e) = &result {
             self.maybe_store_invalid_block(&invalid_block_storage, block_root, &block, e);
@@ -2159,7 +2159,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 }
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
             }
-        };
+        }
     }
 
     pub fn process_gossip_optimistic_update(
@@ -2288,7 +2288,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 }
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
             }
-        };
+        }
     }
 
     /// Handle an error whilst verifying an `Attestation` or `SignedAggregateAndProof` from the
@@ -4186,7 +4186,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
                 return;
             }
-        };
+        }
 
         // [IGNORE] first valid message for this validator+slot
         if self.chain.get_proposer_preferences(proposal_slot).is_some() {

@@ -178,7 +178,7 @@ async fn state_advance_timer<T: BeaconChainTypes>(
                             reason = ?other,
                             "Did not advance head state"
                         ),
-                    };
+                    }
 
                     // Permit this blocking task to spawn again, next time the timer fires.
                     is_running.unlock();

@@ -829,7 +829,7 @@ impl<'a, T: BeaconChainTypes> VerifiedAggregatedAttestation<'a, T> {
                 }
             }
             CheckAttestationSignature::No => (),
-        };
+        }
 
         if let Err(e) =
             Self::verify_late_checks(signed_aggregate, observed_attestation_key_root, chain)
@@ -1077,7 +1077,7 @@ impl<'a, T: BeaconChainTypes> VerifiedUnaggregatedAttestation<'a, T> {
                 received: subnet_id,
                 expected: expected_subnet_id,
             });
-        };
+        }
         // Now that the attestation has been fully verified, store that we have received a valid
         // attestation from this validator.
         //
@@ -1161,7 +1161,7 @@ impl<'a, T: BeaconChainTypes> VerifiedUnaggregatedAttestation<'a, T> {
                 }
             }
             CheckAttestationSignature::No => (),
-        };
+        }
 
         let (unaggregated_attestation, subnet_id) =
             match Self::verify_late_checks(attestation, validator_index, subnet_id, chain) {

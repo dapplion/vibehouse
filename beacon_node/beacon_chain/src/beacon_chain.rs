@@ -1592,7 +1592,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                             );
                             return Err(Error::NoStateForSlot(slot));
                         }
-                    };
+                    }
                 }
                 Ok(state)
             }
@@ -2194,7 +2194,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 // the VC and BN are out-of-sync due to time issues or overloading.
                 beacon_block_root = *head_state.get_block_root(request_slot)?;
                 beacon_state_root = *head_state.get_state_root(request_slot)?;
-            };
+            }
 
             let target_slot = request_epoch.start_slot(T::EthSpec::slots_per_epoch());
             let target_root = if head_state.slot() <= target_slot {
@@ -2271,7 +2271,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 });
             }
             None => return Err(Error::HeadMissingFromForkChoice(beacon_block_root)),
-        };
+        }
 
         /*
          *  Phase 2/2:
@@ -3758,7 +3758,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 );
                 return Err(Error::from(e).into());
             }
-        };
+        }
 
         Ok(())
     }
@@ -3818,7 +3818,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         );
                         return Err(Error::from(e).into());
                     }
-                };
+                }
             }
         }
         Ok(verified_sync_committee_message)
@@ -4993,7 +4993,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                             "Beacon block processing error"
                         );
                     }
-                };
+                }
                 Err(BlockError::BeaconChainError(e))
             }
             // The block failed verification.
@@ -8135,7 +8135,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                             error= ?e,
                             "Failed to validate payload"
                         );
-                    };
+                    }
                     Ok(())
                 }
                 // There's nothing to be done for a syncing response. If the block is already
@@ -8948,7 +8948,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             }
         } else {
             return Ok(ChainHealth::PreMerge);
-        };
+        }
 
         // Check that the parent is NOT optimistic.
         if let Some(execution_status) = self

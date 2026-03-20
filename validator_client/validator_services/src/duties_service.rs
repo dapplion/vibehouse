@@ -1455,7 +1455,7 @@ async fn fill_in_selection_proofs<S: ValidatorStore + 'static, T: SlotClock + 's
                     }
                 }
                 drop(attesters);
-            };
+            }
 
             let time_taken_ms = Duration::from_secs_f64(
                 timer.map_or(0.0, validator_metrics::HistogramTimer::stop_and_record),
@@ -1827,7 +1827,7 @@ async fn notify_block_production_service<S: ValidatorStore>(
             error = %e,
             "Failed to notify block service"
         );
-    };
+    }
 }
 
 #[cfg(test)]

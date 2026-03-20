@@ -147,7 +147,7 @@ impl<E: EthSpec> Case for RewardsTest<E> {
             let expected = all_deltas_to_total_deltas(&self.deltas);
 
             compare_result_detailed(&deltas, &Some(expected))?;
-        };
+        }
 
         Ok(())
     }

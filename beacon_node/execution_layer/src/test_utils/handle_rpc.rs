@@ -231,7 +231,7 @@ pub async fn handle_rpc<E: EthSpec>(
                     }
                 }
                 _ => unreachable!(),
-            };
+            }
 
             // Canned responses set by block hash take priority.
             if let Some(status) = ctx.get_new_payload_status(request.block_hash()) {
@@ -584,7 +584,7 @@ pub async fn handle_rpc<E: EthSpec>(
                         }
                     }
                     _ => unreachable!(),
-                };
+                }
             }
 
             if let Some(hook_response) = ctx

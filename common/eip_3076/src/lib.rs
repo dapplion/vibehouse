@@ -133,7 +133,7 @@ impl Interchange {
                 }
                 (None, None) => {}
                 _ => return Err(Error::MaxInconsistent),
-            };
+            }
 
             // Find maximum block slot.
             let max_block_slot = data.signed_blocks.iter().map(|block| block.slot).max();

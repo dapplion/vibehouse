@@ -811,7 +811,7 @@ fn run<E: EthSpec>(
             );
         }
         Err(_) => (),
-    };
+    }
 
     info!(version = VERSION, "vibehouse started");
     info!(network_name, "Configured network");
@@ -851,7 +851,7 @@ fn run<E: EthSpec>(
             crit!("No subcommand supplied. See --help .");
             return Err("No subcommand supplied.".into());
         }
-    };
+    }
 
     // Block this thread until we get a ctrl-c or a task sends a shutdown signal.
     let shutdown_reason = environment.block_until_shutdown_requested()?;

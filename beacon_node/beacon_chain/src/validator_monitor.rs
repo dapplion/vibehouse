@@ -1385,7 +1385,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
                             validator = %id,
                             "Attestation included in aggregate"
                         );
-                    };
+                    }
                 }
 
                 validator.with_epoch_summary(epoch, |summary| {

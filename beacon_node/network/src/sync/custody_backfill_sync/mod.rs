@@ -833,7 +833,7 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
                     "Unable to update data column custody info, restarting sync"
                 );
                 self.restart_sync();
-            };
+            }
             self.processing_target -= BACKFILL_EPOCHS_PER_BATCH;
         }
 

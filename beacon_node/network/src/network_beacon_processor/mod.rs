@@ -923,7 +923,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                             block_root,
                         );
                     }
-                };
+                }
             }
         };
 

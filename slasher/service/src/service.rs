@@ -141,7 +141,7 @@ impl<T: BeaconChainTypes> SlasherService<T> {
                     "Error during slasher database pruning"
                 );
                 continue;
-            };
+            }
 
             // Provide slashings to the beacon chain, and optionally publish them.
             Self::process_slashings(&beacon_chain, &slasher, &network_sender);

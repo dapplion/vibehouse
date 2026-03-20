@@ -144,7 +144,7 @@ impl<E: EthSpec> OperationPool<E> {
                     }
                 }
             }
-        };
+        }
         Ok(())
     }
 

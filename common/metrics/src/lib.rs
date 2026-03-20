@@ -201,7 +201,7 @@ pub fn set_gauge_entry<P: Atomic>(
 ) {
     if let Some(v) = get_gauge(gauge_vec, name) {
         v.set(value);
-    };
+    }
 }
 
 /// If `int_gauge_vec.is_ok()`, sets the gauge with the given `name` to the given `value`

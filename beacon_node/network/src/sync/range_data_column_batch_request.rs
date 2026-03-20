@@ -283,7 +283,7 @@ impl<T: BeaconChainTypes> RangeDataColumnBatchRequest<T> {
                 for column in missing_columns {
                     if let Some(naughty_peer) = column_to_peer.get(column) {
                         naughty_peers.push((*column, *naughty_peer));
-                    };
+                    }
                 }
             }
 

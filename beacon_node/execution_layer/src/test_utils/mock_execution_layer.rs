@@ -237,7 +237,7 @@ impl<E: EthSpec> MockExecutionLayer<E> {
                 )
                 .await;
             }
-        };
+        }
 
         self
     }

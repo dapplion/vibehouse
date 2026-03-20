@@ -17,7 +17,7 @@ impl fmt::Debug for PrettyReqwestError {
                 write!(f, "url: {}", url)?;
             } else {
                 write!(f, "url: unable_to_parse")?;
-            };
+            }
         }
 
         let kind = if self.0.is_builder() {

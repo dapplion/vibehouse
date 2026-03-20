@@ -197,7 +197,7 @@ impl<E: EthSpec> Hash for IndexedAttestation<E> {
         match self {
             IndexedAttestation::Base(att) => att.attesting_indices.hash(state),
             IndexedAttestation::Electra(att) => att.attesting_indices.hash(state),
-        };
+        }
         self.data().hash(state);
         self.signature().serialize().hash(state);
     }

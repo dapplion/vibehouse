@@ -406,7 +406,7 @@ where
                     ));
                 }
                 Poll::Pending => {}
-            };
+            }
         }
 
         // purge expired inbound substreams and send an error
@@ -642,7 +642,7 @@ where
                                 info.state = InboundState::Busy(fut);
                                 break;
                             }
-                        };
+                        }
                     }
                     InboundState::Poisoned => unreachable!("Poisoned inbound substream"),
                 }
@@ -955,7 +955,7 @@ where
                 }
             }
             _ => {}
-        };
+        }
 
         let max_responses = req.max_responses(
             self.fork_context.current_fork_epoch(),

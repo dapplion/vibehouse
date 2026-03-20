@@ -662,7 +662,7 @@ impl HttpJsonRpc {
         // Generate and add a jwt token to the header if auth is defined.
         if let Some(auth) = &self.auth {
             request = request.bearer_auth(auth.generate_token()?);
-        };
+        }
 
         let body: JsonResponseBody = request.send().await?.error_for_status()?.json().await?;
 

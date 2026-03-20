@@ -355,7 +355,7 @@ pub fn encrypt(
             .expect("AES key/IV length validated");
             cipher.apply_keystream(&mut cipher_text);
         }
-    };
+    }
 
     let checksum = generate_checksum(&derived_key, &cipher_text);
 
@@ -403,7 +403,7 @@ pub fn decrypt(password: &[u8], crypto: &Crypto) -> Result<PlainText, Error> {
             .expect("AES key/IV length validated");
             cipher.apply_keystream(plain_text.as_mut_bytes());
         }
-    };
+    }
     Ok(plain_text)
 }
 

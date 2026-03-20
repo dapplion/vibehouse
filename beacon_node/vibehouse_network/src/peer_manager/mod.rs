@@ -794,7 +794,7 @@ impl<E: EthSpec> PeerManager<E> {
                             );
                             invalid_meta_data = true;
                         }
-                    };
+                    }
                 }
             }
         } else {

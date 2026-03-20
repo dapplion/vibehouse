@@ -152,7 +152,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 .is_err()
             {
                 error!(source = "rpc", %block_root,"Failed to inform block import");
-            };
+            }
             return;
         };
 
@@ -208,7 +208,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                         block_root = %hash,
                         "Failed to inform block import"
                     );
-                };
+                }
                 self.chain.block_times_cache.write().set_time_observed(
                     *hash,
                     slot,

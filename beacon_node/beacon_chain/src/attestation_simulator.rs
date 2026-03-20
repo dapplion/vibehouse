@@ -54,7 +54,7 @@ async fn attestation_simulator_service<T: BeaconChainTypes>(
                 // If we can't read the slot clock, just wait another slot.
                 sleep(slot_duration).await;
             }
-        };
+        }
     }
 }
 

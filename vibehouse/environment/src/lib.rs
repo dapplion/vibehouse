@@ -396,7 +396,7 @@ impl<E: EthSpec> Environment<E> {
                     handles.push(terminate);
                 }
                 Err(e) => error!(error = ?e, "Could not register SIGTERM handler"),
-            };
+            }
 
             // setup for handling SIGINT
             match signal(SignalKind::interrupt()) {

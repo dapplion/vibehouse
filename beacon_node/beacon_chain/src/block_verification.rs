@@ -1072,7 +1072,7 @@ impl<T: BeaconChainTypes> GossipVerifiedBlock<T> {
                 return Err(BlockError::DuplicateImportStatusUnknown(block_root));
             }
             SeenBlock::UniqueNonSlashable => {}
-        };
+        }
 
         if block.message().proposer_index() != expected_proposer as u64 {
             return Err(BlockError::IncorrectBlockProposer {
@@ -1472,7 +1472,7 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
             //   calls to remote servers.
             if is_valid_merge_transition_block {
                 validate_merge_block(&chain, block.message(), AllowOptimisticImport::Yes).await?;
-            };
+            }
 
             // The specification declares that this should be run *inside* `per_block_processing`,
             // however we run it here to keep `per_block_processing` pure (i.e., no calls to external
@@ -1564,7 +1564,7 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
                     let mut ops = vec![];
                     chain.store.store_hot_state(&state_root, &state, &mut ops)?;
                     chain.store.hot_db.do_atomically(ops)?;
-                };
+                }
 
                 state_root
             };
@@ -1664,7 +1664,7 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
                 BlockProcessingError::BeaconStateError(e) => return Err(e.into()),
                 other => return Err(BlockError::PerBlockProcessingError(other)),
             }
-        };
+        }
 
         metrics::stop_timer(core_timer);
 

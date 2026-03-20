@@ -123,7 +123,7 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
             fdlimit::Outcome::Unsupported => {
                 debug!("Raising soft open file descriptor resource limit is not supported");
             }
-        };
+        }
 
         info!(
             beacon_nodes = ?config.beacon_nodes,
@@ -169,7 +169,7 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
                 context.executor.clone(),
                 vec![ProcessType::Validator, ProcessType::System],
             );
-        };
+        }
 
         let mut validator_defs = ValidatorDefinitions::open_or_create(&config.validator_dir)
             .map_err(|e| format!("Unable to open or create validator definitions: {:?}", e))?;

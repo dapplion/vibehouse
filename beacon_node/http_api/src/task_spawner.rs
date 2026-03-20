@@ -141,7 +141,7 @@ impl<E: EthSpec> TaskSpawner<E> {
 
             if let Some(error_message) = error_message {
                 return Err(ApiError::server_error(error_message));
-            };
+            }
 
             Ok(())
         } else {
