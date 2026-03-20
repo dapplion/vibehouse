@@ -2718,3 +2718,20 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
 
 No actionable work found. All priorities 1-6 complete. Codebase stable.
+
+### Run 2002 (2026-03-20)
+
+**Monitoring run — no code changes.**
+
+- **Clippy**: zero warnings across entire workspace.
+- **CI**: Latest run (wildcard import commit) — check+clippy+fmt ✓, ef-tests ✓, integration tests in progress. Previous run fully green.
+- **Nightly**: 3 consecutive days green (March 18-20).
+- **Spec**: v1.7.0-alpha.3 still latest. No new PRs merged since March 15. Notable APPROVED (not merged) PRs to watch:
+  - **#4843** (Variable PTC deadline) — new config params, changes beacon-chain/fork-choice/validator timing. Would require config additions, slot timing changes, validator PTC deadline calculation.
+  - **#4898** (Remove pending status from tiebreaker) — fork-choice simplification, removes redundant pending comparison in `get_head` tiebreaker.
+  - **#4892** (Remove impossible branch in forkchoice) — we already use `==` not `<=`, already compliant.
+  - **#4992** (Add cached PTCs to state) — APPROVED, adds new BeaconState fields for PTC lookbehind cache. Would require new state fields, processing logic.
+- **TODOs**: 11 remaining, all blocked on external dependencies (EIP-7892 ×3, blst safe API, PeerDAS checkpoint sync, non-critical refactors).
+- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
+
+No actionable work found. All priorities 1-6 complete. Codebase stable.
