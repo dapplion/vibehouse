@@ -2306,3 +2306,11 @@ Spec v1.7.0-alpha.3 still latest — no new releases. 2127 targeted tests pass +
 Note: ~109 `default_trait_access` warnings remain in superstruct-generated code (e.g., `execution_payload_header.rs:149` expands to 6 variant-specific warnings) and scattered non-types crates. The superstruct ones are unfixable in our code. Remaining pedantic lints (~5000+) are dominated by `missing_errors_doc` (1564), `must_use_candidate` (1306), `doc_markdown` (1015), `cast_possible_truncation` (631) — all noise-level lints not worth fixing.
 
 Spec v1.7.0-alpha.3 still latest — no new releases. Recent merged spec PRs: #5005 (test fix), #5002 (wording). Notable open PRs: #5022 (block known check in on_payload_attestation_message), #5020/#4992 (PTC lookbehind/cached PTCs), #5008 (field name fix). PR #5001 (parent_block_root in bid filtering) already implemented correctly. 1500 targeted tests + 69 EF SSZ static tests pass. lint-full passes. Committed `f131ef6f5`.
+
+### Run 1964 (2026-03-20)
+
+**Monitoring check — no code changes needed.**
+
+Reviewed all tracked open spec PRs: #5022 (block known check in on_payload_attestation_message) — already handled by our `InvalidPayloadAttestation::UnknownBeaconBlockRoot` error at fork_choice.rs:1426-1432. #5008 (field name fix) — prose-only, our code already uses `beacon_block_root`. #5020/#4992 (PTC lookbehind/cached PTCs) — still open, high-impact if merged. #4954 (fork choice milliseconds) — still open, pervasive if merged. #4898/#4892 (fork choice cleanup) — still open, minor.
+
+Clippy clean. No new spec releases. All pedantic lint work at diminishing returns — remaining ~5000 warnings are noise-level (`missing_errors_doc`, `must_use_candidate`, `doc_markdown`, `cast_possible_truncation`) or from generated code. No code changes this run.
