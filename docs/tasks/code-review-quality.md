@@ -2974,3 +2974,15 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
 
 No actionable code changes. All priorities 1-6 complete. Codebase stable.
+
+### Run 2024 (2026-03-20)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. All tracked Gloas PRs remain OPEN. Two competing PTC caching proposals active: #4992 (previous/current PTC — 2 vectors, simpler) vs #4979 (PTC lookbehind — full 2×SLOTS_PER_EPOCH matrix, broader). `cached-ptc` prep branch ready for #4992. Neither merged.
+- **CI**: Latest commit (fork boundary test) — check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, http_api ✓, unit tests and beacon_chain in progress. Nightly: 3 consecutive days green (March 18-20).
+- **Test coverage audit**: Thorough review of Gloas ePBS test coverage. Overall excellent (~85-90%). 317 integration tests + extensive unit tests. Main gap: `gloas_verification.rs` (902 lines) has no internal unit tests, but 61 integration tests provide good coverage. All consensus-critical paths tested including edge cases (overflow, empty collections, fork boundaries).
+- **Remaining lighthouse references**: All intentional — `ClientKind::Lighthouse` (peer identification), `ClientCode::Lighthouse` (engine API client codes), test fixtures. These identify other Lighthouse nodes on the network, not vibehouse.
+- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
+
+No actionable code changes. All priorities 1-6 complete. Codebase stable.
