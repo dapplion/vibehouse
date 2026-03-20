@@ -2541,3 +2541,18 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since #5005 (March 15). Open Gloas PRs: #5023 (block root filenames, updated today), #4747 (Fast Confirmation Rule, updated today) — both still open.
 - **CI**: All jobs green. Nightly and spec-test-version-check passed.
 - **Verification**: 1414/1414 targeted tests passed (beacon_chain, beacon_processor, vibehouse_network), full workspace clippy clean, cargo fmt clean, pre-push lint-full passes.
+
+### Run 1986 (2026-03-20)
+
+**Pedantic clippy fix: 7 lint categories across 13 files.**
+
+- `collapsible_else_if`: chain_spec.rs, block_id.rs (×2) — collapsed `else { if .. }` into `else if`
+- `manual_string_new`: checksum_module.rs, types.rs (×2), engine_api.rs, test_utils.rs — `"".to_string()` → `String::new()`
+- `bool_to_int_with_if`: attestation.rs, overflow_lru_cache.rs, custody.rs — `if x { 1 } else { 0 }` → `u8::from(x)` / `u64::from(x)`
+- `single_char_pattern`: methods.rs (×3) — `"1"` → `'1'` in `.contains()` patterns
+- `explicit_deref_methods`: subnet_predicate.rs (×2), methods.rs — `.deref()` → `*` or auto-deref
+- `filter_map_next`: beacon_chain.rs — `.filter_map(..).next()` → `.find_map(..)`
+- `manual_instant_elapsed`: beacon_processor/lib.rs — `Instant::now() - timestamp` → `timestamp.elapsed()`
+- **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since #5005 (March 15). Open Gloas PRs unchanged.
+- **CI**: All jobs green. Nightly and spec-test-version-check passed.
+- **Verification**: 781/781 targeted tests passed (types, eth2, vibehouse_network, beacon_processor, execution_layer, eth2_keystore), full workspace clippy clean, cargo fmt clean, pre-push lint-full passes.
