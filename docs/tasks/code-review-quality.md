@@ -2820,3 +2820,20 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **Spec**: v1.7.0-alpha.3 still latest. Only 1 PR merged since alpha.3 (#5005, test-only). No new actionable changes.
 - **CI**: green, clippy clean, 1026/1026 state_processing tests pass.
 - Remaining non-test wildcard imports: ~5 (typenum re-export, macro-generated bls code, ef_tests type_name — all intentional/idiomatic)
+
+### Run 2011 (2026-03-20)
+
+**Unused dependency cleanup — code shipped.**
+
+- Used `cargo machete --with-metadata` to find unused dependencies, manually verified each with grep.
+- Removed 7 unused dependencies across 5 crates:
+  - `common/eth2`: removed `tokio` (dev-dep)
+  - `validator_client/vibehouse_validator_store`: removed `futures` (dev-dep)
+  - `consensus/types`: removed `state_processing` (dev-dep)
+  - `beacon_node/genesis`: removed `ethereum_ssz`
+  - `testing/ef_tests`: removed `eth2_network_config`, `logging`, `serde_json`
+- False positives identified and kept: `rand` (needed by `TestRandom` derive macro), `ethereum_ssz` in fork_choice (needed by `Encode`/`Decode` derive macros)
+- Also ran `cargo sort --workspace` to fix dependency ordering across all Cargo.toml files.
+- All tests pass (1304/1304 in affected crates). Clippy clean. Full lint-full clean. Pushed.
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since March 15.
+- **CI**: green on previous commit. New commit pushed.
