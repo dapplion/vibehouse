@@ -3253,7 +3253,7 @@ mod yaml_tests {
 
     #[test]
     fn blob_schedule_max_blobs_per_block() {
-        let spec_contents = r#"
+        let spec_contents = r"
         PRESET_BASE: 'mainnet'
         MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: 384
         MIN_GENESIS_TIME: 1748264340
@@ -3303,7 +3303,7 @@ mod yaml_tests {
             MAX_BLOBS_PER_BLOCK: 9
           - EPOCH: 1584
             MAX_BLOBS_PER_BLOCK: 20
-        "#;
+        ";
         let config: Config =
             serde_yaml::from_str(spec_contents).expect("error while deserializing");
         let spec =
@@ -3402,7 +3402,7 @@ mod yaml_tests {
 
     #[test]
     fn blob_schedule_fork_digest() {
-        let spec_contents = r#"
+        let spec_contents = r"
         PRESET_BASE: 'mainnet'
         MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: 384
         MIN_GENESIS_TIME: 1748264340
@@ -3452,7 +3452,7 @@ mod yaml_tests {
             MAX_BLOBS_PER_BLOCK: 275
           - EPOCH: 300
             MAX_BLOBS_PER_BLOCK: 300
-        "#;
+        ";
         let config: Config =
             serde_yaml::from_str(spec_contents).expect("error while deserializing");
         let spec =
@@ -3505,7 +3505,7 @@ mod yaml_tests {
     #[test]
     fn test_defaults() {
         // Spec yaml string. Fields that serialize/deserialize with a default value are commented out.
-        let spec = r#"
+        let spec = r"
         PRESET_BASE: 'mainnet'
         #TERMINAL_TOTAL_DIFFICULTY: 115792089237316195423570985008687907853269984665640564039457584007913129638911
         #TERMINAL_BLOCK_HASH: 0x0000000000000000000000000000000000000000000000000000000000000001
@@ -3538,7 +3538,7 @@ mod yaml_tests {
         CUSTODY_REQUIREMENT: 1
         DATA_COLUMN_SIDECAR_SUBNET_COUNT: 128
         SAMPLES_PER_SLOT: 8
-        "#;
+        ";
 
         let chain_spec: Config = serde_yaml::from_str(spec).unwrap();
 
@@ -3692,7 +3692,7 @@ mod yaml_tests {
 
     #[test]
     fn blob_schedule_duplicate_epochs_rejected_on_deserialize() {
-        let spec_contents = r#"
+        let spec_contents = r"
         PRESET_BASE: 'mainnet'
         MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: 384
         MIN_GENESIS_TIME: 1748264340
@@ -3734,7 +3734,7 @@ mod yaml_tests {
             MAX_BLOBS_PER_BLOCK: 15
           - EPOCH: 512
             MAX_BLOBS_PER_BLOCK: 18
-        "#;
+        ";
         let result: Result<Config, _> = serde_yaml::from_str(spec_contents);
         assert!(
             result.is_err(),
@@ -3751,7 +3751,7 @@ mod yaml_tests {
     /// Both seconds_per_slot and slot_duration_ms should be correctly derived.
     #[test]
     fn config_without_seconds_per_slot() {
-        let spec_contents = r#"
+        let spec_contents = r"
         PRESET_BASE: 'mainnet'
         MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: 16384
         MIN_GENESIS_TIME: 1606824000
@@ -3774,7 +3774,7 @@ mod yaml_tests {
         DEPOSIT_CHAIN_ID: 1
         DEPOSIT_NETWORK_ID: 1
         DEPOSIT_CONTRACT_ADDRESS: 0x00000000219ab540356cBB839Cbe05303d7705Fa
-        "#;
+        ";
         let config: Config =
             serde_yaml::from_str(spec_contents).expect("should parse without SECONDS_PER_SLOT");
         let spec = ChainSpec::from_config::<MainnetEthSpec>(&config)
@@ -3793,7 +3793,7 @@ mod yaml_tests {
     /// Config with both SECONDS_PER_SLOT and SLOT_DURATION_MS preserves both values.
     #[test]
     fn config_with_both_slot_timing_fields() {
-        let spec_contents = r#"
+        let spec_contents = r"
         PRESET_BASE: 'mainnet'
         MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: 16384
         MIN_GENESIS_TIME: 1606824000
@@ -3817,7 +3817,7 @@ mod yaml_tests {
         DEPOSIT_CHAIN_ID: 1
         DEPOSIT_NETWORK_ID: 1
         DEPOSIT_CONTRACT_ADDRESS: 0x00000000219ab540356cBB839Cbe05303d7705Fa
-        "#;
+        ";
         let config: Config =
             serde_yaml::from_str(spec_contents).expect("should parse with both fields");
         let spec = ChainSpec::from_config::<MainnetEthSpec>(&config)
@@ -3830,7 +3830,7 @@ mod yaml_tests {
     /// Config with only SECONDS_PER_SLOT (pre-#4926 format) still derives slot_duration_ms.
     #[test]
     fn config_with_only_seconds_per_slot() {
-        let spec_contents = r#"
+        let spec_contents = r"
         PRESET_BASE: 'mainnet'
         MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: 16384
         MIN_GENESIS_TIME: 1606824000
@@ -3853,7 +3853,7 @@ mod yaml_tests {
         DEPOSIT_CHAIN_ID: 1
         DEPOSIT_NETWORK_ID: 1
         DEPOSIT_CONTRACT_ADDRESS: 0x00000000219ab540356cBB839Cbe05303d7705Fa
-        "#;
+        ";
         let config: Config =
             serde_yaml::from_str(spec_contents).expect("should parse with only SECONDS_PER_SLOT");
         let spec = ChainSpec::from_config::<MainnetEthSpec>(&config)

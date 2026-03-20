@@ -96,7 +96,7 @@ impl MultiTestCase {
                         test_case.should_succeed,
                         "test `{}` succeeded on import when it should have failed",
                         self.name
-                    )
+                    );
                 }
                 Err(e) => {
                     assert!(

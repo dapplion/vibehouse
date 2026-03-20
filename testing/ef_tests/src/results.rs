@@ -13,7 +13,7 @@ pub fn assert_tests_pass(handler_name: &str, path: &Path, results: &[CaseResult]
             &skipped_known_failures,
             results,
         );
-        assert!(failed.is_empty(), "Tests failed (see above)")
+        assert!(failed.is_empty(), "Tests failed (see above)");
     } else {
         println!("Passed {} tests in {}", results.len(), path.display());
     }
