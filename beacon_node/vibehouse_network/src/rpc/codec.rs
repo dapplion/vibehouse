@@ -66,6 +66,7 @@ impl<E: EthSpec> SSZSnappyInboundCodec<E> {
         dst: &mut BytesMut,
     ) -> Result<(), RPCError> {
         let bytes = match &item {
+            #[allow(clippy::match_same_arms)]
             RpcResponse::Success(resp) => match &resp {
                 RpcSuccessResponse::Status(res) => match self.protocol.versioned_protocol {
                     SupportedProtocol::StatusV1 => res.status_v1().as_ssz_bytes(),

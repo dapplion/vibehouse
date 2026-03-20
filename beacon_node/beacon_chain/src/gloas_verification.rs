@@ -683,11 +683,9 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 );
 
                 match outcome {
-                    crate::observed_payload_attestations::AttestationObservationOutcome::New => {
-                        // Continue
-                    }
-                    crate::observed_payload_attestations::AttestationObservationOutcome::Duplicate => {
-                        // This validator already attested with same value, skip
+                    crate::observed_payload_attestations::AttestationObservationOutcome::New
+                    | crate::observed_payload_attestations::AttestationObservationOutcome::Duplicate => {
+                        // New or already attested with same value — continue
                     }
                     crate::observed_payload_attestations::AttestationObservationOutcome::Equivocation {
                         ..

@@ -1690,6 +1690,7 @@ impl<E: EthSpec> BeaconProcessor<E> {
             | Work::LightClientUpdatesByRangeRequest(process_fn) => {
                 task_spawner.spawn_blocking(process_fn);
             }
+            #[allow(clippy::match_same_arms)]
             Work::DelayedImportBlock {
                 beacon_block_slot: _,
                 beacon_block_root: _,
