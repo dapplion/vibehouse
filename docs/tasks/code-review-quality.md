@@ -2194,3 +2194,23 @@ Key areas:
 4. **Remaining** (46 changes across execution_layer, beacon_chain, network, store, crypto, common, etc.)
 
 Spec v1.7.0-alpha.3 still latest — no new consensus-specs releases. Merged PRs #5001 and #5002 already covered. 2967 targeted tests pass. Zero clippy warnings. lint-full passes. Committed `419c90810`.
+
+### Run 1957 (2026-03-20)
+
+**Replaced single-pattern match with if-let and removed redundant else blocks across 63 files** (`clippy::single_match_else`, `clippy::redundant_else`):
+
+1. **`single_match_else`** (~52 fixes): Replaced `match expr { Pattern => ..., _ => ... }` with `if let Pattern = expr { ... } else { ... }` for cleaner control flow
+2. **`redundant_else`** (~33 fixes): Removed `else` blocks after early returns (`return`, `continue`, `break`) and un-indented the following code
+
+Key areas:
+1. **Beacon chain** (12 files) — attestation_verification, data_availability_checker, graffiti_calculator, proposer_prep_service, light_client_server_cache, etc.
+2. **Network** (7 files) — gossip_methods, rpc_methods, sync manager, custody_backfill_sync, network_context, subnet_service
+3. **HTTP API** (4 files) — lib.rs, light_client, produce_block, state_id
+4. **vibehouse_network** (5 files) — peer_manager, peerdb, rpc handler, service, discovery
+5. **Store** (4 files) — hdiff, forwards_iter, redb_impl, reconstruct
+6. **Validator client** (5 files) — config, lib, initialized_validators, slashing_database, sync_committee_service
+7. **Remaining** (26 files across execution_layer, common, consensus, account_manager, lcli, etc.)
+
+Also fixed 2 `redundant_pattern_matching` lints (replaced `if let Err(_) =` with `.is_err()` / `if let Ok(_) =` with `.is_ok()`).
+
+Net reduction of ~121 lines. Spec v1.7.0-alpha.3 still latest — no new releases. 1651 targeted tests pass. lint-full passes. Committed `95d3a4124`.
