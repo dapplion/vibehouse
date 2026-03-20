@@ -233,3 +233,14 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - CI green: check+clippy+fmt passed, ef-tests passed, remaining jobs in progress
 - Zero clippy warnings (default lints)
 - **No action needed. Codebase healthy, spec current.**
+
+### run 1998 (Mar 20) — routine spec check
+
+- No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
+- Open Gloas PRs actively discussed today: #4979 (PTC lookbehind slice, alternative to #4992, updated today), #4843 (variable PTC deadline, mergeable_state=clean, updated today)
+- #4979 caches full PTC for current+previous epoch in BeaconState (256KB); supersedes #4992/#5020
+- #4843 makes PTC deadline variable based on payload size — significant design change, still under discussion
+- CI green (all jobs passing), nightly green (Mar 18-20), zero clippy warnings, zero compiler warnings
+- cargo audit: same known advisory (RUSTSEC-2023-0071 rsa/jsonwebtoken), no fix available
+- Mar 17 nightly flake (finalized_sync_not_enough_custody_peers_on_start) already fixed — flaky assertion removed
+- **No action needed. Will implement #4979 or #4843 when merged.**
