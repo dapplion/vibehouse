@@ -2161,3 +2161,20 @@ Key areas:
 Also audited spec status: v1.7.0-alpha.3 still latest release. Merged PRs #5001 (parent_block_root in bid filtering key — already implemented in our `ObservedExecutionBids`) and #5002 (wording clarification — no code changes needed) are both covered.
 
 1690 targeted tests pass (proto_array, fork_choice, state_processing, store, logging, merkle_proof, pretty_reqwest_error, eip_3076, validator_dir, metrics). lint-full passes. Committed `a403bd9dc`.
+
+### Run 1955 (2026-03-20)
+
+**Inlined format args across 310 files** (`clippy::uninlined_format_args`): Used `cargo clippy --fix` to replace ~1600 instances of `format!("{}", x)` with `format!("{x}")` (inline format args). This is more idiomatic Rust (stabilized in 1.58) and slightly more readable. Pure style cleanup — no behavioral changes.
+
+Key areas:
+1. **Beacon chain** (20+ files) — beacon_chain.rs, block_verification.rs, attestation_verification.rs, execution_layer, builder_client
+2. **Network** (15+ files) — sync modules, gossip methods, peer_manager, rpc handler
+3. **HTTP API** (10+ files) — publish_blocks, validator endpoints, block_id
+4. **Validator client** (15+ files) — duties_service, initialized_validators, http_api, signing
+5. **Consensus** (20+ files) — state_processing, types, fork_choice, proto_array
+6. **Store** (10+ files) — hot_cold_store, hdiff, forwards_iter
+7. **Remaining** (220+ files across common, testing, lcli, account_manager, crypto, etc.)
+
+Also cleaned disk: removed 14.5GB debug incremental cache that caused disk-full during pre-push lint hook.
+
+4991 workspace tests pass (8 web3signer timeouts = external service). lint-full passes. Committed `ba7ac3f2c`.
