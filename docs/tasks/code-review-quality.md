@@ -2951,3 +2951,14 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority.
 
 **Wildcard import cleanup summary**: All production code across the codebase is now wildcard-free. Remaining wildcards are exclusively in test modules (`#[cfg(test)] mod tests`) and `pub use types::*` re-exports (intentional API surface design in store/lib.rs, eth2/types.rs, vibehouse_vc/types.rs).
+
+### Run 2022 (2026-03-20)
+
+**Fork choice audit + edge case test — code shipped.**
+
+- Performed thorough audit of Gloas fork choice implementation (proto_array, fork_choice) for edge cases.
+- Findings: implementation is sound — 3-state payload model, virtual children, weight calculations, ancestor traversal, idempotent envelope processing, skip slot handling all correct. No critical bugs.
+- **Added test**: `find_head_transitions_from_pre_gloas_to_gloas_at_fork_boundary` — exercises fork boundary where Gloas activates at epoch 1 (not genesis). Pre-Gloas block at slot 7, Gloas block at slot 8, verifies traditional→Gloas algorithm transition works correctly with payload status. All prior tests used `gloas_fork_epoch=0` (from genesis), so this was untested.
+- 206/206 proto_array tests pass. 119/119 fork_choice tests pass. Clippy clean. Pushed.
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since March 15. #5008 (field name fix) and #5023 (block root filenames) require no vibehouse changes.
+- **CI**: green on prior commit. New commit pushed.
