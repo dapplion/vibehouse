@@ -3238,3 +3238,17 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
 
 No actionable code changes. All priorities 1-6 complete. Codebase stable.
+
+### Run 2058 (2026-03-21)
+
+**Rebranding cleanup — 5 files with stale Lighthouse references.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (March 15). Open PRs unchanged.
+- **Code changes**: Fixed 5 remaining "Lighthouse" references that should have been rebranded:
+  - `AGENTS.md`: title → "Vibehouse AI Assistant Guide"
+  - `.github/ISSUE_TEMPLATE/default-issue-template.md`: "Lighthouse and Rust version" → "vibehouse", "`stable` or `unstable`" → "`main`"
+  - `.claude/commands/review.md`: "Lighthouse project" → "vibehouse project"
+  - `.claude/commands/issue.md`: "Lighthouse project" → "vibehouse project", `git rev-parse unstable` → `main`
+  - `account_manager/README.md`: "Lighthouse Account Manager" → "Vibehouse Account Manager"
+- **Intentionally kept**: `ClientCode::Lighthouse` / `ClientKind::Lighthouse` (peer identification), Kurtosis service names, test fixtures.
+- **Build**: clippy zero warnings, doc zero warnings, pre-push lint green.
