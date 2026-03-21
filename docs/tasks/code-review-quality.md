@@ -2999,3 +2999,16 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Build**: `cargo clippy --workspace --all-targets` zero warnings.
 - **Remaining major bumps**: 31 (bincode v1→v3, rand v0.8→v0.10, reqwest v0.12→v0.13, etc — all require careful migration).
 
+### Run 2124 (2026-03-21)
+
+**Dependency updates — opentelemetry 0.30→0.31, tracing-opentelemetry 0.31→0.32, hashlink 0.9→0.11, cargo_metadata 0.19→0.23**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs merges.
+- **Code changes**:
+  - **opentelemetry 0.30→0.31**: Clean update across opentelemetry, opentelemetry-otlp (0.30→0.31.1), opentelemetry_sdk (0.30→0.31). No API changes affect us.
+  - **tracing-opentelemetry 0.31→0.32.1**: Compatible with opentelemetry 0.31. No API changes.
+  - **hashlink 0.9→0.11**: Not directly used in Rust source (transitive dep only). Clean update.
+  - **cargo_metadata 0.19→0.23**: Breaking change — `workspace_members` type changed. Simplified `workspace_members` proc macro to use `workspace_packages()` API and `to_string()` for `PackageName`.
+- **Tests**: 4994/4994 pass (8 web3signer_tests failures are pre-existing — require running web3signer instance).
+- **Build**: `cargo clippy` zero warnings, `cargo check --workspace` clean.
+
