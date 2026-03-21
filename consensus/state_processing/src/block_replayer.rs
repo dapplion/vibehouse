@@ -12,18 +12,18 @@ use types::{
     SignedBlindedExecutionPayloadEnvelope, SignedExecutionPayloadEnvelope, Slot,
 };
 
-pub type PreBlockHook<'a, E, Error> = Box<
+pub(crate) type PreBlockHook<'a, E, Error> = Box<
     dyn FnMut(&mut BeaconState<E>, &SignedBeaconBlock<E, BlindedPayload<E>>) -> Result<(), Error>
         + 'a,
 >;
-pub type PostBlockHook<'a, E, Error> = PreBlockHook<'a, E, Error>;
+pub(crate) type PostBlockHook<'a, E, Error> = PreBlockHook<'a, E, Error>;
 pub type PreSlotHook<'a, E, Error> =
     Box<dyn FnMut(Hash256, &mut BeaconState<E>) -> Result<(), Error> + 'a>;
-pub type PostSlotHook<'a, E, Error> = Box<
+pub(crate) type PostSlotHook<'a, E, Error> = Box<
     dyn FnMut(&mut BeaconState<E>, Option<EpochProcessingSummary<E>>, bool) -> Result<(), Error>
         + 'a,
 >;
-pub type StateRootIterDefault<Error> = std::iter::Empty<Result<(Hash256, Slot), Error>>;
+pub(crate) type StateRootIterDefault<Error> = std::iter::Empty<Result<(Hash256, Slot), Error>>;
 
 /// Efficiently apply blocks to a state while configuring various parameters.
 ///
