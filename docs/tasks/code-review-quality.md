@@ -3270,3 +3270,17 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Disk cleanup**: removed `target/debug/` (124G) — freed space from 0% to 73% available. Debug artifacts unused (always build with `--release`).
 - **Tests**: 1147/1147 fork_choice + state_processing pass. Zero clippy warnings.
 - **Spec**: v1.7.0-alpha.3 still latest. No new merges since March 15.
+
+### Run 2149 (2026-03-21)
+
+**syn v1 → v2 migration for proc-macro crates**
+
+- Migrated 3 in-tree proc-macro crates from `syn` v1 to `syn` v2:
+  - **compare_fields_derive**: `attr.path` → `attr.path()`, `attr.tokens` string matching → `attr.parse_args::<Ident>()` + `is_ok_and()`
+  - **test_random_derive**: same pattern as compare_fields_derive
+  - **context_deserialize_derive**: `AttributeArgs` → `Punctuated<Meta, Token![,]>::parse_terminated`, `NestedMeta` → `Meta` directly, `LifetimeDef` → `LifetimeParam`, `nv.lit` → `nv.value` (Expr)
+- Updated workspace `Cargo.toml`: `syn = "1"` → `syn = "2"`
+- Result: syn v1 completely eliminated from dependency tree (verified with `cargo tree -d`)
+- **Tests**: 1085/1085 types tests pass, 3/3 context_deserialize_derive tests pass. Zero clippy warnings across full workspace.
+- **Spec**: v1.7.0-alpha.3 still latest. Open Gloas PRs: #4992 (cached PTCs, state change), #4843 (variable PTC deadline), #5022 (assert block known in on_payload_attestation_message), #5023 (fork choice test fixtures). None merged.
+- **Verified**: `on_payload_attestation` already returns `UnknownBeaconBlockRoot` error for unknown block roots (fork_choice.rs:1430-1432), consistent with spec PR #5022.
