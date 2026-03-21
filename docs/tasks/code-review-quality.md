@@ -3560,3 +3560,15 @@ Downgraded 17 `pub` functions to `pub(crate)` across 3 beacon_chain-internal mod
 Verified each function is only used within the beacon_chain crate (not by http_api, network, or other crates). Notably, `ShufflingCache::get` and `insert_committee_cache` must stay `pub` (used by http_api). `set_time_observed` must stay `pub` (used by network).
 
 41 targeted tests pass. Full workspace compiles. Clippy clean.
+
+### Run 2087 (2026-03-21)
+
+**Dead code removal + pub→pub(crate) downgrades in store and state_processing.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs gloas PRs merged since #5005 (March 15). Open ePBS PRs unchanged.
+- **Code changes**:
+  - **store/hdiff.rs**: removed dead `StorageStrategy::is_diff_from()` and `is_snapshot()` methods (zero callers)
+  - **store/hot_cold_store.rs**: removed dead `BytesKey::starts_with()` and `BytesKey::remove_column()` methods (zero callers); downgraded `matches_column`, `remove_column_variable`, `from_vec` to `pub(crate)` (only used within store crate)
+  - **state_processing/signature_sets.rs**: downgraded `get_pubkey_from_state` to `pub(crate)` (only used within state_processing crate, not re-exported)
+- **Build**: `cargo clippy --workspace --all-targets` zero warnings. Pre-push lint-full passes.
+- **Tests**: 236/236 (store) + 1026/1026 (state_processing) all pass.
