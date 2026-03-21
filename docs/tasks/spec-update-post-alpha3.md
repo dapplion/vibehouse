@@ -226,3 +226,13 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - Verified codebase health across 30+ runs: CI green (ci + nightly), zero clippy/compiler warnings, EF tests 139/139 pass, cargo audit unchanged (RUSTSEC-2023-0071 rsa, unfixable)
 - Code quality verified: zero production `.unwrap()` in consensus/, all unsafe blocks legitimate (5 total: libc FFI, blst crypto, env var), all wildcard imports intentional
 - **Will implement PTC lookbehind or variable PTC deadline when merged.**
+
+### run 2128 (Mar 21) — routine spec check + dep update verification
+
+- No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
+- Open Gloas PRs unchanged: PTC lookbehind (#4979), variable PTC deadline (#4843), block-known check (#5022), test infra (#5023)
+- CI running on latest dep updates (console-subscriber 0.5, igd-next 0.17, rusqlite 0.39, r2d2_sqlite 0.33): check+clippy+fmt ✓, ef-tests ✓, others in progress
+- Nightlies: 5/5 green (Mar 17-21)
+- `cargo check` clean (zero warnings), `cargo audit` unchanged (RUSTSEC-2023-0071 rsa, unfixable; new unmaintained: bincode RUSTSEC-2025-0141, not actionable)
+- Remaining outdated deps: rand_xorshift 0.4→0.5, rand 0.8→0.9 (breaking, requires workspace-wide rand migration — deferred)
+- **No action needed. Spec current, codebase healthy.**
