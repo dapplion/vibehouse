@@ -3066,3 +3066,15 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Build**: `cargo clippy --workspace --all-targets` zero warnings. `make lint-full` clean.
 - **Remaining major bumps**: 15 (ethereum_ssz 0.9 — massive rewrite, ssz_types 0.11, tree_hash 0.10, milhouse 0.7 — all blocked by ssz ecosystem; bincode v1→v3, rand v0.8/0.9→v0.10, reqwest v0.12→v0.13, prometheus-client 0.23→0.24 — blocked by libp2p, syn v1→v2 — transitive).
 
+### Run 2133 (2026-03-21)
+
+**Monitoring run — CI verification + codebase health check**
+
+- **CI**: Run 23384161014 (dep update commit 5cb0b0d89) — 4/6 jobs passed (check+clippy, ef-tests, network+op_pool). unit tests, http_api, beacon_chain still running (~30 min expected). Nightly tests all green.
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since last check.
+- **Security**: `cargo audit` — only RUSTSEC-2023-0071 (rsa, no fix available). No new advisories.
+- **Unused deps**: Investigated `cargo machete` findings — all false positives caused by `TestRandom` derive macro requiring `rand` and `ethereum_ssz`/`ethereum_ssz_derive` used via derive macros with different lib names (package `ethereum_ssz` → lib name `ssz`).
+- **Pub visibility**: Checked fork_choice, proto_array, execution_layer — all `pub` items are genuinely part of cross-crate public API. No safe downgrades found.
+- **Outdated deps**: Only `rand_xorshift` 0.4→0.5 remains, blocked by `rand_core` version mismatch (needs full rand ecosystem bump).
+- **No code changes** — monitoring/verification run.
+
