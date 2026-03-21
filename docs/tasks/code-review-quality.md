@@ -2307,104 +2307,9 @@ Note: ~109 `default_trait_access` warnings remain in superstruct-generated code 
 
 Spec v1.7.0-alpha.3 still latest — no new releases. Recent merged spec PRs: #5005 (test fix), #5002 (wording). Notable open PRs: #5022 (block known check in on_payload_attestation_message), #5020/#4992 (PTC lookbehind/cached PTCs), #5008 (field name fix). PR #5001 (parent_block_root in bid filtering) already implemented correctly. 1500 targeted tests + 69 EF SSZ static tests pass. lint-full passes. Committed `f131ef6f5`.
 
-### Run 1964 (2026-03-20)
+### Runs 1964–1972 (2026-03-20) — consolidated monitoring
 
-**Monitoring check — no code changes needed.**
-
-Reviewed all tracked open spec PRs: #5022 (block known check in on_payload_attestation_message) — already handled by our `InvalidPayloadAttestation::UnknownBeaconBlockRoot` error at fork_choice.rs:1426-1432. #5008 (field name fix) — prose-only, our code already uses `beacon_block_root`. #5020/#4992 (PTC lookbehind/cached PTCs) — still open, high-impact if merged. #4954 (fork choice milliseconds) — still open, pervasive if merged. #4898/#4892 (fork choice cleanup) — still open, minor.
-
-Clippy clean. No new spec releases. All pedantic lint work at diminishing returns — remaining ~5000 warnings are noise-level (`missing_errors_doc`, `must_use_candidate`, `doc_markdown`, `cast_possible_truncation`) or from generated code. No code changes this run.
-
-### Run 1965 (2026-03-20)
-
-**Validation run — no code changes needed.**
-
-Re-downloaded v1.7.0-alpha.3 EF test vectors (fresh download includes Gloas fork choice tests from spec PR #4940, merged same day as release). Full results:
-- **79/79 real crypto tests pass** — includes new Gloas fork choice: get_head, on_block, ex_ante, reorg, withholding, on_execution_payload
-- **139/139 fake_crypto tests pass**
-- **check_all_files_accessed: 210795 files accessed** (132271 intentionally excluded)
-- **Devnet: SUCCESS** — 4-node network finalized epoch 8 through Gloas fork boundary (validates stack integrity after clippy pedantic batch)
-- **lint-full: clean**
-
-Open spec PRs unchanged: #5022, #5020/#4992, #4954, #4898/#4892 — all still open. No new merged PRs since last check. No code changes this run.
-
-### Run 1966 (2026-03-20)
-
-**Monitoring run — no code changes needed.**
-
-Full audit:
-- **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs. Open Gloas PRs unchanged: #5022 (block known check — already implemented), #5023 (test fixture filenames), #5020/#4992 (PTC lookbehind — still open, high-impact). #4747 (fast confirmation rule) updated but not ePBS-specific.
-- **CI**: All 6 jobs green on latest commit (`f131ef6f5`). Nightly tests passed.
-- **Clippy**: Clean (zero warnings, `--all-targets`).
-- **cargo audit**: 1 vulnerability (rsa/RUSTSEC-2023-0071 — Marvin Attack timing sidechannel, no fix available, transitive via jsonwebtoken→execution_layer, local-only EL communication so low risk). 5 unmaintained crate warnings (ansi_term, bincode, derivative, paste — all transitive from sp1-verifier; filesystem — false positive, matches our local crate name).
-- **TODOs**: 11 remaining across 8 files — all blocked (#36 items: EIP-7892 ×3, blst unsafe ×1, PeerDAS ×1) or non-critical (EL error enums, pool persistence, store test hack).
-- **unsafe blocks**: All legitimate (blst FFI, libc/jemalloc FFI, set_var in main.rs).
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 1967 (2026-03-20)
-
-**Monitoring + validation run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs. Open Gloas PRs unchanged: #5022 (block known check — already implemented), #5023 (test fixture filenames), #5020 (PTC lookbehind — still open, high-impact). No new releases.
-- **CI**: All jobs green on `f131ef6f5`.
-- **cargo audit**: Same as previous — 1 rsa vulnerability (no fix, low risk), 5 unmaintained crate warnings (all transitive).
-- **GitHub issues**: #36 remaining items all blocked or non-critical. #29 (ROCQ) lowest priority. #27 (validator messaging) speculative feature request.
-- **Devnet**: SUCCESS — 4-node network finalized epoch 8 (slot 80, epoch 10) through Gloas fork boundary. Validates full stack integrity after pedantic clippy batch (runs 1955-1963).
-
-No actionable work found. Codebase stable and validated.
-
-### Run 1968 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since alpha.3 release (March 13). #4979 (PTC lookbehind) was closed without merge. Open Gloas PRs unchanged: #5022 (block known check — already implemented), #5023 (test fixture filenames), #5020 (PTC lookbehind minimal — still open), #4992 (cached PTCs — still open), #4954 (fork choice milliseconds — still open), #4898/#4892 (fork choice cleanup — still open).
-- **CI**: All jobs green on latest commit. Nightly tests passed.
-- **GitHub issues**: No new issues. #36 items blocked or non-critical. #29 (ROCQ) lowest priority.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 1969 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new merged Gloas PRs. Open Gloas PRs unchanged: #5022 (block known check — already implemented), #5023 (test fixture filenames), #5020 (PTC lookbehind minimal — still open), #4992 (cached PTCs — still open), #4954 (fork choice milliseconds — still open), #4898/#4892 (fork choice cleanup — still open).
-- **CI**: All jobs green. Nightly tests passed.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 1970 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new merged Gloas PRs. Open Gloas PRs unchanged: #5022, #5023, #5020, #4992, #4954, #4898/#4892, #4960, #4939, #4932, #4843, #4840. No new additions since last check.
-- **CI**: All jobs green. Nightly tests passed. Latest CI run (`f131ef6f5`) succeeded.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 1971 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new merged Gloas PRs. Open Gloas PRs unchanged: #5022 (block known check — re-verified already implemented at fork_choice.rs:1432), #5023, #5020, #4992, #4954, #4898/#4892, #4960, #4939, #4932, #4843, #4840.
-- **CI**: All jobs green. Build clean (zero warnings). `cargo clippy --workspace --all-targets` clean. `RUSTFLAGS="-W dead_code" cargo check` clean.
-- **Dependencies**: `cargo update` found 0 compatible updates; 33 behind latest are all semver-major bumps requiring Cargo.toml changes (not routine maintenance).
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 1972 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. Only one PR merged since alpha.3: #5005 (test fixture fix, already assessed as no-change-needed). Open Gloas PRs unchanged: #5022, #5023, #5020, #4992, #4954, #4898/#4892, #4960, #4939, #4932, #4843, #4840.
-- **CI**: All jobs green. Nightly tests passed. Build clean (zero warnings).
-- **Dependencies**: `cargo update --dry-run` shows 3 patch bumps (itoa 1.0.18, zerocopy 0.8.47) — trivial.
-- **GitHub issues**: No new issues. #36 items all blocked or non-critical. #29 (ROCQ) lowest priority.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
+9 monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest, CI green, security unchanged (rsa no fix), zero clippy warnings.
 
 ### Run 1973 (2026-03-20)
 
@@ -2417,87 +2322,9 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 
 All priorities 1-6 complete. Codebase stable.
 
-### Run 1974 (2026-03-20)
+### Runs 1974–1981 (2026-03-20) — consolidated monitoring
 
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since #5005 (March 15). Open Gloas PRs unchanged: #5022, #5023, #5020, #4992, #4954, #4898/#4892, #4960, #4939, #4932, #4843, #4840. #5008 (field name fix) — already tracked and confirmed aligned.
-- **CI**: Latest run in progress. Previous runs all green. Nightly tests passed.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 1975 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest (released March 13). No new merged PRs since #5005 (March 15). Most recent merges: #5005 (test fix), #5004 (release notes), #4940 (Gloas fork choice tests), #5002 (wording), #5001 (parent_block_root) — all previously assessed.
-- **CI**: All jobs green. Latest run (pedantic clippy commit) in progress. Nightly tests passed.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 1976 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since #5005 (March 15). Open Gloas PRs unchanged: #5022, #5023, #5020, #4992, #4954, #4898/#4892, #4960, #4939, #4932, #4843, #4840. #5014 (EIP-8025 p2p protocol) also open.
-- **CI**: All jobs green. Latest CI run in progress. Spec-test-version-check and nightly tests passed.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 1977 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since #5005 (March 15). Open Gloas PRs unchanged: #5023, #5020, #4992, #4954, #4960, #4932, #4898/#4892, #4843, #4840.
-- **CI**: All jobs green. Nightly tests passed. Spec-test-version-check passed. Pedantic clippy CI run succeeded.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 1978 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since #5005 (March 15). Open Gloas PRs unchanged: #5023, #5020, #4992, #4954, #4960, #4932, #4898/#4892, #4843, #4840.
-- **CI**: All jobs green. Latest push CI in progress. Nightly tests passed.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 1979 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since #5005 (March 15). Open Gloas PRs unchanged: #5023, #5020, #4992, #4954, #4960, #4932, #4898/#4892, #4843, #4840.
-- **CI**: All jobs green. Current CI run in progress. Nightly tests passed. Spec-test-version-check passed.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 1980 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since #5005 (March 15). Open Gloas PRs unchanged: #5023, #5020, #4992, #4954, #4960, #4932, #4898/#4892, #4843, #4840. #4747 (Fast Confirmation Rule) updated today.
-- **CI**: All jobs green. Current CI run in progress. Nightly tests passed. Spec-test-version-check passed.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority.
-- **Dependencies**: No new patch bumps since run 1973.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 1981 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since #5005 (March 15). Open Gloas PRs unchanged: #5023, #5022, #5020, #5008, #4992, #4960, #4954, #4939, #4932, #4898/#4892, #4843, #4840.
-- **CI**: All jobs green. Latest CI run (dep update) in progress. Nightly and spec-test-version-check passed.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority.
-- **Dependencies**: No new crate updates available.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
+8 monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest, CI green, security unchanged (rsa no fix), zero clippy warnings.
 
 ### Run 1982 (2026-03-20)
 
@@ -2601,89 +2428,9 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **CI**: All jobs green. Nightly and spec-test-version-check passed.
 - **Verification**: 999/999 beacon_chain tests, network + http_api tests pass (failures were missing FORK_NAME env — pre-existing), full workspace clippy clean, cargo fmt clean, pre-push lint-full passes.
 
-### Run 1991 (2026-03-20)
+### Runs 1991–1997 (2026-03-20) — consolidated monitoring
 
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since #5005 (March 15). Open Gloas PRs: #4979 (PTC lookbehind — heze fork, updated today), #4747 (Fast Confirmation Rule, updated today), #5023 (block root filenames), #4992 (cached PTCs — heze). None actionable for current Gloas.
-- **Spec PR audit**: #5001 (parent_block_root in bid filtering key) — already implemented (our `highest_bid_values` map uses `(Slot, ExecutionBlockHash, Hash256)` key). #5002 (self-build wording) — doc-only. #4892 (remove impossible branch in forkchoice) — already implemented (our `is_supporting_vote_gloas_at_slot` uses `==` not `<=`).
-- **CI**: check+clippy+fmt and ef-tests passed. Other jobs in progress.
-- **Clippy status**: suspicious=0, nursery bulk categories only (use_self 2107, missing_const_for_fn 584, option_if_let_else 136). needless_pass_by_ref_mut has ~30 instances across pre-existing code — not worth the risk in consensus paths.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 1992 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since #5005 (March 15). Open Gloas PRs unchanged (#4979, #4747, #5023, #4992 — none actionable for current Gloas).
-- **CI**: Latest run (run 1990 commit) in progress — check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, 3 jobs still running.
-- **Pedantic clippy**: Audited remaining categories. `unused_async` (9) — all in functions where async is needed for interface compatibility. `unnecessary_wraps` (9) — API handlers where Result is the expected interface. `large_futures` (8) — all in test_utils.rs. `cast_sign_loss` (9) — test code and guaranteed-positive values. None worth fixing.
-- **Security**: `cargo audit` shows 1 vulnerability (rsa/RUSTSEC-2023-0071, medium severity, no fix available — in jsonwebtoken for web3signer) and 5 unmaintained-crate warnings (transitive deps). Not actionable.
-- **Dependencies**: `cargo update --dry-run` shows 0 packages to update. All deps at latest compatible versions.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 1993 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since #5005 (March 15). Open Gloas PRs: #4979 (PTC lookbehind — heze, updated today), #4747 (Fast Confirmation Rule, updated today), #5022 (on_payload_attestation block check — we already handle this), #5008 (field name fix — doc-only). None actionable for current Gloas.
-- **CI**: Latest run (run 1990 commit) — check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, unit-tests/http_api/beacon_chain still running.
-- **Security**: `cargo audit` unchanged — 1 vulnerability (rsa/RUSTSEC-2023-0071, no fix), 5 unmaintained warnings (transitive). Not actionable.
-- **Dependencies**: 33 deps behind latest but all are semver-major bumps (bincode→3, reqwest→0.13, rusqlite→0.39, rand→0.10, etc.). Not worth the churn/risk.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 1994 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since #5005 (March 15). Open Gloas PRs: #4979 (PTC lookbehind — two competing approaches: #4979 full cache 256KB, #4992 2-committee cache 8KB), #4747 (Fast Confirmation Rule), #5022 (on_payload_attestation block check), #5023 (block root filenames + comptests). None merged, none actionable.
-- **PTC lookbehind deep-dive**: Investigated #4979 bug impact on vibehouse. Confirmed our `get_ptc_committee()` uses current state's effective balances, so PTC computed at epoch boundaries can differ from the PTC at the previous slot. Test `ptc_committee_changes_when_effective_balances_change` already documents this. Fix blocked on spec decision (#4992 vs #4979).
-- **Bid filtering key (#5001)**: Confirmed already implemented — `ObservedExecutionBids.highest_bid_values` uses `(Slot, ExecutionBlockHash, Hash256)` key, test coverage includes cross-fork isolation.
-- **Fork choice tests (#4940)**: Already included in alpha.3 test vectors, all passing.
-- **CI**: Latest run — check+clippy+fmt ✓, ef-tests ✓, http_api ✓, network+op_pool ✓, unit-tests and beacon_chain in progress.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 1995 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since #5005 (March 15). Open Gloas PRs unchanged: #4979/#5020/#4992 (PTC lookbehind — still competing approaches), #4747 (Fast Confirmation Rule), #5022 (on_payload_attestation block check — we already handle), #5023 (block root filenames + comptests), #4954 (millisecond fork choice store), #4892 (remove impossible branch — we already have `==` not `<=`). None merged, none actionable.
-- **Field name fix (#5008)**: Verified our `ExecutionPayloadEnvelope` already uses `beacon_block_root` (correct name). PR is doc-only fix in spec markdown.
-- **EF test vectors**: No new release — latest is v1.6.0-beta.0 (Sep 2025). v1.7.0-alpha.3 vectors not yet published.
-- **CI**: All jobs green. Latest run (run 1990 commit) fully passed. Nightly passing (3 consecutive days).
-- **Security**: cargo audit unchanged (1 rsa/RUSTSEC-2023-0071, no fix available). Dependencies at latest compatible versions.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 1996 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.6.1 still latest release. No new Gloas-related PRs merged since #5005 (March 15). Open Gloas PRs unchanged: #5023 (block root filenames + comptests), #4979 (PTC lookbehind), #4960 (fork choice test for new validator deposit), #4939 (request missing payload envelopes). None merged, none actionable.
-- **CI**: All jobs green. Latest run (pedantic clippy commit) passed.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 1997 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since March 15. Open Gloas PRs unchanged: #5023 (block root filenames + comptests), #4979/#4992 (PTC lookbehind — competing approaches, still under discussion), #4892 (remove impossible branch). None merged, none actionable.
-- **PTC caching watch**: #4992 (lightweight 2-committee cache, 8KB/state) vs #4979 (full lookbehind slice, 256KB/state) — both address epoch-boundary PTC divergence bug. Would add new BeaconState fields. No decision yet.
-- **CI**: All jobs green. Latest two runs on main passed.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
+7 monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest, CI green, security unchanged (rsa no fix), zero clippy warnings.
 
 ### Run 1999 (2026-03-20)
 
@@ -2707,108 +2454,9 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **Tests**: 3270/3270 passed (1719 types/proto_array/store/op_pool/clap_utils/health_metrics/monitoring_api/validator_manager/state_transition_vectors + 1551 beacon_chain/execution_layer/vibehouse_network). Zero warnings. Full lint-full clean.
 - **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since March 15.
 
-### Run 2001 (2026-03-20)
+### Runs 2001–2008 (2026-03-20) — consolidated monitoring
 
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since March 15. Open Gloas PRs: #5023 (block root filenames + comptests), #5022 (on_payload_attestation block check — we already handle), #5020/#4979/#4992 (PTC lookbehind — competing approaches, still under discussion), #4960 (fork choice test for new validator deposit), #4939 (request missing payload envelopes). None merged, none actionable.
-- **CI**: All jobs green. Latest run (wildcard import cleanup commit) — check+clippy+fmt ✓, remaining jobs in progress. Previous run fully green.
-- **Nightly**: March 17 had a flaky `finalized_sync_not_enough_custody_peers_on_start` failure (commit 4dee3c87b had `expect_empty_network()` assertion that occasionally failed when deterministic peer happened to cover all custody columns). Already fixed in commit 8f8faa7de — removed flaky assertion. March 18-20 nightlies all green.
-- **#[allow(dead_code)] audit**: 22 files with dead_code allows — all are intentional patterns: error enum variant data fields (for Debug/Display), lifetime-managing fields, test-only helpers. None actionable.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 2002 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Clippy**: zero warnings across entire workspace.
-- **CI**: Latest run (wildcard import commit) — check+clippy+fmt ✓, ef-tests ✓, integration tests in progress. Previous run fully green.
-- **Nightly**: 3 consecutive days green (March 18-20).
-- **Spec**: v1.7.0-alpha.3 still latest. No new PRs merged since March 15. Notable APPROVED (not merged) PRs to watch:
-  - **#4843** (Variable PTC deadline) — new config params, changes beacon-chain/fork-choice/validator timing. Would require config additions, slot timing changes, validator PTC deadline calculation.
-  - **#4898** (Remove pending status from tiebreaker) — fork-choice simplification, removes redundant pending comparison in `get_head` tiebreaker.
-  - **#4892** (Remove impossible branch in forkchoice) — we already use `==` not `<=`, already compliant.
-  - **#4992** (Add cached PTCs to state) — APPROVED, adds new BeaconState fields for PTC lookbehind cache. Would require new state fields, processing logic.
-- **TODOs**: 11 remaining, all blocked on external dependencies (EIP-7892 ×3, blst safe API, PeerDAS checkpoint sync, non-critical refactors).
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 2003 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since March 15. Open Gloas PRs unchanged: #4843 (Variable PTC deadline — updated today), #4979/#5020/#4992 (PTC lookbehind — three competing approaches), #4747 (Fast Confirmation Rule), #5023 (block root filenames + comptests), #5022 (on_payload_attestation block check), #5008 (field name fix — doc-only). None merged, none actionable.
-- **Spec PR #5001 (parent_block_root in bid key)**: Confirmed already implemented — `ObservedExecutionBids.highest_bid_values` uses `(Slot, ExecutionBlockHash, Hash256)` key with full test coverage including cross-fork isolation.
-- **Spec PR #5002 (self-build signature wording)**: Doc-only change, no code impact.
-- **Spec PR #4940 (Gloas fork choice tests)**: Already included in test vectors. All 9 fork choice tests pass including `on_execution_payload`.
-- **Fork choice spec PR #4898 (remove pending from tiebreaker)**: Confirmed our `get_payload_tiebreaker` already doesn't special-case PENDING — compliant with proposed change.
-- **CI**: Latest run (wildcard import commit) — 5/6 jobs passed (check+clippy+fmt ✓, ef-tests ✓, http_api ✓, network+op_pool ✓), beacon_chain and unit tests in progress. Nightly: 3 consecutive days green.
-- **Clippy**: zero warnings across entire workspace. Zero compiler warnings in release mode.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 2004 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since March 15. Open Gloas PRs unchanged. None merged, none actionable.
-- **CI**: Latest run (wildcard import commit) — 5/6 passed (check+clippy+fmt ✓, ef-tests ✓, http_api ✓, network+op_pool ✓, unit tests ✓), beacon_chain in progress. Nightly: 3 consecutive days green (March 18-20).
-- **Clippy**: zero warnings. Zero compiler warnings in release mode.
-- **cargo audit**: unchanged — 1 vulnerability (rsa/RUSTSEC-2023-0071, no fix), 5 unmaintained crate warnings (transitive). Not actionable.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 2005 (2026-03-20)
-
-**Devnet verification run — no code changes.**
-
-- **Devnet**: Ran full `kurtosis-run.sh` smoke test to verify codebase after wildcard import cleanup (runs 1999-2000). Result: SUCCESS — finalized epoch 8 at slot 81, clean progression through Gloas fork (epoch 1). No stalls, no errors.
-- **Spec**: v1.7.0-alpha.3 still latest (v1.6.1 latest release). No new Gloas-related PRs merged since March 15. Open PRs unchanged: #4843 (Variable PTC deadline), #4979/#5020/#4992 (PTC lookbehind — competing approaches), #5023 (block root filenames + comptests), #5022 (on_payload_attestation block check), #5008 (field name fix — doc-only), #4962 (sanity/blocks tests). None merged, none actionable.
-- **CI**: All 6 jobs green on latest commit. Nightly: 3 consecutive days green (March 18-20).
-- **Clippy**: zero warnings. **cargo audit**: unchanged (rsa/RUSTSEC-2023-0071, no fix available).
-- **TODOs**: 8 remaining, all blocked on external dependencies (EIP-7892 ×3, blst safe API, PeerDAS checkpoint sync, non-critical refactors).
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable and devnet-verified.
-
-### Run 2006 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest (v1.6.1 latest release). No new Gloas-related PRs merged since March 15. Open PRs unchanged: #4843 (Variable PTC deadline — updated today), #4979/#5020/#4992 (PTC lookbehind — competing approaches), #5023 (block root filenames + comptests), #5022 (on_payload_attestation block check), #5008 (field name fix — still open), #4962 (sanity/blocks tests), #4840 (EIP-7843). None merged, none actionable.
-- **CI**: All 6 jobs green on latest commit (wildcard import cleanup). Nightly: 3 consecutive days green (March 18-20).
-- **Clippy**: zero warnings across entire workspace.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 2007 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest (v1.6.1 latest release). No new Gloas-related PRs merged since March 15. 14 open Gloas PRs unchanged: #4843 (Variable PTC deadline), #4979/#5020/#4992 (PTC lookbehind — 3 competing approaches), #4747 (Fast Confirmation Rule), #5022 (on_payload_attestation block check), #5008 (field name fix), #4939 (request missing envelopes), #4954 (milliseconds store), #4892/#4898 (fork choice simplifications), #4630 (SSZ forward compat), #4840 (EIP-7843 draft), #4558 (cell dissemination). None merged, none actionable.
-- **CI**: All 6 jobs green on latest commit. Nightly: 3 consecutive days green (March 18-20).
-- **Clippy**: zero warnings across entire workspace.
-- **TODOs**: 8 remaining, all blocked on external dependencies.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 2008 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest (v1.6.1 latest release). No new Gloas-related PRs merged since #5005 (March 15). Open Gloas PRs unchanged: #4843 (Variable PTC deadline — most recently updated), #4979/#5020/#4992 (PTC lookbehind — 3 competing approaches), #5023 (block root filenames + comptests), #5022 (on_payload_attestation block check). None merged, none actionable.
-- **CI**: All 6 jobs green on latest commit (wildcard import cleanup). Nightly: 3 consecutive days green (March 18-20).
-- **Clippy**: zero warnings across entire workspace.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
+8 monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest, CI green, security unchanged (rsa no fix), zero clippy warnings.
 
 ### Run 2010 (2026-03-20)
 
@@ -2864,81 +2512,9 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - All 1026 state_processing tests pass. Full workspace compiles. Full lint clean. Pushed.
 - **Spec check**: v1.7.0-alpha.3 still latest. PR #5001 (parent_block_root in bid filter key) already implemented. No new spec changes needed.
 
-### Run 2014 (2026-03-20)
+### Runs 2014–2020 (2026-03-20) — consolidated monitoring
 
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest (v1.6.1 latest release). No new Gloas-related PRs merged since #5005 (March 15). Open Gloas PRs unchanged: #4979 (PTC lookbehind — most recently updated), #4747 (Fast Confirmation Rule — updated today), #5023 (block root filenames + comptests), #4992 (cached PTCs), #4558 (cell dissemination). None merged, none actionable.
-- **CI**: Latest commit (state_processing wildcard cleanup) — check+clippy+fmt passed, remaining 5 jobs in progress. Nightly: 3 consecutive days green (March 18-20).
-- **Clippy**: zero warnings across entire workspace. Zero compiler warnings.
-- **Code quality**: Zero TODOs, zero FIXMEs, zero HACKs in Rust code. All production code wildcard-free. Pub visibility audit: all Gloas public APIs are correctly cross-crate — no items to downgrade.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 2015 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (March 15). Open Gloas PRs: #4979 (PTC lookbehind, MERGEABLE, 10 reviews, updated today), #4747 (Fast Confirmation Rule, updated today), #5022 (on_payload_attestation block check — already handled by our UnknownBeaconBlockRoot error), #5020 (PTC lookbehind minimal), #4992 (cached PTCs), #4843 (variable PTC deadline), #4558 (cell dissemination). None merged.
-- **CI**: Latest commit (state_processing wildcard cleanup) — check+clippy+fmt passed, 5 integration jobs in progress. Prior commit all green.
-- **Build**: zero warnings, zero clippy warnings. cargo audit unchanged (1 rsa advisory, 5 unmaintained — all transitive, not actionable).
-- **GitHub**: No new issues or PRs. #36 blocked/non-critical.
-- **Prep branches**: `cached-ptc` and `ptc-lookbehind` remain ready on origin for when spec PRs merge.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 2016 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since #5005 (March 15). Open Gloas PRs: #4747 (Fast Confirmation Rule — dirty/126 review comments, very active discussion), #4843 (Variable PTC deadline), #4979 (PTC lookbehind — blocked, 10 comments), #5022 (on_payload_attestation block check), #5020 (PTC lookbehind minimal), #4992 (cached PTCs), #4558 (cell dissemination), #5008 (field name fix). None merged.
-- **CI**: Latest commit (state_processing wildcard cleanup) — check+clippy+fmt+ef-tests passed, 4 integration jobs in progress. Nightly: 3 consecutive days green (March 18-20).
-- **Rebranding audit**: All Rust source files clean. Only legitimate external-peer references remain (ClientKind::Lighthouse for P2P peer identification, ClientCode::Lighthouse for EL engine API standard codes, 1 test mock string). API paths fully rebranded to vibehouse.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-- **Prep branches**: `cached-ptc` on origin for when spec PR #4992 merges.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 2017 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since #5005 (March 15). Most active open PRs: #4843 (Variable PTC deadline — updated today), #4979 (PTC lookbehind — updated today). Others unchanged: #5023, #5022, #5020, #4992, #5008, #4962, #4939, #4960, #4954. None merged, none actionable.
-- **CI**: Latest commit (state_processing wildcard cleanup) — check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, 3 integration jobs in progress. Prior commit all green.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 2018 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. All 15 tracked Gloas PRs (#4843, #4979, #5020, #4992, #5023, #5022, #5008, #4962, #4939, #4960, #4954, #4558, #4747, #4898, #4892) remain OPEN. None merged, none actionable.
-- **CI**: Latest commit (state_processing wildcard cleanup) — check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, beacon_chain/http_api/unit tests in progress. Prior commit all green.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 2019 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. All 15 tracked Gloas PRs remain OPEN. None merged since #5005 (March 15). Most active: #4843 (Variable PTC deadline), #4979 (PTC lookbehind). Three PRs opened March 19: #5023, #5022, #5020.
-- **CI**: Latest commit (state_processing wildcard cleanup) — check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, beacon_chain/http_api/unit tests in progress. Nightly: 3 consecutive days green (March 18-20).
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
-
-### Run 2020 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. All 15 tracked Gloas PRs remain OPEN. None merged since #5005 (March 15). Most active: #4992 (cached PTCs, 23 reviews), #4843 (Variable PTC deadline, 11 reviews), #4979 (PTC lookbehind, 10 reviews). #5008 (field name fix) and #5022 (on_payload_attestation block check) both MERGEABLE but REVIEW_REQUIRED.
-- **CI**: Latest commit — check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, beacon_chain/http_api/unit tests in progress. Nightly: 4 consecutive days green (March 17-20).
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
+7 monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest, CI green, security unchanged (rsa no fix), zero clippy warnings.
 
 ### Run 2021 (2026-03-20)
 
@@ -2963,40 +2539,9 @@ No actionable work found. All priorities 1-6 complete. Codebase stable.
 - **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since March 15. #5008 (field name fix) and #5023 (block root filenames) require no vibehouse changes.
 - **CI**: green on prior commit. New commit pushed.
 
-### Run 2023 (2026-03-20)
+### Runs 2023–2025 (2026-03-20) — consolidated monitoring
 
-**Monitoring run — prep branch maintenance.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. All tracked Gloas PRs remain OPEN. None merged since #5005 (March 15). Most active: #4843 (Variable PTC deadline), #4979 (PTC lookbehind), #4992 (cached PTCs, 23 reviews). #5022 (on_payload_attestation block check) already handled by our `UnknownBeaconBlockRoot` error. #5008 (field name fix) is docs-only, no code change needed.
-- **CI**: Latest commit (fork boundary test) — check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, beacon_chain/http_api/unit tests in progress. Nightly: 4 consecutive days green (March 17-20).
-- **Prep branch rebase**: Rebased `cached-ptc` branch onto main (was 133 commits behind). Clean rebase, compiles, clippy clean, pushed to origin. Ready for when spec PR #4992 merges.
-- **Code audit**: Full codebase scan — zero TODOs, zero FIXMEs, zero HACKs in production code. No unwraps in non-test code (except debug dump function). Clippy clean across workspace.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable code changes. All priorities 1-6 complete.
-
-### Run 2024 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. All tracked Gloas PRs remain OPEN. Two competing PTC caching proposals active: #4992 (previous/current PTC — 2 vectors, simpler) vs #4979 (PTC lookbehind — full 2×SLOTS_PER_EPOCH matrix, broader). `cached-ptc` prep branch ready for #4992. Neither merged.
-- **CI**: Latest commit (fork boundary test) — check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, http_api ✓, unit tests and beacon_chain in progress. Nightly: 3 consecutive days green (March 18-20).
-- **Test coverage audit**: Thorough review of Gloas ePBS test coverage. Overall excellent (~85-90%). 317 integration tests + extensive unit tests. Main gap: `gloas_verification.rs` (902 lines) has no internal unit tests, but 61 integration tests provide good coverage. All consensus-critical paths tested including edge cases (overflow, empty collections, fork boundaries).
-- **Remaining lighthouse references**: All intentional — `ClientKind::Lighthouse` (peer identification), `ClientCode::Lighthouse` (engine API client codes), test fixtures. These identify other Lighthouse nodes on the network, not vibehouse.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
-
-### Run 2025 (2026-03-20)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since #5005 (March 15). All tracked open PRs remain open: #4843 (Variable PTC deadline), #4979 (PTC lookbehind), #4992 (cached PTCs), #5022 (on_payload_attestation block check), #5020 (PTC lookbehind minimal), #5008 (field name fix). None merged.
-- **CI**: Latest commit (fork boundary test) — all 7 jobs green: check+clippy+fmt, ef-tests, network+op_pool, http_api, beacon_chain, unit tests, ci-success. Nightly: 3 consecutive days green (March 18-20).
-- **Nightly flake review**: March 17 failure (`finalized_sync_not_enough_custody_peers_on_start`) was already fixed same day by commit 8f8faa7de. March 16 failure (`override_backend_with_mdbx_file_present`) is the known slasher CI flake with improved diagnostics. Both resolved.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable work found. All priorities 1-6 complete. Codebase stable.
+3 monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest, CI green, security unchanged (rsa no fix), zero clippy warnings.
 
 ### Run 2026 (2026-03-20)
 
@@ -3021,40 +2566,9 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 
 No actionable code changes. All priorities 1-6 complete. Codebase stable.
 
-### Run 2029 (2026-03-21)
+### Runs 2029–2031 (2026-03-21) — consolidated monitoring
 
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. Verified PR #5001 (parent_block_root in bid filtering key, merged March 12) — already implemented correctly in `observed_execution_bids.rs`. PR #5002 (wording only). All tracked Gloas PRs remain OPEN: #4843, #4992, #4979, #5022, #5023, #5020, #5008.
-- **CI**: All green. Nightly March 17 failure (`finalized_sync_not_enough_custody_peers_on_start`) was a known flaky assertion already fixed — `expect_empty_network()` removed in subsequent commit. March 18-20 nightlies all green.
-- **Wildcard imports**: Audited remaining 126 `use *` across 113 files. All are idiomatic (`rayon::prelude::*`, `futures::prelude::*`, `std::io::prelude::*`, `super::*` in test modules) — no cleanup needed.
-- **TODOs**: Only 6 remain in production code, all reference #36 (blocked/non-critical).
-- **GitHub issues**: No new issues. No new spec releases.
-
-No actionable code changes. Codebase stable.
-
-### Run 2030 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since #5005 (March 15). Tracked open PRs: #4843 (Variable PTC deadline — 1 approval), #4979 (PTC lookbehind — 0 approvals), #4992 (cached PTCs — 1 approval), #5022 (on_payload_attestation block check — 0 approvals), #5023 (block root filenames — 0 approvals). None close to merging.
-- **CI**: Latest commit (fork boundary test) — all 7 jobs green. Nightly: 3 consecutive days green (March 18-20).
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request. #28 (ZK proofs) done.
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
-
-### Run 2031 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since #5005 (March 15). Tracked open PRs: #4843 (Variable PTC deadline — 1 approval), #4979 (PTC lookbehind — 0 approvals), #4992 (cached PTCs — 1 approval), #5022 (on_payload_attestation block check — 0 approvals), #5023 (block root filenames — 0 approvals). None close to merging.
-- **CI**: Latest commit (fork boundary test) — all 7 jobs green. Nightly: 4 consecutive days green (March 18-21).
-- **Build**: `cargo check --release` clean.
-- **Prep branches**: `cached-ptc` branch is 1 commit ahead of main, ready for spec PR #4992. 5 task doc commits behind — trivial, no rebase needed.
-- **Spec PR analysis**: Reviewed #4843 (Variable PTC deadline) and #4992 (cached PTCs) in detail. Both are significant changes. #4843 renames `payload_present`→`payload_timely`, adds size-dependent PTC deadline, touches ~46 files. #4992 adds `previous_ptc`/`current_ptc` to BeaconState, already prepped in `cached-ptc` branch.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
+3 monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest, CI green, security unchanged (rsa no fix), zero clippy warnings.
 
 ### Run 2032 (2026-03-21)
 
@@ -3065,89 +2579,9 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **Tests**: 4992/4996 passed (4 web3signer timeouts — external service, unrelated). Full lint clean. CI green.
 - **Test coverage review**: Investigated envelope_processing.rs — has 56 unit tests covering all 11 validation checks (not 0 as initially estimated). Proto_array has 150+ Gloas-specific fork choice tests. Coverage is comprehensive.
 
-### Run 2033 (2026-03-21)
+### Runs 2033–2049 (2026-03-21) — consolidated monitoring
 
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since #5005 (March 15). Tracked open PRs: #4843 (Variable PTC deadline — 11 reviews, significant), #4979 (PTC lookbehind), #4992 (cached PTCs), #5020 (PTC lookbehind minimal), #5023 (block root filenames). None merged.
-- **CI**: Latest commit — CI in progress (push-triggered). Previous run: success. Nightly: 3 consecutive days green (March 18-20).
-- **Security**: `cargo audit` — only `rsa` (no fix available) + 5 unmaintained transitive deps (derivative via ark-ff, paste, bincode, ansi_term, filesystem). All transitive, not directly actionable.
-- **Build**: `cargo check --release` clean. `cargo clippy --workspace --all-targets` — zero warnings.
-- **Devnet**: Latest run (March 20 23:10) passed — finalized_epoch=8.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
-
-### Run 2035 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (March 15).
-- **CI**: rustls-webpki update (run 2032) — all 7 jobs green including ci-success. Nightly: 4 consecutive days green (March 18-21).
-- **Security**: `cargo audit` — same as run 2033 (rsa no fix, 5 unmaintained transitive deps). No new advisories.
-- **Build**: `cargo clippy --workspace --all-targets` — zero warnings.
-- **Deep audit**: Gloas state_processing and fork_choice code reviewed for integer overflow, bounds checks, silent error swallowing, unsafe casts. All clear — safe_arith used consistently, all array accesses bounds-checked, no panicking paths in consensus-critical code.
-- **Dep check**: Verified execution_layer's `ethereum_serde_utils` and `ethereum_ssz` are actually used (lib names `serde_utils` and `ssz` respectively). No unused deps found.
-- **GitHub issues**: No new issues.
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
-
-### Run 2036 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (March 15). Tracked open PRs: #4843 (Variable PTC deadline), #4992 (cached PTCs), #4979 (PTC lookbehind), #5022 (on_payload_attestation block check), #5023 (block root filenames). None merged.
-- **CI**: All 7 jobs green. Nightly: 3 consecutive days green (March 18-20).
-- **Security**: `cargo audit` — unchanged (rsa no fix, 5 unmaintained transitive deps). No new advisories.
-- **Build**: `cargo check --release` clean in 17s.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
-
-### Run 2037 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas-related PRs merged since #5005 (March 15). Tracked open PRs: #4843 (Variable PTC deadline), #4992 (cached PTCs), #4979 (PTC lookbehind), #5022 (on_payload_attestation block check), #5023 (block root filenames). None merged.
-- **CI**: All 7 jobs green. Nightly: 3 consecutive days green (March 18-20).
-- **Security**: `cargo audit` — unchanged (rsa no fix, 5 unmaintained transitive deps). No new advisories.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
-
-### Run 2041 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (March 15). PR #4843 (Variable PTC deadline) has 1 approval but active pushback from ethDreamer (March 20) questioning practical value. PR #5022 (on_payload_attestation block check) has 0 reviews. None close to merging.
-- **CI**: All 7 jobs green. Nightly: 3 consecutive days green (March 18-20).
-- **Security**: `cargo audit` — unchanged (rsa no fix, 5 unmaintained transitive deps). No new advisories.
-- **GitHub issues**: No new issues.
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
-
-### Run 2048 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (March 15). Open PRs: #4843 (Variable PTC deadline — 1 approval from jtraglia, active discussion from potuz/fradamt), #4992 (cached PTCs — 1 approval from jtraglia, active discussion from potuz/jihoonsong), #5020/#4979 (PTC lookbehind), #5022 (on_payload_attestation block check), #5023 (block root filenames). None close to merging.
-- **CI**: All 7 jobs green. Build clean (`cargo check --release` 17s).
-- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix available, 5 unmaintained transitive deps). No new advisories.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
-
-### Run 2049 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (March 15). Same open PRs as run 2048: #4843 (Variable PTC deadline), #4992 (cached PTCs), #5020/#4979 (PTC lookbehind), #5022 (on_payload_attestation block check — verified vibehouse already has `UnknownBeaconBlockRoot` check at fork_choice.rs:1432), #5023 (block root filenames). None close to merging.
-- **Build**: `cargo check --release` clean (17s). `cargo clippy --workspace --all-targets` zero warnings.
-- **EF tests**: 79/79 (real crypto) + 139/139 (fake crypto) all passing. New `fork_choice_on_execution_payload` test from spec PR #4940 passing.
-- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
-- **GitHub issues**: No new issues.
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
+7 monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest, CI green, security unchanged (rsa no fix), zero clippy warnings.
 
 ### Run 2050 (2026-03-21)
 
@@ -3162,58 +2596,9 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **Security**: `cargo audit` — unchanged (rsa no fix, 5 unmaintained transitive deps). No new advisories.
 - **GitHub issues**: No new issues.
 
-### Run 2051 (2026-03-21)
+### Runs 2051–2054 (2026-03-21) — consolidated monitoring
 
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (March 15). Same open PRs: #4843 (Variable PTC deadline), #4992 (cached PTCs), #5020/#4979 (PTC lookbehind), #5022 (on_payload_attestation block check), #5023 (block root filenames). None close to merging.
-- **Build**: `cargo clippy --workspace --all-targets` zero warnings.
-- **EF tests**: 79/79 (real crypto) + 139/139 (fake crypto) all passing. 9/9 fork choice tests passing.
-- **Unit tests**: 1026/1026 state_processing tests pass.
-- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories. `jsonwebtoken` 10.3.0 is latest but still depends on vulnerable `rsa` 0.9.10.
-- **Dependencies**: `cargo update --dry-run` — no updates available.
-- **Wildcard import audit**: Verified all remaining `use super::*;` in production code are cleaned up. 192 remaining instances across consensus/ are all in `#[cfg(test)]` modules — standard practice, no action needed.
-- **GitHub issues**: No new issues.
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
-
-### Run 2052 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (March 15). Same open PRs: #4843 (Variable PTC deadline), #4992 (cached PTCs), #5020/#4979 (PTC lookbehind), #5022 (on_payload_attestation block check), #5023 (block root filenames), #5008 (field name fix). None close to merging.
-- **Build**: `cargo clippy --workspace --all-targets` zero warnings (27s).
-- **CI**: Latest run in progress — check+clippy+fmt green, ef-tests green, beacon_chain/http_api/network+op_pool/unit tests in progress. Previous run: all success.
-- **Dependencies**: `cargo update --dry-run` — no updates available.
-- **Code quality audit**: Searched for remaining wildcard imports in production code (only in test_utils modules — acceptable), `#[allow(dead_code)]` attrs (all in error enums for Debug/Display — legitimate), pub visibility in state_processing (all correctly scoped). No issues found.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
-
-### Run 2053 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. All 7 tracked open PRs unchanged: #4843 (Variable PTC deadline), #4992 (cached PTCs), #4979/#5020 (PTC lookbehind), #5022 (on_payload_attestation block check), #5023 (block root filenames), #5008 (field name fix). None merged since #5005 (March 15).
-- **Build**: `cargo clippy --workspace --all-targets` zero warnings.
-- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
-- **Dependencies**: `cargo update --dry-run` — 0 compatible updates. 33 deps behind latest but all require breaking semver bumps (reqwest 0.12→0.13, rand 0.8/0.9→0.10, ssz_types 0.11→0.14, tree_hash 0.10→0.12, etc). Not actionable as drive-by updates.
-- **Code quality**: Full unwrap/expect/panic audit of production code (consensus/ + beacon_node/) — zero instances found. All existing clippy deny lints (arithmetic_side_effects, indexing_slicing, disallowed_methods) properly enforced. All TODOs properly reference #36 and remain blocked on external factors (EIP-7892, blst upstream, PeerDAS checkpoint sync).
-- **GitHub issues**: No new issues.
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
-
-### Run 2054 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. 14 open Gloas PRs tracked. None merged since #5005 (March 15).
-- **Build**: `cargo clippy --workspace --all-targets` zero warnings.
-- **Tests**: 4920/4929 pass (8 web3signer timeouts — pre-existing external service issue).
-- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
-- **Code quality**: Remaining wildcard imports are all idiomatic (prelude, test modules, crate re-exports). `#[allow(dead_code)]` annotations reviewed — all intentional (error enum variants used via Display/Debug).
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
+4 monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest, CI green, security unchanged (rsa no fix), zero clippy warnings.
 
 ### Run 2055 (2026-03-21)
 
@@ -3253,59 +2638,9 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **Intentionally kept**: `ClientCode::Lighthouse` / `ClientKind::Lighthouse` (peer identification), Kurtosis service names, test fixtures.
 - **Build**: clippy zero warnings, doc zero warnings, pre-push lint green.
 
-### Run 2059 (2026-03-21)
+### Runs 2059–2067 (2026-03-21) — consolidated monitoring
 
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. Two post-alpha.3 merges: PR #5001 (add `parent_block_root` to bid filtering key) — already implemented in `observed_execution_bids.rs` with full test coverage. PR #5002 (wording clarification) — no code impact.
-- **Heze (next fork)**: FOCIL/EIP-7805 spec exists on master (beacon-chain, fork-choice, fork, p2p-interface, validator, inclusion-list, builder). Still WIP — adds `InclusionList` type, `inclusion_list_bits` bitvector on `ExecutionPayloadBid`, 16-member inclusion list committee. Fork epoch TBD. Not yet actionable.
-- **CI**: All green. Last 5 runs succeeded.
-- **Security**: `cargo audit` unchanged — rsa RUSTSEC-2023-0071 (no fix available), 5 unmaintained transitive deps.
-- **Spec tests**: Full pass — 139/139 (fake crypto), 9/9 fork choice (real crypto), 60/60 operations/sanity/etc (real crypto).
-- **Build health**: Zero clippy warnings, zero compiler warnings.
-- **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority.
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
-
-### Run 2064 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (March 15). 14 open Gloas PRs tracked — same set as previous runs. None close to merging. PR #5022 (block-known check in on_payload_attestation_message) — verified we already have this check at fork_choice.rs:1426-1432.
-- **CI**: In-progress run (check+clippy green, other jobs running). Previous 3 CI runs all success. Last 3 nightly runs all success.
-- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
-- **Dependencies**: `cargo update --dry-run` — 0 compatible updates.
-- **Build**: `cargo clippy --workspace --all-targets` zero warnings.
-- **Wildcard imports**: All remaining `use ...*` in production code are idiomatic `prelude::*` patterns (rayon, std::io, rand, futures, chrono) — standard Rust practice, no action needed.
-- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
-
-### Run 2066 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new commits to consensus-specs since #5005 (March 15). 10 open Gloas PRs tracked: #5023, #5022, #5020, #5008, #4992, #4979, #4962, #4960, #4954, #4939. None merged. PR #5022 (block-known check) — already implemented. PR #5008 (field name fix) — prose-only, our code already uses correct `beacon_block_root`.
-- **Build**: `cargo clippy --workspace --all-targets` zero warnings.
-- **CI**: Latest CI run in progress (wildcard imports commit). Previous 3 CI runs success. Last 3 nightly runs all success (Mar 18-20).
-- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
-- **Wildcard imports**: Comprehensive audit confirms all remaining `use ...*` in production code are legitimate `pub use` re-exports (types, bls backends, malloc interface) or standard prelude patterns. No actionable imports remain.
-- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
-
-### Run 2067 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (March 15). Open PRs unchanged: #5020 (PTC lookbehind minimal — most significant, adds `previous_epoch_last_ptc` BeaconState field), #5022 (block-known check — already implemented), #5023 (test filenames), #5008 (field name fix — prose-only), #4992 (cached PTCs). None close to merging.
-- **Build**: `cargo clippy --workspace --all-targets` zero warnings.
-- **CI**: Latest run (wildcard imports commit) in progress — 5/7 jobs green (check+clippy+fmt, ef-tests, network+op_pool, http_api all passed; beacon_chain + unit tests in progress). Previous runs all success.
-- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
-- **Dependencies**: `cargo update --dry-run` — 0 compatible crate updates available.
-- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
+4 monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest, CI green, security unchanged (rsa no fix), zero clippy warnings.
 
 ### Run 2068 (2026-03-21)
 
@@ -3319,84 +2654,9 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **Tests**: Workspace tests 308/312 pass (4 beacon_node CLI tests are flaky under full-suite concurrency — pass individually and in isolation, likely port/FD exhaustion under load).
 - **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
 
-### Run 2069 (2026-03-21)
+### Runs 2069–2075 (2026-03-21) — consolidated monitoring
 
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (March 15). All 10 tracked open PRs unchanged (#5023, #5022, #5020, #5008, #4992, #4979, #4962, #4960, #4954, #4939). None close to merging.
-- **Build**: `cargo clippy --workspace --all-targets` zero warnings.
-- **CI**: Latest run in progress. Previous 3 CI runs all success.
-- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
-- **Dependencies**: `cargo update --dry-run` — 0 compatible crate updates available.
-- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
-
-### Run 2071 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (March 15). Open PRs unchanged.
-- **Build**: `cargo clippy --workspace --all-targets` zero warnings.
-- **CI**: Latest run (kurtosis config update) in progress — check+clippy+fmt and ef-tests passed, other jobs running. Previous 3 CI runs all success.
-- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
-- **Dependencies**: `cargo update --dry-run` — 0 compatible crate updates available.
-- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
-- **Stale references**: Verified zero `lighthouse:local` references remain after kurtosis config update (commit 649ee8f44).
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
-
-### Run 2072 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (March 15). 13 open ePBS-related PRs tracked — same set as previous runs. Notable active PRs: #5020/#4979 (PTC lookbehind), #4843 (variable PTC deadline), #4992 (cached PTCs). None merged.
-- **Build**: `cargo clippy --workspace --all-targets` zero warnings.
-- **CI**: Latest run (kurtosis config update) in progress — check+clippy+fmt and ef-tests passed, beacon_chain/http_api/network+op_pool/unit tests in progress. Previous 3 CI runs all success.
-- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
-- **Dependencies**: `cargo update --dry-run` — 7 git repo refreshes, 0 compatible crate version updates.
-- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
-
-### Run 2073 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs commits since #5005 (March 15). Open ePBS PRs unchanged — notable: #4979 (PTC lookbehind, CLOSED), #4992 (cached PTCs, still OPEN), #4747 (fast confirmation rule, active), #5023 (block root filenames, updated March 20). None merged.
-- **Build**: `cargo clippy --workspace --all-targets` zero warnings.
-- **CI**: Latest run (kurtosis config update) in progress. Previous 2 CI runs success.
-- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
-- **Dependencies**: 0 compatible crate version updates.
-- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
-
-### Run 2074 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs commits since #5005 (March 15). Open ePBS PRs unchanged — #5023 (block root filenames, updated March 20), #5022 (block-known check), #5020 (PTC lookbehind minimal), #4992 (cached PTCs), #4979 (PTC lookbehind, still open). None merged.
-- **Build**: `cargo clippy --workspace --all-targets` zero warnings.
-- **CI**: Latest run (kurtosis config update) 3/6 jobs passed (check+clippy+fmt, ef-tests, network+op_pool), 3 in progress (http_api, beacon_chain, unit tests). Previous 2 CI runs success.
-- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
-- **Dependencies**: 0 compatible crate version updates.
-- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
-
-### Run 2075 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs commits since #5005 (March 15). Open ePBS PRs unchanged — #5023 (block root filenames), #5022 (block-known check), #5020 (PTC lookbehind minimal), #5008 (field name fix), #4992 (cached PTCs), #4979 (PTC lookbehind). None merged.
-- **Build**: `cargo clippy --workspace --all-targets` zero warnings.
-- **CI**: Latest run in progress. Previous 3 CI runs success.
-- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
-- **Dependencies**: 0 compatible crate version updates.
-- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
-
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
+6 monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest, CI green, security unchanged (rsa no fix), zero clippy warnings.
 
 ### Run 2076 (2026-03-21)
 
@@ -3694,182 +2954,18 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **Build**: `cargo clippy --workspace --all-targets` zero warnings.
 - **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
 
-### Run 2095 (2026-03-21)
+### Runs 2095–2105 (2026-03-21) — consolidated monitoring
 
-**Monitoring run — no code changes.**
+11 monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest, CI green, security unchanged (rsa no fix), zero clippy warnings.
 
-- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs gloas PRs merged since #5005 (March 15). 3 new PRs opened since last check:
-  - #5023 (fix block root filenames + Gloas comptests): test-only, no code impact
-  - #5022 (assert block known in on_payload_attestation_message): our code already returns `UnknownBeaconBlockRoot` at fork_choice.rs:1426-1432 — already compliant
-  - #5020 (PTC lookbehind minimal): still in discussion, no approvals
-  - #4892 (remove impossible branch, 2 approvals): our `is_supporting_vote_gloas_at_slot` already uses `==` (not `<=`) — already compliant
-  - #4992 (cached PTCs, 1 approval): reviewed full diff — adds `previous_ptc`/`current_ptc` Vector[ValidatorIndex, PTC_SIZE] to BeaconState, extracts `compute_ptc(state)`, simplifies `get_ptc` to return cached values, rotates in `process_slots`. When merged: touches types (2 state fields), process_slots, get_ptc, fork upgrade, genesis, validator assignment. Moderate scope, well-defined.
-- **Build**: CI in progress (check+clippy+fmt passed). Nightly green.
-- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
-- **EF tests**: Latest release is v1.6.0-beta.0 (non-Gloas). We track v1.7.0-alpha.3 for Gloas — still latest.
+### Run 2106 (2026-03-21)
+
+**Task doc consolidation — removed 939 lines of repetitive monitoring entries.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (March 15). Open PRs unchanged: #4747, #4843, #4892, #4898, #4939, #4954, #4979, #4992, #5008, #5020, #5022, #5023. None close to merging.
+- **Code changes**: Consolidated 89 monitoring-only run entries into 14 date-grouped summaries. Preserved all 167 code-change runs intact. Reduced doc from 3875 to 2960 lines (-24%).
+- **Build**: `cargo clippy --workspace` zero warnings.
+- **CI**: All 6 jobs passed. Nightly green.
+- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps).
 - **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
 
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
-
-### Run 2096 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. 2 Gloas PRs merged since last spec audit:
-  - #5001 (add `parent_block_root` to bid filtering key, merged March 12): **already implemented** — our `ObservedExecutionBids::is_highest_value_bid` uses `(slot, parent_block_hash, parent_block_root)` tuple, and `ExecutionBidPool::get_best_bid` filters by `parent_block_root`. Fully compliant.
-  - #5002 (self-build payload signature verification wording, merged March 13): spec wording clarification only. Our envelope signature verification already uses `verify_execution_payload_envelope_signature`. No code change needed.
-- **Open ePBS PRs**: #4892, #4992, #5020, #5022, #5023, #5008 — all still open. #5022 (assert block known): re-verified we return `UnknownBeaconBlockRoot` at fork_choice.rs:1432.
-- **Build**: `cargo clippy --workspace --all-targets` zero warnings. CI in progress (check+clippy+fmt ✓, ef-tests ✓, 4 jobs still running).
-- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
-- **EF tests**: Latest release v1.6.0-beta.0 (non-Gloas). We track v1.7.0-alpha.3 for Gloas — still latest.
-- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
-
-No actionable code changes. Codebase stable and spec-compliant.
-
-### Run 2097 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new releases.
-  - Merged since last check: none new (previously tracked #5001, #5002, #4940, #5005 all already accounted for).
-  - **#4940** (initial fork choice tests for Gloas, merged March 13): test vectors present in our fixtures (`on_execution_payload/`), EF test runner handles them, CI ef-tests job passes.
-  - **#5008** (field name `block_root`→`beacon_block_root`): still open. Our `ExecutionPayloadEnvelope` already uses `beacon_block_root` — already compliant.
-  - **PTC lookbehind**: 3 competing PRs (#4979, #4992, #5020) all still open, no consensus yet. Will require BeaconState type changes when one merges.
-  - Open PRs tracked: #4892, #4992, #5008, #5020, #5022, #5023.
-- **CI**: Run 23377877208 — check+clippy+fmt ✓, ef-tests ✓, remaining jobs (beacon_chain, http_api, network+op_pool, unit tests) in progress.
-- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071, 5 unmaintained transitive deps). No new advisories.
-- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
-
-No actionable code changes. Codebase stable and spec-compliant.
-
-### Run 2098 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas/ePBS PRs merged since last check.
-  - Open PRs tracked: #4892, #4992, #5008, #5020, #5022, #5023 — all still open, no status changes.
-  - **#4992** and **#5020** now tagged `heze` (post-Gloas fork), suggesting PTC caching/lookbehind changes deferred beyond Gloas.
-- **CI**: Run 23377877208 — check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, beacon_chain/http_api/unit tests still in progress.
-- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
-- **EF tests**: v1.7.0-alpha.3 still latest Gloas test release.
-- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
-
-No actionable code changes. Codebase stable and spec-compliant.
-
-### Run 2099 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas/ePBS PRs merged since #5005 (March 15).
-  - Open PRs tracked: #4892, #4992, #5008, #5020, #5022, #5023 — all still open.
-  - **#4843** (Variable PTC deadline): newly tracked — active review (10 review comments), eip7732+gloas labels. Would change PTC timing logic if merged.
-  - **#4747** (Fast Confirmation Rule): newly tracked — updated today, phase0+eip7805+gloas labels. Cross-cutting spec addition.
-  - **#4992**, **#5020**, **#4979** tagged `heze` (post-Gloas fork) — PTC caching/lookbehind deferred.
-- **CI**: Run 23377877208 — check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, beacon_chain/http_api/unit tests still in progress.
-- **Security**: `cargo audit` — rsa RUSTSEC-2023-0071 (no fix), 5 unmaintained transitive deps (ansi_term, bincode, derivative, filesystem, paste). No new vulnerabilities.
-- **EF tests**: v1.7.0-alpha.3 still latest Gloas test release. Non-Gloas latest is v1.6.1.
-- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
-
-No actionable code changes. Codebase stable and spec-compliant.
-
-### Run 2100 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas/ePBS PRs merged since #5005 (March 15).
-  - Open PRs tracked: #4892, #4992, #5008, #5014, #5020, #5022, #5023, #4843, #4747 — all still open.
-  - **#5014** (ExecutionProofStatus RPC): newly tracked — introduces new P2P RPC for communicating latest verified block/slot.
-  - **#4992**, **#5020**, **#4979** tagged `heze` (post-Gloas fork) — PTC caching/lookbehind deferred.
-- **CI**: Run 23377877208 — check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, beacon_chain/http_api/unit tests still in progress.
-- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
-- **EF tests**: v1.7.0-alpha.3 still latest Gloas test release. Non-Gloas latest is v1.6.1.
-- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
-- **Dependencies**: `cargo outdated` blocked by rusqlite linking conflict (slashing_protection uses both rusqlite 0.38 and 0.39 via r2d2_sqlite). Not actionable without bumping rusqlite chain together.
-
-No actionable code changes. Codebase stable and spec-compliant.
-
-### Run 2101 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas/ePBS PRs merged since #5005 (March 15).
-  - Open PRs tracked: #4747, #4843, #4892, #4939, #4979, #4992, #5008, #5020, #5022, #5023 — all still open.
-  - **#4892** (remove impossible branch): 2 approvals (ensi321, jtraglia) — closest to merge. Already compliant (our `is_supporting_vote_gloas_at_slot` uses `==`).
-  - **#4747** (Fast Confirmation Rule): updated today, still in active review.
-  - **#4843** (Variable PTC deadline): updated yesterday, still in review.
-  - **#4992**, **#5020**, **#4979** tagged `heze` (post-Gloas fork) — PTC caching/lookbehind deferred.
-- **CI**: Run 23377877208 — check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, http_api ✓; beacon_chain and unit tests still in progress.
-- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
-- **EF tests**: v1.7.0-alpha.3 still latest Gloas test release.
-- **GitHub issues**: No new issues. #27 (validator messaging) remains speculative discussion. #36 has 2 non-critical remaining + 5 blocked.
-
-No actionable code changes. Codebase stable and spec-compliant.
-
-### Run 2102 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas/ePBS PRs merged since #5005 (March 15).
-  - Open PRs tracked: #4747, #4843, #4892, #4939, #4954, #4979, #4992, #5008, #5014, #5020, #5022, #5023 — all still open.
-  - **#4747** (Fast Confirmation Rule): updated today, 6000+ lines — major addition, still in review.
-  - **#4843** (Variable PTC deadline): updated yesterday, still in review.
-  - **#5022** (assert block known in on_payload_attestation_message): spec test clarification only, we already handle unknown blocks via validation.
-  - **#5008** (field name fix): prose-only, our implementation already uses `beacon_block_root`.
-  - **#4992**, **#5020**, **#4979** tagged `heze` (post-Gloas fork) — PTC caching/lookbehind deferred.
-- **CI**: Run 23377877208 — check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, http_api ✓; beacon_chain and unit tests still in progress.
-- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
-- **EF tests**: v1.7.0-alpha.3 still latest Gloas test release. Non-Gloas latest is v1.6.1.
-- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
-
-No actionable code changes. Codebase stable and spec-compliant.
-
-### Run 2103 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas/ePBS PRs merged since #5005 (March 15).
-  - Open PRs tracked: #4747, #4843, #4892, #4898, #4939, #4954, #4979, #4992, #5008, #5014, #5020, #5022, #5023 — all still open.
-  - **#4747** (Fast Confirmation Rule): updated today, 6000+ lines, still in review.
-  - **#4954** (fork choice store milliseconds): converts Store.time→time_ms and genesis_time→genesis_time_ms. Still in review.
-  - **#4892** (remove impossible branch): 2 approvals, closest to merge. Already compliant.
-- **CI**: Run 23377877208 — all 6 jobs passed ✓. Nightly: last 3 runs all passed (Mar 19-21).
-- **Security**: `cargo audit` — unchanged. No new advisories.
-- **Build**: `cargo check --workspace` — zero warnings.
-- **EF tests**: v1.7.0-alpha.3 still latest.
-- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
-- **Dependencies**: `cargo outdated` still blocked by rusqlite linking conflict. Not actionable.
-
-No actionable code changes. Codebase stable and spec-compliant.
-
-### Run 2104 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs commits since #5005 (March 15). HEAD at 1baa05e711.
-  - Open PRs tracked: #4747, #4843, #4892, #4898, #4939, #4954, #4979, #4992, #5008, #5014, #5020, #5022, #5023 — all still open.
-  - **#4747** (Fast Confirmation Rule): updated today, still in active review.
-  - **#4843** (Variable PTC deadline): updated yesterday, still in review.
-  - **#4892** (remove impossible branch): 2 approvals but stale (last updated Feb 9). Already compliant.
-- **CI**: Run 23377877208 — all 6 jobs passed ✓. Nightly green.
-- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps including bincode RUSTSEC-2025-0141 from sp1-verifier). No new advisories.
-- **EF tests**: v1.7.0-alpha.3 still latest Gloas test release.
-- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
-
-No actionable code changes. Codebase stable and spec-compliant.
-
-### Run 2105 (2026-03-21)
-
-**Monitoring run — no code changes.**
-
-- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs commits since #5005 (March 15). HEAD at 1baa05e711.
-  - Open PRs tracked: #4747, #4843, #4892, #4898, #4939, #4954, #4979, #4992, #5008, #5014, #5020, #5022, #5023 — all still open.
-  - **#4747** (Fast Confirmation Rule): updated today, 6000+ lines, still in active review.
-  - **#4843** (Variable PTC deadline): updated Mar 20, still in review.
-  - **#5023** (Fix block root filenames): updated Mar 20, test-only fix.
-  - **#4992**, **#5020**, **#4979** tagged `heze` (post-Gloas fork) — PTC caching/lookbehind deferred.
-- **CI**: Run 23377877208 — all 6 jobs passed ✓. Nightly green.
-- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps including bincode RUSTSEC-2025-0141 from sp1-verifier). No new advisories.
-- **EF tests**: v1.7.0-alpha.3 still latest Gloas test release.
-- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
-
-No actionable code changes. Codebase stable and spec-compliant.
