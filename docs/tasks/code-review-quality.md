@@ -3710,3 +3710,18 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
 
 No actionable code changes. All priorities 1-6 complete. Codebase stable.
+
+### Run 2096 (2026-03-21)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. 2 Gloas PRs merged since last spec audit:
+  - #5001 (add `parent_block_root` to bid filtering key, merged March 12): **already implemented** — our `ObservedExecutionBids::is_highest_value_bid` uses `(slot, parent_block_hash, parent_block_root)` tuple, and `ExecutionBidPool::get_best_bid` filters by `parent_block_root`. Fully compliant.
+  - #5002 (self-build payload signature verification wording, merged March 13): spec wording clarification only. Our envelope signature verification already uses `verify_execution_payload_envelope_signature`. No code change needed.
+- **Open ePBS PRs**: #4892, #4992, #5020, #5022, #5023, #5008 — all still open. #5022 (assert block known): re-verified we return `UnknownBeaconBlockRoot` at fork_choice.rs:1432.
+- **Build**: `cargo clippy --workspace --all-targets` zero warnings. CI in progress (check+clippy+fmt ✓, ef-tests ✓, 4 jobs still running).
+- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
+- **EF tests**: Latest release v1.6.0-beta.0 (non-Gloas). We track v1.7.0-alpha.3 for Gloas — still latest.
+- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
+
+No actionable code changes. Codebase stable and spec-compliant.
