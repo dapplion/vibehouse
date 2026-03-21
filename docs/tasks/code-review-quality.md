@@ -3148,3 +3148,16 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **GitHub issues**: No new issues.
 
 No actionable code changes. All priorities 1-6 complete. Codebase stable.
+
+### Run 2050 (2026-03-21)
+
+**Wildcard import cleanup — 3 files.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (March 15). Same open PRs as run 2049.
+- **Code changes**:
+  - `process_operations.rs`: replaced `use super::*;` with explicit imports (12 functions/modules from parent + direct `rayon::prelude`, `safe_arith`, and 30 type imports)
+  - `per_block_processing.rs`: removed unused imports that were only consumed by child modules via `super::*;` (rayon::prelude, 22 type imports); moved `BuilderPubkeyCache` to test module's own import list
+  - `subnet_predicate.rs`: replaced `use super::*;` with explicit imports (`Enr`, `Subnet`, `Eth2Enr`, `EnrExt`, `Arc`, `ChainSpec`, `EthSpec`)
+- **Tests**: 1026/1026 state_processing tests pass. Full clippy clean. Pre-push lint green.
+- **Security**: `cargo audit` — unchanged (rsa no fix, 5 unmaintained transitive deps). No new advisories.
+- **GitHub issues**: No new issues.
