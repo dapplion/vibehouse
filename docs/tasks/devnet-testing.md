@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 2119 (Mar 21) — maintenance check, spec PR audit
+
+CI green (in-progress run + last completed success). 5 consecutive green nightlies. Spec HEAD unchanged (1baa05e, Mar 15). No new Gloas PRs merged. Build clean, zero warnings. cargo audit unchanged. No compatible dep updates (33 major-version-only bumps). Audited PR #4843 (variable PTC deadline) in detail: renames payload_present→payload_timely, adds MIN_PAYLOAD_DUE_BPS config, new size-based timeliness computation, validator-side PTC broadcast rewrite — ~200 LOC rename + ~100-200 LOC architectural change to VC payload attestation service. Still open with active review (potuz, fradamt comments). Not implementing until merged. All 11 remaining TODOs in codebase are blocked on external factors (EIP-7892, blst, PeerDAS) or non-critical. Project in maintenance mode.
+
 ### run 2118 (Mar 21) — maintenance check, all stable
 
 CI green (arc-swap update in progress, check+clippy passed). 5 consecutive green nightlies. Spec HEAD unchanged (1baa05e, Mar 15). No new Gloas PRs merged. Zero compiler warnings, zero clippy warnings. cargo audit unchanged (rsa, no fix). No dependency updates available (0 packages to lock). Audited Gloas production code for .unwrap() — all clean, proper Result-based error handling throughout. Open Gloas PRs closest to merging: #4843 (variable PTC deadline, 1 approval, clean mergeable), #4992 (cached PTCs, 25 review comments, clean mergeable). #4747 (fast confirmation) updated today but still dirty/not ready. Project in maintenance mode.
