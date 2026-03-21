@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 2134 (Mar 21) — maintenance check, all stable
+
+CI green (latest + 8 nightlies). Spec HEAD unchanged (no merges since Mar 15). Zero compiler/clippy warnings. cargo audit: 1 known (rsa timing, no fix). Dependency check: only rand ecosystem outdated (blocked on k256 0.14 RC, discv5 git deps still on rand_core 0.6). Verified spec PRs #5001 (parent_block_root bid key) already implemented, #5022 (block known assert in on_payload_attestation) already handled. Open Gloas PRs: #4843 (variable PTC deadline, 1 approval, 11 reviews), #5020/#4992/#4979 still in review. Attempted rand_xorshift 0.4→0.5 upgrade but blocked by rand_core 0.9→0.10 ecosystem split. Project in maintenance mode.
+
 ### run 2130 (Mar 21) — pub(crate) visibility audit
 
 CI fully green (8 consecutive nightlies). Spec unchanged (no new merges since Mar 15). Downgraded `pub` to `pub(crate)` for 7 internal-only items in store (HotHDiffBufferCache, 4 HierarchyConfig methods) and state_processing (PreEpochCache, translate_participation, eth2_genesis_time). All tests pass (236 store, 1026 state_processing). 10 remaining TODOs all blocked on external factors.
