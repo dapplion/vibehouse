@@ -1,9 +1,12 @@
 //! The subnet predicate used for searching for a particular subnet.
-use super::*;
+use super::enr::Eth2Enr;
 use crate::types::{EnrAttestationBitfield, EnrSyncCommitteeBitfield};
+use crate::{Enr, Subnet};
+use network_utils::enr_ext::EnrExt;
+use std::sync::Arc;
 use tracing::trace;
-use types::ChainSpec;
 use types::data_column_custody_group::compute_subnets_for_node;
+use types::{ChainSpec, EthSpec};
 
 /// Returns the predicate for a given subnet.
 pub fn subnet_predicate<E>(

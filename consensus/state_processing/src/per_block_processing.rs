@@ -1,31 +1,23 @@
+pub use self::verify_attester_slashing::{
+    get_slashable_indices, get_slashable_indices_modular, verify_attester_slashing,
+};
+pub use self::verify_proposer_slashing::verify_proposer_slashing;
 use crate::consensus_context::ConsensusContext;
+pub use altair::sync_committee::process_sync_aggregate;
+pub use block_signature_verifier::{BlockSignatureVerifier, ParallelSignatureSets};
 use errors::{BlockOperationError, BlockProcessingError, HeaderInvalid};
-use rayon::prelude::*;
+pub use is_valid_indexed_attestation::is_valid_indexed_attestation;
+pub use process_operations::process_operations;
 use safe_arith::{ArithError, SafeArith, SafeArithIter};
 use signature_sets::{block_proposal_signature_set, get_pubkey_from_state, randao_signature_set};
 use std::borrow::Cow;
 use tree_hash::TreeHash;
 use types::{
-    AbstractExecPayload, Address, AttestationRef, AttesterSlashingRef, BeaconBlockBodyRef,
-    BeaconBlockHeader, BeaconBlockRef, BeaconState, BeaconStateError, Builder, ChainSpec,
-    ConsolidationRequest, Deposit, DepositData, DepositRequest, Epoch, Error, Eth1Data, EthSpec,
-    ExecPayload, ExecutionPayloadHeader, ExecutionPayloadHeaderRefMut, FixedVector, ForkName,
-    Hash256, List, PendingAttestation, PendingConsolidation, PendingDeposit,
-    PendingPartialWithdrawal, ProposerSlashing, PublicKeyBytes, RelativeEpoch, SignedBeaconBlock,
-    SignedBlsToExecutionChange, SignedVoluntaryExit, Slot, Unsigned, Withdrawal, WithdrawalRequest,
+    AbstractExecPayload, BeaconBlockBodyRef, BeaconBlockHeader, BeaconBlockRef, BeaconState,
+    BeaconStateError, ChainSpec, Error, Eth1Data, EthSpec, ExecPayload, ExecutionPayloadHeader,
+    ExecutionPayloadHeaderRefMut, RelativeEpoch, SignedBeaconBlock, Slot, Unsigned, Withdrawal,
     Withdrawals, is_progressive_balances_enabled,
 };
-#[cfg(test)]
-use types::{BeaconBlockGloas, BuilderPubkeyCache, Domain, Signature, SignedRoot, VoluntaryExit};
-
-pub use self::verify_attester_slashing::{
-    get_slashable_indices, get_slashable_indices_modular, verify_attester_slashing,
-};
-pub use self::verify_proposer_slashing::verify_proposer_slashing;
-pub use altair::sync_committee::process_sync_aggregate;
-pub use block_signature_verifier::{BlockSignatureVerifier, ParallelSignatureSets};
-pub use is_valid_indexed_attestation::is_valid_indexed_attestation;
-pub use process_operations::process_operations;
 pub use verify_attestation::{
     verify_attestation_for_block_inclusion, verify_attestation_for_state,
 };
@@ -742,9 +734,9 @@ mod gloas_per_block_tests {
     use std::sync::Arc;
     use types::{
         Address, BeaconBlockHeader, BeaconStateGloas, Builder, BuilderPendingPayment,
-        CACHED_EPOCHS, Checkpoint, CommitteeCache, Epoch, ExecutionBlockHash, ExecutionPayloadBid,
-        ExitCache, FixedVector, Fork, Hash256, List, MinimalEthSpec, ProgressiveBalancesCache,
-        PubkeyCache, SlashingsCache, SyncCommittee, Unsigned, Vector,
+        BuilderPubkeyCache, CACHED_EPOCHS, Checkpoint, CommitteeCache, Epoch, ExecutionBlockHash,
+        ExecutionPayloadBid, ExitCache, FixedVector, Fork, Hash256, List, MinimalEthSpec,
+        ProgressiveBalancesCache, PubkeyCache, SlashingsCache, SyncCommittee, Unsigned, Vector,
     };
 
     type E = MinimalEthSpec;
