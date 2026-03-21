@@ -30,6 +30,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2062 (Mar 21) — wildcard import cleanup: operation_pool + store
+
+- Replaced wildcard imports with explicit imports in 18 files across `operation_pool` and `store` crates.
+- Fixed missing trait imports in test modules (`EthSpec`, `FixedBytesExtended`, `SignedRoot`).
+- Full workspace lint passes (including `--tests`). Pushed.
+- Spec: no new Gloas PRs merged since Mar 15. 14 open PRs, none close to merge.
+- Notable open PRs: #4954 (fork choice ms time), #4892 (remove impossible branch), #4898 (remove pending tiebreaker), #5008 (field name fix).
+
 ### run 2061 (Mar 21) — health check, all stable
 
 - CI: 5/5 recent runs green. Nightly: Mar 18-20 all green (Mar 17 flake already fixed — `expect_empty_network` removed from `finalized_sync_not_enough_custody_peers_on_start`).
