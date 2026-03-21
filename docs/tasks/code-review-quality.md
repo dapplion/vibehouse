@@ -3336,3 +3336,16 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **CI**: check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, 3 jobs still running (beacon_chain, unit tests, http_api).
 - **Assessment**: Codebase at steady state. No actionable improvements found. Next impactful work: spec PR merges (particularly #4992 cached PTCs).
 - **No code changes** — verification-only run.
+
+### Run 2154 (2026-03-22)
+
+**Dependency update + spec conformance deep audit**
+
+- **Code changes**: Updated `zip` 8.3.0 → 8.3.1 (only semver-compatible update available). Also fixed `data-encoding-macro-internal` lockfile entry (was incorrectly resolved to syn v2, now correctly uses syn v1).
+- **Spec conformance audit #1 — process_slots/process_epoch**: Deep audit of Gloas slot processing (`per_slot_processing.rs`) and epoch processing (`altair.rs`, `single_pass.rs`, `gloas.rs`). All 17 epoch processing steps in correct order. `process_builder_pending_payments` correctly placed after `process_pending_consolidations` and before `process_effective_balance_updates`. Payload availability bit clearing in `process_slot` correct at `(slot + 1) % SLOTS_PER_HISTORICAL_ROOT`.
+- **Spec conformance audit #2 — fork choice 3-state payload model**: Deep audit of EMPTY/FULL/PENDING virtual node model in proto_array. Key findings: (1) `envelope_received` vs `payload_revealed` distinction correctly implemented — FULL child only created when envelope actually received, not just PTC quorum. (2) Parent payload status determination via bid hash comparison handles None/genesis cases safely. (3) Head viability filtering blocks external builder blocks until `payload_revealed`. (4) Attestation vote filtering only counts votes matching actual payload status. No issues found.
+- **Spec**: v1.7.0-alpha.3 still latest. No new merges since March 15. All tracked Gloas PRs remain open (#4992, #4843, #4979, #5022, #5023, #4898, #4954, #5008, #5020, #4840).
+- **Dependencies**: 14 behind-latest packages all require major version bumps. `prometheus-client` 0.23→0.24 blocked by libp2p pinning. `rustup` updated 1.28.2→1.29.0.
+- **Tests**: 204/204 network tests pass (FORK_NAME=gloas), 1/1 fork_choice_on_execution_payload EF test passes. Full workspace clippy zero warnings.
+- **CI**: All green. 5+ consecutive nightly successes.
+- **Assessment**: Codebase remains at steady state. Both deep audits confirm spec conformance. Next impactful work: spec PR merges (particularly #4992 cached PTCs which adds `previous_ptc`/`current_ptc` to BeaconState).
