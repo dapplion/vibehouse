@@ -58,7 +58,6 @@ fn bellatrix_block_large(spec: &ChainSpec) -> BeaconBlock<E> {
 
 // Tests the STATUS RPC message
 #[test]
-#[allow(clippy::single_match)]
 fn test_tcp_status_rpc() {
     // Set up the logging.
     let log_level = "debug";
@@ -132,23 +131,16 @@ fn test_tcp_status_rpc() {
         // build the receiver future
         let receiver_future = async {
             loop {
-                match receiver.next_event().await {
-                    NetworkEvent::RequestReceived {
-                        peer_id,
-                        inbound_request_id,
-                        request_type,
-                    } => {
-                        if request_type == rpc_request {
-                            // send the response
-                            debug!("Receiver Received");
-                            receiver.send_response(
-                                peer_id,
-                                inbound_request_id,
-                                rpc_response.clone(),
-                            );
-                        }
-                    }
-                    _ => {} // Ignore other events
+                if let NetworkEvent::RequestReceived {
+                    peer_id,
+                    inbound_request_id,
+                    request_type,
+                } = receiver.next_event().await
+                    && request_type == rpc_request
+                {
+                    // send the response
+                    debug!("Receiver Received");
+                    receiver.send_response(peer_id, inbound_request_id, rpc_response.clone());
                 }
             }
         }
@@ -166,7 +158,6 @@ fn test_tcp_status_rpc() {
 
 // Tests a streamed BlocksByRange RPC Message
 #[test]
-#[allow(clippy::single_match)]
 fn test_tcp_blocks_by_range_chunked_rpc() {
     // Set up the logging.
     let log_level = "debug";
@@ -262,40 +253,33 @@ fn test_tcp_blocks_by_range_chunked_rpc() {
         // build the receiver future
         let receiver_future = async {
             loop {
-                match receiver.next_event().await {
-                    NetworkEvent::RequestReceived {
+                if let NetworkEvent::RequestReceived {
+                    peer_id,
+                    inbound_request_id,
+                    request_type,
+                } = receiver.next_event().await
+                    && request_type == rpc_request
+                {
+                    // send the response
+                    warn!("Receiver got request");
+                    for i in 0..messages_to_send {
+                        // Send first third of responses as base blocks,
+                        // second as altair and third as bellatrix.
+                        let rpc_response = if i < 2 {
+                            rpc_response_base.clone()
+                        } else if i < 4 {
+                            rpc_response_altair.clone()
+                        } else {
+                            rpc_response_bellatrix_small.clone()
+                        };
+                        receiver.send_response(peer_id, inbound_request_id, rpc_response.clone());
+                    }
+                    // send the stream termination
+                    receiver.send_response(
                         peer_id,
                         inbound_request_id,
-                        request_type,
-                    } => {
-                        if request_type == rpc_request {
-                            // send the response
-                            warn!("Receiver got request");
-                            for i in 0..messages_to_send {
-                                // Send first third of responses as base blocks,
-                                // second as altair and third as bellatrix.
-                                let rpc_response = if i < 2 {
-                                    rpc_response_base.clone()
-                                } else if i < 4 {
-                                    rpc_response_altair.clone()
-                                } else {
-                                    rpc_response_bellatrix_small.clone()
-                                };
-                                receiver.send_response(
-                                    peer_id,
-                                    inbound_request_id,
-                                    rpc_response.clone(),
-                                );
-                            }
-                            // send the stream termination
-                            receiver.send_response(
-                                peer_id,
-                                inbound_request_id,
-                                Response::BlocksByRange(None),
-                            );
-                        }
-                    }
-                    _ => {} // Ignore other events
+                        Response::BlocksByRange(None),
+                    );
                 }
             }
         }
@@ -313,7 +297,6 @@ fn test_tcp_blocks_by_range_chunked_rpc() {
 
 // Tests a streamed BlobsByRange RPC Message
 #[test]
-#[allow(clippy::single_match)]
 fn test_blobs_by_range_chunked_rpc() {
     // Set up the logging.
     let log_level = "debug";
@@ -397,33 +380,26 @@ fn test_blobs_by_range_chunked_rpc() {
         // build the receiver future
         let receiver_future = async {
             loop {
-                match receiver.next_event().await {
-                    NetworkEvent::RequestReceived {
+                if let NetworkEvent::RequestReceived {
+                    peer_id,
+                    inbound_request_id,
+                    request_type,
+                } = receiver.next_event().await
+                    && request_type == rpc_request
+                {
+                    // send the response
+                    warn!("Receiver got request");
+                    for _ in 0..messages_to_send {
+                        // Send first third of responses as base blocks,
+                        // second as altair and third as bellatrix.
+                        receiver.send_response(peer_id, inbound_request_id, rpc_response.clone());
+                    }
+                    // send the stream termination
+                    receiver.send_response(
                         peer_id,
                         inbound_request_id,
-                        request_type,
-                    } => {
-                        if request_type == rpc_request {
-                            // send the response
-                            warn!("Receiver got request");
-                            for _ in 0..messages_to_send {
-                                // Send first third of responses as base blocks,
-                                // second as altair and third as bellatrix.
-                                receiver.send_response(
-                                    peer_id,
-                                    inbound_request_id,
-                                    rpc_response.clone(),
-                                );
-                            }
-                            // send the stream termination
-                            receiver.send_response(
-                                peer_id,
-                                inbound_request_id,
-                                Response::BlobsByRange(None),
-                            );
-                        }
-                    }
-                    _ => {} // Ignore other events
+                        Response::BlobsByRange(None),
+                    );
                 }
             }
         }
@@ -441,7 +417,6 @@ fn test_blobs_by_range_chunked_rpc() {
 
 // Tests rejection of blocks over `MAX_RPC_SIZE`.
 #[test]
-#[allow(clippy::single_match)]
 fn test_tcp_blocks_by_range_over_limit() {
     // Set up the logging.
     let log_level = "debug";
@@ -505,32 +480,25 @@ fn test_tcp_blocks_by_range_over_limit() {
         // build the receiver future
         let receiver_future = async {
             loop {
-                match receiver.next_event().await {
-                    NetworkEvent::RequestReceived {
+                if let NetworkEvent::RequestReceived {
+                    peer_id,
+                    inbound_request_id,
+                    request_type,
+                } = receiver.next_event().await
+                    && request_type == rpc_request
+                {
+                    // send the response
+                    warn!("Receiver got request");
+                    for _ in 0..messages_to_send {
+                        let rpc_response = rpc_response_bellatrix_large.clone();
+                        receiver.send_response(peer_id, inbound_request_id, rpc_response.clone());
+                    }
+                    // send the stream termination
+                    receiver.send_response(
                         peer_id,
                         inbound_request_id,
-                        request_type,
-                    } => {
-                        if request_type == rpc_request {
-                            // send the response
-                            warn!("Receiver got request");
-                            for _ in 0..messages_to_send {
-                                let rpc_response = rpc_response_bellatrix_large.clone();
-                                receiver.send_response(
-                                    peer_id,
-                                    inbound_request_id,
-                                    rpc_response.clone(),
-                                );
-                            }
-                            // send the stream termination
-                            receiver.send_response(
-                                peer_id,
-                                inbound_request_id,
-                                Response::BlocksByRange(None),
-                            );
-                        }
-                    }
-                    _ => {} // Ignore other events
+                        Response::BlocksByRange(None),
+                    );
                 }
             }
         }
@@ -685,7 +653,6 @@ fn test_tcp_blocks_by_range_chunked_rpc_terminates_correctly() {
 
 // Tests an empty response to a BlocksByRange RPC Message
 #[test]
-#[allow(clippy::single_match)]
 fn test_tcp_blocks_by_range_single_empty_rpc() {
     // Set up the logging.
     let log_level = "trace";
@@ -763,32 +730,25 @@ fn test_tcp_blocks_by_range_single_empty_rpc() {
         // build the receiver future
         let receiver_future = async {
             loop {
-                match receiver.next_event().await {
-                    NetworkEvent::RequestReceived {
+                if let NetworkEvent::RequestReceived {
+                    peer_id,
+                    inbound_request_id,
+                    request_type,
+                } = receiver.next_event().await
+                    && request_type == rpc_request
+                {
+                    // send the response
+                    warn!("Receiver got request");
+
+                    for _ in 1..=messages_to_send {
+                        receiver.send_response(peer_id, inbound_request_id, rpc_response.clone());
+                    }
+                    // send the stream termination
+                    receiver.send_response(
                         peer_id,
                         inbound_request_id,
-                        request_type,
-                    } => {
-                        if request_type == rpc_request {
-                            // send the response
-                            warn!("Receiver got request");
-
-                            for _ in 1..=messages_to_send {
-                                receiver.send_response(
-                                    peer_id,
-                                    inbound_request_id,
-                                    rpc_response.clone(),
-                                );
-                            }
-                            // send the stream termination
-                            receiver.send_response(
-                                peer_id,
-                                inbound_request_id,
-                                Response::BlocksByRange(None),
-                            );
-                        }
-                    }
-                    _ => {} // Ignore other events
+                        Response::BlocksByRange(None),
+                    );
                 }
             }
         }
@@ -808,7 +768,6 @@ fn test_tcp_blocks_by_range_single_empty_rpc() {
 // which is greater than the Snappy frame size. Hence, this test
 // serves to test the snappy framing format as well.
 #[test]
-#[allow(clippy::single_match)]
 fn test_tcp_blocks_by_root_chunked_rpc() {
     // Set up the logging.
     let log_level = "debug";
@@ -910,38 +869,35 @@ fn test_tcp_blocks_by_root_chunked_rpc() {
         // build the receiver future
         let receiver_future = async {
             loop {
-                match receiver.next_event().await {
-                    NetworkEvent::RequestReceived {
+                if let NetworkEvent::RequestReceived {
+                    peer_id,
+                    inbound_request_id,
+                    request_type,
+                } = receiver.next_event().await
+                    && request_type == rpc_request
+                {
+                    // send the response
+                    debug!("Receiver got request");
+
+                    for i in 0..messages_to_send {
+                        // Send equal base, altair and bellatrix blocks
+                        let rpc_response = if i < 2 {
+                            rpc_response_base.clone()
+                        } else if i < 4 {
+                            rpc_response_altair.clone()
+                        } else {
+                            rpc_response_bellatrix_small.clone()
+                        };
+                        receiver.send_response(peer_id, inbound_request_id, rpc_response);
+                        debug!("Sending message");
+                    }
+                    // send the stream termination
+                    receiver.send_response(
                         peer_id,
                         inbound_request_id,
-                        request_type,
-                    } => {
-                        if request_type == rpc_request {
-                            // send the response
-                            debug!("Receiver got request");
-
-                            for i in 0..messages_to_send {
-                                // Send equal base, altair and bellatrix blocks
-                                let rpc_response = if i < 2 {
-                                    rpc_response_base.clone()
-                                } else if i < 4 {
-                                    rpc_response_altair.clone()
-                                } else {
-                                    rpc_response_bellatrix_small.clone()
-                                };
-                                receiver.send_response(peer_id, inbound_request_id, rpc_response);
-                                debug!("Sending message");
-                            }
-                            // send the stream termination
-                            receiver.send_response(
-                                peer_id,
-                                inbound_request_id,
-                                Response::BlocksByRange(None),
-                            );
-                            debug!("Send stream term");
-                        }
-                    }
-                    _ => {} // Ignore other events
+                        Response::BlocksByRange(None),
+                    );
+                    debug!("Send stream term");
                 }
             }
         }
@@ -957,7 +913,6 @@ fn test_tcp_blocks_by_root_chunked_rpc() {
 }
 
 #[test]
-#[allow(clippy::single_match)]
 fn test_tcp_columns_by_root_chunked_rpc() {
     // Set up the logging.
     let log_level = "debug";
@@ -1120,7 +1075,6 @@ fn test_tcp_columns_by_root_chunked_rpc() {
 }
 
 #[test]
-#[allow(clippy::single_match)]
 fn test_tcp_columns_by_range_chunked_rpc() {
     // Set up the logging.
     let log_level = "debug";
@@ -1216,34 +1170,27 @@ fn test_tcp_columns_by_range_chunked_rpc() {
         // build the receiver future
         let receiver_future = async {
             loop {
-                match receiver.next_event().await {
-                    NetworkEvent::RequestReceived {
+                if let NetworkEvent::RequestReceived {
+                    peer_id,
+                    inbound_request_id,
+                    request_type,
+                } = receiver.next_event().await
+                    && request_type == rpc_request
+                {
+                    // send the response
+                    tracing::info!("Receiver got request");
+
+                    for _ in 0..messages_to_send {
+                        receiver.send_response(peer_id, inbound_request_id, rpc_response.clone());
+                        tracing::info!("Sending message");
+                    }
+                    // send the stream termination
+                    receiver.send_response(
                         peer_id,
                         inbound_request_id,
-                        request_type,
-                    } => {
-                        if request_type == rpc_request {
-                            // send the response
-                            tracing::info!("Receiver got request");
-
-                            for _ in 0..messages_to_send {
-                                receiver.send_response(
-                                    peer_id,
-                                    inbound_request_id,
-                                    rpc_response.clone(),
-                                );
-                                tracing::info!("Sending message");
-                            }
-                            // send the stream termination
-                            receiver.send_response(
-                                peer_id,
-                                inbound_request_id,
-                                Response::DataColumnsByRange(None),
-                            );
-                            tracing::info!("Send stream term");
-                        }
-                    }
-                    _ => {} // Ignore other events
+                        Response::DataColumnsByRange(None),
+                    );
+                    tracing::info!("Send stream term");
                 }
             }
         }
@@ -1476,7 +1423,6 @@ fn goodbye_test(log_level: &str, enable_logging: bool, protocol: Protocol) {
 
 // Tests a Goodbye RPC message
 #[test]
-#[allow(clippy::single_match)]
 fn tcp_test_goodbye_rpc() {
     let log_level = "debug";
     let enabled_logging = true;
@@ -1485,7 +1431,6 @@ fn tcp_test_goodbye_rpc() {
 
 // Tests a Goodbye RPC message
 #[test]
-#[allow(clippy::single_match)]
 fn quic_test_goodbye_rpc() {
     let log_level = "debug";
     let enabled_logging = true;
