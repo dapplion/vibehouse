@@ -2983,7 +2983,7 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **Doc update**: Added #5022 to spec-update-post-alpha3.md tracking table.
 - **No code changes needed** — all spec changes already implemented.
 
-### Runs 2108–2113 (2026-03-21) — monitoring
+### Runs 2108–2114 (2026-03-21) — monitoring
 
-Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new consensus-specs Gloas merges since #5005 (March 15). Open PRs: #4747 (fast confirmation, updated Mar 21), #4843 (variable PTC deadline, updated Mar 20), #5023 (test fixes, updated Mar 20) most active — none close to merging yet. Already-implemented PRs #4892/#4898 still open. CI green (all 7 jobs). Clippy clean (zero warnings). Codebase stable.
+Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new consensus-specs Gloas merges since #5005 (March 15). Open PRs: #4747 (fast confirmation, updated Mar 21 — active review, NOT close to merge), #4843 (variable PTC deadline — pushback from ethDreamer on complexity vs 6.66% gas gain), #5023 (test fixes, no reviews yet). Already-implemented PRs #4892/#4898/#5022 still open. CI green. Clippy clean (zero warnings). Rust stable 1.94.0 up to date. `cargo audit` unchanged (rsa no fix). Codebase stable.
 
