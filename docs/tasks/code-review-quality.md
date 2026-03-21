@@ -3572,3 +3572,24 @@ Verified each function is only used within the beacon_chain crate (not by http_a
   - **state_processing/signature_sets.rs**: downgraded `get_pubkey_from_state` to `pub(crate)` (only used within state_processing crate, not re-exported)
 - **Build**: `cargo clippy --workspace --all-targets` zero warnings. Pre-push lint-full passes.
 - **Tests**: 236/236 (store) + 1026/1026 (state_processing) all pass.
+
+### Run 2088 (2026-03-21)
+
+**pub→pub(crate) downgrades in execution_layer, network, and http_api internal modules.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new changes.
+- **Code changes**:
+  - **execution_layer/block_hash.rs**: downgraded `rlp_encode_withdrawal` and `rlp_encode_block_header` from `pub` to private `fn` (only used within the same module)
+  - **execution_layer/keccak.rs**: downgraded `keccak256` to `pub(crate)` (used by block_hash.rs within crate)
+  - **execution_layer/payload_status.rs**: downgraded `process_payload_status` to `pub(crate)` (used by lib.rs within crate)
+  - **execution_layer/metrics.rs**: downgraded 15 `pub const` to `pub(crate) const`, 13 `pub static` to `pub(crate) static`, 2 `pub fn` to `pub(crate) fn` (all in private `mod metrics`)
+  - **network/nat.rs**: downgraded `construct_upnp_mappings` to `pub(crate)`
+  - **network/persisted_dht.rs**: downgraded `DHT_DB_KEY`, `load_dht`, `persist_dht`, `clear_dht`, `PersistedDht` to `pub(crate)`
+  - **network/router.rs**: downgraded `Router`, `RouterMessage`, `HandlerNetworkContext` to `pub(crate)`
+  - **network/network_beacon_processor/mod.rs**: downgraded `Error` type alias, `InvalidBlockStorage`, `NetworkBeaconProcessor` struct + all its fields to `pub(crate)`
+  - **network/subnet_service/mod.rs**: downgraded `SubnetServiceMessage`, `ExactSubnet` + fields, `Subscription`, `SubnetService` to `pub(crate)`
+  - **network/metrics.rs**: downgraded 6 `pub fn` to `pub(crate) fn`
+  - **http_api/extractors.rs**: downgraded 5 `pub fn` + `MultiKeyQuery` struct to `pub(crate)`
+  - **http_api/task_spawner.rs**: downgraded `Priority` enum and `TaskSpawner` struct to `pub(crate)`
+- **Build**: `cargo check --workspace` + `cargo clippy` on all 3 crates — zero warnings.
+- **Total**: ~50 items downgraded across 12 files in 3 crates.
