@@ -1,30 +1,30 @@
-extern crate proc_macro;
-extern crate quote;
-extern crate syn;
-
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
-    parse_macro_input, AttributeArgs, DeriveInput, GenericParam, LifetimeDef, Meta, NestedMeta,
-    WhereClause,
+    parse_macro_input, punctuated::Punctuated, DeriveInput, Expr, ExprLit, GenericParam,
+    LifetimeParam, Lit, Meta, Token, WhereClause,
 };
 
 #[proc_macro_attribute]
 pub fn context_deserialize(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let args = parse_macro_input!(attr as AttributeArgs);
+    let args = parse_macro_input!(attr with Punctuated::<Meta, Token![,]>::parse_terminated);
     let input = parse_macro_input!(item as DeriveInput);
     let ident = &input.ident;
 
     let mut ctx_types = Vec::new();
     let mut explicit_where: Option<WhereClause> = None;
 
-    for meta in args {
+    for meta in &args {
         match meta {
-            NestedMeta::Meta(Meta::Path(p)) => {
-                ctx_types.push(p);
+            Meta::Path(p) => {
+                ctx_types.push(p.clone());
             }
-            NestedMeta::Meta(Meta::NameValue(nv)) if nv.path.is_ident("bound") => {
-                if let syn::Lit::Str(lit_str) = &nv.lit {
+            Meta::NameValue(nv) if nv.path.is_ident("bound") => {
+                if let Expr::Lit(ExprLit {
+                    lit: Lit::Str(lit_str),
+                    ..
+                }) = &nv.value
+                {
                     let where_string = format!("where {}", lit_str.value());
                     match syn::parse_str::<WhereClause>(&where_string) {
                         Ok(where_clause) => {
@@ -41,16 +41,16 @@ pub fn context_deserialize(attr: TokenStream, item: TokenStream) -> TokenStream 
                     }
                 } else {
                     return syn::Error::new_spanned(
-                        &nv,
+                        nv,
                         "Expected a string literal for `bound` value",
                     )
                     .to_compile_error()
                     .into();
                 }
             }
-            _ => {
+            other => {
                 return syn::Error::new_spanned(
-                    &meta,
+                    other,
                     "Expected paths or `bound = \"...\"` in #[context_deserialize(...)]",
                 )
                 .to_compile_error()
@@ -80,7 +80,7 @@ pub fn context_deserialize(attr: TokenStream, item: TokenStream) -> TokenStream 
     // Ensure 'de lifetime exists in impl generics
     let has_de = impl_generics
         .lifetimes()
-        .any(|LifetimeDef { lifetime, .. }| lifetime.ident == "de");
+        .any(|LifetimeParam { lifetime, .. }| lifetime.ident == "de");
 
     if !has_de {
         impl_generics.params.insert(0, syn::parse_quote! { 'de });

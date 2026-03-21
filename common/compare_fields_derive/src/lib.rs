@@ -4,9 +4,10 @@ use syn::{DeriveInput, parse_macro_input};
 
 fn is_iter(field: &syn::Field) -> bool {
     field.attrs.iter().any(|attr| {
-        attr.path.is_ident("compare_fields")
-            && (attr.tokens.to_string().replace(' ', "") == "(as_slice)"
-                || attr.tokens.to_string().replace(' ', "") == "(as_iter)")
+        attr.path().is_ident("compare_fields")
+            && attr
+                .parse_args::<syn::Ident>()
+                .is_ok_and(|ident| ident == "as_slice" || ident == "as_iter")
     })
 }
 
