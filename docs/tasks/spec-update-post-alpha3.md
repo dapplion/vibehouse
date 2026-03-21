@@ -213,102 +213,15 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - All codebase TODOs audited: all blocked (EIP-7892, blst upstream, PeerDAS) or non-critical
 - **No action needed. Codebase healthy, spec current.**
 
-### run 1923 (Mar 19) — routine spec check
+### runs 1923-2057 (Mar 19-21) — routine spec checks (consolidated)
 
 - No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
-- Open Gloas PRs unchanged: #4960 (fork choice deposit test), #4932 (sanity/blocks tests) — both test-only
-- #4992 (cached PTCs in state) still open
-- CI green, clippy clean, cargo audit unchanged (rsa advisory, no fix)
-- All post-alpha.3 commits audited: #5001 (parent_block_root in bid filter) already implemented, #4940 (fork choice tests) test runner ready
-- **No action needed. Will re-check next run.**
-
-### run 1989 (Mar 20) — routine spec check
-
-- No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
-- New open PR #5022 (add block-known check in on_payload_attestation_message) — we already handle this via `UnknownBeaconBlockRoot` error at fork_choice.rs:1430-1432
-- #5020 (PTC lookbehind minimal state change) — alternative to #4992, still open and under discussion
-- #4992 (cached PTCs in state) still open
-- Verified all 5 non-superstruct `unsafe` blocks are legitimate (libc FFI, blst crypto, env var at startup)
-- Zero production `.unwrap()` calls in consensus/ (state_processing, fork_choice, proto_array) — all in test code only
-- CI green: check+clippy+fmt passed, ef-tests passed, remaining jobs in progress
-- Zero clippy warnings (default lints)
-- **No action needed. Codebase healthy, spec current.**
-
-### run 1998 (Mar 20) — routine spec check
-
-- No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
-- Open Gloas PRs actively discussed today: #4979 (PTC lookbehind slice, alternative to #4992, updated today), #4843 (variable PTC deadline, mergeable_state=clean, updated today)
-- #4979 caches full PTC for current+previous epoch in BeaconState (256KB); supersedes #4992/#5020
-- #4843 makes PTC deadline variable based on payload size — significant design change, still under discussion
-- CI green (all jobs passing), nightly green (Mar 18-20), zero clippy warnings, zero compiler warnings
-- cargo audit: same known advisory (RUSTSEC-2023-0071 rsa/jsonwebtoken), no fix available
-- Mar 17 nightly flake (finalized_sync_not_enough_custody_peers_on_start) already fixed — flaky assertion removed
-- **No action needed. Will implement #4979 or #4843 when merged.**
-
-### run 2027 (Mar 20) — spec check + PTC lookbehind analysis
-
-- No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
-- Open Gloas PRs unchanged: 3 competing PTC lookbehind approaches (#4979, #4992, #5020), none approved
-  - #4979: full 2-epoch PTC cache (256KB, `Vector[Vector[ValidatorIndex, PTC_SIZE], 2*SLOTS_PER_EPOCH]`)
-  - #5020: minimal approach (previous_epoch_last_ptc only, 4KB, once-per-epoch update)
-  - #4992: per-slot cache (current_ptc + previous_ptc, updated every slot)
-- #5022 (block-known check in on_payload_attestation_message): already handled via `UnknownBeaconBlockRoot` at fork_choice.rs:1432
-- #5023 (fix block root filenames + Gloas comptests): test infrastructure only, no vibehouse impact
-- #4926 (SECONDS_PER_SLOT → SLOT_DURATION_MS): already handled — we have `slot_duration_ms` field with backward compat for `seconds_per_slot`
-- CI green (all workflows), clippy clean, zero warnings
-- Verified all non-test wildcard imports cleaned up — only idiomatic preludes and re-exports remain
-- **No action needed. PTC lookbehind design not settled — will implement when one approach merges.**
-
-### run 2038 (Mar 21) — routine spec check
-
-- No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
-- Open Gloas PRs: 3 competing PTC lookbehind approaches (#4979, #4992, #5020) still unresolved
-- #5022 (block-known check): still open, already handled in vibehouse
-- #5008 (field name fix): still open, already correct in vibehouse
-- CI green (latest: update rustls-webpki), clippy clean (zero warnings), cargo audit unchanged (RUSTSEC-2023-0071 rsa)
-- Devnet passed yesterday (finalized_epoch=8, 4 nodes)
-- **No action needed. Codebase healthy, spec current.**
-
-### run 2039 (Mar 21) — routine spec check + full verification
-
-- No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
-- Open Gloas PRs: #4979 (PTC lookbehind, updated Mar 20), #4843 (variable PTC deadline, updated Mar 20) — both still open, actively discussed
-- #4992, #5020 (competing PTC lookbehind approaches) still open
-- CI green (ci + nightly green 3 consecutive days), zero compiler/clippy warnings
-- EF spec tests: 139/139 pass (fake_crypto+minimal_testing)
-- cargo audit: same known advisory (RUSTSEC-2023-0071 rsa/jsonwebtoken, no fix available), no new issues
-- Code quality: zero clippy warnings even with stricter lints (needless_return, redundant_closure)
-- Remaining TODOs: all blocked (EIP-7892, blst upstream, PeerDAS checkpoint sync) or non-critical
-- **No action needed. Codebase healthy, spec current. Will implement PTC lookbehind when design settles.**
-
-### run 2040 (Mar 21) — routine spec check
-
-- No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
-- Open Gloas PRs unchanged: #4979, #4992, #5020 (PTC lookbehind), #4843 (variable PTC deadline), #5022 (block-known check)
-- CI green, clippy clean, cargo audit unchanged, cargo update no changes
-- **No action needed.**
-
-### run 2043 (Mar 21) — routine spec check
-
-- No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
-- Open Gloas PRs unchanged: PTC lookbehind (#4979/#4992/#5020) design unsettled, #5022 + #5023 still open
-- CI green (4 consecutive nightly successes), cargo audit unchanged (RUSTSEC-2023-0071 rsa, unfixable)
-- Mar 17 nightly flake (range test) confirmed fixed in 8f8faa7de
-- **No action needed.**
-
-### run 2047 (Mar 21) — routine spec check
-
-- No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
-- Open Gloas PRs all still open: #4843 (variable PTC deadline, updated Mar 20), #4979 (PTC lookbehind, updated Mar 20), #4992 (cached PTCs), #5020 (PTC lookbehind minimal), #5022 (block-known check), #5023 (block root filenames, updated Mar 20), #5008 (field name fix — doc-only, our code already correct)
-- CI green, `cargo check` clean, `cargo update --dry-run` shows no updates available
-- cargo audit: 1 vuln (rsa RUSTSEC-2023-0071, no upstream fix), 5 unmaintained warnings
-- **No action needed.**
-
-### run 2044 (Mar 21) — routine spec check
-
-- No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
-- Open Gloas PRs unchanged: PTC lookbehind (#4979/#4992/#5020), #4843 (variable PTC deadline), #5022, #5008
-- CI green, `cargo check` clean (zero warnings), all dependencies at latest compatible versions
-- Production consensus code verified clean: zero `.unwrap()` in state_processing/fork_choice/proto_array
-- All remaining wildcard imports are intentional (re-exports, metrics DSL, SSZ codec) — no cleanup needed
-- **No action needed.**
+- Monitored open Gloas PRs throughout:
+  - **PTC lookbehind**: 3 competing approaches (#4979 full 2-epoch cache 256KB, #4992 per-slot cache, #5020 minimal 4KB) — design unsettled
+  - **#4843** (variable PTC deadline): significant design change, still under discussion
+  - **#5022** (block-known check in on_payload_attestation_message): already handled via `UnknownBeaconBlockRoot` at fork_choice.rs:1432
+  - **#5008** (field name fix `block_root` → `beacon_block_root`): doc-only, our code already correct
+  - **#5023** (block root filenames + Gloas comptests): test infrastructure only
+- Verified codebase health across 30+ runs: CI green (ci + nightly), zero clippy/compiler warnings, EF tests 139/139 pass, cargo audit unchanged (RUSTSEC-2023-0071 rsa, unfixable)
+- Code quality verified: zero production `.unwrap()` in consensus/, all unsafe blocks legitimate (5 total: libc FFI, blst crypto, env var), all wildcard imports intentional
+- **Will implement PTC lookbehind or variable PTC deadline when merged.**
