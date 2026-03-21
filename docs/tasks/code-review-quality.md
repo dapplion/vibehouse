@@ -3505,4 +3505,15 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **Dependencies**: 0 compatible crate version updates (cargo outdated has resolution conflict on libsqlite3-sys — not actionable).
 - **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
 
+### Run 2083 (2026-03-21)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs gloas PRs merged since #5005 (March 15). Open ePBS PRs unchanged — #4992 (cached PTCs, 1 approval), #4979 (PTC lookbehind), #5022 (block-known check), #5020 (PTC lookbehind minimal), #4962 (sanity/blocks tests), #4960 (fork choice test), #4932 (sanity tests). None have multiple approvals.
+- **Visibility audit**: Investigated `InvalidExecutionBid` and `InvalidPayloadAttestation` enums in fork_choice.rs — cannot downgrade to `pub(crate)` because they are contained in `pub enum Error<T>` which is re-exported from lib.rs (Rust requires variant types to be at least as visible as the enum).
+- **Build**: `cargo clippy --workspace --all-targets` zero warnings.
+- **CI**: Latest run (pub(crate) downgrades) in progress — check+clippy+fmt passed, EF fake_crypto passed, 5 jobs still running.
+- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps).
+- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
+
 No actionable code changes. All priorities 1-6 complete. Codebase stable.
