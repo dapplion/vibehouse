@@ -3258,3 +3258,15 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - **vibehouse_network/gossipsub_scoring_parameters.rs** (1 function): `vibehouse_gossip_thresholds`
 - **Tests**: 236/236 store, 843/847 network+vibehouse_network (4 pre-existing flaky failures confirmed on clean main). Full workspace clippy zero warnings.
 - **Spec**: v1.7.0-alpha.3 still latest. Open Gloas PRs: #4992 (cached PTCs), #4843 (variable PTC deadline), #4979 (PTC lookbehind) — none merged.
+
+### Run 2148 (2026-03-21)
+
+**Visibility downgrades in fork_choice, state_processing + disk cleanup**
+
+- **Code changes** — downgraded 5 items from `pub` to `pub(crate)` across 2 crates:
+  - **fork_choice/fork_choice.rs** (1 method): `proto_array_from_persisted` — only called internally by `from_persisted()`
+  - **state_processing/block_replayer.rs** (4 type aliases): `PreBlockHook`, `PostBlockHook`, `PostSlotHook`, `StateRootIterDefault` — internal callback types for `BlockReplayer`, no external usage
+  - Investigated `InvalidExecutionBid`, `InvalidPayloadAttestation` enums and `DuplicateCacheHandle` struct — kept `pub` (referenced by public `Error<T>` enum / returned by public API)
+- **Disk cleanup**: removed `target/debug/` (124G) — freed space from 0% to 73% available. Debug artifacts unused (always build with `--release`).
+- **Tests**: 1147/1147 fork_choice + state_processing pass. Zero clippy warnings.
+- **Spec**: v1.7.0-alpha.3 still latest. No new merges since March 15.
