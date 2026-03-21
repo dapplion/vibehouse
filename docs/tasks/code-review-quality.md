@@ -3091,3 +3091,16 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Codebase**: Zero clippy warnings, zero TODOs without issue refs, zero dead code annotations on non-test functions. All `#[allow(dead_code)]` are on enum fields (required by Rust — Debug derive doesn't count as field read).
 - **No code changes** — verification-only run.
 
+### Run 2135 (2026-03-21)
+
+**Monitoring run — full verification after dependency updates**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new commits on consensus-specs master since March 15 (#5005). Open Gloas PRs: #4898 (remove pending from tiebreaker, approved — our code already handles correctly), #4892 (clarify is_supporting_vote, approved — already correct in our impl), #4843 (variable PTC deadline, still open). None merged.
+- **CI**: All 6/6 jobs green on latest commit (5cb0b0d89). Nightly tests green 5 consecutive days.
+- **EF tests**: 139/139 pass (minimal, fake_crypto). Verified locally.
+- **Workspace tests**: 4994/5003 pass. 8 failures are web3signer_tests (Java not installed on VPS — environment issue, not code bug). 1 skipped.
+- **Security**: `cargo audit` — only RUSTSEC-2023-0071 (rsa, no fix). No new advisories.
+- **Clippy**: Zero warnings across entire workspace.
+- **Dependencies**: No semver-compatible updates available. All major bumps blocked (ssz ecosystem, rand, libp2p/prometheus).
+- **No code changes** — verification-only run.
+
