@@ -3856,3 +3856,20 @@ No actionable code changes. Codebase stable and spec-compliant.
 - **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
 
 No actionable code changes. Codebase stable and spec-compliant.
+
+### Run 2105 (2026-03-21)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs commits since #5005 (March 15). HEAD at 1baa05e711.
+  - Open PRs tracked: #4747, #4843, #4892, #4898, #4939, #4954, #4979, #4992, #5008, #5014, #5020, #5022, #5023 — all still open.
+  - **#4747** (Fast Confirmation Rule): updated today, 6000+ lines, still in active review.
+  - **#4843** (Variable PTC deadline): updated Mar 20, still in review.
+  - **#5023** (Fix block root filenames): updated Mar 20, test-only fix.
+  - **#4992**, **#5020**, **#4979** tagged `heze` (post-Gloas fork) — PTC caching/lookbehind deferred.
+- **CI**: Run 23377877208 — all 6 jobs passed ✓. Nightly green.
+- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps including bincode RUSTSEC-2025-0141 from sp1-verifier). No new advisories.
+- **EF tests**: v1.7.0-alpha.3 still latest Gloas test release.
+- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
+
+No actionable code changes. Codebase stable and spec-compliant.
