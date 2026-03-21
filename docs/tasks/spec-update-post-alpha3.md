@@ -268,3 +268,15 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - CI green (latest: update rustls-webpki), clippy clean (zero warnings), cargo audit unchanged (RUSTSEC-2023-0071 rsa)
 - Devnet passed yesterday (finalized_epoch=8, 4 nodes)
 - **No action needed. Codebase healthy, spec current.**
+
+### run 2039 (Mar 21) — routine spec check + full verification
+
+- No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
+- Open Gloas PRs: #4979 (PTC lookbehind, updated Mar 20), #4843 (variable PTC deadline, updated Mar 20) — both still open, actively discussed
+- #4992, #5020 (competing PTC lookbehind approaches) still open
+- CI green (ci + nightly green 3 consecutive days), zero compiler/clippy warnings
+- EF spec tests: 139/139 pass (fake_crypto+minimal_testing)
+- cargo audit: same known advisory (RUSTSEC-2023-0071 rsa/jsonwebtoken, no fix available), no new issues
+- Code quality: zero clippy warnings even with stricter lints (needless_return, redundant_closure)
+- Remaining TODOs: all blocked (EIP-7892, blst upstream, PeerDAS checkpoint sync) or non-critical
+- **No action needed. Codebase healthy, spec current. Will implement PTC lookbehind when design settles.**
