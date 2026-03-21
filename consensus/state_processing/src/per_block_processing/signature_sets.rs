@@ -53,7 +53,7 @@ impl From<BeaconStateError> for Error {
 }
 
 /// Helper function to get a public key from a `state`.
-pub fn get_pubkey_from_state<E>(
+pub(crate) fn get_pubkey_from_state<E>(
     state: &BeaconState<E>,
     validator_index: usize,
 ) -> Option<Cow<'_, PublicKey>>

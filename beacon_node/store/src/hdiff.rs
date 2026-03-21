@@ -799,14 +799,6 @@ impl StorageStrategy {
     pub fn is_replay_from(&self) -> bool {
         matches!(self, Self::ReplayFrom(_))
     }
-
-    pub fn is_diff_from(&self) -> bool {
-        matches!(self, Self::DiffFrom(_))
-    }
-
-    pub fn is_snapshot(&self) -> bool {
-        matches!(self, Self::Snapshot)
-    }
 }
 
 /// Read a VCDIFF variable-length integer (RFC 3284 Section 2).

@@ -4133,30 +4133,15 @@ impl AsRef<[u8]> for BytesKey {
 impl<'a> db_key::Key<'a> for BytesKey {}
 
 impl BytesKey {
-    pub fn starts_with(&self, prefix: &Self) -> bool {
-        self.key.starts_with(&prefix.key)
-    }
-
     /// Return `true` iff this `BytesKey` was created with the given `column`.
-    pub fn matches_column(&self, column: DBColumn) -> bool {
+    pub(crate) fn matches_column(&self, column: DBColumn) -> bool {
         self.key.starts_with(column.as_bytes())
-    }
-
-    /// Remove the column from a key, returning its `Hash256` portion.
-    pub fn remove_column(&self, column: DBColumn) -> Option<Hash256> {
-        if self.matches_column(column) {
-            let subkey = &self.key[column.as_bytes().len()..];
-            if subkey.len() == 32 {
-                return Some(Hash256::from_slice(subkey));
-            }
-        }
-        None
     }
 
     /// Remove the column from a key.
     ///
     /// Will return `None` if the value doesn't match the column or has the wrong length.
-    pub fn remove_column_variable(&self, column: DBColumn) -> Option<&[u8]> {
+    pub(crate) fn remove_column_variable(&self, column: DBColumn) -> Option<&[u8]> {
         if self.matches_column(column) {
             let subkey = &self.key[column.as_bytes().len()..];
             if subkey.len() == column.key_size() {
@@ -4166,7 +4151,7 @@ impl BytesKey {
         None
     }
 
-    pub fn from_vec(key: Vec<u8>) -> Self {
+    pub(crate) fn from_vec(key: Vec<u8>) -> Self {
         Self { key }
     }
 }
