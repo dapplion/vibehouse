@@ -30,6 +30,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2070 (Mar 21) — maintenance check, all stable
+
+- CI: check/clippy/fmt green. Other jobs (ef-tests, beacon_chain, http_api, network+op_pool, unit tests) in progress.
+- Spec: no new consensus-specs Gloas PRs merged since Mar 15. v1.7.0-alpha.3 still latest.
+- Open Gloas PRs: #4992 (cached PTCs), #5022 (block known check) still open, not merged.
+- Clippy: zero warnings. cargo-machete: all findings are false positives (derive macros, feature flags, prelude patterns).
+- Wildcard imports: remaining instances are all in test code or idiomatic prelude patterns (rayon, futures, std::io). Non-test production code is clean.
+- No actionable code improvements found. Project in maintenance mode.
+
 ### run 2065 (Mar 21) — health check, all stable
 
 - Build, lint, and workspace check all pass with zero warnings (including `--tests`).
