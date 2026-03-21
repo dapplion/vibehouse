@@ -295,3 +295,12 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - CI green (4 consecutive nightly successes), cargo audit unchanged (RUSTSEC-2023-0071 rsa, unfixable)
 - Mar 17 nightly flake (range test) confirmed fixed in 8f8faa7de
 - **No action needed.**
+
+### run 2044 (Mar 21) — routine spec check
+
+- No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
+- Open Gloas PRs unchanged: PTC lookbehind (#4979/#4992/#5020), #4843 (variable PTC deadline), #5022, #5008
+- CI green, `cargo check` clean (zero warnings), all dependencies at latest compatible versions
+- Production consensus code verified clean: zero `.unwrap()` in state_processing/fork_choice/proto_array
+- All remaining wildcard imports are intentional (re-exports, metrics DSL, SSZ codec) — no cleanup needed
+- **No action needed.**
