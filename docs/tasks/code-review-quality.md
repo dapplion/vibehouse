@@ -3530,3 +3530,20 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **Build**: `cargo clippy` zero warnings. Pre-push lint-full passes.
 - **CI**: Previous run in progress.
 - **GitHub issues**: No new issues. All code comments properly linked to #36.
+
+### Run 2085 (2026-03-21)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs commits since #5005 (March 15). Reviewed 4 active open ePBS PRs:
+  - #4892 (remove impossible branch): 2 approvals, stalled 6 weeks, minimal impact if merged
+  - #4898 (remove pending tiebreaker): 1 approval, stalled 6 weeks, low impact
+  - #4843 (variable PTC deadline): Active debate (ethDreamer counter-analysis Mar 20), contentious, NOT close to merge
+  - #4979 (PTC lookbehind): Reopened Mar 20 for discussion, no approvals, NOT close to merge
+- **Build**: `cargo clippy --workspace --all-targets` zero warnings. `cargo doc --workspace --no-deps` clean (zero warnings).
+- **CI**: Latest run (FIXME→TODO cleanup) in progress — all jobs running. Previous completed run success. Nightly green 3 consecutive days (Mar 18-20).
+- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
+- **Dependencies**: 0 compatible crate version updates.
+- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
+
+No actionable code changes. All priorities 1-6 complete. Codebase stable.
