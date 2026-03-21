@@ -169,7 +169,7 @@ fn observe_system_health(
         sys_loadavg_1: loadavg.one,
         sys_loadavg_5: loadavg.five,
         sys_loadavg_15: loadavg.fifteen,
-        cpu_cores: sysinfo.physical_core_count().unwrap_or(0),
+        cpu_cores: System::physical_core_count().unwrap_or(0),
         cpu_threads: cpus.len(),
         global_cpu_frequency,
         disk_bytes_total,

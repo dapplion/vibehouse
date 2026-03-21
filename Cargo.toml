@@ -149,7 +149,7 @@ eth2_key_derivation = { path = "crypto/eth2_key_derivation" }
 eth2_keystore = { path = "crypto/eth2_keystore" }
 eth2_network_config = { path = "common/eth2_network_config" }
 eth2_wallet = { path = "crypto/eth2_wallet" }
-ethereum_hashing = "0.7.0"
+ethereum_hashing = "0.8.0"
 ethereum_serde_utils = "0.8.0"
 ethereum_ssz = "0.9.0"
 ethereum_ssz_derive = "0.9.0"
@@ -242,7 +242,7 @@ strum = { version = "0.28", features = ["derive"] }
 superstruct = "0.10"
 swap_or_not_shuffle = { path = "consensus/swap_or_not_shuffle" }
 syn = "1"
-sysinfo = "0.33.0"
+sysinfo = "0.38.0"
 system_health = { path = "common/system_health" }
 task_executor = { path = "common/task_executor" }
 tempfile = "3"
