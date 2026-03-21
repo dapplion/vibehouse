@@ -3224,3 +3224,19 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - Kept `pub`: `clear_proposer_preparation` (used by ef_tests), `get_payload_bodies_by_hash` (used by execution_engine_integration)
 - 145/145 execution_layer tests pass, 0 clippy warnings.
 - Spec: v1.7.0-alpha.3 still latest. Open Gloas PRs (#4843, #4892, #4898, #5022, #5023) not yet merged.
+
+### Run 2146 (2026-03-21)
+
+**Monitoring run — spec conformance verification, dependency check**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new merges since March 15 (#5005). Analyzed open Gloas PRs:
+  - **#4992** (cached PTCs in state) — still open, 25 review comments. Adds `previous_ptc`/`current_ptc` to BeaconState, `compute_ptc` helper, PTC rotation in `process_slots`. Medium complexity when it merges: types, SSZ, state processing, fork upgrade, genesis, DB schema. Labeled `gloas, heze`.
+  - **#4843** (Variable PTC deadline), **#4979** (PTC Lookbehind), **#5020** (PTC lookbehind minimal), **#5023** (Gloas comptests) — still open.
+- **Spec conformance deep-dive**: Verified `get_ptc_committee` implementation against current spec — `compute_balance_weighted_selection` with `shuffle_indices=False` correctly uses `i % total` without shuffling, hash caching optimization avoids ~15/16 redundant SHA-256 computations, all committee lookup logic correct.
+- **Bid filtering**: Verified `ObservedExecutionBids::is_highest_value_bid` uses 3-tuple key `(slot, parent_block_hash, parent_block_root)` matching spec PR #5001.
+- **Envelope verification**: Verified `execution_payload_envelope_signature_set` correctly handles both self-build (proposer pubkey) and external builder (builder pubkey) cases with `DOMAIN_BEACON_BUILDER`.
+- **Build**: Zero warnings, 2m29s release build.
+- **CI**: check+clippy+fmt ✓, remaining 5 jobs in progress. 3 consecutive nightly successes.
+- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071, unmaintained transitive deps).
+- **Dependencies**: No semver-compatible updates.
+- **No code changes** — verification-only run.
