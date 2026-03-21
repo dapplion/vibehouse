@@ -20,11 +20,10 @@ impl<E: EthSpec> StoreItem for SignedBlindedExecutionPayloadEnvelope<E> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::StoreItem;
+    use crate::{DBColumn, StoreItem};
     use types::{
         BlindedExecutionPayloadEnvelope, ExecutionPayloadEnvelope, ExecutionPayloadGloas,
-        MinimalEthSpec,
+        MinimalEthSpec, SignedBlindedExecutionPayloadEnvelope,
     };
 
     type E = MinimalEthSpec;

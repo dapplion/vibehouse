@@ -812,7 +812,9 @@ impl<E: EthSpec + Default> PartialEq for OperationPool<E> {
 #[cfg(all(test, not(debug_assertions)))]
 mod release_tests {
     use super::attestation::earliest_attestation_validators;
-    use super::*;
+    use super::{
+        AttMaxCover, OperationPool, PROPOSER_REWARD_DENOMINATOR, RewardCache, SplitAttestation,
+    };
     use beacon_chain::test_utils::{
         BeaconChainHarness, EphemeralHarnessType, RelativeSyncCommittee, test_spec,
     };
@@ -822,7 +824,12 @@ mod release_tests {
     use std::collections::BTreeSet;
     use std::sync::{Arc, LazyLock};
     use types::consts::altair::SYNC_COMMITTEE_SUBNET_COUNT;
-    use types::*;
+    use types::{
+        Attestation, BeaconCommittee, BeaconState, ChainSpec, Domain, Epoch, EthSpec,
+        FixedBytesExtended, Hash256, Keypair, MainnetEthSpec, PendingAttestation, ProposerSlashing,
+        SignedBeaconBlockHash, SignedRoot, SignedVoluntaryExit, Slot, SubnetId, Unsigned,
+        VoluntaryExit,
+    };
 
     pub const MAX_VALIDATOR_COUNT: usize = 4 * 32 * 128;
 

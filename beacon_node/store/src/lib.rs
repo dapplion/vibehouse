@@ -37,7 +37,12 @@ pub use metrics::scrape_for_metrics;
 use std::collections::HashSet;
 use std::sync::Arc;
 use strum::{EnumIter, EnumString, IntoStaticStr};
-pub use types::*;
+pub use types::{
+    AbstractExecPayload, BeaconState, BitVector, BlindedPayload, BlobSidecarList, ColumnIndex,
+    DataColumnSidecarList, EthSpec, ExecutionPayloadDeneb, Hash256, KzgCommitment, MinimalEthSpec,
+    RelativeEpoch, SignedBeaconBlock, SignedContributionAndProof, SignedExecutionPayloadEnvelope,
+    Slot, SyncCommitteeMessage, consts, superstruct,
+};
 
 const DATA_COLUMN_DB_KEY_SIZE: usize = 32 + 8;
 
@@ -470,10 +475,16 @@ pub trait StoreItem: Sized {
 mod tests {
     use crate::database::interface::BeaconNodeBackend;
 
-    use super::*;
+    use super::{
+        ColumnIndex, DATA_COLUMN_DB_KEY_SIZE, DBColumn, Error, Hash256, ItemStore, Key,
+        KeyValueStore, KeyValueStoreOp, MemoryStore, MinimalEthSpec, StoreItem, get_col_from_key,
+        get_data_column_key, get_key_for_col, parse_data_column_key,
+    };
     use ssz::{Decode, Encode};
     use ssz_derive::{Decode, Encode};
+    use std::collections::HashSet;
     use tempfile::tempdir;
+    use types::FixedBytesExtended;
 
     #[derive(PartialEq, Debug, Encode, Decode)]
     struct StorableThing {

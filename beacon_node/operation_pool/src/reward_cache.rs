@@ -125,7 +125,9 @@ impl RewardCache {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{
+        BeaconState, Epoch, EthSpec, Hash256, OpPoolError, ParticipationFlags, RewardCache,
+    };
     use state_processing::initialize_beacon_state_from_eth1;
     use tree_hash::TreeHash;
     use types::{

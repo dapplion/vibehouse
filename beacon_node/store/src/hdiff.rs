@@ -874,8 +874,17 @@ fn vcdiff_target_window_size(delta: &[u8]) -> Option<usize> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{
+        BytesDiff, CompressedU64Diff, HDiff, HDiffBuffer, HDiffV0, HierarchyConfig,
+        HierarchyModuli, PublicKeyBytes, StorageStrategy, ValidatorDiffEntry, ValidatorsDiff,
+        vcdiff_target_window_size,
+    };
+    use crate::StoreConfig;
     use rand::{Rng, SeedableRng, rng, rngs::SmallRng};
+    use ssz::{Decode, Encode};
+    use std::str::FromStr;
+    use types::historical_summary::HistoricalSummary;
+    use types::{Epoch, Hash256, Slot, Validator};
 
     #[test]
     fn default_storage_strategy() {

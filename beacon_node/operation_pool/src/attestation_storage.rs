@@ -529,7 +529,11 @@ impl<E: EthSpec> AttestationDataMap<E> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{
+        AggregateSignature, Attestation, AttestationData, AttestationElectra, AttestationMap,
+        BitList, BitVector, Checkpoint, CheckpointKey, CompactAttestationData, Epoch, EthSpec,
+        Hash256, Slot, SplitAttestation, bitlist_extend,
+    };
     use types::{FixedBytesExtended, MinimalEthSpec, typenum};
 
     type E = MinimalEthSpec;

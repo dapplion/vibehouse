@@ -515,8 +515,11 @@ impl HotHDiffBufferCache {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use types::{ChainSpec, Eth1Data, FixedBytesExtended, MinimalEthSpec};
+    use super::{BlockMap, HDiffBuffer, HotHDiffBufferCache, PutStateOutcome, StateCache};
+    use std::num::NonZeroUsize;
+    use types::{
+        BeaconState, ChainSpec, Eth1Data, FixedBytesExtended, Hash256, MinimalEthSpec, Slot,
+    };
 
     type E = MinimalEthSpec;
 

@@ -43,8 +43,8 @@ impl<E: EthSpec> BlobSidecarListFromRoot<E> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use types::MinimalEthSpec;
+    use super::BlobSidecarListFromRoot;
+    use types::{BlobSidecarList, MinimalEthSpec};
 
     type E = MinimalEthSpec;
 

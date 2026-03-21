@@ -110,7 +110,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use super::{MaxCover, maximum_cover, merge_solutions};
     use std::{collections::HashSet, hash::Hash};
 
     impl<T> MaxCover for HashSet<T>

@@ -22,7 +22,7 @@ impl SyncAggregateId {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{Hash256, Slot, SyncAggregateId};
     use ssz::{Decode, Encode};
 
     fn make_id(slot: u64, byte: u8) -> SyncAggregateId {

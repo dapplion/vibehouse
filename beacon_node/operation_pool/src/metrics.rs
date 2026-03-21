@@ -1,4 +1,7 @@
-pub use metrics::*;
+pub use metrics::{
+    Histogram, IntGauge, IntGaugeVec, Result, set_gauge, set_int_gauge, start_timer,
+    try_create_histogram, try_create_int_gauge, try_create_int_gauge_vec,
+};
 use std::sync::LazyLock;
 
 pub static BUILD_REWARD_CACHE_TIME: LazyLock<Result<Histogram>> = LazyLock::new(|| {

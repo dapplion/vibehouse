@@ -188,7 +188,7 @@ impl<E: EthSpec> StoreItem for PersistedOperationPool<E> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{DBColumn, Decode, Encode, PersistedOperationPool, StoreItem};
     use types::MinimalEthSpec;
 
     type E = MinimalEthSpec;

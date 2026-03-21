@@ -99,9 +99,9 @@ impl<E: EthSpec> HistoricStateCache<E> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{HDiffBuffer, HistoricStateCache};
     use std::num::NonZeroUsize;
-    use types::{ChainSpec, Eth1Data, MinimalEthSpec};
+    use types::{BeaconState, ChainSpec, Eth1Data, MinimalEthSpec, Slot};
 
     type E = MinimalEthSpec;
 

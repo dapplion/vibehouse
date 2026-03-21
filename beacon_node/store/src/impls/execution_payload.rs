@@ -71,9 +71,12 @@ impl<E: EthSpec> StoreItem for ExecutionPayload<E> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::StoreItem;
-    use types::MinimalEthSpec;
+    use crate::{DBColumn, StoreItem};
+    use types::{
+        ExecutionPayload, ExecutionPayloadBellatrix, ExecutionPayloadCapella,
+        ExecutionPayloadDeneb, ExecutionPayloadElectra, ExecutionPayloadFulu,
+        ExecutionPayloadGloas, MinimalEthSpec,
+    };
 
     type E = MinimalEthSpec;
 

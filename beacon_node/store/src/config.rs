@@ -225,7 +225,12 @@ impl StoreItem for OnDiskStoreConfig {
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use super::{
+        DEFAULT_BLOB_PUNE_MARGIN_EPOCHS, DEFAULT_BLOCK_CACHE_SIZE, DEFAULT_COMPRESSION_LEVEL,
+        DEFAULT_EPOCHS_PER_BLOB_PRUNE, DEFAULT_STATE_CACHE_SIZE, HierarchyConfig,
+        OnDiskStoreConfig, OnDiskStoreConfigV22, StoreConfig, StoreConfigError,
+    };
+    use crate::StoreItem;
 
     #[test]
     fn check_compatibility_ok() {

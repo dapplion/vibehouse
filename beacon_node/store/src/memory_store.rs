@@ -154,7 +154,8 @@ impl<E: EthSpec> ItemStore<E> for MemoryStore<E> {}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{DBColumn, KeyValueStore, KeyValueStoreOp, MemoryStore};
+    use std::collections::HashSet;
     use types::MainnetEthSpec;
 
     type E = MainnetEthSpec;

@@ -241,7 +241,9 @@ impl DBError {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{DBError, Error, HandleUnavailable, Result};
+    use ssz::DecodeError;
+    use types::InconsistentFork;
 
     #[test]
     fn handle_unavailable_ok_returns_some() {
