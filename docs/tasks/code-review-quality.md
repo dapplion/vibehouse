@@ -3126,3 +3126,12 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **CI**: All 6/6 jobs green. 5+ consecutive nightly successes.
 - **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071, unmaintained transitive deps).
 - **Dependencies**: No semver-compatible updates. Remaining major bumps blocked.
+
+### Run 2138 (2026-03-21)
+
+**Add is_empty methods to remove len_without_is_empty clippy suppressions**
+
+- **Code change**: Added `is_empty()` methods to 5 types that had `#[allow(clippy::len_without_is_empty)]` suppressions: `PubkeyCache`, `BuilderPubkeyCache`, `RuntimeFixedVector`, `StateCache`, `BlobSidecarListFromRoot`. Removed 7 suppression annotations total (2 struct-level + 5 method-level, net 5 removed — kept 1 on `HotHDiffBufferCache` since it's `pub(crate)` with no callers for `is_empty`). Full workspace clippy clean, 1085 types + 236 store tests pass.
+- **Clippy audit**: Reviewed all 175 clippy suppressions in production code. Most are legitimate: `too_many_arguments` (38, structural), `type_complexity` (44, structural), `arithmetic_side_effects` (13, in types/consensus), `match_same_arms` (2, clarity), `redundant_closure_call` (1, macro pattern), `invalid_regex` (2, false positives on `\p{C}`), `assertions_on_constants` (2, compile-time checks). The `new_without_default` on `SyncAggregate` is correct — `new()` uses `AggregateSignature::infinity()` which differs from a zero default.
+- **Spec**: v1.7.0-alpha.3 still latest. Only one commit since March 15 (#5005, test fix). PRs #4843 (Variable PTC deadline) and #4979 (PTC Lookbehind) still open.
+- **CI**: All green. No semver-compatible dep updates.
