@@ -3,7 +3,7 @@ participants:
   - el_type: geth
     el_image: ethereum/client-go:latest
     cl_type: lighthouse
-    cl_image: lighthouse:local
+    cl_image: vibehouse:local
     cl_extra_params:
       - --target-peers=3
     count: 4

@@ -1,14 +1,14 @@
 # Kurtosis config file to checkpoint sync to a running devnet supported by ethPandaOps and `ethereum-package`.
 participants:
   - cl_type: lighthouse
-    cl_image: lighthouse:local
+    cl_image: vibehouse:local
     el_type: geth
     el_image: ethpandaops/geth:master
     cl_extra_params:
       - --disable-backfill-rate-limiting
     supernode: true
   - cl_type: lighthouse
-    cl_image: lighthouse:local
+    cl_image: vibehouse:local
     el_type: geth
     el_image: ethpandaops/geth:master
     cl_extra_params:

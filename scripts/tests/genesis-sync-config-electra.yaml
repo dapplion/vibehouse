@@ -1,15 +1,15 @@
 # Kurtosis config file for testing sync on a local devnet.
 participants:
   - cl_type: lighthouse
-    cl_image: lighthouse:local
+    cl_image: vibehouse:local
     count: 2
   # nodes without validators, used for testing sync.
   - cl_type: lighthouse
-    cl_image: lighthouse:local
+    cl_image: vibehouse:local
     supernode: true # no supernode in Electra, this is for future proof
     validator_count: 0
   - cl_type: lighthouse
-    cl_image: lighthouse:local
+    cl_image: vibehouse:local
     supernode: false
     validator_count: 0
 network_params:
