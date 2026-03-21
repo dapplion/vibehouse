@@ -1,4 +1,4 @@
-# Lighthouse AI Assistant Guide
+# Vibehouse AI Assistant Guide
 
 See [`CLAUDE.md`](CLAUDE.md) for AI assistant guidance.
 

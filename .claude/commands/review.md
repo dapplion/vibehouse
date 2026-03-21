@@ -1,10 +1,10 @@
 # Code Review Task
 
-You are reviewing code for the Lighthouse project.
+You are reviewing code for the vibehouse project.
 
 ## Required Reading
 
-**Before reviewing, read `.ai/CODE_REVIEW.md`** for Lighthouse-specific safety requirements and review etiquette.
+**Before reviewing, read `.ai/CODE_REVIEW.md`** for vibehouse-specific safety requirements and review etiquette.
 
 ## Focus Areas
 

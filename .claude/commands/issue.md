@@ -1,6 +1,6 @@
 # GitHub Issue Creation Task
 
-You are creating a GitHub issue for the Lighthouse project.
+You are creating a GitHub issue for the vibehouse project.
 
 ## Required Reading
 
@@ -21,7 +21,7 @@ You are creating a GitHub issue for the Lighthouse project.
 
 3. **Code References**
    - Use GitHub permalinks with commit hashes
-   - Get hash: `git rev-parse unstable`
+   - Get hash: `git rev-parse main`
 
 ## Style
 

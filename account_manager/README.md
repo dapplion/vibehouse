@@ -1,4 +1,4 @@
-# Lighthouse Account Manager
+# Vibehouse Account Manager
 
 The account manager (AM) is a stand-alone binary which allows
 users to generate and manage the cryptographic keys necessary to
@@ -20,7 +20,7 @@ staking on Ethereum 1.x (TPD)
 
 The AM is not a service, and does not run continuously, nor does it
 interact with any running services.
-It is intended to be executed separately from other Lighthouse binaries
+It is intended to be executed separately from other vibehouse binaries
 and produce files which can be consumed by them.&
 
 ## Usage
