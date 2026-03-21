@@ -155,7 +155,7 @@ pub fn use_or_load_enr(
 ///
 /// If an ENR exists, with the same NodeId, this function checks to see if the loaded ENR from
 /// disk is suitable to use, otherwise we increment our newly generated ENR's sequence number.
-pub fn build_or_load_enr<E: EthSpec>(
+pub(crate) fn build_or_load_enr<E: EthSpec>(
     local_key: Keypair,
     config: &NetworkConfig,
     enr_fork_id: &EnrForkId,
@@ -349,7 +349,7 @@ pub fn load_enr_from_disk(dir: &Path) -> Result<Enr, String> {
 }
 
 /// Saves an ENR to disk
-pub fn save_enr_to_disk(dir: &Path, enr: &Enr) {
+pub(crate) fn save_enr_to_disk(dir: &Path, enr: &Enr) {
     let _ = std::fs::create_dir_all(dir);
     match File::create(dir.join(Path::new(ENR_FILENAME)))
         .and_then(|mut f| f.write_all(enr.to_base64().as_bytes()))

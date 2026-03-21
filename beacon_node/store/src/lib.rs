@@ -132,26 +132,27 @@ impl Key for Vec<u8> {
     }
 }
 
-pub fn get_key_for_col(column: DBColumn, key: &[u8]) -> Vec<u8> {
+pub(crate) fn get_key_for_col(column: DBColumn, key: &[u8]) -> Vec<u8> {
     let mut result = column.as_bytes().to_vec();
     result.extend_from_slice(key);
     result
 }
 
-pub fn get_col_from_key(key: &[u8]) -> Option<String> {
+#[cfg(test)]
+pub(crate) fn get_col_from_key(key: &[u8]) -> Option<String> {
     if key.len() < 3 {
         return None;
     }
     String::from_utf8(key[0..3].to_vec()).ok()
 }
 
-pub fn get_data_column_key(block_root: &Hash256, column_index: &ColumnIndex) -> Vec<u8> {
+pub(crate) fn get_data_column_key(block_root: &Hash256, column_index: &ColumnIndex) -> Vec<u8> {
     let mut result = block_root.as_slice().to_vec();
     result.extend_from_slice(&column_index.to_le_bytes());
     result
 }
 
-pub fn parse_data_column_key(data: Vec<u8>) -> Result<(Hash256, ColumnIndex), Error> {
+pub(crate) fn parse_data_column_key(data: Vec<u8>) -> Result<(Hash256, ColumnIndex), Error> {
     if data.len() != DBColumn::BeaconDataColumn.key_size() {
         return Err(Error::InvalidKey(format!(
             "Unexpected BeaconDataColumn key len {}",

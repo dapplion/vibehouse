@@ -390,7 +390,7 @@ impl<T: BeaconChainTypes> NetworkService<T> {
     ///
     /// For `current_slot < fork_slot`, this function returns both the pre-fork and post-fork
     /// digests since we should be subscribed to post fork topics before the fork.
-    pub fn required_gossip_fork_digests(&self) -> Vec<[u8; 4]> {
+    pub(crate) fn required_gossip_fork_digests(&self) -> Vec<[u8; 4]> {
         let fork_context = &self.fork_context;
         let spec = &self.beacon_chain.spec;
         let current_slot = self.beacon_chain.slot().unwrap_or(spec.genesis_slot);

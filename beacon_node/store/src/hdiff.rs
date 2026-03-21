@@ -206,7 +206,7 @@ impl HDiffBuffer {
         }
     }
 
-    pub fn as_state<E: EthSpec>(&self, spec: &ChainSpec) -> Result<BeaconState<E>, Error> {
+    pub(crate) fn as_state<E: EthSpec>(&self, spec: &ChainSpec) -> Result<BeaconState<E>, Error> {
         let _t = metrics::start_timer(&metrics::STORE_BEACON_HDIFF_BUFFER_INTO_STATE_TIME);
         let mut state =
             BeaconState::from_ssz_bytes(&self.state, spec).map_err(Error::InvalidSszState)?;
@@ -357,7 +357,7 @@ impl BytesDiff {
         self.apply_xdelta(source, target)
     }
 
-    pub fn apply_xdelta(&self, source: &[u8], target: &mut Vec<u8>) -> Result<(), Error> {
+    pub(crate) fn apply_xdelta(&self, source: &[u8], target: &mut Vec<u8>) -> Result<(), Error> {
         // Parse the VCDIFF header to get the exact target window size, avoiding the
         // guess-and-double allocation loop. Falls back to a heuristic if parsing fails.
         let mut output_length = vcdiff_target_window_size(&self.bytes)

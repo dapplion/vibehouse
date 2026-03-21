@@ -116,7 +116,7 @@ impl Default for StoreConfig {
 }
 
 impl StoreConfig {
-    pub fn as_disk_config(&self) -> OnDiskStoreConfig {
+    pub(crate) fn as_disk_config(&self) -> OnDiskStoreConfig {
         OnDiskStoreConfig::V22(OnDiskStoreConfigV22::new(self.hierarchy_config.clone()))
     }
 

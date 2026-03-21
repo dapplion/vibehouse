@@ -445,7 +445,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         Ok(self.hierarchy.storage_strategy(slot, Slot::new(0))?)
     }
 
-    pub fn hot_storage_strategy(&self, slot: Slot) -> Result<StorageStrategy, Error> {
+    pub(crate) fn hot_storage_strategy(&self, slot: Slot) -> Result<StorageStrategy, Error> {
         Ok(self
             .hierarchy
             .storage_strategy(slot, self.hot_hdiff_start_slot()?)?)
@@ -711,7 +711,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Fetch a block from the store, ignoring which fork variant it *should* be for.
-    pub fn get_block_any_variant<Payload: AbstractExecPayload<E>>(
+    pub(crate) fn get_block_any_variant<Payload: AbstractExecPayload<E>>(
         &self,
         block_root: &Hash256,
     ) -> Result<Option<SignedBeaconBlock<E, Payload>>, Error> {
@@ -722,7 +722,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     ///
     /// This is useful for e.g. ignoring the slot-indicated fork to forcefully load a block as if it
     /// were for a different fork.
-    pub fn get_block_with<Payload: AbstractExecPayload<E>>(
+    pub(crate) fn get_block_with<Payload: AbstractExecPayload<E>>(
         &self,
         block_root: &Hash256,
         decoder: impl FnOnce(&[u8]) -> Result<SignedBeaconBlock<E, Payload>, ssz::DecodeError>,
@@ -976,7 +976,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         Ok(())
     }
 
-    pub fn blobs_as_kv_store_ops(
+    pub(crate) fn blobs_as_kv_store_ops(
         &self,
         key: &Hash256,
         blobs: BlobSidecarList<E>,
@@ -1040,7 +1040,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         Ok(())
     }
 
-    pub fn data_columns_as_kv_store_ops(
+    pub(crate) fn data_columns_as_kv_store_ops(
         &self,
         block_root: &Hash256,
         data_columns: DataColumnSidecarList<E>,
@@ -1717,7 +1717,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Store a post-finalization state efficiently in the hot database.
-    pub fn store_hot_state_summary(
+    pub(crate) fn store_hot_state_summary(
         &self,
         state_root: &Hash256,
         state: &BeaconState<E>,
@@ -1736,7 +1736,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         Ok(hot_state_summary)
     }
 
-    pub fn store_hot_state_diffs(
+    pub(crate) fn store_hot_state_diffs(
         &self,
         state_root: &Hash256,
         state: &BeaconState<E>,
@@ -2021,7 +2021,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         }
     }
 
-    pub fn load_hot_state_using_replay(
+    pub(crate) fn load_hot_state_using_replay(
         &self,
         base_state: BeaconState<E>,
         slot: Slot,
@@ -2071,7 +2071,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         )
     }
 
-    pub fn store_cold_state_summary(
+    pub(crate) fn store_cold_state_summary(
         &self,
         state_root: &Hash256,
         slot: Slot,
@@ -2087,7 +2087,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Store a pre-finalization state in the freezer database.
-    pub fn store_cold_state(
+    pub(crate) fn store_cold_state(
         &self,
         state_root: &Hash256,
         state: &BeaconState<E>,
@@ -2127,7 +2127,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         Ok(())
     }
 
-    pub fn store_cold_state_as_snapshot(
+    pub(crate) fn store_cold_state_as_snapshot(
         &self,
         state: &BeaconState<E>,
         ops: &mut Vec<KeyValueStoreOp>,
@@ -2171,7 +2171,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         }
     }
 
-    pub fn store_hot_state_as_snapshot(
+    pub(crate) fn store_hot_state_as_snapshot(
         &self,
         state_root: &Hash256,
         state: &BeaconState<E>,
@@ -2242,7 +2242,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
             .collect()
     }
 
-    pub fn store_cold_state_as_diff(
+    pub(crate) fn store_cold_state_as_diff(
         &self,
         state: &BeaconState<E>,
         from_slot: Slot,
@@ -2471,7 +2471,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Load cold blocks between `start_slot` and `end_slot` inclusive.
-    pub fn load_cold_blocks(
+    pub(crate) fn load_cold_blocks(
         &self,
         start_slot: Slot,
         end_slot: Slot,
@@ -2537,7 +2537,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     ///
     /// Will skip slots as necessary. The returned state is not guaranteed
     /// to have any caches built, beyond those immediately required by block processing.
-    pub fn replay_blocks(
+    pub(crate) fn replay_blocks(
         &self,
         state: BeaconState<E>,
         blocks: Vec<SignedBeaconBlock<E, BlindedPayload<E>>>,
@@ -2712,7 +2712,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     ///
     /// Unlike `get_data_column_keys`, these keys are not necessarily all present in the database,
     /// due to the node's custody requirements many just store a subset.
-    pub fn get_all_data_column_keys(&self, block_root: Hash256) -> Vec<Vec<u8>> {
+    pub(crate) fn get_all_data_column_keys(&self, block_root: Hash256) -> Vec<Vec<u8>> {
         (0..E::number_of_columns() as u64)
             .map(|column_index| get_data_column_key(&block_root, &column_index))
             .collect()
@@ -2781,7 +2781,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Store the database schema version.
-    pub fn store_schema_version(&self, schema_version: SchemaVersion) -> Result<(), Error> {
+    pub(crate) fn store_schema_version(&self, schema_version: SchemaVersion) -> Result<(), Error> {
         self.hot_db.put(&SCHEMA_VERSION_KEY, &schema_version)
     }
 
@@ -2840,7 +2840,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// As for `compare_and_set_anchor_info`, but also writes the anchor to disk immediately.
-    pub fn compare_and_set_anchor_info_with_write(
+    pub(crate) fn compare_and_set_anchor_info_with_write(
         &self,
         prev_value: AnchorInfo,
         new_value: AnchorInfo,

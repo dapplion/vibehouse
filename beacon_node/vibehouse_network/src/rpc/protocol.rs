@@ -136,7 +136,7 @@ const REQUEST_TIMEOUT: u64 = 15;
 ///
 /// Note: This function should take care to return the min/max limits accounting for all
 /// previous valid forks when adding a new fork variant.
-pub fn rpc_block_limits_by_fork(current_fork: ForkName) -> RpcLimits {
+pub(crate) fn rpc_block_limits_by_fork(current_fork: ForkName) -> RpcLimits {
     match &current_fork {
         ForkName::Base => {
             RpcLimits::new(*SIGNED_BEACON_BLOCK_BASE_MIN, *SIGNED_BEACON_BLOCK_BASE_MAX)
@@ -655,7 +655,7 @@ impl ProtocolId {
     }
 }
 
-pub fn rpc_blob_limits<E: EthSpec>() -> RpcLimits {
+pub(crate) fn rpc_blob_limits<E: EthSpec>() -> RpcLimits {
     match E::spec_name() {
         EthSpecId::Minimal => {
             RpcLimits::new(*BLOB_SIDECAR_SIZE_MINIMAL, *BLOB_SIDECAR_SIZE_MINIMAL)
@@ -666,7 +666,7 @@ pub fn rpc_blob_limits<E: EthSpec>() -> RpcLimits {
     }
 }
 
-pub fn rpc_data_column_limits<E: EthSpec>(
+pub(crate) fn rpc_data_column_limits<E: EthSpec>(
     current_digest_epoch: Epoch,
     spec: &ChainSpec,
 ) -> RpcLimits {

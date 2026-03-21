@@ -149,7 +149,7 @@ impl AnchorInfo {
     ///
     /// This method ensures that the `anchor_slot` which is used for the hot database's diff grid is
     /// preserved.
-    pub fn as_archive_anchor(&self) -> Self {
+    pub(crate) fn as_archive_anchor(&self) -> Self {
         Self {
             // Anchor slot MUST be the same. It is immutable.
             anchor_slot: self.anchor_slot,
