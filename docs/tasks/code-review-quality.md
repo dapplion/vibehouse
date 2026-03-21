@@ -3201,3 +3201,13 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **CI**: 6+ consecutive nightly successes. Latest run: check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, remaining 3 jobs in progress.
 - **Rust toolchain**: 1.94.0 (stable, up to date).
 - **No code changes** — verification-only run.
+
+### Run 2144 (2026-03-21)
+
+**Clippy suppression cleanup continued**
+
+- Removed 10 `#[allow(clippy::single_match)]` suppressions from rpc_tests.rs — converted `match` receiver blocks to `if let` with guard conditions (collapsible `if let && condition` pattern, now supported by stable Rust 1.94)
+- Removed `#[allow(clippy::useless_vec)]` from chain_spec tests — replaced `vec![...]` with array literal
+- Audited all remaining ~186 clippy suppressions — all legitimate (too_many_arguments, type_complexity, large_stack_frames, needless_collect for lock guards, float_cmp in tests, result_large_err, match_same_arms for spec readability, etc.)
+- Spec: v1.7.0-alpha.3 still latest. Only 2 PRs merged since: #5005 (test fix), #5004 (release notes). No code changes needed.
+- Full workspace clippy: 0 warnings.
