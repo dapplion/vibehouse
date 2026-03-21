@@ -3012,3 +3012,18 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Tests**: 4994/4994 pass (8 web3signer_tests failures are pre-existing — require running web3signer instance).
 - **Build**: `cargo clippy` zero warnings, `cargo check --workspace` clean.
 
+### Run 2127 (2026-03-21)
+
+**Dependency updates — console-subscriber 0.4→0.5, igd-next 0.16→0.17, rusqlite 0.38→0.39, r2d2_sqlite 0.32→0.33**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since #5005 (March 15). Open ePBS PRs unchanged (#5022, #5023 still open).
+- **Code changes**:
+  - **console-subscriber 0.4→0.5**: Optional feature, clean update. No API changes affect us.
+  - **igd-next 0.16→0.17**: UPnP library for NAT traversal. No API changes.
+  - **rusqlite 0.38→0.39**: SQLite bindings. Clean update, all slashing protection tests pass.
+  - **r2d2_sqlite 0.32→0.33**: Connection pool for rusqlite. Compatible with rusqlite 0.39.
+  - **Attempted but reverted**: prometheus-client 0.23→0.24 (conflicts with libp2p's prometheus-client 0.23), rand_xorshift 0.4→0.5 (requires rand_core 0.10 but we use rand 0.9/rand_core 0.9).
+- **Tests**: 45/45 slashing_protection pass, 204/204 network pass.
+- **Build**: `cargo clippy --workspace --all-targets` zero warnings.
+- **Remaining major bumps**: 22 (bincode v1→v3, rand v0.9→v0.10, reqwest v0.12→v0.13, etc — all require careful migration or blocked by transitive dep conflicts).
+
