@@ -1106,7 +1106,7 @@ impl ProtoArray {
 /// A helper method to calculate the proposer boost based on the given `justified_balances`.
 ///
 /// <https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/fork-choice.md#get_latest_attesting_balance>
-pub fn calculate_committee_fraction<E: EthSpec>(
+pub(crate) fn calculate_committee_fraction<E: EthSpec>(
     justified_balances: &JustifiedBalances,
     proposer_score_boost: u64,
 ) -> Option<u64> {
