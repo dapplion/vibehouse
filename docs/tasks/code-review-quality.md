@@ -3610,3 +3610,18 @@ Verified each function is only used within the beacon_chain crate (not by http_a
 - **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
 
 No actionable code changes. All priorities 1-6 complete. Codebase stable.
+
+### Run 2090 (2026-03-21)
+
+**Visibility audit — pub→pub(crate) downgrades in slasher internals**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs gloas PRs merged since #5005 (March 15). Open ePBS PRs unchanged.
+- **Code changes** (slasher crate):
+  - **database.rs**: downgraded 5 internal key types to `pub(crate)`: `AttesterKey`, `ProposerKey`, `CurrentEpochKey`, `IndexedAttestationIdKey`, `IndexedAttestationOnDisk` — plus all their methods (`new`, `parse`). Also downgraded `check_and_update_attester_record` and `check_or_insert_block_proposal` (return `pub(crate)` types).
+  - **lib.rs**: downgraded `AttesterSlashingStatus`, `ProposerSlashingStatus` enums and `into_slashing` method to `pub(crate)` — only used within slasher crate.
+  - Verified `IndexedAttestationId` stays `pub` (re-exported from lib.rs, used externally).
+  - Verified `SlasherDB::get_config`/`update_config` stay `pub` (used in integration tests).
+  - Investigated validator_metrics constants — they ARE used cross-crate (validator_services, vibehouse_validator_store), must stay `pub`.
+- **Build**: `cargo clippy --workspace --all-targets` zero warnings. Pre-push lint-full passes.
+- **Tests**: 105/105 slasher tests pass.
+- **GitHub issues**: No new issues.
