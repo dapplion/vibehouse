@@ -3492,3 +3492,17 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
   All 9 functions verified: not re-exported from lib.rs, only used within their own crate.
 - **Build**: `cargo clippy --workspace --all-targets` zero warnings. Pre-push lint-full passes.
 - **Tests**: 1147/1147 (fork_choice + state_processing), full workspace clean.
+
+### Run 2082 (2026-03-21)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs commits since #5005 (March 15). All tracked open ePBS PRs unchanged.
+- **PR #4992 review** (cached PTCs, 1 approval from jtraglia): Reviewed full diff. Adds `previous_ptc`/`current_ptc` Vector[ValidatorIndex, PTC_SIZE] to BeaconState, extracts `compute_ptc(state)` from `get_ptc`, simplifies `get_ptc` to return cached values, rotates in `process_slots`. When merged, implementation touches: types (2 state fields), process_slots, get_ptc, fork upgrade, genesis. Moderate scope, well-defined.
+- **Build**: `cargo clippy --workspace --all-targets` zero warnings.
+- **CI**: Latest run in progress (check+clippy+fmt passed, 5 jobs running). Previous completed run success.
+- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps).
+- **Dependencies**: 0 compatible crate version updates (cargo outdated has resolution conflict on libsqlite3-sys — not actionable).
+- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
+
+No actionable code changes. All priorities 1-6 complete. Codebase stable.
