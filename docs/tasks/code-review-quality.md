@@ -3104,3 +3104,15 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Dependencies**: No semver-compatible updates available. All major bumps blocked (ssz ecosystem, rand, libp2p/prometheus).
 - **No code changes** — verification-only run.
 
+### Run 2136 (2026-03-21)
+
+**Monitoring run — spec check + codebase health + improvement scan**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new commits on consensus-specs master since March 15 (#5005). PR #4843 (Variable PTC deadline) updated March 20 but still open — adds `MIN_PAYLOAD_DUE_BPS` config, `payload_present`→`payload_timely` rename, size-based `get_payload_due_ms()`, `payload_envelopes` in store. PR #4898 (remove pending from tiebreaker) and #4892 (clarify is_supporting_vote) still open. No new test vectors (consensus-spec-tests still at v1.6.0-beta.0).
+- **CI**: All 6/6 jobs green on latest commit (5cb0b0d89).
+- **Security**: `cargo audit` — RUSTSEC-2023-0071 (rsa), plus unmaintained warnings for ansi_term (via sp1 → tracing-forest), bincode v1, derivative, paste (via alloy-primitives), filesystem. All transitive — no action possible.
+- **Dependencies**: `cargo update --dry-run` shows no semver-compatible updates. `cargo outdated --depth 1` shows only rand_xorshift 0.4→0.5 (blocked by rand_core version mismatch).
+- **Code quality scan**: Ran comprehensive search for unsafe blocks, unwraps, large functions, hot-path clones. All production code is clean. `state.clone().canonical_root()` pattern found only in test code (6 instances in block_replayer.rs and envelope_processing.rs tests). No production unwraps outside of startup/config validation.
+- **Fork choice spec alignment**: Verified our `is_supporting_vote_gloas_at_slot` and `get_payload_tiebreaker` implementations correctly handle PRs #4892 and #4898 (both still open, our code already matches the proposed changes).
+- **No code changes** — verification-only run.
+
