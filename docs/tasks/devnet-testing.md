@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 2125 (Mar 21) — maintenance check, all stable
+
+CI green (opentelemetry/hashlink/cargo_metadata update running, check+clippy passed). 6 consecutive green nightlies. Spec HEAD unchanged (1baa05e, Mar 15). No new Gloas PRs merged — #4843 (variable PTC deadline) has 1 approval (jtraglia) with active review from potuz/fradamt, #5022/#4979/#4992 still open. 0 compatible dep updates (26 major-version-only bumps remaining). cargo audit unchanged (rsa timing, no fix). Build clean, zero warnings. Reviewed PR #4843 diff in detail: payload_present→payload_timely rename, new MIN_PAYLOAD_DUE_BPS config, get_payload_due_ms size-based interpolation, store.payload_envelopes field, is_payload_timely validator-side check, has_payload_quorum fork choice rename. Ready to implement when merged. Project in maintenance mode.
+
 ### run 2119 (Mar 21) — maintenance check, spec PR audit
 
 CI green (in-progress run + last completed success). 5 consecutive green nightlies. Spec HEAD unchanged (1baa05e, Mar 15). No new Gloas PRs merged. Build clean, zero warnings. cargo audit unchanged. No compatible dep updates (33 major-version-only bumps). Audited PR #4843 (variable PTC deadline) in detail: renames payload_present→payload_timely, adds MIN_PAYLOAD_DUE_BPS config, new size-based timeliness computation, validator-side PTC broadcast rewrite — ~200 LOC rename + ~100-200 LOC architectural change to VC payload attestation service. Still open with active review (potuz, fradamt comments). Not implementing until merged. All 11 remaining TODOs in codebase are blocked on external factors (EIP-7892, blst, PeerDAS) or non-critical. Project in maintenance mode.
