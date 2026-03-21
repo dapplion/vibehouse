@@ -3324,3 +3324,15 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Spec**: v1.7.0-alpha.3 still latest. No new merges. Open Gloas PRs: #4992 (cached PTCs), #4843 (variable PTC deadline), #5022 (block root check), #5008 (field name fix), #4898 (remove impossible tiebreaker), #4954 (millisecond timestamps). None merged. New PR: #5023 (fix block root filenames + Gloas comptests).
 - **CI**: All green. 5+ consecutive nightly successes.
 - **Assessment**: Codebase remains at steady state. Remaining dead code suppressions are all legitimate patterns (error enum fields for Debug, web3signer Deposit variant for API completeness, persisted_is_supernode for SSZ backwards compat). Next impactful work: spec PR merges (particularly #4992 cached PTCs).
+
+### Run 2153 (2026-03-21)
+
+**Monitoring run — spec check, CI health, dependency review**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new merges since March 15 (#5005). All 8 tracked Gloas PRs remain open: #4992 (cached PTCs), #4843 (variable PTC deadline), #4979 (PTC lookbehind), #5022 (block root check), #5023 (Gloas comptests), #4898 (remove tiebreaker), #4954 (millisecond timestamps), #5008 (field name fix). No new Gloas PRs since March 21. #5020 (PTC lookbehind minimal) also still open.
+- **Dependencies**: 0 semver-compatible updates. 14 behind-latest packages all pinned by transitive exact-version requirements (`generic-array` pinned by `crypto-common`, `matchit` pinned by `axum`, etc.). `cargo audit` unchanged (rsa RUSTSEC-2023-0071).
+- **Dead code**: 49 `#[allow(dead_code)]` annotations across 21 files — all legitimate patterns (error enum fields for Debug formatting, test utilities, lifetime-managed fields). No removable suppressions.
+- **Deprecated API usage**: 2 `#[allow(deprecated)]` in rpc/handler.rs for libp2p trait methods — requires libp2p upgrade to fix, not actionable.
+- **CI**: check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, 3 jobs still running (beacon_chain, unit tests, http_api).
+- **Assessment**: Codebase at steady state. No actionable improvements found. Next impactful work: spec PR merges (particularly #4992 cached PTCs).
+- **No code changes** — verification-only run.
