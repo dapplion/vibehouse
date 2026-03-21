@@ -9,12 +9,11 @@ use tracing::warn;
 use types::{Graffiti, graffiti::GraffitiString};
 
 #[derive(Debug)]
-#[allow(clippy::enum_variant_names)]
 pub enum Error {
-    InvalidFile(std::io::Error),
-    InvalidLine(String),
-    InvalidPublicKey(String),
-    InvalidGraffiti(String),
+    File(std::io::Error),
+    Line(String),
+    PublicKey(String),
+    Graffiti(String),
 }
 
 /// Struct to load validator graffitis from file.
@@ -58,13 +57,13 @@ impl GraffitiFile {
     ///
     /// Returns an error if the file does not exist, or if the format is invalid.
     pub fn read_graffiti_file(&mut self) -> Result<(), Error> {
-        let file = File::open(self.graffiti_path.as_path()).map_err(Error::InvalidFile)?;
+        let file = File::open(self.graffiti_path.as_path()).map_err(Error::File)?;
         let reader = BufReader::new(file);
 
         let lines = reader.lines();
 
         for line in lines {
-            let line = line.map_err(|e| Error::InvalidLine(e.to_string()))?;
+            let line = line.map_err(|e| Error::Line(e.to_string()))?;
             if line.trim().is_empty() {
                 continue;
             }
@@ -90,16 +89,16 @@ fn read_line(line: &str) -> Result<(Option<PublicKeyBytes>, Graffiti), Error> {
         let (key, value) = line.split_at(i);
         // Note: `value.len() >=1` so `value[1..]` is safe
         let graffiti = GraffitiString::from_str(value[1..].trim())
-            .map_err(Error::InvalidGraffiti)?
+            .map_err(Error::Graffiti)?
             .into();
         if key == "default" {
             Ok((None, graffiti))
         } else {
-            let pk = PublicKeyBytes::from_str(key).map_err(Error::InvalidPublicKey)?;
+            let pk = PublicKeyBytes::from_str(key).map_err(Error::PublicKey)?;
             Ok((Some(pk), graffiti))
         }
     } else {
-        Err(Error::InvalidLine(format!("Missing delimiter: {line}")))
+        Err(Error::Line(format!("Missing delimiter: {line}")))
     }
 }
 
@@ -244,13 +243,13 @@ mod tests {
     #[test]
     fn read_line_missing_delimiter() {
         let result = read_line("no delimiter here");
-        assert!(matches!(result, Err(Error::InvalidLine(_))));
+        assert!(matches!(result, Err(Error::Line(_))));
     }
 
     #[test]
     fn read_line_invalid_public_key() {
         let result = read_line("0xinvalid: graffiti");
-        assert!(matches!(result, Err(Error::InvalidPublicKey(_))));
+        assert!(matches!(result, Err(Error::PublicKey(_))));
     }
 
     #[test]

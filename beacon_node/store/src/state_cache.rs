@@ -503,7 +503,11 @@ impl HotHDiffBufferCache {
         self.hdiff_buffers.cap()
     }
 
-    #[allow(clippy::len_without_is_empty)]
+    #[allow(dead_code)]
+    pub fn is_empty(&self) -> bool {
+        self.hdiff_buffers.is_empty()
+    }
+
     pub fn len(&self) -> usize {
         self.hdiff_buffers.len()
     }
