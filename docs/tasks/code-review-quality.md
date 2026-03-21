@@ -3693,3 +3693,20 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **Conclusion**: Visibility audit is now substantially complete. The remaining unaudited crates are primarily leaf/CLI crates where `pub` items are genuinely part of the inter-crate API. Further downgrades would require very careful per-item analysis with diminishing returns.
 - **Build**: `cargo clippy --workspace --all-targets` zero warnings.
 - **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
+
+### Run 2095 (2026-03-21)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs gloas PRs merged since #5005 (March 15). 3 new PRs opened since last check:
+  - #5023 (fix block root filenames + Gloas comptests): test-only, no code impact
+  - #5022 (assert block known in on_payload_attestation_message): our code already returns `UnknownBeaconBlockRoot` at fork_choice.rs:1426-1432 — already compliant
+  - #5020 (PTC lookbehind minimal): still in discussion, no approvals
+  - #4892 (remove impossible branch, 2 approvals): our `is_supporting_vote_gloas_at_slot` already uses `==` (not `<=`) — already compliant
+  - #4992 (cached PTCs, 1 approval): reviewed full diff — adds `previous_ptc`/`current_ptc` Vector[ValidatorIndex, PTC_SIZE] to BeaconState, extracts `compute_ptc(state)`, simplifies `get_ptc` to return cached values, rotates in `process_slots`. When merged: touches types (2 state fields), process_slots, get_ptc, fork upgrade, genesis, validator assignment. Moderate scope, well-defined.
+- **Build**: CI in progress (check+clippy+fmt passed). Nightly green.
+- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
+- **EF tests**: Latest release is v1.6.0-beta.0 (non-Gloas). We track v1.7.0-alpha.3 for Gloas — still latest.
+- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
+
+No actionable code changes. All priorities 1-6 complete. Codebase stable.
