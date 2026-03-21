@@ -3162,3 +3162,17 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Tests**: 204/204 network, 145/145 execution_layer — all pass. Full workspace clippy zero warnings.
 - **Spec**: v1.7.0-alpha.3 still latest. No new merges since #5005 (March 15).
 - **CI**: All green. `make lint-full` passed in pre-push hook.
+
+### Run 2141 (2026-03-21)
+
+**Remove unnecessary clippy suppressions**
+
+- **Code changes** — removed 6 `#[allow(clippy::...)]` suppressions that are no longer needed (lints no longer trigger):
+  - `clippy::unit_arg` (router.rs): fixed by splitting `future::ready(handler.handle_message(msg))` into separate call + `future::ready(())`
+  - `clippy::needless_doctest_main` (metrics/lib.rs): module-level suppression, lint no longer fires
+  - `clippy::new_without_default` (sync_aggregate.rs): added `Default` impl delegating to `new()` instead of suppressing
+  - `clippy::derived_hash_with_manual_eq` (generic_aggregate_signature.rs): lint no longer fires on generic impls
+  - `clippy::invalid_regex` (graffiti.rs, rpc/methods.rs): `\p{C}` false positive fixed in newer clippy
+- **Tests**: 1233/1233 types+bls+metrics pass. Full workspace clippy clean. `make lint-full` passes.
+- **Spec**: v1.7.0-alpha.3 still latest.
+- **CI**: All green.
