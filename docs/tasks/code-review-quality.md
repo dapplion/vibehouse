@@ -2983,7 +2983,7 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **Doc update**: Added #5022 to spec-update-post-alpha3.md tracking table.
 - **No code changes needed** — all spec changes already implemented.
 
-### Runs 2108–2110 (2026-03-21) — monitoring
+### Runs 2108–2111 (2026-03-21) — monitoring
 
-Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new consensus-specs Gloas merges since #5005 (March 15). Open PRs #4892 (2 approvals) and #4898 (1 approval) are closest to merging — both already implemented in vibehouse. CI green. Clippy clean. Cargo audit unchanged (rsa no fix). 0 compatible dependency updates. 10 remaining TODOs all tracked under #36 (2 non-critical, 5 blocked on external). All `#[allow(dead_code)]` annotations audited — all correctly placed. Release build clean (2m19s). Workspace tests: 4994/5003 pass (8 web3signer flakes). Codebase stable.
+Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new consensus-specs Gloas merges since #5005 (March 15). Open PRs #4892 (3 approvals now) and #4898 (1 approval) are closest to merging — both already implemented in vibehouse. CI green. Clippy clean (zero warnings). Cargo audit unchanged (rsa RUSTSEC-2023-0071 no fix). #36 has 2 non-critical remaining + 5 blocked on external. Codebase stable.
 
