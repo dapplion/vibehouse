@@ -242,7 +242,7 @@ strum = { version = "0.28", features = ["derive"] }
 superstruct = "0.10"
 swap_or_not_shuffle = { path = "consensus/swap_or_not_shuffle" }
 syn = "1"
-sysinfo = "0.26"
+sysinfo = "0.33.0"
 system_health = { path = "common/system_health" }
 task_executor = { path = "common/task_executor" }
 tempfile = "3"

@@ -48,7 +48,7 @@ use std::future::Future;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
 use std::sync::Arc;
-use sysinfo::{System, SystemExt};
+use sysinfo::System;
 use system_health::observe_system_health_vc;
 use task_executor::TaskExecutor;
 use tokio_stream::{StreamExt, wrappers::BroadcastStream};
@@ -206,11 +206,6 @@ pub fn serve<T: 'static + SlotClock + Clone, E: EthSpec>(
     let auth_header_values = ctx.api_secret.auth_header_values();
 
     let system_info = Arc::new(RwLock::new(sysinfo::System::new()));
-    {
-        let mut system_info = system_info.write();
-        system_info.refresh_disks_list();
-        system_info.refresh_networks_list();
-    }
 
     let state: SharedState<T, E> = Arc::new(AppState {
         ctx,
@@ -523,11 +518,7 @@ async fn get_vibehouse_ui_health<T: 'static + SlotClock + Clone, E: EthSpec>(
         {
             let mut sysinfo_lock = sysinfo.write();
             sysinfo_lock.refresh_memory();
-            sysinfo_lock.refresh_cpu_specifics(sysinfo::CpuRefreshKind::everything());
-            sysinfo_lock.refresh_cpu();
-            sysinfo_lock.refresh_system();
-            sysinfo_lock.refresh_networks();
-            sysinfo_lock.refresh_disks();
+            sysinfo_lock.refresh_cpu_all();
         }
         let app_uptime = app_start.elapsed().as_secs();
         Ok(GenericResponse::from(observe_system_health_vc(

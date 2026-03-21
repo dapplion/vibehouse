@@ -3,7 +3,7 @@ use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use sysinfo::{CpuExt, DiskExt, NetworkExt, NetworksExt, System, SystemExt};
+use sysinfo::{Disks, Networks, System};
 use types::EthSpec;
 use vibehouse_network::{NetworkGlobals, types::SyncState};
 
@@ -83,13 +83,13 @@ fn observe_system_health(
     app_uptime: u64,
 ) -> SystemHealth {
     let sysinfo = sysinfo.read();
-    let loadavg = sysinfo.load_average();
+    let loadavg = System::load_average();
 
     let cpus = sysinfo.cpus();
 
-    let disks = sysinfo.disks();
+    let disks = Disks::new_with_refreshed_list();
 
-    let system_uptime = sysinfo.uptime();
+    let system_uptime = System::uptime();
 
     // Helper functions to extract specific data
 
@@ -102,7 +102,7 @@ fn observe_system_health(
         let mut root_fs_disk = None;
         let mut other_matching_fs = None;
 
-        for disk in disks {
+        for disk in disks.list() {
             if disk.mount_point() == Path::new("/")
                 || disk.mount_point() == Path::new("C:\\")
                 || disk.mount_point() == Path::new("/System/Volumes/Data")
@@ -135,7 +135,7 @@ fn observe_system_health(
             Some(fs) => (fs.total_space(), fs.available_space()),
             None => {
                 // If we can't find a known partition, just add them all up
-                disks.iter().fold((0, 0), |mut current_sizes, disk| {
+                disks.list().iter().fold((0, 0), |mut current_sizes, disk| {
                     current_sizes.0 += disk.total_space();
                     current_sizes.1 += disk.available_space();
                     current_sizes
@@ -157,7 +157,7 @@ fn observe_system_health(
     } else {
         // Get the frequency from average measured frequencies
         let global_cpu_frequency: f32 =
-            cpus.iter().map(sysinfo::CpuExt::frequency).sum::<u64>() as f32 / cpus.len() as f32;
+            cpus.iter().map(|cpu| cpu.frequency()).sum::<u64>() as f32 / cpus.len() as f32;
         // Shift to ghz to 1dp
         (global_cpu_frequency / 100.0).round() / 10.0
     };
@@ -176,10 +176,10 @@ fn observe_system_health(
         disk_bytes_free,
         system_uptime,
         app_uptime,
-        system_name: sysinfo.name().unwrap_or_default(),
-        kernel_version: sysinfo.kernel_version().unwrap_or_default(),
-        os_version: sysinfo.long_os_version().unwrap_or_default(),
-        host_name: sysinfo.host_name().unwrap_or_default(),
+        system_name: System::name().unwrap_or_default(),
+        kernel_version: System::kernel_version().unwrap_or_default(),
+        os_version: System::long_os_version().unwrap_or_default(),
+        host_name: System::host_name().unwrap_or_default(),
     }
 }
 
@@ -246,12 +246,12 @@ pub fn observe_system_health_bn<E: EthSpec>(
     app_uptime: u64,
     network_globals: Arc<NetworkGlobals<E>>,
 ) -> SystemHealthBN {
-    let system_health = observe_system_health(sysinfo.clone(), data_dir, app_uptime);
+    let system_health = observe_system_health(sysinfo, data_dir, app_uptime);
 
     // Find the network with the most traffic and assume this is the main network
-    let sysinfo = sysinfo.read();
-    let networks = sysinfo.networks();
+    let networks = Networks::new_with_refreshed_list();
     let (network_name, network_bytes_total_received, network_bytes_total_transmit) = networks
+        .list()
         .iter()
         .max_by_key(|(_name, network)| network.total_received())
         .map_or_else(

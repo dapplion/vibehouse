@@ -85,7 +85,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
-use sysinfo::{System, SystemExt};
+use sysinfo::System;
 use system_health::{observe_nat, observe_system_health_bn};
 use task_spawner::{Priority, TaskSpawner};
 use tokio::sync::{
@@ -470,10 +470,7 @@ pub fn serve<T: BeaconChainTypes>(
     let system_info = Arc::new(RwLock::new(sysinfo::System::new()));
     {
         let mut system_info = system_info.write();
-        system_info.refresh_disks_list();
-        system_info.refresh_networks_list();
-        system_info.refresh_cpu_specifics(sysinfo::CpuRefreshKind::everything());
-        system_info.refresh_cpu();
+        system_info.refresh_cpu_all();
     }
 
     let state: SharedState<T> = Arc::new(AppState {
