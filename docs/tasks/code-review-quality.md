@@ -3050,3 +3050,19 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Security**: `cargo audit` unchanged (rsa RUSTSEC-2023-0071 no fix).
 - **No code changes** — verification-only run.
 
+### Run 2132 (2026-03-21)
+
+**Dependency updates — sysinfo 0.33→0.38, ethereum_hashing 0.7→0.8, rust_eth_kzg 0.9→0.10, zip 2→8, rpds 0.11→1.2**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since #5005 (Mar 15). PR #4843 (Variable PTC deadline) still open, mergeable.
+- **Code changes**:
+  - **sysinfo 0.33→0.38**: One breaking change — `physical_core_count()` became associated function in 0.34. Fixed one call site in system_health.
+  - **ethereum_hashing 0.7→0.8**: Clean drop-in, no API changes.
+  - **rust_eth_kzg 0.9→0.10**: Clean drop-in, no API changes.
+  - **zip 2→8**: Clean drop-in, ZipArchive API unchanged.
+  - **rpds 0.11→1.2**: Clean drop-in, HashTrieMapSync/HashTrieSetSync API unchanged.
+  - **Attempted but reverted**: ethereum_ssz 0.9→0.10 (6236 compile errors — massive API rewrite, not worth it).
+- **Tests**: 2521/2521 pass (types + state_processing + kzg + merkle_proof + store + slasher).
+- **Build**: `cargo clippy --workspace --all-targets` zero warnings. `make lint-full` clean.
+- **Remaining major bumps**: 15 (ethereum_ssz 0.9 — massive rewrite, ssz_types 0.11, tree_hash 0.10, milhouse 0.7 — all blocked by ssz ecosystem; bincode v1→v3, rand v0.8/0.9→v0.10, reqwest v0.12→v0.13, prometheus-client 0.23→0.24 — blocked by libp2p, syn v1→v2 — transitive).
+
