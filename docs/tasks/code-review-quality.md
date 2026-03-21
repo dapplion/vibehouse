@@ -3725,3 +3725,19 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
 
 No actionable code changes. Codebase stable and spec-compliant.
+
+### Run 2097 (2026-03-21)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new releases.
+  - Merged since last check: none new (previously tracked #5001, #5002, #4940, #5005 all already accounted for).
+  - **#4940** (initial fork choice tests for Gloas, merged March 13): test vectors present in our fixtures (`on_execution_payload/`), EF test runner handles them, CI ef-tests job passes.
+  - **#5008** (field name `block_root`→`beacon_block_root`): still open. Our `ExecutionPayloadEnvelope` already uses `beacon_block_root` — already compliant.
+  - **PTC lookbehind**: 3 competing PRs (#4979, #4992, #5020) all still open, no consensus yet. Will require BeaconState type changes when one merges.
+  - Open PRs tracked: #4892, #4992, #5008, #5020, #5022, #5023.
+- **CI**: Run 23377877208 — check+clippy+fmt ✓, ef-tests ✓, remaining jobs (beacon_chain, http_api, network+op_pool, unit tests) in progress.
+- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071, 5 unmaintained transitive deps). No new advisories.
+- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
+
+No actionable code changes. Codebase stable and spec-compliant.
