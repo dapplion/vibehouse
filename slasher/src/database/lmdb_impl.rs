@@ -167,7 +167,7 @@ impl<'env> Cursor<'env> {
     }
 
     pub fn get_current(&mut self) -> Result<Option<(Key<'env>, Value<'env>)>, Error> {
-        // FIXME: lmdb has an extremely broken API which can mutate the SHARED REFERENCE
+        // TODO(#36): lmdb has an extremely broken API which can mutate the SHARED REFERENCE
         // `value` after `get_current` is called. We need to convert it to a Vec here in order
         // to avoid `value` changing after another cursor operation. I think this represents a bug
         // in the LMDB bindings, as shared references should be immutable.
