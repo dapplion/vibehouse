@@ -40,13 +40,19 @@ pub fn decrease_balance<E: EthSpec>(
 }
 
 /// Increase the balance of a validator, erroring upon overflow, as per the spec.
-pub fn increase_balance_directly(balance: &mut u64, delta: u64) -> Result<(), BeaconStateError> {
+pub(crate) fn increase_balance_directly(
+    balance: &mut u64,
+    delta: u64,
+) -> Result<(), BeaconStateError> {
     balance.safe_add_assign(delta)?;
     Ok(())
 }
 
 /// Decrease the balance of a validator, saturating upon overflow, as per the spec.
-pub fn decrease_balance_directly(balance: &mut u64, delta: u64) -> Result<(), BeaconStateError> {
+pub(crate) fn decrease_balance_directly(
+    balance: &mut u64,
+    delta: u64,
+) -> Result<(), BeaconStateError> {
     *balance = balance.saturating_sub(delta);
     Ok(())
 }
