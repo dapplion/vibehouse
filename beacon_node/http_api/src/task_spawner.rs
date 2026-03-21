@@ -8,7 +8,7 @@ use types::EthSpec;
 
 /// Maps a request to a queue in the `BeaconProcessor`.
 #[derive(Clone, Copy)]
-pub enum Priority {
+pub(crate) enum Priority {
     /// The highest priority.
     P0,
     /// The lowest priority.
@@ -31,7 +31,7 @@ impl Priority {
 
 /// Spawns tasks on the `BeaconProcessor` or directly on the tokio executor.
 #[derive(Clone)]
-pub struct TaskSpawner<E: EthSpec> {
+pub(crate) struct TaskSpawner<E: EthSpec> {
     /// Used to send tasks to the `BeaconProcessor`. The tokio executor will be
     /// used if this is `None`.
     beacon_processor_send: Option<BeaconProcessorSend<E>>,

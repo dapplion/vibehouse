@@ -32,7 +32,7 @@ use vibehouse_network::{
 };
 
 /// Handles messages from the network and routes them to the appropriate service to be handled.
-pub struct Router<T: BeaconChainTypes> {
+pub(crate) struct Router<T: BeaconChainTypes> {
     /// Access to the peer db and network information.
     network_globals: Arc<NetworkGlobals<T::EthSpec>>,
     /// A reference to the underlying beacon chain.
@@ -49,7 +49,7 @@ pub struct Router<T: BeaconChainTypes> {
 
 /// Types of messages the router can receive.
 #[derive(Debug)]
-pub enum RouterMessage<E: EthSpec> {
+pub(crate) enum RouterMessage<E: EthSpec> {
     /// Peer has disconnected.
     PeerDisconnected(PeerId),
     /// An RPC request has been received.
@@ -828,7 +828,7 @@ impl<T: BeaconChainTypes> Router<T> {
 /// Wraps a Network Channel to employ various RPC related network functionality for the
 /// processor.
 #[derive(Clone)]
-pub struct HandlerNetworkContext<E: EthSpec> {
+pub(crate) struct HandlerNetworkContext<E: EthSpec> {
     /// The network channel to relay messages to the Network service.
     network_send: mpsc::UnboundedSender<NetworkMessage<E>>,
 }

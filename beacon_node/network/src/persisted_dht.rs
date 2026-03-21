@@ -4,9 +4,9 @@ use types::{EthSpec, Hash256};
 use vibehouse_network::Enr;
 
 /// 32-byte key for accessing the `DhtEnrs`. All zero because `DhtEnrs` has its own column.
-pub const DHT_DB_KEY: Hash256 = Hash256::ZERO;
+pub(crate) const DHT_DB_KEY: Hash256 = Hash256::ZERO;
 
-pub fn load_dht<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
+pub(crate) fn load_dht<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
     store: Arc<HotColdDB<E, Hot, Cold>>,
 ) -> Vec<Enr> {
     // Load DHT from store
@@ -20,7 +20,7 @@ pub fn load_dht<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
 }
 
 /// Attempt to persist the ENR's in the DHT to `self.store`.
-pub fn persist_dht<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
+pub(crate) fn persist_dht<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
     store: Arc<HotColdDB<E, Hot, Cold>>,
     enrs: Vec<Enr>,
 ) -> Result<(), store::Error> {
@@ -28,14 +28,14 @@ pub fn persist_dht<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
 }
 
 /// Attempts to clear any DHT entries.
-pub fn clear_dht<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
+pub(crate) fn clear_dht<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
     store: Arc<HotColdDB<E, Hot, Cold>>,
 ) -> Result<(), store::Error> {
     store.hot_db.delete::<PersistedDht>(&DHT_DB_KEY)
 }
 
 /// Wrapper around DHT for persistence to disk.
-pub struct PersistedDht {
+pub(crate) struct PersistedDht {
     pub enrs: Vec<Enr>,
 }
 

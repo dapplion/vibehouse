@@ -10,7 +10,7 @@ use serde::de::DeserializeOwned;
 use types::ForkName;
 
 /// Extract `Accept` header as an optional `api_types::Accept`.
-pub fn accept_header(headers: &HeaderMap) -> Option<api_types::Accept> {
+pub(crate) fn accept_header(headers: &HeaderMap) -> Option<api_types::Accept> {
     headers
         .get("accept")
         .and_then(|v| v.to_str().ok())
@@ -18,7 +18,7 @@ pub fn accept_header(headers: &HeaderMap) -> Option<api_types::Accept> {
 }
 
 /// Extract the `Eth-Consensus-Version` header as a required `ForkName`.
-pub fn consensus_version_header(headers: &HeaderMap) -> Result<ForkName, ApiError> {
+pub(crate) fn consensus_version_header(headers: &HeaderMap) -> Result<ForkName, ApiError> {
     headers
         .get(eth2::CONSENSUS_VERSION_HEADER)
         .ok_or_else(|| ApiError::bad_request("missing Eth-Consensus-Version header"))?
@@ -29,7 +29,7 @@ pub fn consensus_version_header(headers: &HeaderMap) -> Result<ForkName, ApiErro
 }
 
 /// Extract the `Eth-Consensus-Version` header as an optional `ForkName`.
-pub fn optional_consensus_version_header(headers: &HeaderMap) -> Option<ForkName> {
+pub(crate) fn optional_consensus_version_header(headers: &HeaderMap) -> Option<ForkName> {
     headers
         .get(eth2::CONSENSUS_VERSION_HEADER)
         .and_then(|v| v.to_str().ok())
@@ -38,7 +38,7 @@ pub fn optional_consensus_version_header(headers: &HeaderMap) -> Option<ForkName
 
 /// Custom extractor for query strings with duplicate keys (e.g., `?topics=head&topics=block`).
 /// Uses `serde_array_query` for deserialization.
-pub struct MultiKeyQuery<T>(pub T);
+pub(crate) struct MultiKeyQuery<T>(pub T);
 
 impl<S, T> FromRequestParts<S> for MultiKeyQuery<T>
 where
@@ -57,7 +57,7 @@ where
 
 /// Extract and validate a JSON body, rejecting SSZ content-type.
 /// Rejects SSZ content-type and parses JSON from the request body.
-pub async fn json_body<T: DeserializeOwned>(
+pub(crate) async fn json_body<T: DeserializeOwned>(
     headers: &HeaderMap,
     body: axum::body::Bytes,
 ) -> Result<T, ApiError> {
@@ -68,7 +68,7 @@ pub async fn json_body<T: DeserializeOwned>(
 
 /// Extract and validate a JSON body that may be empty (returns T::default() for empty bodies).
 /// Returns `T::default()` for empty bodies, otherwise parses JSON.
-pub async fn json_body_or_default<T: DeserializeOwned + Default>(
+pub(crate) async fn json_body_or_default<T: DeserializeOwned + Default>(
     headers: &HeaderMap,
     body: axum::body::Bytes,
 ) -> Result<T, ApiError> {
@@ -92,7 +92,9 @@ fn check_not_ssz(headers: &HeaderMap) -> Result<(), ApiError> {
 }
 
 /// Parse an `EndpointVersion` from a path segment string like "v1", "v2", "v3".
-pub fn parse_endpoint_version(version_str: &str) -> Result<api_types::EndpointVersion, ApiError> {
+pub(crate) fn parse_endpoint_version(
+    version_str: &str,
+) -> Result<api_types::EndpointVersion, ApiError> {
     version_str
         .parse::<api_types::EndpointVersion>()
         .map_err(|()| ApiError::bad_request("Invalid version identifier"))

@@ -25,7 +25,7 @@ use vibehouse_network::{NetworkConfig, Subnet, SubnetDiscovery, discv5::enr::Nod
 mod tests;
 
 #[derive(Debug, Clone)]
-pub enum SubnetServiceMessage {
+pub(crate) enum SubnetServiceMessage {
     /// Subscribe to the specified subnet id.
     Subscribe(Subnet),
     /// Unsubscribe to the specified subnet id.
@@ -56,22 +56,22 @@ const UNSUBSCRIBE_AFTER_AGGREGATOR_DUTY: u32 = 2;
 /// A particular subnet at a given slot. This is used for Attestation subnets and not for sync
 /// committee subnets because the logic for handling subscriptions between these types is different.
 #[derive(PartialEq, Eq, Hash, Clone, Debug, Copy)]
-pub struct ExactSubnet {
+pub(crate) struct ExactSubnet {
     /// The `SubnetId` associated with this subnet.
-    pub subnet: Subnet,
+    pub(crate) subnet: Subnet,
     /// For Attestations, this slot represents the start time at which we need to subscribe to the
     /// slot.
-    pub slot: Slot,
+    pub(crate) slot: Slot,
 }
 
 /// The enum used to group all kinds of validator subscriptions
 #[derive(Debug, Clone, PartialEq)]
-pub enum Subscription {
+pub(crate) enum Subscription {
     Attestation(ValidatorSubscription),
     SyncCommittee(SyncCommitteeSubscription),
 }
 
-pub struct SubnetService<T: BeaconChainTypes> {
+pub(crate) struct SubnetService<T: BeaconChainTypes> {
     /// Queued events to return to the driving service.
     events: VecDeque<SubnetServiceMessage>,
 

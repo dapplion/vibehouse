@@ -74,14 +74,14 @@ pub fn calculate_execution_block_hash<E: EthSpec>(
 }
 
 /// RLP encode a withdrawal.
-pub fn rlp_encode_withdrawal(withdrawal: &JsonWithdrawal) -> Vec<u8> {
+fn rlp_encode_withdrawal(withdrawal: &JsonWithdrawal) -> Vec<u8> {
     let mut out: Vec<u8> = vec![];
     EncodableJsonWithdrawal::from(withdrawal).encode(&mut out);
     out
 }
 
 /// RLP encode an execution block header.
-pub fn rlp_encode_block_header(header: &ExecutionBlockHeader) -> Vec<u8> {
+fn rlp_encode_block_header(header: &ExecutionBlockHeader) -> Vec<u8> {
     let mut out: Vec<u8> = vec![];
     EncodableExecutionBlockHeader::from(header).encode(&mut out);
     out

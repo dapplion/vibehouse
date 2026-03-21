@@ -751,19 +751,19 @@ pub static BEACON_PROCESSOR_REPROCESSING_QUEUE_SENT_OPTIMISTIC_UPDATES: LazyLock
     )
 });
 
-pub fn register_finality_update_error(error: &LightClientFinalityUpdateError) {
+pub(crate) fn register_finality_update_error(error: &LightClientFinalityUpdateError) {
     inc_counter_vec(&GOSSIP_FINALITY_UPDATE_ERRORS_PER_TYPE, &[error.as_ref()]);
 }
 
-pub fn register_optimistic_update_error(error: &LightClientOptimisticUpdateError) {
+pub(crate) fn register_optimistic_update_error(error: &LightClientOptimisticUpdateError) {
     inc_counter_vec(&GOSSIP_OPTIMISTIC_UPDATE_ERRORS_PER_TYPE, &[error.as_ref()]);
 }
 
-pub fn register_attestation_error(error: &AttnError) {
+pub(crate) fn register_attestation_error(error: &AttnError) {
     inc_counter_vec(&GOSSIP_ATTESTATION_ERRORS_PER_TYPE, &[error.as_ref()]);
 }
 
-pub fn register_sync_committee_error(error: &SyncCommitteeError) {
+pub(crate) fn register_sync_committee_error(error: &SyncCommitteeError) {
     inc_counter_vec(&GOSSIP_SYNC_COMMITTEE_ERRORS_PER_TYPE, &[error.as_ref()]);
 }
 
@@ -798,7 +798,7 @@ pub(crate) fn register_process_result_metrics(
     }
 }
 
-pub fn update_gossip_metrics<E: EthSpec>(
+pub(crate) fn update_gossip_metrics<E: EthSpec>(
     gossipsub: &Gossipsub,
     network_globals: &Arc<NetworkGlobals<E>>,
 ) {
@@ -857,7 +857,7 @@ pub fn update_gossip_metrics<E: EthSpec>(
     }
 }
 
-pub fn update_sync_metrics<E: EthSpec>(network_globals: &Arc<NetworkGlobals<E>>) {
+pub(crate) fn update_sync_metrics<E: EthSpec>(network_globals: &Arc<NetworkGlobals<E>>) {
     // reset the counts
     if PEERS_PER_SYNC_TYPE
         .as_ref()

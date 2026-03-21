@@ -40,7 +40,7 @@ use vibehouse_network::{
 pub use sync_methods::ChainSegmentProcessId;
 use types::blob_sidecar::FixedBlobSidecarList;
 
-pub type Error<T> = TrySendError<BeaconWorkEvent<T>>;
+pub(crate) type Error<T> = TrySendError<BeaconWorkEvent<T>>;
 
 mod gossip_methods;
 mod rpc_methods;
@@ -51,7 +51,7 @@ pub(crate) const FUTURE_SLOT_TOLERANCE: u64 = 1;
 
 /// Defines if and where we will store the SSZ files of invalid blocks.
 #[derive(Clone)]
-pub enum InvalidBlockStorage {
+pub(crate) enum InvalidBlockStorage {
     Enabled(PathBuf),
     Disabled,
 }
@@ -59,15 +59,15 @@ pub enum InvalidBlockStorage {
 /// Provides an interface to a `BeaconProcessor` running in some other thread.
 /// The wider `networking` crate should use this struct to interface with the
 /// beacon processor.
-pub struct NetworkBeaconProcessor<T: BeaconChainTypes> {
-    pub beacon_processor_send: BeaconProcessorSend<T::EthSpec>,
-    pub duplicate_cache: DuplicateCache,
-    pub chain: Arc<BeaconChain<T>>,
-    pub network_tx: mpsc::UnboundedSender<NetworkMessage<T::EthSpec>>,
-    pub sync_tx: mpsc::UnboundedSender<SyncMessage<T::EthSpec>>,
-    pub network_globals: Arc<NetworkGlobals<T::EthSpec>>,
-    pub invalid_block_storage: InvalidBlockStorage,
-    pub executor: TaskExecutor,
+pub(crate) struct NetworkBeaconProcessor<T: BeaconChainTypes> {
+    pub(crate) beacon_processor_send: BeaconProcessorSend<T::EthSpec>,
+    pub(crate) duplicate_cache: DuplicateCache,
+    pub(crate) chain: Arc<BeaconChain<T>>,
+    pub(crate) network_tx: mpsc::UnboundedSender<NetworkMessage<T::EthSpec>>,
+    pub(crate) sync_tx: mpsc::UnboundedSender<SyncMessage<T::EthSpec>>,
+    pub(crate) network_globals: Arc<NetworkGlobals<T::EthSpec>>,
+    pub(crate) invalid_block_storage: InvalidBlockStorage,
+    pub(crate) executor: TaskExecutor,
 }
 
 // Publish blobs in batches of exponentially increasing size.

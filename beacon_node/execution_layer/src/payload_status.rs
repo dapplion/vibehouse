@@ -23,7 +23,7 @@ pub enum PayloadStatus {
 }
 
 /// Processes the response from the execution engine.
-pub fn process_payload_status(
+pub(crate) fn process_payload_status(
     head_block_hash: ExecutionBlockHash,
     status: Result<PayloadStatusV1, EngineError>,
 ) -> Result<PayloadStatus, EngineError> {
