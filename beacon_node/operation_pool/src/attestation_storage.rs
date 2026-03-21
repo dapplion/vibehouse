@@ -55,7 +55,7 @@ pub struct AttestationMap<E: EthSpec> {
 }
 
 #[derive(Debug, Default, PartialEq)]
-pub struct AttestationDataMap<E: EthSpec> {
+pub(crate) struct AttestationDataMap<E: EthSpec> {
     attestations: HashMap<CompactAttestationData, Vec<CompactIndexedAttestation<E>>>,
 }
 
@@ -286,14 +286,6 @@ impl<E: EthSpec> CompactIndexedAttestationElectra<E> {
             .enumerate()
             .find(|&(_, bit)| bit)
             .map(|(index, _)| index as u64)
-    }
-
-    pub fn get_committee_indices(&self) -> Vec<u64> {
-        self.committee_bits
-            .iter()
-            .enumerate()
-            .filter_map(|(index, bit)| if bit { Some(index as u64) } else { None })
-            .collect()
     }
 }
 

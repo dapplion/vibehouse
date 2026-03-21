@@ -69,9 +69,9 @@ const SELECTION_PROOF_SLOT_LOOKAHEAD_DVT: u64 = 1;
 const SELECTION_PROOF_SCHEDULE_DENOM: u32 = 2;
 
 /// Number of epochs in advance to compute sync selection proofs when not in `distributed` mode.
-pub const AGGREGATION_PRE_COMPUTE_EPOCHS: u64 = 2;
+pub(crate) const AGGREGATION_PRE_COMPUTE_EPOCHS: u64 = 2;
 /// Number of slots in advance to compute sync selection proofs when in `distributed` mode.
-pub const AGGREGATION_PRE_COMPUTE_SLOTS_DISTRIBUTED: u64 = 1;
+pub(crate) const AGGREGATION_PRE_COMPUTE_SLOTS_DISTRIBUTED: u64 = 1;
 
 type ValidatorStore<E> = VibehouseValidatorStore<SystemTimeSlotClock, E>;
 
@@ -797,7 +797,7 @@ async fn poll_whilst_waiting_for_genesis(genesis_time: Duration) -> Result<(), S
     }
 }
 
-pub fn load_pem_certificate<P: AsRef<Path>>(pem_path: P) -> Result<Certificate, String> {
+pub(crate) fn load_pem_certificate<P: AsRef<Path>>(pem_path: P) -> Result<Certificate, String> {
     let mut buf = Vec::new();
     File::open(&pem_path)
         .map_err(|e| format!("Unable to open certificate path: {e}"))?

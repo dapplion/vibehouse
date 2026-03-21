@@ -831,7 +831,7 @@ mod release_tests {
         VoluntaryExit,
     };
 
-    pub const MAX_VALIDATOR_COUNT: usize = 4 * 32 * 128;
+    pub(crate) const MAX_VALIDATOR_COUNT: usize = 4 * 32 * 128;
 
     /// A cached set of keys.
     static KEYPAIRS: LazyLock<Vec<Keypair>> =

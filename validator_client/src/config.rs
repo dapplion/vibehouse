@@ -22,7 +22,7 @@ use validator_http_api::{self, PK_FILENAME};
 use validator_http_metrics;
 use vibehouse_validator_store::Config as ValidatorStoreConfig;
 
-pub const DEFAULT_BEACON_NODE: &str = "http://localhost:5052/";
+pub(crate) const DEFAULT_BEACON_NODE: &str = "http://localhost:5052/";
 
 /// Stores the core configuration for this validator instance.
 #[derive(Clone, Debug, Serialize, Deserialize)]

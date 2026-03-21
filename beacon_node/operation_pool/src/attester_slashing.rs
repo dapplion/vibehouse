@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 use types::{AttesterSlashing, AttesterSlashingRef, BeaconState, EthSpec};
 
 #[derive(Debug, Clone)]
-pub struct AttesterSlashingMaxCover<'a, E: EthSpec> {
+pub(crate) struct AttesterSlashingMaxCover<'a, E: EthSpec> {
     slashing: AttesterSlashingRef<'a, E>,
     effective_balances: HashMap<u64, u64>,
 }

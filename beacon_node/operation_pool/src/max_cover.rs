@@ -34,7 +34,7 @@ pub trait MaxCover {
 ///
 /// * Time complexity: `O(limit * items_iter.len())`
 /// * Space complexity: `O(item_iter.len())`
-pub fn maximum_cover<I, T>(items_iter: I, limit: usize, label: &str) -> Vec<T>
+pub(crate) fn maximum_cover<I, T>(items_iter: I, limit: usize, label: &str) -> Vec<T>
 where
     I: IntoIterator<Item = T>,
     T: MaxCover,
@@ -94,7 +94,7 @@ where
 }
 
 /// Perform a greedy merge of two max cover solutions, preferring higher-score values.
-pub fn merge_solutions<I1, I2, T>(cover1: I1, cover2: I2, limit: usize) -> Vec<T::Object>
+pub(crate) fn merge_solutions<I1, I2, T>(cover1: I1, cover2: I2, limit: usize) -> Vec<T::Object>
 where
     I1: IntoIterator<Item = T>,
     I2: IntoIterator<Item = T>,
