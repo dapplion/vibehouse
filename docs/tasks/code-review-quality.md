@@ -3345,3 +3345,16 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **Stale references**: Verified zero `lighthouse:local` references remain after kurtosis config update (commit 649ee8f44).
 
 No actionable code changes. All priorities 1-6 complete. Codebase stable.
+
+### Run 2072 (2026-03-21)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (March 15). 13 open ePBS-related PRs tracked — same set as previous runs. Notable active PRs: #5020/#4979 (PTC lookbehind), #4843 (variable PTC deadline), #4992 (cached PTCs). None merged.
+- **Build**: `cargo clippy --workspace --all-targets` zero warnings.
+- **CI**: Latest run (kurtosis config update) in progress — check+clippy+fmt and ef-tests passed, beacon_chain/http_api/network+op_pool/unit tests in progress. Previous 3 CI runs all success.
+- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
+- **Dependencies**: `cargo update --dry-run` — 7 git repo refreshes, 0 compatible crate version updates.
+- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
+
+No actionable code changes. All priorities 1-6 complete. Codebase stable.
