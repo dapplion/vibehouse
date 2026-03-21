@@ -3787,3 +3787,20 @@ No actionable code changes. Codebase stable and spec-compliant.
 - **Dependencies**: `cargo outdated` blocked by rusqlite linking conflict (slashing_protection uses both rusqlite 0.38 and 0.39 via r2d2_sqlite). Not actionable without bumping rusqlite chain together.
 
 No actionable code changes. Codebase stable and spec-compliant.
+
+### Run 2101 (2026-03-21)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas/ePBS PRs merged since #5005 (March 15).
+  - Open PRs tracked: #4747, #4843, #4892, #4939, #4979, #4992, #5008, #5020, #5022, #5023 — all still open.
+  - **#4892** (remove impossible branch): 2 approvals (ensi321, jtraglia) — closest to merge. Already compliant (our `is_supporting_vote_gloas_at_slot` uses `==`).
+  - **#4747** (Fast Confirmation Rule): updated today, still in active review.
+  - **#4843** (Variable PTC deadline): updated yesterday, still in review.
+  - **#4992**, **#5020**, **#4979** tagged `heze` (post-Gloas fork) — PTC caching/lookbehind deferred.
+- **CI**: Run 23377877208 — check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, http_api ✓; beacon_chain and unit tests still in progress.
+- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
+- **EF tests**: v1.7.0-alpha.3 still latest Gloas test release.
+- **GitHub issues**: No new issues. #27 (validator messaging) remains speculative discussion. #36 has 2 non-critical remaining + 5 blocked.
+
+No actionable code changes. Codebase stable and spec-compliant.
