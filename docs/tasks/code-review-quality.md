@@ -3176,3 +3176,14 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Tests**: 1233/1233 types+bls+metrics pass. Full workspace clippy clean. `make lint-full` passes.
 - **Spec**: v1.7.0-alpha.3 still latest.
 - **CI**: All green.
+
+### Run 2142 (2026-03-21)
+
+**Monitoring run — suppression audit, spec check, dependency review**
+
+- **Clippy suppressions**: 198 total across 97 files. Audited all non-structural suppressions (excluding `too_many_arguments`/`type_complexity` which account for 96). Remaining are all legitimate: `arithmetic_side_effects` (types), `large_enum_variant` (structural), `await_holding_lock` (tests), `needless_collect` (lock guard lifetimes), `float_cmp` (tests), `single_match` (rpc_tests — converting to `if let` triggers `collapsible_if` → let chains which requires rustfmt 2024 edition support not yet stable), `result_large_err` (structural), `match_same_arms` (readability), `indexing_slicing` (committee_cache, invariant-guarded). No more removable suppressions.
+- **Spec**: v1.7.0-alpha.3 still latest. No new commits since March 15 (#5005). Open Gloas PRs: #4843 (Variable PTC deadline), #4979 (PTC Lookbehind), #5022 (block root check — already implemented), #4747 (Fast Confirmation Rule). None merged.
+- **Dependencies**: `cargo update --dry-run` shows no semver-compatible updates. `rand_xorshift` 0.4→0.5 blocked by `rand_core` version mismatch (0.5 needs `rand_core 0.10`, our `rand 0.9` uses `rand_core 0.9`). `cargo audit` unchanged (rsa RUSTSEC-2023-0071, unmaintained transitive deps).
+- **CI**: 5+ consecutive nightly successes. Latest CI run: check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, others in progress.
+- **Build**: Zero warnings across entire workspace.
+- **No code changes** — verification-only run.
