@@ -8,7 +8,6 @@ use crate::json_structures::{BlobAndProofV1, BlobAndProofV2};
 use crate::payload_cache::PayloadCache;
 use arc_swap::ArcSwapOption;
 use auth::{Auth, JwtKey, strip_prefix};
-pub use block_hash::calculate_execution_block_hash;
 use builder_client::BuilderHttpClient;
 use engine_api::Error as ApiError;
 pub use engine_api::{
@@ -405,14 +404,14 @@ pub struct PayloadParameters<'a> {
 }
 
 #[derive(Clone, PartialEq)]
-pub struct ProposerPreparationDataEntry {
+pub(crate) struct ProposerPreparationDataEntry {
     update_epoch: Epoch,
     preparation_data: ProposerPreparationData,
     gas_limit: Option<u64>,
 }
 
 impl ProposerPreparationDataEntry {
-    pub fn update(&mut self, updated: Self) -> bool {
+    pub(crate) fn update(&mut self, updated: Self) -> bool {
         let mut changed = false;
         // Update `gas_limit` if `updated.gas_limit` is `Some` and:
         // - `self.gas_limit` is `None`, or
@@ -441,13 +440,13 @@ impl ProposerPreparationDataEntry {
 }
 
 #[derive(Hash, PartialEq, Eq)]
-pub struct ProposerKey {
+pub(crate) struct ProposerKey {
     slot: Slot,
     head_block_root: Hash256,
 }
 
 #[derive(PartialEq, Eq, Clone)]
-pub struct Proposer {
+pub(crate) struct Proposer {
     validator_index: u64,
     payload_attributes: PayloadAttributes,
 }

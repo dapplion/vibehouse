@@ -3211,3 +3211,16 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - Audited all remaining ~186 clippy suppressions — all legitimate (too_many_arguments, type_complexity, large_stack_frames, needless_collect for lock guards, float_cmp in tests, result_large_err, match_same_arms for spec readability, etc.)
 - Spec: v1.7.0-alpha.3 still latest. Only 2 PRs merged since: #5005 (test fix), #5004 (release notes). No code changes needed.
 - Full workspace clippy: 0 warnings.
+
+### Run 2145 (2026-03-21)
+
+**Visibility downgrades in execution_layer crate**
+
+- Downgraded 11 items from `pub` to `pub(crate)` in `execution_layer`:
+  - Structs: `ProposerPreparationDataEntry`, `ProposerKey`, `Proposer` (+ `update()` method)
+  - Functions: `calculate_execution_block_hash`, `verify_versioned_hashes`, `extract_versioned_hashes_from_transactions`, `beacon_tx_to_tx_envelope`
+  - Types: `PayloadCache` (+ `put`/`pop`/`get` methods), `DEFAULT_PAYLOAD_CACHE_SIZE`
+  - Enum: `versioned_hashes::Error`
+- Kept `pub`: `clear_proposer_preparation` (used by ef_tests), `get_payload_bodies_by_hash` (used by execution_engine_integration)
+- 145/145 execution_layer tests pass, 0 clippy warnings.
+- Spec: v1.7.0-alpha.3 still latest. Open Gloas PRs (#4843, #4892, #4898, #5022, #5023) not yet merged.

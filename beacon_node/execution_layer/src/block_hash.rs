@@ -19,7 +19,7 @@ const KECCAK_EMPTY_LIST_RLP: Hash256 = Hash256::new([
 ///
 /// Return `(block_hash, transactions_root)`, where `transactions_root` is the root of the RLP
 /// transactions.
-pub fn calculate_execution_block_hash<E: EthSpec>(
+pub(crate) fn calculate_execution_block_hash<E: EthSpec>(
     payload: ExecutionPayloadRef<E>,
     parent_beacon_block_root: Option<Hash256>,
     execution_requests: Option<&ExecutionRequests<E>>,

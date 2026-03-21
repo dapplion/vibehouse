@@ -9,7 +9,7 @@ pub enum Error {
     VersionHashMismatch { expected: Hash256, found: Hash256 },
 }
 
-pub fn verify_versioned_hashes<E: EthSpec>(
+pub(crate) fn verify_versioned_hashes<E: EthSpec>(
     execution_payload: ExecutionPayloadRef<E>,
     expected_versioned_hashes: &[VersionedHash],
 ) -> Result<(), Error> {
@@ -36,7 +36,7 @@ pub fn verify_versioned_hashes<E: EthSpec>(
     Ok(())
 }
 
-pub fn extract_versioned_hashes_from_transactions<E: EthSpec>(
+pub(crate) fn extract_versioned_hashes_from_transactions<E: EthSpec>(
     transactions: &types::Transactions<E>,
 ) -> Result<Vec<VersionedHash>, Error> {
     let mut versioned_hashes = Vec::new();
@@ -59,7 +59,7 @@ pub fn extract_versioned_hashes_from_transactions<E: EthSpec>(
     Ok(versioned_hashes)
 }
 
-pub fn beacon_tx_to_tx_envelope<N: Unsigned>(
+pub(crate) fn beacon_tx_to_tx_envelope<N: Unsigned>(
     tx: &types::Transaction<N>,
 ) -> Result<TxEnvelope, Error> {
     let tx_bytes = Vec::from(tx.clone());
