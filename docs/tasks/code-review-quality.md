@@ -2983,7 +2983,7 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **Doc update**: Added #5022 to spec-update-post-alpha3.md tracking table.
 - **No code changes needed** — all spec changes already implemented.
 
-### Runs 2108 (2026-03-21) — monitoring
+### Runs 2108–2109 (2026-03-21) — monitoring
 
-Monitoring run, no code changes. Spec v1.7.0-alpha.3 still latest — no new consensus-specs merges since #5005 (March 15). All open Gloas PRs unchanged. CI green (all jobs). Nightly green 5 consecutive days (Mar 17-21). Security unchanged (rsa no fix, 5 unmaintained transitive deps). 0 compatible dependency updates. All priorities 1-6 complete. Codebase stable.
+Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new consensus-specs Gloas merges since #5005 (March 15). Open PRs #4892 (2 approvals) and #4898 (1 approval) are closest to merging — both already implemented in vibehouse. CI green. Clippy clean. Cargo audit unchanged (rsa no fix). 0 compatible dependency updates. 10 remaining TODOs all tracked under #36 (2 non-critical, 5 blocked on external). All `#[allow(dead_code)]` annotations audited — all correctly placed (error enum fields for Debug display, test-only functions, unconstructed but matched variants). Codebase stable.
 
