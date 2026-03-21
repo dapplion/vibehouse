@@ -258,3 +258,13 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - CI green (all workflows), clippy clean, zero warnings
 - Verified all non-test wildcard imports cleaned up — only idiomatic preludes and re-exports remain
 - **No action needed. PTC lookbehind design not settled — will implement when one approach merges.**
+
+### run 2038 (Mar 21) — routine spec check
+
+- No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
+- Open Gloas PRs: 3 competing PTC lookbehind approaches (#4979, #4992, #5020) still unresolved
+- #5022 (block-known check): still open, already handled in vibehouse
+- #5008 (field name fix): still open, already correct in vibehouse
+- CI green (latest: update rustls-webpki), clippy clean (zero warnings), cargo audit unchanged (RUSTSEC-2023-0071 rsa)
+- Devnet passed yesterday (finalized_epoch=8, 4 nodes)
+- **No action needed. Codebase healthy, spec current.**
