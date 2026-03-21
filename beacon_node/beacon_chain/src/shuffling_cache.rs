@@ -38,7 +38,7 @@ pub enum CacheItem {
 }
 
 impl CacheItem {
-    pub fn is_promise(&self) -> bool {
+    pub(crate) fn is_promise(&self) -> bool {
         matches!(self, CacheItem::Promise(_))
     }
 
@@ -121,7 +121,7 @@ impl ShufflingCache {
         }
     }
 
-    pub fn contains(&self, key: &AttestationShufflingId) -> bool {
+    pub(crate) fn contains(&self, key: &AttestationShufflingId) -> bool {
         self.cache.contains_key(key)
     }
 
@@ -207,7 +207,7 @@ impl ShufflingCache {
     ///
     /// The shufflings for the head's previous, current, and future epochs will never be ejected from
     /// the cache during `Self::insert_cache_item`.
-    pub fn update_head_shuffling_ids(&mut self, head_shuffling_ids: BlockShufflingIds) {
+    pub(crate) fn update_head_shuffling_ids(&mut self, head_shuffling_ids: BlockShufflingIds) {
         self.head_shuffling_ids = head_shuffling_ids;
     }
 }

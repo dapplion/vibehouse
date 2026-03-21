@@ -157,7 +157,7 @@ impl BlockTimesCache {
         }
     }
 
-    pub fn set_time_blob_observed(
+    pub(crate) fn set_time_blob_observed(
         &mut self,
         block_root: BlockRoot,
         slot: Slot,
@@ -183,7 +183,7 @@ impl BlockTimesCache {
     ///
     /// If no previous value is known for the field, then the supplied timestamp will always be
     /// stored.
-    pub fn set_time_if_less(
+    pub(crate) fn set_time_if_less(
         &mut self,
         block_root: BlockRoot,
         slot: Slot,
@@ -200,7 +200,7 @@ impl BlockTimesCache {
         }
     }
 
-    pub fn set_time_consensus_verified(
+    pub(crate) fn set_time_consensus_verified(
         &mut self,
         block_root: BlockRoot,
         slot: Slot,
@@ -214,7 +214,12 @@ impl BlockTimesCache {
         );
     }
 
-    pub fn set_time_executed(&mut self, block_root: BlockRoot, slot: Slot, timestamp: Duration) {
+    pub(crate) fn set_time_executed(
+        &mut self,
+        block_root: BlockRoot,
+        slot: Slot,
+        timestamp: Duration,
+    ) {
         self.set_time_if_less(
             block_root,
             slot,
@@ -223,7 +228,7 @@ impl BlockTimesCache {
         );
     }
 
-    pub fn set_time_started_execution(
+    pub(crate) fn set_time_started_execution(
         &mut self,
         block_root: BlockRoot,
         slot: Slot,
@@ -237,7 +242,12 @@ impl BlockTimesCache {
         );
     }
 
-    pub fn set_time_attestable(&mut self, block_root: BlockRoot, slot: Slot, timestamp: Duration) {
+    pub(crate) fn set_time_attestable(
+        &mut self,
+        block_root: BlockRoot,
+        slot: Slot,
+        timestamp: Duration,
+    ) {
         self.set_time_if_less(
             block_root,
             slot,
@@ -246,7 +256,12 @@ impl BlockTimesCache {
         );
     }
 
-    pub fn set_time_imported(&mut self, block_root: BlockRoot, slot: Slot, timestamp: Duration) {
+    pub(crate) fn set_time_imported(
+        &mut self,
+        block_root: BlockRoot,
+        slot: Slot,
+        timestamp: Duration,
+    ) {
         self.set_time_if_less(
             block_root,
             slot,
@@ -255,7 +270,12 @@ impl BlockTimesCache {
         );
     }
 
-    pub fn set_time_set_as_head(&mut self, block_root: BlockRoot, slot: Slot, timestamp: Duration) {
+    pub(crate) fn set_time_set_as_head(
+        &mut self,
+        block_root: BlockRoot,
+        slot: Slot,
+        timestamp: Duration,
+    ) {
         self.set_time_if_less(
             block_root,
             slot,
@@ -264,7 +284,7 @@ impl BlockTimesCache {
         );
     }
 
-    pub fn get_block_delays(
+    pub(crate) fn get_block_delays(
         &self,
         block_root: BlockRoot,
         slot_start_time: Duration,
@@ -276,7 +296,7 @@ impl BlockTimesCache {
         }
     }
 
-    pub fn get_peer_info(&self, block_root: BlockRoot) -> BlockPeerInfo {
+    pub(crate) fn get_peer_info(&self, block_root: BlockRoot) -> BlockPeerInfo {
         if let Some(block_info) = self.cache.get(&block_root) {
             block_info.peer_info.clone()
         } else {
@@ -285,7 +305,7 @@ impl BlockTimesCache {
     }
 
     // Prune the cache to only store the most recent 2 epochs.
-    pub fn prune(&mut self, current_slot: Slot) {
+    pub(crate) fn prune(&mut self, current_slot: Slot) {
         self.cache
             .retain(|_, cache| cache.slot > current_slot.saturating_sub(64_u64));
     }
