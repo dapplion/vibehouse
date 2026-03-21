@@ -3659,3 +3659,19 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
   - **config.rs**: downgraded `DEFAULT_BEACON_NODE` to `pub(crate)`
 - **Build**: `cargo clippy -p operation_pool -p validator_client --all-targets` zero warnings.
 - **Tests**: 72/72 operation_pool tests pass. 1/1 validator_client tests pass.
+
+### Run 2093 (2026-03-21)
+
+**Visibility audit — fork_choice and beacon_processor pub→pub(crate) downgrades + dead code removal**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs gloas PRs merged.
+- **Code changes (fork_choice)**:
+  - **metrics.rs**: downgraded 7 `pub static` to `pub(crate) static` (FORK_CHOICE_QUEUED_ATTESTATIONS, FORK_CHOICE_NODES, FORK_CHOICE_INDICES, FORK_CHOICE_DEQUEUED_ATTESTATIONS, FORK_CHOICE_ON_BLOCK_TIMES, FORK_CHOICE_ON_ATTESTATION_TIMES, FORK_CHOICE_ON_ATTESTER_SLASHING_TIMES) and `scrape_for_metrics` fn to `pub(crate) fn`
+  - **Kept `pub`**: `InvalidExecutionBid`, `InvalidPayloadAttestation` — used as fields in the `pub Error` enum
+- **Code changes (beacon_processor)**:
+  - **lib.rs**: downgraded `SendOnDrop` struct to `pub(crate)`, removed dead `BlockingFnWithManualSendOnIdle` type alias
+  - **work_reprocessing_queue.rs**: downgraded 4 consts to `pub(crate)` (QUEUED_LIGHT_CLIENT_UPDATE_DELAY, QUEUED_RECONSTRUCTION_DELAY, BACKFILL_SCHEDULE_IN_SLOT, RECONSTRUCTION_DEADLINE), downgraded `ReadyWork` enum, `IgnoredRpcBlock` struct, `QueuedLightClientUpdateId` type alias, `spawn_reprocess_scheduler` fn to `pub(crate)`. Removed dead `QUEUED_SAMPLING_REQUESTS_DELAY` const.
+  - **Kept `pub`**: `DuplicateCacheHandle` (returned by pub `check_and_insert`), `QueuedBackfillBatch` (in pub `ReprocessQueueMessage::BackfillSync`)
+- **Build**: `cargo check --workspace` + `cargo clippy` zero warnings.
+- **Tests**: 129/129 fork_choice tests pass.
+- **Total**: ~18 items downgraded/removed across 3 files in 2 crates.
