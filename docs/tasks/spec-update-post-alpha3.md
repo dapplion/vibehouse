@@ -296,6 +296,14 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - Mar 17 nightly flake (range test) confirmed fixed in 8f8faa7de
 - **No action needed.**
 
+### run 2047 (Mar 21) — routine spec check
+
+- No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
+- Open Gloas PRs all still open: #4843 (variable PTC deadline, updated Mar 20), #4979 (PTC lookbehind, updated Mar 20), #4992 (cached PTCs), #5020 (PTC lookbehind minimal), #5022 (block-known check), #5023 (block root filenames, updated Mar 20), #5008 (field name fix — doc-only, our code already correct)
+- CI green, `cargo check` clean, `cargo update --dry-run` shows no updates available
+- cargo audit: 1 vuln (rsa RUSTSEC-2023-0071, no upstream fix), 5 unmaintained warnings
+- **No action needed.**
+
 ### run 2044 (Mar 21) — routine spec check
 
 - No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
