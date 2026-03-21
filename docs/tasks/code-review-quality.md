@@ -2983,7 +2983,7 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **Doc update**: Added #5022 to spec-update-post-alpha3.md tracking table.
 - **No code changes needed** — all spec changes already implemented.
 
-### Runs 2108–2120 (2026-03-21) — monitoring
+### Runs 2108–2121 (2026-03-21) — monitoring
 
-Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new consensus-specs merges since #5005 (March 15). Open ePBS PRs: #5023 (test-only, block root filenames — blocked), #4960 (fork choice test — open), #4932 (sanity/blocks tests — open), #4840 (EIP-7843 — stale), #4630 (EIP-7688 SSZ — stale). CI green (arc-swap 1.9.0 update passing). Clippy clean. `cargo audit` unchanged (rsa no fix). `cargo update --dry-run` shows no semver-compatible updates. No new GitHub issues. Codebase stable.
+Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new consensus-specs merges since #5005 (March 15). Only 2 trivial post-alpha.3 master commits (release notes deps, builder exit test fix). Open ePBS PRs: #5023 (test-only, block root filenames — blocked), #4960 (fork choice test — open), #4932 (sanity/blocks tests — open), #4840 (EIP-7843 — stale), #4630 (EIP-7688 SSZ — stale). CI green (arc-swap 1.9.0 update — all 6 jobs passed). Nightly tests green. Clippy clean. `cargo audit` unchanged (rsa no fix). `cargo update --dry-run` shows no semver-compatible updates. 33 major/minor dependency bumps available but require Cargo.toml changes (bincode, cargo_metadata, ethereum_ssz/ssz_types, milhouse, rand, reqwest, rusqlite, sysinfo, tree_hash, etc). Investigated removing `#[allow(dead_code)]` from error enum fields — Rust 1.94 still requires them (Debug derive doesn't count as reading fields). No new GitHub issues. Codebase stable.
 
