@@ -30,6 +30,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2065 (Mar 21) — health check, all stable
+
+- Build, lint, and workspace check all pass with zero warnings (including `--tests`).
+- Spec: no new consensus-specs Gloas PRs merged since Mar 15. v1.7.0-alpha.3 still latest.
+- Open Gloas PRs reviewed: #5022 (assert block known in on_payload_attestation_message) — already handled by our fork_choice.rs:1426-1432; #5008 (field name fix) — spec doc-only, no code change needed.
+- Other open PRs: #4979/#5020/#4992 (PTC lookbehind, heze-tagged), #4843 (variable PTC deadline) — future fork work, not actionable now.
+- CI: check/clippy/fmt/ef-tests/network+op_pool all green. Nightly: Mar 18-21 all green. Mar 17 flaky test already fixed (8f8faa7de).
+- Wildcard import cleanup complete across all workspace crates.
+
 ### run 2063 (Mar 21) — wildcard import cleanup: beacon_node crates
 
 - Replaced wildcard imports with explicit imports in 14 files across beacon_node crates: execution_layer, vibehouse_network, network, http_api, beacon_processor, client, genesis, beacon_chain (shuffling_cache test fix).
