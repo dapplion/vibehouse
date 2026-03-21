@@ -3077,3 +3077,17 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **GitHub issues**: No new issues. #36 blocked/non-critical. #29 (ROCQ) lowest priority. #27 (private messages) feature request.
 
 No actionable code changes. All priorities 1-6 complete. Codebase stable.
+
+### Run 2035 (2026-03-21)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (March 15).
+- **CI**: rustls-webpki update (run 2032) — all 7 jobs green including ci-success. Nightly: 4 consecutive days green (March 18-21).
+- **Security**: `cargo audit` — same as run 2033 (rsa no fix, 5 unmaintained transitive deps). No new advisories.
+- **Build**: `cargo clippy --workspace --all-targets` — zero warnings.
+- **Deep audit**: Gloas state_processing and fork_choice code reviewed for integer overflow, bounds checks, silent error swallowing, unsafe casts. All clear — safe_arith used consistently, all array accesses bounds-checked, no panicking paths in consensus-critical code.
+- **Dep check**: Verified execution_layer's `ethereum_serde_utils` and `ethereum_ssz` are actually used (lib names `serde_utils` and `ssz` respectively). No unused deps found.
+- **GitHub issues**: No new issues.
+
+No actionable code changes. All priorities 1-6 complete. Codebase stable.
