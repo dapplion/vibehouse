@@ -44,7 +44,7 @@ fn parse_client_config<E: EthSpec>(
     Ok(client_config)
 }
 
-pub fn display_db_version<E: EthSpec>(
+pub(crate) fn display_db_version<E: EthSpec>(
     client_config: ClientConfig,
     runtime_context: &RuntimeContext<E>,
 ) -> Result<(), Error> {
@@ -96,7 +96,7 @@ pub enum InspectTarget {
     Gaps,
 }
 
-pub struct InspectConfig {
+pub(crate) struct InspectConfig {
     column: DBColumn,
     target: InspectTarget,
     skip: Option<usize>,
@@ -130,7 +130,7 @@ fn parse_inspect_config(inspect_config: &Inspect) -> Result<InspectConfig, Strin
     })
 }
 
-pub fn inspect_db<E: EthSpec>(
+pub(crate) fn inspect_db<E: EthSpec>(
     inspect_config: InspectConfig,
     client_config: ClientConfig,
 ) -> Result<(), String> {
@@ -232,7 +232,7 @@ pub fn inspect_db<E: EthSpec>(
     Ok(())
 }
 
-pub struct CompactConfig {
+pub(crate) struct CompactConfig {
     column: DBColumn,
     freezer: bool,
     blobs_db: bool,
@@ -252,7 +252,7 @@ fn parse_compact_config(compact_config: &Compact) -> Result<CompactConfig, Strin
     })
 }
 
-pub fn compact_db<E: EthSpec>(
+pub(crate) fn compact_db<E: EthSpec>(
     compact_config: CompactConfig,
     client_config: ClientConfig,
 ) -> Result<(), Error> {
@@ -277,7 +277,7 @@ pub fn compact_db<E: EthSpec>(
     Ok(())
 }
 
-pub struct MigrateConfig {
+pub(crate) struct MigrateConfig {
     to: SchemaVersion,
 }
 
@@ -287,7 +287,7 @@ fn parse_migrate_config(migrate_config: &Migrate) -> Result<MigrateConfig, Strin
     Ok(MigrateConfig { to })
 }
 
-pub fn migrate_db<E: EthSpec>(
+pub(crate) fn migrate_db<E: EthSpec>(
     migrate_config: MigrateConfig,
     client_config: ClientConfig,
     runtime_context: &RuntimeContext<E>,
@@ -320,7 +320,7 @@ pub fn migrate_db<E: EthSpec>(
     migrate_schema::<Witness<SystemTimeSlotClock, _, _, _>>(db, from, to)
 }
 
-pub fn prune_payloads<E: EthSpec>(
+pub(crate) fn prune_payloads<E: EthSpec>(
     client_config: ClientConfig,
     runtime_context: &RuntimeContext<E>,
 ) -> Result<(), Error> {
@@ -344,7 +344,7 @@ pub fn prune_payloads<E: EthSpec>(
     db.try_prune_execution_payloads(force)
 }
 
-pub fn prune_blobs<E: EthSpec>(
+pub(crate) fn prune_blobs<E: EthSpec>(
     client_config: ClientConfig,
     runtime_context: &RuntimeContext<E>,
 ) -> Result<(), Error> {
@@ -367,7 +367,7 @@ pub fn prune_blobs<E: EthSpec>(
     db.try_prune_most_blobs(true)
 }
 
-pub struct PruneStatesConfig {
+pub(crate) struct PruneStatesConfig {
     confirm: bool,
 }
 fn parse_prune_states_config(
@@ -377,7 +377,7 @@ fn parse_prune_states_config(
     Ok(PruneStatesConfig { confirm })
 }
 
-pub fn prune_states<E: EthSpec>(
+pub(crate) fn prune_states<E: EthSpec>(
     client_config: ClientConfig,
     prune_config: PruneStatesConfig,
     mut genesis_state: BeaconState<E>,
