@@ -3135,3 +3135,17 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Clippy audit**: Reviewed all 175 clippy suppressions in production code. Most are legitimate: `too_many_arguments` (38, structural), `type_complexity` (44, structural), `arithmetic_side_effects` (13, in types/consensus), `match_same_arms` (2, clarity), `redundant_closure_call` (1, macro pattern), `invalid_regex` (2, false positives on `\p{C}`), `assertions_on_constants` (2, compile-time checks). The `new_without_default` on `SyncAggregate` is correct — `new()` uses `AggregateSignature::infinity()` which differs from a zero default.
 - **Spec**: v1.7.0-alpha.3 still latest. Only one commit since March 15 (#5005, test fix). PRs #4843 (Variable PTC deadline) and #4979 (PTC Lookbehind) still open.
 - **CI**: All green. No semver-compatible dep updates.
+
+### Run 2139 (2026-03-21)
+
+**Remove clippy suppressions + pub visibility downgrades**
+
+- **Code changes**:
+  - **module_inception**: Renamed `consensus/types/src/builder/builder.rs` → `record.rs` to eliminate `#[allow(clippy::module_inception)]` suppression. Module re-exports unchanged.
+  - **enum_variant_names**: Renamed `graffiti_file::Error` variants from `InvalidFile/InvalidLine/InvalidPublicKey/InvalidGraffiti` to `File/Line/PublicKey/Graffiti`, removing the `#[allow(clippy::enum_variant_names)]` suppression. Error type is crate-internal only.
+  - **len_without_is_empty**: Added `is_empty()` to `HotHDiffBufferCache` (with `#[allow(dead_code)]` since unused but needed for clippy completeness), removing the last `#[allow(clippy::len_without_is_empty)]` suppression.
+  - **pub→pub(crate)**: Downgraded `increase_balance_directly` and `decrease_balance_directly` in `state_processing::common` — only called within the crate.
+  - **Investigated but kept pub**: `ObservedPayloadEnvelopes`, `ObservedExecutionBids`, `ObservedPayloadAttestations` — used as fields on `pub struct BeaconChain`. `SplitChange`, `BytesKey` — used in pub error variants and pub functions consumed by beacon_chain crate.
+- **Tests**: 1085 types + 16 graffiti_file + 236 store + 1026 state_processing — all pass.
+- **Spec**: v1.7.0-alpha.3 still latest. PRs #4843 (Variable PTC deadline), #4979 (PTC Lookbehind) still open. New PRs: #5023 (fix block root filenames), #5022 (on_payload_attestation block check — already implemented), #5020 (PTC lookbehind minimal).
+- **CI**: All green.
