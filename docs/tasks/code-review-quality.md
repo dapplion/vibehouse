@@ -3187,3 +3187,17 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **CI**: 5+ consecutive nightly successes. Latest CI run: check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, others in progress.
 - **Build**: Zero warnings across entire workspace.
 - **No code changes** — verification-only run.
+
+### Run 2143 (2026-03-21)
+
+**Monitoring run — spec PR analysis, CI health, dependency check**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new merges since March 15 (#5005). Analyzed all 7 open Gloas PRs:
+  - **#5022** (block root check in on_payload_attestation) — already implemented in vibehouse (UnknownBeaconBlockRoot error). No action.
+  - **#5023** (fix block root filenames + Gloas comptests) — test-only. Our EF test runner already supports OnExecutionPayload steps and head_payload_status checks. No code changes needed; just update fixtures when new spec-test release ships.
+  - **#4992** (cached PTCs in state) — most likely to merge next (mergeable_state=clean). Adds `previous_ptc`/`current_ptc` to BeaconState, PTC rotation in process_slots, get_ptc becomes cache lookup. Medium complexity: touches types, SSZ, state processing, fork upgrade, genesis, DB schema. Will implement when merged.
+  - **#4843** (Variable PTC deadline), **#4979** (PTC Lookbehind), **#5020** (PTC lookbehind minimal), **#4747** (Fast Confirmation Rule) — still in review, no imminent merge.
+- **Dependencies**: 0 semver-compatible updates. 17 major-version bumps available (require Cargo.toml changes). `cargo audit` unchanged.
+- **CI**: 6+ consecutive nightly successes. Latest run: check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, remaining 3 jobs in progress.
+- **Rust toolchain**: 1.94.0 (stable, up to date).
+- **No code changes** — verification-only run.
