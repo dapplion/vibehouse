@@ -3398,4 +3398,22 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 
 No actionable code changes. All priorities 1-6 complete. Codebase stable.
 
-No actionable code changes. All priorities 1-6 complete. Codebase stable.
+### Run 2076 (2026-03-21)
+
+**Minor code cleanup — removed commented-out code.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs commits since #5005 (March 15). Open ePBS PRs unchanged.
+- **Code changes**:
+  - Removed deprecated `PRUNING_CHECKPOINT_KEY` commented-out constant in `store/src/metadata.rs` (replaced with gap comment noting repeat_byte(3) reservation)
+  - Removed commented-out old `pub use service::{...}` line in `vibehouse_network/src/lib.rs` (superseded by explicit re-exports below it)
+- **Audited but not changed**:
+  - Remaining wildcard imports are all idiomatic `::prelude::*` patterns (rayon, rand, std::io, chrono, futures) — correct usage
+  - All 8 TODOs have `#36` issue references — compliant
+  - `#[allow(dead_code)]` on error enum variants — all used by Debug formatting, idiomatic pattern
+  - `unsafe` blocks — all justified (libc FFI, blst crypto, env var before threads)
+  - Remaining `lighthouse` references in Rust code — all refer to Lighthouse as external peer client type (like Teku, Nimbus), not vibehouse branding
+  - Kurtosis `cl_type: lighthouse` — required for ethereum-package API compatibility
+  - Nightly test flake (March 17, `finalized_sync_not_enough_custody_peers_on_start`) — passed in 3 subsequent runs, timing-dependent, not actionable
+- **Build**: `cargo build --release` clean. `cargo clippy --workspace --all-targets` zero warnings.
+- **CI**: Latest run 4/6 jobs passed (check+clippy+fmt, ef-tests, network+op_pool, http_api), 2 in progress.
+- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps).
