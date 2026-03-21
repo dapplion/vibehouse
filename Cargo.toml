@@ -127,7 +127,7 @@ clap = { version = "4.5.4", features = ["derive", "cargo", "wrap_help"] }
 clap_utils = { path = "common/clap_utils" }
 compare_fields = { path = "common/compare_fields" }
 compare_fields_derive = { path = "common/compare_fields_derive" }
-console-subscriber = "0.4"
+console-subscriber = "0.5"
 context_deserialize = { path = "consensus/context_deserialize/context_deserialize", features = [
     "all",
 ] }
@@ -219,7 +219,7 @@ reqwest = { version = "0.12", default-features = false, features = [
 ] }
 ring = "0.17"
 rpds = "0.11"
-rusqlite = { version = "0.38", features = ["bundled"] }
+rusqlite = { version = "0.39", features = ["bundled"] }
 rust_eth_kzg = "0.9"
 safe_arith = "0.1"
 sensitive_url = { path = "common/sensitive_url" }
