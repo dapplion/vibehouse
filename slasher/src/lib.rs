@@ -32,7 +32,7 @@ use types::{AttesterSlashing, AttesterSlashingBase, AttesterSlashingElectra};
 use types::{EthSpec, IndexedAttestation, ProposerSlashing};
 
 #[derive(Debug, PartialEq)]
-pub enum AttesterSlashingStatus<E: EthSpec> {
+pub(crate) enum AttesterSlashingStatus<E: EthSpec> {
     NotSlashable,
     /// A weird outcome that can occur when we go to lookup an attestation by its target
     /// epoch for a surround slashing, but find a different attestation -- indicating that
@@ -44,13 +44,13 @@ pub enum AttesterSlashingStatus<E: EthSpec> {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum ProposerSlashingStatus {
+pub(crate) enum ProposerSlashingStatus {
     NotSlashable,
     DoubleVote(Box<ProposerSlashing>),
 }
 
 impl<E: EthSpec> AttesterSlashingStatus<E> {
-    pub fn into_slashing(
+    pub(crate) fn into_slashing(
         self,
         new_attestation: &IndexedAttestation<E>,
     ) -> Option<AttesterSlashing<E>> {

@@ -86,12 +86,12 @@ pub struct SlasherDB<E: EthSpec> {
 ///
 /// The validator index is stored in 5 bytes (validator registry limit is 2^40).
 #[derive(Debug)]
-pub struct AttesterKey {
+pub(crate) struct AttesterKey {
     data: [u8; ATTESTER_KEY_SIZE],
 }
 
 impl AttesterKey {
-    pub fn new(validator_index: u64, target_epoch: Epoch, config: &Config) -> Self {
+    pub(crate) fn new(validator_index: u64, target_epoch: Epoch, config: &Config) -> Self {
         let mut data = [0; ATTESTER_KEY_SIZE];
 
         BigEndian::write_uint(
@@ -116,19 +116,19 @@ impl AsRef<[u8]> for AttesterKey {
 /// Stored as big-endian `(slot, validator_index)` to enable efficient iteration
 /// while pruning.
 #[derive(Debug)]
-pub struct ProposerKey {
+pub(crate) struct ProposerKey {
     data: [u8; PROPOSER_KEY_SIZE],
 }
 
 impl ProposerKey {
-    pub fn new(validator_index: u64, slot: Slot) -> Self {
+    pub(crate) fn new(validator_index: u64, slot: Slot) -> Self {
         let mut data = [0; PROPOSER_KEY_SIZE];
         data[0..8].copy_from_slice(&slot.as_u64().to_be_bytes());
         data[8..PROPOSER_KEY_SIZE].copy_from_slice(&validator_index.to_be_bytes());
         ProposerKey { data }
     }
 
-    pub fn parse(data: Cow<[u8]>) -> Result<(Slot, u64), Error> {
+    pub(crate) fn parse(data: Cow<[u8]>) -> Result<(Slot, u64), Error> {
         if data.len() == PROPOSER_KEY_SIZE {
             let slot = Slot::new(BigEndian::read_u64(&data[..8]));
             let validator_index = BigEndian::read_u64(&data[8..]);
@@ -146,12 +146,12 @@ impl AsRef<[u8]> for ProposerKey {
 }
 
 /// Key containing a validator index
-pub struct CurrentEpochKey {
+pub(crate) struct CurrentEpochKey {
     validator_index: [u8; CURRENT_EPOCH_KEY_SIZE],
 }
 
 impl CurrentEpochKey {
-    pub fn new(validator_index: u64) -> Self {
+    pub(crate) fn new(validator_index: u64) -> Self {
         Self {
             validator_index: validator_index.to_be_bytes(),
         }
@@ -165,12 +165,12 @@ impl AsRef<[u8]> for CurrentEpochKey {
 }
 
 /// Key containing an epoch and an indexed attestation hash.
-pub struct IndexedAttestationIdKey {
+pub(crate) struct IndexedAttestationIdKey {
     target_and_root: [u8; INDEXED_ATTESTATION_ID_KEY_SIZE],
 }
 
 impl IndexedAttestationIdKey {
-    pub fn new(target_epoch: Epoch, indexed_attestation_root: Hash256) -> Self {
+    pub(crate) fn new(target_epoch: Epoch, indexed_attestation_root: Hash256) -> Self {
         let mut data = [0; INDEXED_ATTESTATION_ID_KEY_SIZE];
         data[0..8].copy_from_slice(&target_epoch.as_u64().to_be_bytes());
         data[8..INDEXED_ATTESTATION_ID_KEY_SIZE]
@@ -180,7 +180,7 @@ impl IndexedAttestationIdKey {
         }
     }
 
-    pub fn parse(data: Cow<[u8]>) -> Result<(Epoch, Hash256), Error> {
+    pub(crate) fn parse(data: Cow<[u8]>) -> Result<(Epoch, Hash256), Error> {
         if data.len() == INDEXED_ATTESTATION_ID_KEY_SIZE {
             let target_epoch = Epoch::new(BigEndian::read_u64(&data[..8]));
             let indexed_attestation_root = Hash256::from_slice(&data[8..]);
@@ -247,7 +247,7 @@ impl AsRef<[u8]> for IndexedAttestationId {
 /// saves a lot of execution time. The bytes that it encodes to are the same as the bytes that a
 /// regular IndexedAttestation encodes to, because SSZ doesn't care about the length-bound.
 #[derive(Debug, PartialEq, Decode, Encode)]
-pub struct IndexedAttestationOnDisk {
+pub(crate) struct IndexedAttestationOnDisk {
     attesting_indices: Vec<u64>,
     data: AttestationData,
     signature: AggregateSignature,
@@ -582,7 +582,7 @@ impl<E: EthSpec> SlasherDB<E> {
         self.attestation_root_cache.lock().len()
     }
 
-    pub fn check_and_update_attester_record(
+    pub(crate) fn check_and_update_attester_record(
         &self,
         txn: &mut RwTransaction<'_>,
         validator_index: u64,
@@ -689,7 +689,7 @@ impl<E: EthSpec> SlasherDB<E> {
             .transpose()
     }
 
-    pub fn check_or_insert_block_proposal(
+    pub(crate) fn check_or_insert_block_proposal(
         &self,
         txn: &mut RwTransaction<'_>,
         block_header: SignedBeaconBlockHeader,
