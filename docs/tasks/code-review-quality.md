@@ -3593,3 +3593,20 @@ Verified each function is only used within the beacon_chain crate (not by http_a
   - **http_api/task_spawner.rs**: downgraded `Priority` enum and `TaskSpawner` struct to `pub(crate)`
 - **Build**: `cargo check --workspace` + `cargo clippy` on all 3 crates — zero warnings.
 - **Total**: ~50 items downgraded across 12 files in 3 crates.
+
+### Run 2089 (2026-03-21)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs gloas PRs merged since #5005 (March 15). Open ePBS PRs unchanged:
+  - #4892 (remove impossible branch): 2 approvals (ensi321, jtraglia), stalled since Feb 9, no merge activity. Reviewed diff — our `is_supporting_vote_gloas_at_slot` already uses `==` (not `<=`), so we're already correct.
+  - #4898 (remove pending tiebreaker): 1 approval, stalled since Feb 5
+  - #4992 (cached PTCs): 1 approval, updated Mar 17, no additional reviewers
+  - #4979 (PTC lookbehind): reopened, no approvals
+  - #5008 (field name fix): cosmetic, our `ExecutionPayloadEnvelope` already uses `beacon_block_root`
+  - #5023 (test fixtures): test-only, not merged
+- **Build**: CI run in progress (all 6 jobs running). Previous nightly (Mar 21) success.
+- **Security**: `cargo audit` — 1 vulnerability (rsa RUSTSEC-2023-0071, no fix available), 5 unmaintained transitive deps. No new advisories.
+- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
+
+No actionable code changes. All priorities 1-6 complete. Codebase stable.
