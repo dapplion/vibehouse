@@ -3417,3 +3417,14 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **Build**: `cargo build --release` clean. `cargo clippy --workspace --all-targets` zero warnings.
 - **CI**: Latest run 4/6 jobs passed (check+clippy+fmt, ef-tests, network+op_pool, http_api), 2 in progress.
 - **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps).
+
+### Run 2077: payload attestation boundary tests + dependency audit
+
+**Spec tracking**: Reviewed 3 new consensus-specs PRs (#5022, #5020, #5023) — no action needed (already implemented or not merged).
+
+**Dependency audit**: `cargo machete --with-metadata` — all flagged deps are false positives (derive macros, build deps, feature flags).
+
+**Edge case tests added** (fork_choice):
+- `payload_attestation_too_old_boundary_accepted`: exact epoch boundary — verifies acceptance
+- `payload_attestation_too_old_boundary_plus_one_rejected`: one past boundary — verifies rejection
+- All 31 fork_choice tests pass
