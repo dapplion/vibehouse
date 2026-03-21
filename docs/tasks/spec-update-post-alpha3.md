@@ -280,3 +280,10 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - Code quality: zero clippy warnings even with stricter lints (needless_return, redundant_closure)
 - Remaining TODOs: all blocked (EIP-7892, blst upstream, PeerDAS checkpoint sync) or non-critical
 - **No action needed. Codebase healthy, spec current. Will implement PTC lookbehind when design settles.**
+
+### run 2040 (Mar 21) — routine spec check
+
+- No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
+- Open Gloas PRs unchanged: #4979, #4992, #5020 (PTC lookbehind), #4843 (variable PTC deadline), #5022 (block-known check)
+- CI green, clippy clean, cargo audit unchanged, cargo update no changes
+- **No action needed.**
