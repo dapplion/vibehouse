@@ -3349,3 +3349,19 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Tests**: 204/204 network tests pass (FORK_NAME=gloas), 1/1 fork_choice_on_execution_payload EF test passes. Full workspace clippy zero warnings.
 - **CI**: All green. 5+ consecutive nightly successes.
 - **Assessment**: Codebase remains at steady state. Both deep audits confirm spec conformance. Next impactful work: spec PR merges (particularly #4992 cached PTCs which adds `previous_ptc`/`current_ptc` to BeaconState).
+
+### Run 2155 (2026-03-22)
+
+**Visibility downgrades in http_api crate**
+
+- **Code changes** — downgraded 81 items from `pub` to `pub(crate)` across 26 private module files in `beacon_node/http_api/src/`:
+  - Functions (50+): all `pub fn` in private modules (`aggregate_attestation`, `attestation_performance`, `attester_duties`, `block_packing_efficiency`, `block_rewards`, `build_block_contents`, `builder_states`, `custody`, `database`, `light_client`, `produce_block`, `proposer_duties`, `ptc_duties`, `publish_attestations`, `standard_block_rewards`, `sync_committee_rewards`, `sync_committees`, `validator`, `validator_inclusion`, `validators`, `version`)
+  - Structs (9): `DatabaseInfo` + fields, 8 UI structs (`ValidatorCountResponse`, `ValidatorInfoRequestData`, `ValidatorInfoValues`, `ValidatorInfo`, `ValidatorInfoResponse`, `ValidatorMetricsRequestData`, `ValidatorMetrics`, `ValidatorMetricsResponse`)
+  - Enums (2): `publish_attestations::Error`, `version::ResponseIncludesVersion`
+  - Statics (7): all metrics statics in `metrics.rs`
+  - Methods (6): `TaskSpawner` methods in `task_spawner.rs`
+  - Constants (3): version constants in `version.rs`
+- **Preserved as `pub`**: `BlockId` struct + methods (re-exported), `StateId` struct + methods (re-exported), `ProvenancedBlock`/`publish_block`/`publish_blinded_block`/`reconstruct_block`/`UnverifiedBlobs` (re-exported), all items in `pub mod api_error` and `pub mod test_utils`
+- **Spec**: v1.7.0-alpha.3 still latest. No new merges since March 15. All tracked Gloas PRs remain open.
+- **Tests**: 346/346 http_api tests pass (FORK_NAME=fulu). Full workspace clippy zero warnings. `make lint-full` passes.
+- **CI**: Previous run (zip update) still in progress, all green so far.
