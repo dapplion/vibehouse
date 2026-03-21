@@ -3240,3 +3240,21 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071, unmaintained transitive deps).
 - **Dependencies**: No semver-compatible updates.
 - **No code changes** — verification-only run.
+
+### Run 2147 (2026-03-21)
+
+**Visibility downgrades across store, network, vibehouse_network crates**
+
+- **Code changes** — downgraded 30 items from `pub` to `pub(crate)` across 3 crates, 10 files:
+  - **store/lib.rs** (4 functions): `get_key_for_col`, `get_data_column_key`, `parse_data_column_key` → `pub(crate)`. `get_col_from_key` → `#[cfg(test)] pub(crate)` (only used in tests).
+  - **store/hot_cold_store.rs** (17 methods on `HotColdDB`): `hot_storage_strategy`, `get_block_any_variant`, `get_block_with`, `blobs_as_kv_store_ops`, `data_columns_as_kv_store_ops`, `store_hot_state_summary`, `store_hot_state_diffs`, `load_hot_state_using_replay`, `store_cold_state_summary`, `store_cold_state`, `store_cold_state_as_snapshot`, `store_hot_state_as_snapshot`, `store_cold_state_as_diff`, `load_cold_blocks`, `replay_blocks`, `get_all_data_column_keys`, `store_schema_version`, `compare_and_set_anchor_info_with_write`
+  - **store/hdiff.rs** (2 methods): `apply_xdelta`, `as_state`
+  - **store/metadata.rs** (1 method): `as_archive_anchor`
+  - **store/config.rs** (1 method): `as_disk_config`
+  - **network/service.rs** (1 method): `required_gossip_fork_digests`
+  - **vibehouse_network/gossip_cache.rs** (2 structs): `GossipCache`, `GossipCacheBuilder`
+  - **vibehouse_network/rpc/protocol.rs** (3 functions): `rpc_block_limits_by_fork`, `rpc_blob_limits`, `rpc_data_column_limits`
+  - **vibehouse_network/discovery/enr.rs** (2 functions): `build_or_load_enr`, `save_enr_to_disk`
+  - **vibehouse_network/gossipsub_scoring_parameters.rs** (1 function): `vibehouse_gossip_thresholds`
+- **Tests**: 236/236 store, 843/847 network+vibehouse_network (4 pre-existing flaky failures confirmed on clean main). Full workspace clippy zero warnings.
+- **Spec**: v1.7.0-alpha.3 still latest. Open Gloas PRs: #4992 (cached PTCs), #4843 (variable PTC deadline), #4979 (PTC lookbehind) — none merged.
