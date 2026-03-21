@@ -654,7 +654,7 @@ impl HierarchyConfig {
         }
     }
 
-    pub fn exponent_for_slot(slot: Slot) -> u32 {
+    pub(crate) fn exponent_for_slot(slot: Slot) -> u32 {
         slot.as_u64().trailing_zeros()
     }
 }
@@ -731,7 +731,7 @@ impl HierarchyModuli {
     ///
     /// In future we may be able to handle this differently (with proper transaction semantics
     /// rather than write batches).
-    pub fn should_commit_immediately(&self, slot: Slot) -> Result<bool, Error> {
+    pub(crate) fn should_commit_immediately(&self, slot: Slot) -> Result<bool, Error> {
         // If there's only 1 layer of snapshots, then commit only when writing a snapshot.
         self.moduli.get(1).map_or_else(
             || Ok(slot == self.next_snapshot_slot(slot)?),
@@ -771,7 +771,7 @@ impl StorageStrategy {
     /// Similarly for `DiffFrom` and `Snapshot` states, loading the prior state and replaying 1
     /// block is often going to be faster than loading and applying diffs/snapshots, so we may as
     /// well check the cache for that 1 slot prior (in case the caller is iterating sequentially).
-    pub fn replay_from_range(
+    pub(crate) fn replay_from_range(
         &self,
         slot: Slot,
     ) -> std::iter::Map<RangeInclusive<u64>, fn(u64) -> Slot> {
@@ -789,7 +789,7 @@ impl StorageStrategy {
     }
 
     /// Returns the slot that storage_strategy points to.
-    pub fn diff_base_slot(&self) -> Option<Slot> {
+    pub(crate) fn diff_base_slot(&self) -> Option<Slot> {
         match self {
             Self::ReplayFrom(from) | Self::DiffFrom(from) => Some(*from),
             Self::Snapshot => None,

@@ -56,7 +56,7 @@ pub struct StateCache<E: EthSpec> {
 /// The cache always retains the hdiff buffer for the most recent snapshot so that even if the
 /// cache capacity is 1, this snapshot never needs to be loaded from disk.
 #[derive(Debug)]
-pub struct HotHDiffBufferCache {
+pub(crate) struct HotHDiffBufferCache {
     /// Cache of HDiffBuffers for states *prior* to the `finalized_state`.
     ///
     /// Maps state_root -> (slot, buffer).

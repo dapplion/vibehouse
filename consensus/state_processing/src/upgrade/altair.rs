@@ -11,7 +11,7 @@ use types::{
 };
 
 /// Translate the participation information from the epoch prior to the fork into Altair's format.
-pub fn translate_participation<E: EthSpec>(
+pub(crate) fn translate_participation<E: EthSpec>(
     state: &mut BeaconState<E>,
     pending_attestations: &List<PendingAttestation<E>, E::MaxPendingAttestations>,
     spec: &ChainSpec,

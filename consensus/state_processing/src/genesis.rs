@@ -228,7 +228,7 @@ pub fn process_activations<E: EthSpec>(
 /// Does _not_ ensure that the time is greater than `MIN_GENESIS_TIME`.
 ///
 /// Spec v0.12.1
-pub fn eth2_genesis_time(eth1_timestamp: u64, spec: &ChainSpec) -> Result<u64, ArithError> {
+pub(crate) fn eth2_genesis_time(eth1_timestamp: u64, spec: &ChainSpec) -> Result<u64, ArithError> {
     eth1_timestamp.safe_add(spec.genesis_delay)
 }
 

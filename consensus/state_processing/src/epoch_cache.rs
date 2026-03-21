@@ -10,7 +10,7 @@ use types::{
 };
 
 /// Precursor to an `EpochCache`.
-pub struct PreEpochCache {
+pub(crate) struct PreEpochCache {
     epoch_key: EpochCacheKey,
     effective_balances: Vec<u64>,
     total_active_balance: u64,

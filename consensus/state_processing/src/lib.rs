@@ -33,10 +33,7 @@ pub mod verify_operation;
 pub use all_caches::AllCaches;
 pub use block_replayer::{BlockReplayError, BlockReplayer};
 pub use consensus_context::{ConsensusContext, ContextError};
-pub use genesis::{
-    eth2_genesis_time, initialize_beacon_state_from_eth1, is_valid_genesis_state,
-    process_activations,
-};
+pub use genesis::{initialize_beacon_state_from_eth1, is_valid_genesis_state, process_activations};
 pub use per_block_processing::{
     BlockSignatureStrategy, BlockSignatureVerifier, VerifyBlockRoot, VerifySignatures,
     block_signature_verifier, errors::BlockProcessingError, per_block_processing, signature_sets,
