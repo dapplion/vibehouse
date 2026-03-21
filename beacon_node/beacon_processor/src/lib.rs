@@ -549,7 +549,6 @@ impl<E: EthSpec> BeaconProcessorSend<E> {
 
 pub type AsyncFn = Pin<Box<dyn Future<Output = ()> + Send + Sync>>;
 pub type BlockingFn = Box<dyn FnOnce() + Send + Sync>;
-pub type BlockingFnWithManualSendOnIdle = Box<dyn FnOnce(SendOnDrop) + Send + Sync>;
 pub enum BlockingOrAsync {
     Blocking(BlockingFn),
     Async(AsyncFn),
@@ -1793,7 +1792,7 @@ impl TaskSpawner {
 /// The Rust docs for `Drop` state that `Drop` is called during an unwind in a panic:
 ///
 /// <https://doc.rust-lang.org/std/ops/trait.Drop.html#panics>
-pub struct SendOnDrop {
+pub(crate) struct SendOnDrop {
     tx: mpsc::Sender<WorkType>,
     work_type: WorkType,
     // The field is unused, but it's here to ensure the timer is dropped once the task has finished.

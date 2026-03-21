@@ -49,16 +49,13 @@ pub const ADDITIONAL_QUEUED_BLOCK_DELAY: Duration = Duration::from_millis(5);
 pub const QUEUED_ATTESTATION_DELAY: Duration = Duration::from_secs(12);
 
 /// For how long to queue light client updates for re-processing.
-pub const QUEUED_LIGHT_CLIENT_UPDATE_DELAY: Duration = Duration::from_secs(12);
+pub(crate) const QUEUED_LIGHT_CLIENT_UPDATE_DELAY: Duration = Duration::from_secs(12);
 
 /// For how long to queue rpc blocks before sending them back for reprocessing.
 pub const QUEUED_RPC_BLOCK_DELAY: Duration = Duration::from_secs(4);
 
-/// For how long to queue sampling requests for reprocessing.
-pub const QUEUED_SAMPLING_REQUESTS_DELAY: Duration = Duration::from_secs(12);
-
 /// For how long to queue delayed column reconstruction.
-pub const QUEUED_RECONSTRUCTION_DELAY: Duration = Duration::from_millis(150);
+pub(crate) const QUEUED_RECONSTRUCTION_DELAY: Duration = Duration::from_millis(150);
 
 /// Set an arbitrary upper-bound on the number of queued blocks to avoid DoS attacks. The fact that
 /// we signature-verify blocks before putting them in the queue *should* protect against this, but
@@ -75,7 +72,7 @@ const MAXIMUM_QUEUED_LIGHT_CLIENT_UPDATES: usize = 128;
 //
 // Note: use caution to set these fractions in a way that won't cause panic-y
 // arithmetic.
-pub const BACKFILL_SCHEDULE_IN_SLOT: [(u32, u32); 3] = [
+pub(crate) const BACKFILL_SCHEDULE_IN_SLOT: [(u32, u32); 3] = [
     // One half: 6s on mainnet, 2.5s on Gnosis.
     (1, 2),
     // Three fifths: 7.2s on mainnet, 3s on Gnosis.
@@ -86,7 +83,7 @@ pub const BACKFILL_SCHEDULE_IN_SLOT: [(u32, u32); 3] = [
 
 /// Fraction of slot duration after which column reconstruction is triggered, makes it easier for
 /// different slot timings to have a generalised deadline
-pub const RECONSTRUCTION_DEADLINE: (u64, u64) = (1, 4);
+pub(crate) const RECONSTRUCTION_DEADLINE: (u64, u64) = (1, 4);
 
 /// Messages that the scheduler can receive.
 #[derive(AsRefStr)]
@@ -118,7 +115,7 @@ pub enum ReprocessQueueMessage {
 }
 
 /// Events sent by the scheduler once they are ready for re-processing.
-pub enum ReadyWork {
+pub(crate) enum ReadyWork {
     Block(QueuedGossipBlock),
     RpcBlock(QueuedRpcBlock),
     IgnoredRpcBlock(IgnoredRpcBlock),
@@ -169,7 +166,7 @@ pub struct QueuedRpcBlock {
 
 /// A block that arrived for processing when the same block was being imported over gossip.
 /// It is queued for later import.
-pub struct IgnoredRpcBlock {
+pub(crate) struct IgnoredRpcBlock {
     pub process_fn: BlockingFn,
 }
 
@@ -273,7 +270,7 @@ struct ReprocessQueue<S> {
     slot_clock: Arc<S>,
 }
 
-pub type QueuedLightClientUpdateId = usize;
+pub(crate) type QueuedLightClientUpdateId = usize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum QueuedAttestationId {
@@ -382,7 +379,7 @@ impl<S: SlotClock> Stream for ReprocessQueue<S> {
 /// Starts the job that manages scheduling works that need re-processing. The returned `Sender`
 /// gives the communicating channel to receive those works. Once a work is ready, it is sent back
 /// via `ready_work_tx`.
-pub fn spawn_reprocess_scheduler<S: SlotClock + 'static>(
+pub(crate) fn spawn_reprocess_scheduler<S: SlotClock + 'static>(
     ready_work_tx: Sender<ReadyWork>,
     work_reprocessing_rx: Receiver<ReprocessQueueMessage>,
     executor: &TaskExecutor,
