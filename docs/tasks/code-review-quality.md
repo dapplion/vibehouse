@@ -3149,3 +3149,16 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Tests**: 1085 types + 16 graffiti_file + 236 store + 1026 state_processing — all pass.
 - **Spec**: v1.7.0-alpha.3 still latest. PRs #4843 (Variable PTC deadline), #4979 (PTC Lookbehind) still open. New PRs: #5023 (fix block root filenames), #5022 (on_payload_attestation block check — already implemented), #5020 (PTC lookbehind minimal).
 - **CI**: All green.
+
+### Run 2140 (2026-03-21)
+
+**Remove remaining enum_variant_names clippy suppressions**
+
+- **Code changes** — renamed enum variants to eliminate shared prefix/suffix, removing 4 `#[allow(clippy::enum_variant_names)]` suppressions:
+  - **BlockProcessType** (sync/manager.rs): `SingleBlock`→`Block`, `SingleBlob`→`Blob`, `SingleCustodyColumn`→`CustodyColumn` — "Single" prefix was redundant (enum only used for single lookups)
+  - **RpcResponseError** (sync/network_context.rs): `RpcError`→`Rpc`, `VerifyError`→`Verify`, `CustodyRequestError`→`CustodyRequest`, `BlockComponentCouplingError`→`BlockComponentCoupling` — "Error" suffix redundant with enum name
+  - **BlockSlashInfo** (block_verification.rs): `SignatureNotChecked`→`NotChecked`, `SignatureInvalid`→`Invalid`, `SignatureValid`→`Valid` — "Signature" prefix redundant with type context
+  - **engine_api::Error** (engine_api.rs): `SszError`→`Ssz` — "Error" suffix matched enum name
+- **Tests**: 204/204 network, 145/145 execution_layer — all pass. Full workspace clippy zero warnings.
+- **Spec**: v1.7.0-alpha.3 still latest. No new merges since #5005 (March 15).
+- **CI**: All green. `make lint-full` passed in pre-push hook.
