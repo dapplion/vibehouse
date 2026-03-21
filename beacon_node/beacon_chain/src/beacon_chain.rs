@@ -120,11 +120,10 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::io::prelude::*;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::time::Duration;
-use store::iter::{BlockRootsIterator, ParentRootBlockIterator, StateRootsIterator};
+use store::iter::{BlockRootsIterator, StateRootsIterator};
 use store::{
     BlobSidecarListFromRoot, DBColumn, DatabaseBlock, Error as DBError, HotColdDB, HotStateSummary,
     KeyValueStore, KeyValueStoreOp, StoreItem, StoreOp,
@@ -9011,101 +9010,6 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         } else {
             Ok(ChainHealth::Healthy)
         }
-    }
-
-    pub fn dump_as_dot<W: Write>(&self, output: &mut W) {
-        let canonical_head_hash = self.canonical_head.cached_head().head_block_root();
-        let mut visited: HashSet<Hash256> = HashSet::new();
-        let mut finalized_blocks: HashSet<Hash256> = HashSet::new();
-        let mut justified_blocks: HashSet<Hash256> = HashSet::new();
-
-        let genesis_block_hash = Hash256::zero();
-        writeln!(output, "digraph beacon {{").unwrap();
-        writeln!(output, "\t_{genesis_block_hash:?}[label=\"zero\"];").unwrap();
-
-        // Canonical head needs to be processed first as otherwise finalized blocks aren't detected
-        // properly.
-        let heads = {
-            let mut heads = self.heads();
-            let canonical_head_index = heads
-                .iter()
-                .position(|(block_hash, _)| *block_hash == canonical_head_hash)
-                .unwrap();
-            let (canonical_head_hash, canonical_head_slot) =
-                heads.swap_remove(canonical_head_index);
-            heads.insert(0, (canonical_head_hash, canonical_head_slot));
-            heads
-        };
-
-        for (head_hash, _head_slot) in heads {
-            for maybe_pair in ParentRootBlockIterator::new(&*self.store, head_hash) {
-                let (block_hash, signed_beacon_block) = maybe_pair.unwrap();
-                if visited.contains(&block_hash) {
-                    break;
-                }
-                visited.insert(block_hash);
-
-                if signed_beacon_block.slot() % T::EthSpec::slots_per_epoch() == 0 {
-                    let block = self.get_blinded_block(&block_hash).unwrap().unwrap();
-                    // This branch is reached from the HTTP API. We assume the user wants
-                    // to cache states so that future calls are faster.
-                    let state = self
-                        .get_state(&block.state_root(), Some(block.slot()), true)
-                        .unwrap()
-                        .unwrap();
-                    finalized_blocks.insert(state.finalized_checkpoint().root);
-                    justified_blocks.insert(state.current_justified_checkpoint().root);
-                    justified_blocks.insert(state.previous_justified_checkpoint().root);
-                }
-
-                if block_hash == canonical_head_hash {
-                    writeln!(
-                        output,
-                        "\t_{:?}[label=\"{} ({})\" shape=box3d];",
-                        block_hash,
-                        block_hash,
-                        signed_beacon_block.slot()
-                    )
-                    .unwrap();
-                } else if finalized_blocks.contains(&block_hash) {
-                    writeln!(
-                        output,
-                        "\t_{:?}[label=\"{} ({})\" shape=Msquare];",
-                        block_hash,
-                        block_hash,
-                        signed_beacon_block.slot()
-                    )
-                    .unwrap();
-                } else if justified_blocks.contains(&block_hash) {
-                    writeln!(
-                        output,
-                        "\t_{:?}[label=\"{} ({})\" shape=cds];",
-                        block_hash,
-                        block_hash,
-                        signed_beacon_block.slot()
-                    )
-                    .unwrap();
-                } else {
-                    writeln!(
-                        output,
-                        "\t_{:?}[label=\"{} ({})\" shape=box];",
-                        block_hash,
-                        block_hash,
-                        signed_beacon_block.slot()
-                    )
-                    .unwrap();
-                }
-                writeln!(
-                    output,
-                    "\t_{:?} -> _{:?};",
-                    block_hash,
-                    signed_beacon_block.parent_root()
-                )
-                .unwrap();
-            }
-        }
-
-        writeln!(output, "}}").unwrap();
     }
 
     /// Get a channel to request shutting down.
