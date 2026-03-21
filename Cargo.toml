@@ -186,7 +186,7 @@ maplit = "1"
 merkle_proof = { path = "consensus/merkle_proof" }
 metrics = { path = "common/metrics" }
 milhouse = { version = "0.7", default-features = false }
-mockall = "0.13"
+mockall = "0.14"
 mockall_double = "0.3"
 mockito = "1.5.0"
 monitoring_api = { path = "common/monitoring_api" }
@@ -238,7 +238,7 @@ sp1-verifier = { version = "6.0.2", default-features = false }
 ssz_types = "0.11.0"
 state_processing = { path = "consensus/state_processing" }
 store = { path = "beacon_node/store" }
-strum = { version = "0.27", features = ["derive"] }
+strum = { version = "0.28", features = ["derive"] }
 superstruct = "0.10"
 swap_or_not_shuffle = { path = "consensus/swap_or_not_shuffle" }
 syn = "1"
