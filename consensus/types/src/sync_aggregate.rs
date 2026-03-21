@@ -35,9 +35,14 @@ pub struct SyncAggregate<E: EthSpec> {
     pub sync_committee_signature: AggregateSignature,
 }
 
+impl<E: EthSpec> Default for SyncAggregate<E> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<E: EthSpec> SyncAggregate<E> {
     /// New aggregate to be used as the seed for aggregating other signatures.
-    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             sync_committee_bits: BitVector::default(),

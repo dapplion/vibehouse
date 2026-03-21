@@ -1,4 +1,3 @@
-#![allow(clippy::needless_doctest_main)]
 //! A wrapper around the `prometheus` crate that provides a global metrics registry
 //! and functions to add and use the following components (more info at
 //! [Prometheus docs](https://prometheus.io/docs/concepts/metric_types/)):

@@ -3,7 +3,6 @@
 //! It routes the messages to appropriate services.
 //! It handles requests at the application layer in its associated processor and directs
 //! syncing-related responses to the Sync manager.
-#![allow(clippy::unit_arg)]
 
 use crate::network_beacon_processor::{InvalidBlockStorage, NetworkBeaconProcessor};
 use crate::service::NetworkMessage;
@@ -136,7 +135,10 @@ impl<T: BeaconChainTypes> Router<T> {
             async move {
                 debug!("Network message router started");
                 UnboundedReceiverStream::new(handler_recv)
-                    .for_each(move |msg| future::ready(handler.handle_message(msg)))
+                    .for_each(move |msg| {
+                        handler.handle_message(msg);
+                        future::ready(())
+                    })
                     .await;
             },
             "router",

@@ -50,7 +50,6 @@ impl Deref for ErrorType {
 
 impl Display for ErrorType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        #[allow(clippy::invalid_regex)]
         let re = Regex::new("\\p{C}").expect("Regex is valid");
         let error_type_str =
             String::from_utf8_lossy(&re.replace_all(&self.0, &b""[..])).to_string();
