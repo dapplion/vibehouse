@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 2046 (Mar 21) — maintenance check, all green
+
+CI green (last 5 runs). Nightlies green (Mar 18-20). Build/clippy clean, zero warnings. Spec HEAD still 1baa05e from Mar 15 — no new commits. Open Gloas PRs unchanged: #4843 (variable PTC deadline), #4979 (PTC lookbehind), #4992 (cached PTCs), #5020 (PTC lookbehind minimal), #5022 (payload attestation block check), #5023 (block root filenames). None merged. cargo audit: unchanged (rsa no fix, 5 unmaintained transitive deps). Investigated potential perf improvements (state.clone().canonical_root(), Vec allocations in epoch processing) — all either in test code only or already optimized (milhouse CoW makes BeaconState clone cheap). Verified withdrawal edge cases (spec PR #4962) already covered by existing tests. Project in maintenance mode.
+
 ### run 2045 (Mar 21) — maintenance check, spec audit, all green
 
 CI green. Nightlies green (3 consecutive green). Build clean, zero warnings. Spec tracked to v1.7.0-alpha.3 — HEAD still 1baa05e from Mar 15, no new commits. Audited 3 new open spec PRs: #5022 (assert block known in on_payload_attestation_message — already handled by our UnknownBeaconBlockRoot error at fork_choice.rs:1426-1432), #5023 (test fixture naming fix + Gloas comptests — test infra only, no code impact until new release), #5020 (PTC lookbehind — still open/draft). PR #5001 (parent_block_root in bid filter key) confirmed already implemented (observed_execution_bids.rs uses 3-tuple since implementation). cargo audit: 1 known (rsa timing, no upstream fix), 5 unmaintained warnings. No dependency updates available. Project in maintenance mode.
