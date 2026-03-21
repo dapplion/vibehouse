@@ -1219,8 +1219,7 @@ mod tests {
     use super::*;
     use beacon_chain::test_utils::BeaconChainHarness;
     use bls::Hash256;
-    use rand_08::SeedableRng;
-    use rand_08::prelude::StdRng;
+    use std::sync::atomic::{AtomicU64, Ordering};
     use types::MinimalEthSpec;
     use vibehouse_network::{NetworkConfig, SyncInfo, SyncStatus};
 
@@ -1242,14 +1241,19 @@ mod tests {
         ));
 
         {
-            let mut rng = StdRng::seed_from_u64(0xDEAD_BEEF_0BAD_5EED_u64);
+            static KEY_COUNTER: AtomicU64 = AtomicU64::new(1);
+            let n = KEY_COUNTER.fetch_add(1, Ordering::Relaxed);
+            let mut key_bytes = [0u8; 32];
+            key_bytes[..8].copy_from_slice(&n.to_le_bytes());
             let peer_id = network_globals
                 .peers
                 .write()
                 .__add_connected_peer_testing_only(
                     true,
                     &beacon_chain.spec,
-                    k256::ecdsa::SigningKey::random(&mut rng).into(),
+                    k256::ecdsa::SigningKey::from_slice(&key_bytes)
+                        .expect("valid key")
+                        .into(),
                 );
 
             // Simulate finalized epoch and head being 2 epochs ahead

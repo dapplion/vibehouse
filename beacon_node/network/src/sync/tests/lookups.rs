@@ -76,10 +76,10 @@ impl TestRig {
 
         let (network_tx, network_rx) = mpsc::unbounded_channel();
         let (sync_tx, sync_rx) = mpsc::unbounded_channel::<SyncMessage<E>>();
-        // Use deterministic RNG for the local ENR key so column assignments are reproducible
-        let mut enr_rng =
-            <rand_chacha_03::ChaCha20Rng as rand_08::SeedableRng>::from_seed([1u8; 32]);
-        let enr_key: CombinedKey = k256::ecdsa::SigningKey::random(&mut enr_rng).into();
+        // Use deterministic key for the local ENR so column assignments are reproducible
+        let enr_key: CombinedKey = k256::ecdsa::SigningKey::from_slice(&[1u8; 32])
+            .expect("valid key")
+            .into();
         let network_config = Arc::new(NetworkConfig::default());
         let globals = Arc::new(NetworkGlobals::new_test_globals_with_key(
             Vec::new(),
@@ -104,7 +104,6 @@ impl TestRig {
         let spec = chain.spec.clone();
 
         // deterministic seed
-        let rng_08 = <rand_chacha_03::ChaCha20Rng as rand_08::SeedableRng>::from_seed([0u8; 32]);
         let rng = ChaCha20Rng::from_seed([0u8; 32]);
 
         init_tracing();
@@ -115,8 +114,8 @@ impl TestRig {
             network_rx,
             network_rx_queue: vec![],
             sync_rx,
-            rng_08,
             rng,
+            key_counter: 0,
             network_globals: beacon_processor.network_globals.clone(),
             sync_manager: SyncManager::new(
                 chain,
@@ -377,7 +376,12 @@ impl TestRig {
     }
 
     fn determinstic_key(&mut self) -> CombinedKey {
-        k256::ecdsa::SigningKey::random(&mut self.rng_08).into()
+        self.key_counter += 1;
+        let mut bytes = [0u8; 32];
+        bytes[..8].copy_from_slice(&self.key_counter.to_le_bytes());
+        k256::ecdsa::SigningKey::from_slice(&bytes)
+            .expect("valid key")
+            .into()
     }
 
     pub fn new_connected_peers_for_peerdas(&mut self) {
