@@ -408,10 +408,6 @@ pub fn get_config<E: EthSpec>(
         client_config.store.prune_payloads = prune_payloads;
     }
 
-    if clap_utils::parse_optional::<u64>(cli_args, "slots-per-restore-point")?.is_some() {
-        warn!("The slots-per-restore-point flag is deprecated");
-    }
-
     if let Some(hierarchy_config) = clap_utils::parse_optional(cli_args, "hierarchy-exponents")? {
         client_config.store.hierarchy_config = hierarchy_config;
     }

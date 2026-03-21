@@ -711,14 +711,6 @@ pub fn cli_app() -> Command {
                 .display_order(0)
         )
         .arg(
-            Arg::new("slots-per-restore-point")
-                .long("slots-per-restore-point")
-                .value_name("SLOT_COUNT")
-                .help("DEPRECATED. This flag has no effect.")
-                .action(ArgAction::Set)
-                .display_order(0)
-        )
-        .arg(
             Arg::new("hierarchy-exponents")
                 .long("hierarchy-exponents")
                 .value_name("EXPONENTS")

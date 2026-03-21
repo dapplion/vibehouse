@@ -383,8 +383,7 @@ impl<T: Item<()>, E: EthSpec> AutoPruningEpochContainer<T, E> {
             .retain(|epoch, _item| *epoch >= lowest_permissible_epoch);
     }
 
-    #[allow(dead_code)]
-    /// Returns the `lowest_permissible_epoch`. Used in tests.
+    #[cfg(test)]
     pub(crate) fn get_lowest_permissible(&self) -> Epoch {
         self.lowest_permissible_epoch
     }
@@ -584,8 +583,7 @@ impl<K: SlotData + Eq + Hash + Copy, S, V: Item<S>, E: EthSpec>
             .retain(|key, _item| key.get_slot() >= lowest_permissible_slot);
     }
 
-    #[allow(dead_code)]
-    /// Returns the `lowest_permissible_slot`. Used in tests.
+    #[cfg(test)]
     pub(crate) fn get_lowest_permissible(&self) -> Slot {
         self.lowest_permissible_slot
     }

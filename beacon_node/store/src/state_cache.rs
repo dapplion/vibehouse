@@ -503,11 +503,6 @@ impl HotHDiffBufferCache {
         self.hdiff_buffers.cap()
     }
 
-    #[allow(dead_code)]
-    pub fn is_empty(&self) -> bool {
-        self.hdiff_buffers.is_empty()
-    }
-
     pub fn len(&self) -> usize {
         self.hdiff_buffers.len()
     }

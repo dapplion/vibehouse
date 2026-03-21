@@ -1812,14 +1812,6 @@ fn validator_monitor_metrics_threshold_custom() {
 }
 
 // Tests for Store flags.
-// DEPRECATED but should still be accepted.
-#[test]
-fn slots_per_restore_point_flag() {
-    CommandLineTest::new()
-        .flag("slots-per-restore-point", Some("64"))
-        .run_with_zero_port();
-}
-
 #[test]
 fn block_cache_size_default() {
     CommandLineTest::new()
