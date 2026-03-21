@@ -2983,7 +2983,7 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **Doc update**: Added #5022 to spec-update-post-alpha3.md tracking table.
 - **No code changes needed** — all spec changes already implemented.
 
-### Runs 2108–2116 (2026-03-21) — monitoring
+### Runs 2108–2120 (2026-03-21) — monitoring
 
-Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new consensus-specs merges since #5005 (March 15). Open PRs: #4747 (fast confirmation, 127 review comments, active but dirty/not mergeable), #4843 (variable PTC deadline — blocked), #4979/#5020 (PTC lookbehind — blocked), #4992 (cached PTCs — blocked). Already-implemented PRs #4892/#4898/#5022 still open. CI green. Clippy clean (zero warnings). `cargo audit` unchanged (rsa no fix). Codebase stable.
+Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new consensus-specs merges since #5005 (March 15). Open ePBS PRs: #5023 (test-only, block root filenames — blocked), #4960 (fork choice test — open), #4932 (sanity/blocks tests — open), #4840 (EIP-7843 — stale), #4630 (EIP-7688 SSZ — stale). CI green (arc-swap 1.9.0 update passing). Clippy clean. `cargo audit` unchanged (rsa no fix). `cargo update --dry-run` shows no semver-compatible updates. No new GitHub issues. Codebase stable.
 
