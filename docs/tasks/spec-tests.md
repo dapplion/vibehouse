@@ -30,6 +30,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2063 (Mar 21) — wildcard import cleanup: beacon_node crates
+
+- Replaced wildcard imports with explicit imports in 14 files across beacon_node crates: execution_layer, vibehouse_network, network, http_api, beacon_processor, client, genesis, beacon_chain (shuffling_cache test fix).
+- Key changes: `pub use engine_api::*` in execution_layer/lib.rs replaced with 50+ explicit exports; `pub use metrics::*` in 4 metrics.rs files replaced with explicit re-exports; `futures::prelude::*` and `rayon::prelude::*` replaced with specific trait imports.
+- Full workspace lint passes (including `--tests`). Pushed.
+- Spec: no new consensus-specs merges since Mar 15 (#5005). v1.7.0-alpha.3 still latest. 5 open Gloas PRs, none merged.
+- CI: all green. Nightly: Mar 18-20 all green. Security: same rsa advisory (no fix available), 5 unmaintained warnings.
+
 ### run 2062 (Mar 21) — wildcard import cleanup: operation_pool + store
 
 - Replaced wildcard imports with explicit imports in 18 files across `operation_pool` and `store` crates.
