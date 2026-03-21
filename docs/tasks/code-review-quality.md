@@ -3771,3 +3771,19 @@ No actionable code changes. Codebase stable and spec-compliant.
 - **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
 
 No actionable code changes. Codebase stable and spec-compliant.
+
+### Run 2100 (2026-03-21)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas/ePBS PRs merged since #5005 (March 15).
+  - Open PRs tracked: #4892, #4992, #5008, #5014, #5020, #5022, #5023, #4843, #4747 — all still open.
+  - **#5014** (ExecutionProofStatus RPC): newly tracked — introduces new P2P RPC for communicating latest verified block/slot.
+  - **#4992**, **#5020**, **#4979** tagged `heze` (post-Gloas fork) — PTC caching/lookbehind deferred.
+- **CI**: Run 23377877208 — check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, beacon_chain/http_api/unit tests still in progress.
+- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
+- **EF tests**: v1.7.0-alpha.3 still latest Gloas test release. Non-Gloas latest is v1.6.1.
+- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
+- **Dependencies**: `cargo outdated` blocked by rusqlite linking conflict (slashing_protection uses both rusqlite 0.38 and 0.39 via r2d2_sqlite). Not actionable without bumping rusqlite chain together.
+
+No actionable code changes. Codebase stable and spec-compliant.
