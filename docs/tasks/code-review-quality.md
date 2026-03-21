@@ -3441,3 +3441,25 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
 
 No actionable code changes. All priorities 1-6 complete. Codebase stable.
+
+### Run 2079 (2026-03-21)
+
+**Spec tracking**: Audited 2 new merged gloas PRs since alpha.3:
+- **#5001** (parent_block_root in bid filtering key): Already implemented — `is_highest_value_bid` keys on `(slot, parent_block_hash, parent_block_root)` since initial implementation. Test `highest_value_different_parent_root_independent` explicitly verifies cross-fork isolation.
+- **#5002** (self-build envelope signature wording): No functional change — spec clarification only.
+
+**Open PRs reviewed**: #5022 (block-known assert in on_payload_attestation_message) — test-quality fix only, vibehouse already checks. #5008 (field name fix in ExecutionPayloadEnvelopesByRoot) — prose typo, no wire format change.
+
+**Code quality audit**:
+- Zero compiler warnings, zero clippy warnings
+- All TODO comments properly linked to issue #36
+- No `todo!()` or `unimplemented!()` in consensus or beacon_node production code (only in VC test mocks)
+- No `unsafe` blocks except known blst limitation (tracked in #36)
+- Remaining wildcard imports all in acceptable locations (test blocks, rayon/metrics preludes, pub re-exports)
+- Reviewed `map_err(|_| ...)` patterns in gloas_verification.rs — signature set errors lose `ValidatorUnknown(idx)` context, but these paths are post-validation (builder already checked), so impact is minimal
+
+**Nightly test flake**: Mar 17 failure in `finalized_sync_not_enough_custody_peers_on_start` (fulu) — already fixed in 8f8faa7de. Nightly green since Mar 18.
+
+**Bid pool correctness review**: Verified `get_best_bid` filtering is correct — `parent_block_root` filter is sufficient because `parent_block_hash` is deterministic per beacon block root (set by envelope processing), and the state caching ensures block production uses the post-envelope state with correct `latest_block_hash`.
+
+No code changes. Codebase stable.
