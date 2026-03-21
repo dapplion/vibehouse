@@ -3675,3 +3675,21 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **Build**: `cargo check --workspace` + `cargo clippy` zero warnings.
 - **Tests**: 129/129 fork_choice tests pass.
 - **Total**: ~18 items downgraded/removed across 3 files in 2 crates.
+
+### Run 2094 (2026-03-21)
+
+**Visibility audit — database_manager pub→pub(crate) downgrades + audit completion**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs gloas PRs merged since #5005 (March 15). Open ePBS PRs unchanged.
+- **Code changes (database_manager)**:
+  - **lib.rs**: downgraded 11 items to `pub(crate)`: `display_db_version`, `InspectConfig` struct, `inspect_db`, `CompactConfig` struct, `compact_db`, `MigrateConfig` struct, `migrate_db`, `prune_payloads`, `prune_blobs`, `PruneStatesConfig` struct, `prune_states` — all only used within the crate (external callers only use `run()` and `cli::DatabaseManager`).
+  - **Kept `pub`**: `InspectTarget` enum (used as a field type in `pub struct Inspect` from the CLI module), `run` function (used by main binary).
+- **Audit coverage assessment**: Systematically reviewed all remaining unaudited crates:
+  - **client**: All internal modules (`notifier`, `metrics`, `proof_broadcaster`, `compute_light_client_updates`) are `mod` (private) — `pub` items in them are already effectively `pub(crate)`. Re-exports in lib.rs are genuinely public API. No changes needed.
+  - **genesis**: Same pattern — `common` module is private. All re-exports are genuinely used externally.
+  - **vibehouse_tracing**: 32 `pub const` span names — all used across multiple crates (beacon_chain, network, http_api). Must stay `pub`.
+  - **account_manager, validator_manager**: CLI crates with constants/functions used by integration tests. Would require careful per-item analysis. Most items are genuinely part of the public interface.
+  - **beacon_node_fallback, signing_method, doppelganger_service, initialized_validators**: Used externally by multiple validator_client sub-crates. Items are genuinely public API.
+- **Conclusion**: Visibility audit is now substantially complete. The remaining unaudited crates are primarily leaf/CLI crates where `pub` items are genuinely part of the inter-crate API. Further downgrades would require very careful per-item analysis with diminishing returns.
+- **Build**: `cargo clippy --workspace --all-targets` zero warnings.
+- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
