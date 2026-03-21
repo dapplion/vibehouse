@@ -3517,3 +3517,16 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
 
 No actionable code changes. All priorities 1-6 complete. Codebase stable.
+
+### Run 2084 (2026-03-21)
+
+**Minor cleanup — linked 2 FIXME comments to issue #36.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs commits since #5005 (March 15). Open ePBS PRs unchanged.
+- **Code changes**:
+  - Converted `FIXME` → `TODO(#36)` in `vibehouse_validator_store/src/lib.rs:188` (clippy::await_holding_lock suppression)
+  - Converted `FIXME` → `TODO(#36)` in `slasher/src/database/lmdb_impl.rs:170` (lmdb broken shared reference API)
+- **Audit**: All TODO/FIXME/HACK comments now link to #36. 63 `unimplemented!()` calls all in test mock ValidatorStore impls — acceptable.
+- **Build**: `cargo clippy` zero warnings. Pre-push lint-full passes.
+- **CI**: Previous run in progress.
+- **GitHub issues**: No new issues. All code comments properly linked to #36.
