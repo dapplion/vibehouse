@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 2117 (Mar 21) — dep update, maintenance check
+
+CI green. Spec HEAD unchanged (1baa05e, Mar 15). No new Gloas PRs merged. Updated arc-swap 1.8.2→1.9.0 (execution_layer dep, 145/145 tests pass). Open Gloas PRs: #4747 (fast confirmation, updated Mar 21), #4843 (variable PTC deadline), #4979 (PTC lookbehind) — all still open. cargo audit unchanged. Project in maintenance mode.
+
 ### run 2047 (Mar 21) — maintenance check, all stable
 
 CI green. Spec HEAD unchanged (1baa05e, Mar 15). Open Gloas PRs still open — #4843/#4979 updated Mar 20 but not merged. #5008 audited: doc-only field name fix, our code already uses `beacon_block_root` correctly. No dep updates available. cargo check clean. Project in maintenance mode.
