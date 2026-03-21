@@ -30,6 +30,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2034 (Mar 21) — health check, all stable
+
+- CI: rustls-webpki update (RUSTSEC-2026-0049) run in progress, 5/6 jobs green. Previous run fully green.
+- Spec: v1.7.0-alpha.3 still latest. No new PRs merged to master since Mar 15.
+- Spec test vectors: still v1.6.0-beta.0 (Fulu). No Gloas vectors published yet.
+- Open Gloas PRs: #5022 (payload attestation block check — our impl already handles this), #5023 (block root filename fix — test-only), #5020 (PTC lookbehind minimal — alternative to #4992/#4979), #4992 (cached PTCs — 1 approval, active discussion). None merged.
+- Security: cargo audit clean (rsa RUSTSEC-2023-0071 has no fix, rest are unmaintained warnings).
+- Clippy: zero warnings workspace-wide.
+- Nightly tests: Mar 17 had one flake (`finalized_sync_not_enough_custody_peers_on_start` in fulu network tests — deterministic test, likely CI resource pressure). Mar 18-20 all green.
+- All priorities complete. Project in maintenance mode.
+
 ### run 1932 (Mar 19) — health check, all stable
 
 - CI: in-progress for method-reference cleanup commit (check+clippy+fmt passed, other jobs running). Previous run green.
