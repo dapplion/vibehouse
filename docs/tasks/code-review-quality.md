@@ -3311,3 +3311,16 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - The old `rand_08` and `rand_chacha_03` were needed because k256 0.13's `SigningKey::random` requires a `rand_core 0.6`-compatible RNG (which rand 0.8 provides). By constructing keys from raw bytes via `from_slice`, we avoid the trait bound entirely.
 - **Tests**: 204/204 network tests pass (FORK_NAME=gloas). Zero clippy warnings.
 - **Spec**: v1.7.0-alpha.3 still latest. No new merges. Open Gloas PRs: #4992 (cached PTCs), #4843 (variable PTC deadline), #5022 (block root check), #5008 (field name fix). None merged.
+
+### Run 2152 (2026-03-21)
+
+**Dead code cleanup + deprecated CLI flag removal**
+
+- **Code changes**:
+  - **observed_attesters.rs**: Replaced `#[allow(dead_code)]` with `#[cfg(test)]` on two `get_lowest_permissible()` methods — these are only used in tests within `#[cfg(test)] mod tests`, so `#[cfg(test)]` is the correct annotation
+  - **state_cache.rs**: Removed unused `HotHDiffBufferCache::is_empty()` method (was added to satisfy clippy `len_without_is_empty` lint, but the struct is `pub(crate)` so clippy doesn't require it)
+  - **cli.rs + config.rs**: Removed deprecated `--slots-per-restore-point` CLI flag and its warning handler in config.rs. Flag had no effect — just printed a deprecation warning
+  - **beacon_node.rs tests**: Removed the test for the deprecated flag
+- **Spec**: v1.7.0-alpha.3 still latest. No new merges. Open Gloas PRs: #4992 (cached PTCs), #4843 (variable PTC deadline), #5022 (block root check), #5008 (field name fix), #4898 (remove impossible tiebreaker), #4954 (millisecond timestamps). None merged. New PR: #5023 (fix block root filenames + Gloas comptests).
+- **CI**: All green. 5+ consecutive nightly successes.
+- **Assessment**: Codebase remains at steady state. Remaining dead code suppressions are all legitimate patterns (error enum fields for Debug, web3signer Deposit variant for API completeness, persisted_is_supernode for SSZ backwards compat). Next impactful work: spec PR merges (particularly #4992 cached PTCs).
