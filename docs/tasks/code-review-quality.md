@@ -3214,3 +3214,15 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **Code quality**: Remaining wildcard imports are all idiomatic (prelude, test modules, crate re-exports). `#[allow(dead_code)]` annotations reviewed — all intentional (error enum variants used via Display/Debug).
 
 No actionable code changes. All priorities 1-6 complete. Codebase stable.
+
+### Run 2055 (2026-03-21)
+
+**Version cleanup — 3 Cargo.toml files.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (March 15). Same open PRs as run 2054.
+- **Code changes**:
+  - `beacon_node/Cargo.toml`, `boot_node/Cargo.toml`, `lcli/Cargo.toml`: updated version from `8.0.1` (Lighthouse fork-point version) to `0.1.0` (vibehouse identity). These were the last crates still carrying the old Lighthouse version number.
+  - `Cargo.lock`: updated accordingly.
+- **Build**: `cargo check --release` clean (18s). `cargo clippy --workspace --all-targets` zero warnings. Pre-push lint green.
+- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
+- **GitHub issues**: No new issues.
