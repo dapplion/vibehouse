@@ -30,6 +30,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2042 (Mar 21) — health check, all stable
+
+- CI: all green. rustls-webpki RUSTSEC-2026-0049 fix shipped. Nightly: Mar 18-20 all green.
+- Spec: v1.7.0-alpha.3 still latest. No new PRs merged to master since Mar 15 (#5005).
+- Spec test vectors: still v1.6.0-beta.0 (Fulu). No Gloas vectors published yet.
+- Open Gloas PRs: #4992 (cached PTCs — still open, not merged), #5022 (payload attestation block check — our impl handles), #5020 (PTC lookbehind minimal). None merged since last check.
+- Post-alpha.3 merged PRs re-checked: #5001 (parent_block_root bid key) already implemented, #5002 (wording), #5005 (test fix). All accounted for.
+- Security: cargo audit clean (rsa RUSTSEC-2023-0071 no fix available, unmaintained crate warnings only).
+- Fork choice tests: 325/325 passing.
+- All priorities complete. Project in maintenance mode.
+
 ### run 2034 (Mar 21) — health check, all stable
 
 - CI: rustls-webpki update (RUSTSEC-2026-0049) run in progress, 5/6 jobs green. Previous run fully green.
