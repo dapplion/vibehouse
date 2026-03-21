@@ -3477,3 +3477,18 @@ No code changes. Codebase stable.
 - **Production unwrap audit**: Agent scanned all consensus/ and beacon_node/ production code — zero `.unwrap()` calls in hot paths (block processing, epoch processing, fork choice, envelope processing). Only 2-3 minor unwraps in non-critical startup/metrics paths.
 
 No actionable code changes. All priorities 1-6 complete. Codebase stable.
+
+### Run 2081 (2026-03-21)
+
+**Visibility audit — 9 pub→pub(crate) downgrades.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs commits since #5005 (March 15). Open ePBS PRs unchanged — #4992 (cached PTCs, 1 approval from jtraglia), #4979 (PTC lookbehind), #4747 (fast confirmation rule), #5023 (block root filenames), #4843 (variable PTC deadline). None merged.
+- **EF tests**: 79/79 (real crypto) + 139/139 (fake crypto) all pass. Gloas fork choice vectors from alpha.3 all passing (get_head, on_block, ex_ante, reorg, withholding, on_execution_payload).
+- **Code changes** — downgraded 9 `pub fn` to `pub(crate) fn` in 4 files:
+  - `block_verification.rs`: `signature_verify_chain_segment`, `check_block_is_finalized_checkpoint_or_descendant`, `check_block_relevancy`, `cheap_state_advance_to_obtain_committees`, `get_validator_pubkey_cache`, `verify_header_signature`
+  - `beacon_chain.rs`: `consensus_block_value_gwei`
+  - `process_operations.rs`: `apply_deposit`
+  - `fork_choice.rs`: `compute_slots_since_epoch_start`
+  All 9 functions verified: not re-exported from lib.rs, only used within their own crate.
+- **Build**: `cargo clippy --workspace --all-targets` zero warnings. Pre-push lint-full passes.
+- **Tests**: 1147/1147 (fork_choice + state_processing), full workspace clean.
