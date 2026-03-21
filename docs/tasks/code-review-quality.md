@@ -2987,3 +2987,15 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 
 Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new consensus-specs merges since #5005 (March 15). Only 2 trivial post-alpha.3 master commits (release notes deps, builder exit test fix). Open ePBS PRs: #5023 (test-only, block root filenames — blocked), #4960 (fork choice test — open), #4932 (sanity/blocks tests — open), #4840 (EIP-7843 — stale), #4630 (EIP-7688 SSZ — stale). CI green (arc-swap 1.9.0 update — all 6 jobs passed). Nightly tests green. Clippy clean. `cargo audit` unchanged (rsa no fix). `cargo update --dry-run` shows no semver-compatible updates. 33 major/minor dependency bumps available but require Cargo.toml changes (bincode, cargo_metadata, ethereum_ssz/ssz_types, milhouse, rand, reqwest, rusqlite, sysinfo, tree_hash, etc). Investigated removing `#[allow(dead_code)]` from error enum fields — Rust 1.94 still requires them (Debug derive doesn't count as reading fields). No new GitHub issues. Codebase stable.
 
+### Run 2122 (2026-03-21)
+
+**Dependency updates — strum 0.27→0.28, mockall 0.13→0.14**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs merges.
+- **Code changes**:
+  - **strum 0.27→0.28**: No breaking changes affect us (no `#[strum(default)]` usage). MSRV bump to 1.71 (we're on 1.94). All strum derives compile clean.
+  - **mockall 0.13→0.14**: No API breaking changes. All 12 fetch_blobs mock tests pass. MSRV bump to 1.77.
+- **Tests**: 341/341 store+slasher+database_manager pass, 12/12 fetch_blobs (mockall) tests pass.
+- **Build**: `cargo clippy --workspace --all-targets` zero warnings.
+- **Remaining major bumps**: 31 (bincode v1→v3, rand v0.8→v0.10, reqwest v0.12→v0.13, etc — all require careful migration).
+
