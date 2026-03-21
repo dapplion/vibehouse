@@ -3741,3 +3741,17 @@ No actionable code changes. Codebase stable and spec-compliant.
 - **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
 
 No actionable code changes. Codebase stable and spec-compliant.
+
+### Run 2098 (2026-03-21)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas/ePBS PRs merged since last check.
+  - Open PRs tracked: #4892, #4992, #5008, #5020, #5022, #5023 — all still open, no status changes.
+  - **#4992** and **#5020** now tagged `heze` (post-Gloas fork), suggesting PTC caching/lookbehind changes deferred beyond Gloas.
+- **CI**: Run 23377877208 — check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, beacon_chain/http_api/unit tests still in progress.
+- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
+- **EF tests**: v1.7.0-alpha.3 still latest Gloas test release.
+- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
+
+No actionable code changes. Codebase stable and spec-compliant.
