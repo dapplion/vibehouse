@@ -7,15 +7,9 @@ fn get_workspace_crates() -> Result<Vec<String>, Box<dyn Error>> {
     let metadata = MetadataCommand::new().no_deps().exec()?;
 
     Ok(metadata
-        .workspace_members
-        .iter()
-        .filter_map(|member_id| {
-            metadata
-                .packages
-                .iter()
-                .find(|package| &package.id == member_id)
-                .map(|package| package.name.clone())
-        })
+        .workspace_packages()
+        .into_iter()
+        .map(|package| package.name.to_string())
         .collect())
 }
 
