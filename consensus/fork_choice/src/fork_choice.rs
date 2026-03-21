@@ -255,7 +255,7 @@ impl PayloadVerificationStatus {
 /// Equivalent to:
 ///
 /// <https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/fork-choice.md#compute_slots_since_epoch_start>
-pub fn compute_slots_since_epoch_start<E: EthSpec>(slot: Slot) -> Slot {
+pub(crate) fn compute_slots_since_epoch_start<E: EthSpec>(slot: Slot) -> Slot {
     slot - slot
         .epoch(E::slots_per_epoch())
         .start_slot(E::slots_per_epoch())

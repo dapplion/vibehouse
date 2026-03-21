@@ -517,7 +517,7 @@ pub fn process_deposits<E: EthSpec>(
 }
 
 /// Process a single deposit, verifying its merkle proof if provided.
-pub fn apply_deposit<E: EthSpec>(
+pub(crate) fn apply_deposit<E: EthSpec>(
     state: &mut BeaconState<E>,
     deposit_data: DepositData,
     proof: Option<FixedVector<Hash256, U33>>,

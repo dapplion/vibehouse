@@ -576,7 +576,7 @@ impl<E: EthSpec> BeaconBlockResponseWrapper<E> {
         }
     }
 
-    pub fn consensus_block_value_gwei(&self) -> u64 {
+    pub(crate) fn consensus_block_value_gwei(&self) -> u64 {
         match self {
             BeaconBlockResponseWrapper::Full(resp) => resp.consensus_block_value,
             BeaconBlockResponseWrapper::Blinded(resp) => resp.consensus_block_value,

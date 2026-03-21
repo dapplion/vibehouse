@@ -641,7 +641,7 @@ pub(crate) fn process_block_slash_info<T: BeaconChainTypes, TErr: BlockBlobError
 /// The given `chain_segment` must contain only blocks from the same epoch, otherwise an error
 /// will be returned.
 #[instrument(skip_all)]
-pub fn signature_verify_chain_segment<T: BeaconChainTypes>(
+pub(crate) fn signature_verify_chain_segment<T: BeaconChainTypes>(
     mut chain_segment: Vec<(Hash256, RpcBlock<T::EthSpec>)>,
     chain: &BeaconChain<T>,
 ) -> Result<Vec<SignatureVerifiedBlock<T>>, BlockError> {
@@ -1773,7 +1773,7 @@ fn check_block_against_finalized_slot<T: BeaconChainTypes>(
 /// ## Warning
 ///
 /// Taking a lock on the `chain.canonical_head.fork_choice` might cause a deadlock here.
-pub fn check_block_is_finalized_checkpoint_or_descendant<
+pub(crate) fn check_block_is_finalized_checkpoint_or_descendant<
     T: BeaconChainTypes,
     B: AsBlock<T::EthSpec>,
 >(
@@ -1830,7 +1830,7 @@ pub fn check_block_is_finalized_checkpoint_or_descendant<
 ///
 /// Returns an error if the block fails one of these checks (viz., is not relevant) or an error is
 /// experienced whilst attempting to verify.
-pub fn check_block_relevancy<T: BeaconChainTypes>(
+pub(crate) fn check_block_relevancy<T: BeaconChainTypes>(
     signed_block: &SignedBeaconBlock<T::EthSpec>,
     block_root: Hash256,
     chain: &BeaconChain<T>,
@@ -2221,7 +2221,7 @@ impl BlockBlobError for GossipDataColumnError {
 /// advanced and then returned as a `Cow::Owned`. The end result is that the given `state` is never
 /// mutated to be invalid (in fact, it is never changed beyond a simple committee cache build).
 #[instrument(skip_all, fields(?state_root_opt, %block_slot), level = "debug")]
-pub fn cheap_state_advance_to_obtain_committees<'a, E: EthSpec, Err: BlockBlobError>(
+pub(crate) fn cheap_state_advance_to_obtain_committees<'a, E: EthSpec, Err: BlockBlobError>(
     state: &'a mut BeaconState<E>,
     state_root_opt: Option<Hash256>,
     block_slot: Slot,
@@ -2256,7 +2256,7 @@ pub fn cheap_state_advance_to_obtain_committees<'a, E: EthSpec, Err: BlockBlobEr
 
 /// Obtains a read-locked `ValidatorPubkeyCache` from the `chain`.
 #[instrument(skip(chain), level = "debug")]
-pub fn get_validator_pubkey_cache<T: BeaconChainTypes>(
+pub(crate) fn get_validator_pubkey_cache<T: BeaconChainTypes>(
     chain: &BeaconChain<T>,
 ) -> Result<RwLockReadGuard<'_, ValidatorPubkeyCache<T>>, BeaconChainError> {
     Ok(chain.validator_pubkey_cache.read())
@@ -2301,7 +2301,7 @@ fn get_signature_verifier<'a, T: BeaconChainTypes>(
 /// Verify that `header` was signed with a valid signature from its proposer.
 ///
 /// Return `Ok(())` if the signature is valid, and an `Err` otherwise.
-pub fn verify_header_signature<T: BeaconChainTypes, Err: BlockBlobError>(
+pub(crate) fn verify_header_signature<T: BeaconChainTypes, Err: BlockBlobError>(
     chain: &BeaconChain<T>,
     header: &SignedBeaconBlockHeader,
 ) -> Result<(), Err> {
