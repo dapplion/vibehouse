@@ -30,6 +30,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2123 (Mar 21) — sysinfo 0.26→0.33 update
+
+- Updated `sysinfo` crate from 0.26 to 0.33 across workspace (system_health, http_api, validator http_api).
+- Removed all `*Ext` traits (SystemExt, CpuExt, DiskExt, NetworkExt, NetworksExt) — methods are now directly on types.
+- `Disks` and `Networks` are now independent types (not accessed via `System`). Static methods for system info (name, uptime, load_average, kernel_version, etc.).
+- Spec: no new consensus-specs Gloas PRs merged since Mar 15. v1.7.0-alpha.3 still latest.
+- Open Gloas PRs: #5023 (test fixture fix), #4979 (PTC lookbehind), #4992 (cached PTCs) still open.
+- CI: all green. Nightly: 5 consecutive passes (Mar 17-21).
+
 ### run 2070 (Mar 21) — maintenance check, all stable
 
 - CI: check/clippy/fmt green. Other jobs (ef-tests, beacon_chain, http_api, network+op_pool, unit tests) in progress.
