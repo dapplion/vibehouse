@@ -3284,3 +3284,14 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Tests**: 1085/1085 types tests pass, 3/3 context_deserialize_derive tests pass. Zero clippy warnings across full workspace.
 - **Spec**: v1.7.0-alpha.3 still latest. Open Gloas PRs: #4992 (cached PTCs, state change), #4843 (variable PTC deadline), #5022 (assert block known in on_payload_attestation_message), #5023 (fork choice test fixtures). None merged.
 - **Verified**: `on_payload_attestation` already returns `UnknownBeaconBlockRoot` error for unknown block roots (fork_choice.rs:1430-1432), consistent with spec PR #5022.
+
+### Run 2150 (2026-03-21)
+
+**Remove rand 0.8 / rand_chacha 0.3 test dependencies from network crate**
+
+- **Code changes**: Eliminated `rand_08` (rand 0.8.5) and `rand_chacha_03` (rand_chacha 0.3.1) dev-dependencies from the network crate:
+  - **lookups tests**: Replaced `SigningKey::random(&mut rng_08)` calls with `SigningKey::from_slice` using deterministic counter-derived bytes. Replaced `rng_08` field on `TestRig` with `key_counter: u64`.
+  - **backfill_sync tests**: Same pattern — `StdRng::seed_from_u64` + `SigningKey::random` replaced with `AtomicU64` counter + `SigningKey::from_slice`.
+  - The old `rand_08` and `rand_chacha_03` were needed because k256 0.13's `SigningKey::random` requires a `rand_core 0.6`-compatible RNG (which rand 0.8 provides). By constructing keys from raw bytes via `from_slice`, we avoid the trait bound entirely.
+- **Tests**: 204/204 network tests pass (FORK_NAME=gloas). Zero clippy warnings.
+- **Spec**: v1.7.0-alpha.3 still latest. No new merges. Open Gloas PRs: #4992 (cached PTCs), #4843 (variable PTC deadline), #5022 (block root check), #5008 (field name fix). None merged.
