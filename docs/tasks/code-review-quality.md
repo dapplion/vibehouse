@@ -3804,3 +3804,21 @@ No actionable code changes. Codebase stable and spec-compliant.
 - **GitHub issues**: No new issues. #27 (validator messaging) remains speculative discussion. #36 has 2 non-critical remaining + 5 blocked.
 
 No actionable code changes. Codebase stable and spec-compliant.
+
+### Run 2102 (2026-03-21)
+
+**Monitoring run — no code changes.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas/ePBS PRs merged since #5005 (March 15).
+  - Open PRs tracked: #4747, #4843, #4892, #4939, #4954, #4979, #4992, #5008, #5014, #5020, #5022, #5023 — all still open.
+  - **#4747** (Fast Confirmation Rule): updated today, 6000+ lines — major addition, still in review.
+  - **#4843** (Variable PTC deadline): updated yesterday, still in review.
+  - **#5022** (assert block known in on_payload_attestation_message): spec test clarification only, we already handle unknown blocks via validation.
+  - **#5008** (field name fix): prose-only, our implementation already uses `beacon_block_root`.
+  - **#4992**, **#5020**, **#4979** tagged `heze` (post-Gloas fork) — PTC caching/lookbehind deferred.
+- **CI**: Run 23377877208 — check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, http_api ✓; beacon_chain and unit tests still in progress.
+- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
+- **EF tests**: v1.7.0-alpha.3 still latest Gloas test release. Non-Gloas latest is v1.6.1.
+- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
+
+No actionable code changes. Codebase stable and spec-compliant.
