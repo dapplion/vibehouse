@@ -3640,3 +3640,22 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **Tests**: 206/206 proto_array tests pass. 121/121 fork_choice tests pass.
 - **CI**: Previous run (slasher pub downgrade) in progress.
 - **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
+
+### Run 2092 (2026-03-21)
+
+**Visibility audit — operation_pool and validator_client pub→pub(crate) downgrades**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs gloas PRs merged.
+- **Code changes (operation_pool)**:
+  - **metrics.rs**: downgraded 6 `pub static` to `pub(crate) static` (BUILD_REWARD_CACHE_TIME, ATTESTATION_PREV_EPOCH_PACKING_TIME, ATTESTATION_CURR_EPOCH_PACKING_TIME, NUM_PREV_EPOCH_ATTESTATIONS, NUM_CURR_EPOCH_ATTESTATIONS, MAX_COVER_NON_ZERO_ITEMS)
+  - **lib.rs**: downgraded test-only `MAX_VALIDATOR_COUNT` to `pub(crate)`
+  - **bls_to_execution_changes.rs**: downgraded `BlsToExecutionChanges` struct to `pub(crate)`
+  - **attester_slashing.rs**: downgraded `AttesterSlashingMaxCover` struct to `pub(crate)`
+  - **max_cover.rs**: downgraded `maximum_cover` and `merge_solutions` to `pub(crate)`
+  - **attestation_storage.rs**: removed dead `get_committee_indices` method from `CompactIndexedAttestationElectra`
+  - **Kept `pub`**: `AttestationMap`, `CompactAttestationData`, `CompactIndexedAttestation`, `SyncAggregateId` — used in public struct fields
+- **Code changes (validator_client)**:
+  - **lib.rs**: downgraded `AGGREGATION_PRE_COMPUTE_EPOCHS`, `AGGREGATION_PRE_COMPUTE_SLOTS_DISTRIBUTED`, `load_pem_certificate` to `pub(crate)`
+  - **config.rs**: downgraded `DEFAULT_BEACON_NODE` to `pub(crate)`
+- **Build**: `cargo clippy -p operation_pool -p validator_client --all-targets` zero warnings.
+- **Tests**: 72/72 operation_pool tests pass. 1/1 validator_client tests pass.
