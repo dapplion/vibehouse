@@ -3040,3 +3040,13 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Tests**: 236/236 store pass, 1026/1026 state_processing pass.
 - **Build**: `cargo clippy --workspace --all-targets` zero warnings, `make lint-full` clean.
 
+### Run 2131 (2026-03-21)
+
+**Devnet smoke test after dependency updates + spec monitoring**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since #5005 (Mar 15). Notable: PR #4843 (Variable PTC deadline) has `mergeable_state: clean` — could merge soon. Key changes: new `MIN_PAYLOAD_DUE_BPS` config, `payload_present`→`payload_timely` rename, `is_payload_timely()`→`has_payload_quorum()` rename, size-based variable deadline via `get_payload_due_ms()`. Will implement when merged.
+- **Devnet**: 4-node smoke test PASSED — finalized_epoch=8 (slot 81, epoch 10). Chain progressed through Gloas fork and finalized with no stalls. Confirms recent dependency updates (strum 0.28, mockall 0.14, opentelemetry 0.31, rusqlite 0.39, console-subscriber 0.5, igd-next 0.17) are runtime-safe.
+- **CI**: run 23383577502 — check+clippy ✓, network+op_pool ✓, ef-tests ✓, 3 jobs still running.
+- **Security**: `cargo audit` unchanged (rsa RUSTSEC-2023-0071 no fix).
+- **No code changes** — verification-only run.
+
