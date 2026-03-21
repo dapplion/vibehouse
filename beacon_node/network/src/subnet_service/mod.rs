@@ -12,7 +12,7 @@ use tokio::time::Instant;
 
 use beacon_chain::{BeaconChain, BeaconChainTypes};
 use delay_map::HashSetDelay;
-use futures::prelude::*;
+use futures::{Stream, StreamExt};
 use slot_clock::SlotClock;
 use tracing::{debug, error, info, warn};
 use types::{

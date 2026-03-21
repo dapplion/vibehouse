@@ -1,4 +1,10 @@
-pub use metrics::*;
+pub use metrics::{
+    Histogram, HistogramTimer, HistogramVec, IntCounter, IntCounterVec, IntGaugeVec, Result,
+    dec_gauge_vec, inc_counter, inc_counter_vec, inc_gauge_vec, observe_timer_vec, observe_vec,
+    set_gauge_vec, start_timer, start_timer_vec, try_create_histogram, try_create_histogram_vec,
+    try_create_histogram_vec_with_buckets, try_create_int_counter, try_create_int_counter_vec,
+    try_create_int_gauge_vec,
+};
 use std::sync::LazyLock;
 
 /*

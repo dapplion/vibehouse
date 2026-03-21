@@ -1,6 +1,6 @@
 use crate::common::genesis_deposits;
 use ethereum_hashing::hash_fixed;
-use rayon::prelude::*;
+use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 use state_processing::initialize_beacon_state_from_eth1;
 use types::{
     BeaconState, ChainSpec, DepositData, EthSpec, ExecutionPayloadHeader, Hash256, Keypair,

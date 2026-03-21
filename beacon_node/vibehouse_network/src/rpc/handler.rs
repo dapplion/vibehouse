@@ -8,8 +8,8 @@ use super::{RPCReceived, RPCSend, ReqId};
 use crate::rpc::outbound::OutboundFramed;
 use crate::rpc::protocol::InboundFramed;
 use fnv::FnvHashMap;
-use futures::SinkExt;
-use futures::prelude::*;
+use futures::future::Future;
+use futures::{FutureExt, Sink, SinkExt, StreamExt};
 use libp2p::PeerId;
 use libp2p::swarm::handler::{
     ConnectionEvent, ConnectionHandler, ConnectionHandlerEvent, DialUpgradeError,

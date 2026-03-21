@@ -9,7 +9,7 @@ use beacon_chain::{BeaconChain, BeaconChainTypes};
 use beacon_processor::BeaconProcessorSend;
 use futures::channel::mpsc::Sender;
 use futures::future::OptionFuture;
-use futures::prelude::*;
+use futures::{SinkExt, StreamExt};
 
 use logging::crit;
 use std::collections::BTreeSet;

@@ -289,7 +289,7 @@ impl BlockShufflingIds {
 #[cfg(not(debug_assertions))]
 #[cfg(test)]
 mod test {
-    use types::*;
+    use types::{FixedBytesExtended, MinimalEthSpec};
 
     use crate::test_utils::EphemeralHarnessType;
     use logging::create_test_tracing_subscriber;

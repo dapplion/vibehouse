@@ -10,10 +10,69 @@ use arc_swap::ArcSwapOption;
 use auth::{Auth, JwtKey, strip_prefix};
 pub use block_hash::calculate_execution_block_hash;
 use builder_client::BuilderHttpClient;
-pub use engine_api::EngineCapabilities;
 use engine_api::Error as ApiError;
-pub use engine_api::*;
-pub use engine_api::{http, http::HttpJsonRpc, http::deposit_methods};
+pub use engine_api::{
+    // Re-exported types from engine_api's own `pub use types::{...}`
+    Address,
+    BeaconBlockRef,
+    // engine_api's own public items
+    BlockByNumberQuery,
+    ClientCode,
+    ClientVersionV1,
+    CommitPrefix,
+    ConsolidationRequest,
+    EngineCapabilities,
+    EthSpec,
+    ExecutionBlock,
+    ExecutionBlockHash,
+    ExecutionPayload,
+    ExecutionPayloadBodyV1,
+    ExecutionPayloadHeader,
+    ExecutionPayloadRef,
+    FixedVector,
+    ForkName,
+    ForkchoiceUpdatedResponse,
+    GetPayloadResponse,
+    GetPayloadResponseBellatrix,
+    GetPayloadResponseCapella,
+    GetPayloadResponseDeneb,
+    GetPayloadResponseElectra,
+    GetPayloadResponseFulu,
+    GetPayloadResponseGloas,
+    GetPayloadResponseType,
+    Hash256,
+    // Re-exported from engine_api's `pub use json_structures::{...}`
+    JsonWithdrawal,
+    LATEST_TAG,
+    // Re-exported from engine_api's `pub use new_payload_request::{...}`
+    NewPayloadRequest,
+    NewPayloadRequestBellatrix,
+    NewPayloadRequestCapella,
+    NewPayloadRequestDeneb,
+    NewPayloadRequestElectra,
+    NewPayloadRequestFulu,
+    NewPayloadRequestGloas,
+    PayloadAttributes,
+    PayloadAttributesV1,
+    PayloadAttributesV2,
+    PayloadAttributesV3,
+    PayloadId,
+    PayloadStatusV1,
+    PayloadStatusV1Status,
+    ProposeBlindedBlockResponse,
+    ProposeBlindedBlockResponseStatus,
+    Transactions,
+    TransitionConfigurationV1,
+    Uint256,
+    VariableList,
+    Withdrawal,
+    Withdrawals,
+    auth,
+    http,
+    http::HttpJsonRpc,
+    http::deposit_methods,
+    json_structures,
+};
 use engines::{Engine, EngineError};
 pub use engines::{EngineState, ForkchoiceState};
 use eth2::types::{BlobsBundle, FullPayloadContents};

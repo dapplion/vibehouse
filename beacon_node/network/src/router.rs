@@ -11,7 +11,7 @@ use crate::status::status_message;
 use crate::sync::SyncMessage;
 use beacon_chain::{BeaconChain, BeaconChainTypes};
 use beacon_processor::{BeaconProcessorSend, DuplicateCache};
-use futures::prelude::*;
+use futures::{StreamExt, future};
 use logging::TimeLatch;
 use logging::crit;
 use std::sync::Arc;

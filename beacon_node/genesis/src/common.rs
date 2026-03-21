@@ -1,6 +1,6 @@
 use int_to_bytes::int_to_bytes32;
 use merkle_proof::MerkleTree;
-use rayon::prelude::*;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use types::{ChainSpec, Deposit, DepositData, Hash256};
 
 /// Accepts the genesis block validator `DepositData` list and produces a list of `Deposit`, with

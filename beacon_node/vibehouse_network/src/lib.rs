@@ -119,5 +119,8 @@ pub use peer_manager::{
 };
 // pub use service::{load_private_key, Context, Libp2pEvent, Service, NETWORK_KEY_FILENAME};
 pub use service::api_types::Response;
-pub use service::utils::*;
+pub use service::utils::{
+    Context, METADATA_FILENAME, NETWORK_KEY_FILENAME, build_transport, load_or_build_metadata,
+    load_private_key, strip_peer_id,
+};
 pub use service::{Gossipsub, NetworkEvent};

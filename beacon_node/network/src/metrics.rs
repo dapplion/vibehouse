@@ -5,7 +5,15 @@ use beacon_chain::{
     sync_committee_verification::Error as SyncCommitteeError,
 };
 use fnv::FnvHashMap;
-pub use metrics::*;
+pub use metrics::{
+    Histogram, HistogramVec, IntCounter, IntCounterVec, IntGauge, IntGaugeVec, Result,
+    decimal_buckets, get_int_gauge, inc_counter, inc_counter_by, inc_counter_vec,
+    inc_counter_vec_by, observe_duration, observe_timer_vec, set_gauge, set_gauge_entry,
+    set_gauge_vec, start_timer_vec, try_create_histogram, try_create_histogram_vec,
+    try_create_histogram_vec_with_buckets, try_create_histogram_with_buckets,
+    try_create_int_counter, try_create_int_counter_vec, try_create_int_gauge,
+    try_create_int_gauge_vec,
+};
 use std::sync::{Arc, LazyLock};
 use strum::AsRefStr;
 use strum::IntoEnumIterator;

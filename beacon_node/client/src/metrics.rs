@@ -1,4 +1,4 @@
-pub use metrics::*;
+pub use metrics::{IntGauge, Result, set_gauge, try_create_int_gauge};
 use std::sync::LazyLock;
 
 pub static SYNC_SLOTS_PER_SECOND: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
