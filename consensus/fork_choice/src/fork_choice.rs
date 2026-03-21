@@ -2468,6 +2468,49 @@ mod tests {
         }
 
         #[test]
+        fn payload_attestation_too_old_boundary_accepted() {
+            // Attestation at slot 0, current_slot = slots_per_epoch (exactly at boundary).
+            // Condition: current_slot > att.slot + slots_per_epoch → 8 > 0 + 8 → false.
+            // Should be accepted (not TooOld).
+            let mut fc = new_fc();
+            let slots_per_epoch = E::slots_per_epoch();
+            let block_root = root(1);
+            insert_block(&mut fc, 0, block_root);
+
+            let att = make_payload_attestation(0, block_root, true, true);
+            let indexed = make_indexed_payload_attestation(0, block_root, true, true, vec![1]);
+            let spec = ChainSpec::minimal();
+
+            // current_slot == att.slot + slots_per_epoch → boundary, should pass
+            fc.on_payload_attestation(&att, &indexed, Slot::new(slots_per_epoch), &spec)
+                .expect("attestation at exact epoch boundary should be accepted");
+        }
+
+        #[test]
+        fn payload_attestation_too_old_boundary_plus_one_rejected() {
+            // Attestation at slot 0, current_slot = slots_per_epoch + 1 (just past boundary).
+            // Condition: current_slot > att.slot + slots_per_epoch → 9 > 0 + 8 → true.
+            // Should be rejected as TooOld.
+            let mut fc = new_fc();
+            let slots_per_epoch = E::slots_per_epoch();
+
+            let att = make_payload_attestation(0, root(0), true, true);
+            let indexed = make_indexed_payload_attestation(0, root(0), true, true, vec![1]);
+            let spec = ChainSpec::minimal();
+
+            let err = fc
+                .on_payload_attestation(&att, &indexed, Slot::new(slots_per_epoch + 1), &spec)
+                .unwrap_err();
+            assert!(
+                matches!(
+                    err,
+                    Error::InvalidPayloadAttestation(InvalidPayloadAttestation::TooOld { .. })
+                ),
+                "expected TooOld at boundary+1, got {err:?}"
+            );
+        }
+
+        #[test]
         fn payload_attestation_unknown_block_root() {
             let mut fc = new_fc();
             let unknown = root(999);
