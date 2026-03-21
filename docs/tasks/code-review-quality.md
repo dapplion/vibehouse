@@ -3285,6 +3285,22 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Spec**: v1.7.0-alpha.3 still latest. Open Gloas PRs: #4992 (cached PTCs, state change), #4843 (variable PTC deadline), #5022 (assert block known in on_payload_attestation_message), #5023 (fork choice test fixtures). None merged.
 - **Verified**: `on_payload_attestation` already returns `UnknownBeaconBlockRoot` error for unknown block roots (fork_choice.rs:1430-1432), consistent with spec PR #5022.
 
+### Run 2151 (2026-03-21)
+
+**Monitoring run — codebase health verification**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new merges since March 15. Open Gloas PRs: #4992 (cached PTCs), #4843 (variable PTC deadline), #5022 (block root check), #5008 (field name fix), #4898 (remove impossible tiebreaker branch), #4954 (millisecond timestamps). None merged.
+- **Clippy**: zero warnings (full workspace).
+- **Build**: zero warnings, 2m29s release build.
+- **CI**: check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, remaining 3 jobs in progress.
+- **Nightly**: 5+ consecutive successes (latest 2026-03-21).
+- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071, no fix available).
+- **Dependencies**: `cargo update --dry-run` — 0 packages to update (fully current). `rand_xorshift` 0.4→0.5 attempted but requires rand 0.10 (incompatible with workspace rand 0.9). `cargo machete` findings reviewed — all false positives (derive macros, compile-time feature flags, re-exported crate names).
+- **TODOs**: 10 remaining, all tracked under #36, all blocked (EIP-7892, blst safe API, PeerDAS checkpoint sync) or non-critical.
+- **Safety audit**: Searched consensus-critical code for unwrap() in production paths, unchecked arithmetic in consensus/, and blocking calls in async functions. All clean.
+- **Assessment**: codebase is at steady state — code quality work has reached diminishing returns. Next impactful work will come from spec changes (particularly #4992 cached PTCs which adds state fields) or new feature priorities.
+- **No code changes** — verification-only run.
+
 ### Run 2150 (2026-03-21)
 
 **Remove rand 0.8 / rand_chacha 0.3 test dependencies from network crate**
