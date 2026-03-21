@@ -3625,3 +3625,18 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **Build**: `cargo clippy --workspace --all-targets` zero warnings. Pre-push lint-full passes.
 - **Tests**: 105/105 slasher tests pass.
 - **GitHub issues**: No new issues.
+
+### Run 2091 (2026-03-21)
+
+**Visibility audit — proto_array pub→pub(crate) downgrade**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs gloas PRs merged since #5005 (March 15). Open ePBS PRs unchanged (#4892, #4898, #4843, #4979, #4992).
+- **Code changes** (proto_array crate):
+  - **proto_array.rs**: downgraded `calculate_committee_fraction` from `pub` to `pub(crate)` — only used within proto_array crate (by `proto_array_fork_choice.rs` and `proto_array.rs`). Removed from top-level re-export in `lib.rs`.
+  - **Audit scope**: Systematically checked all `pub` items in proto_array against external usage. Most items must stay `pub` because they're used as public fields of re-exported types (`ProtoNode` in `ProtoArray.nodes` and `SszContainer.nodes`, `ProposerBoost` in `ProtoArray.previous_proposer_boost`, `VoteTracker` in `SszContainer.votes`, etc.) or are part of the fork_choice API.
+  - `InvalidBestNodeInfo` — initially considered but must stay `pub` (used in `Error::InvalidBestNode(Box<InvalidBestNodeInfo>)` which is a public enum).
+  - `Iter`, `ProposerBoost`, `ProtoNode`, `VoteTracker` — must stay `pub` (used in public struct fields of exported types).
+- **Build**: `cargo check --workspace` clean. `cargo clippy -p proto_array --all-targets` zero warnings.
+- **Tests**: 206/206 proto_array tests pass. 121/121 fork_choice tests pass.
+- **CI**: Previous run (slasher pub downgrade) in progress.
+- **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
