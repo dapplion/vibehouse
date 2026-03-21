@@ -236,3 +236,14 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - `cargo check` clean (zero warnings), `cargo audit` unchanged (RUSTSEC-2023-0071 rsa, unfixable; new unmaintained: bincode RUSTSEC-2025-0141, not actionable)
 - Remaining outdated deps: rand_xorshift 0.4→0.5, rand 0.8→0.9 (breaking, requires workspace-wide rand migration — deferred)
 - **No action needed. Spec current, codebase healthy.**
+
+### run 2129 (Mar 21) — routine check, CI verified green
+
+- No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
+- Open Gloas PRs unchanged: PTC lookbehind (#4979/#4992/#5020), variable PTC deadline (#4843), block-known check (#5022 — already implemented), test infra (#5023), fork choice milliseconds (#4954), remove pending from tiebreaker (#4898), remove impossible branch (#4892)
+- CI fully green on latest dep updates (run 23382597558): all 6 jobs passed including beacon_chain, http_api, unit tests
+- Ran `cargo machete --with-metadata`: no actionable unused deps (all flagged are false positives from `TestRandom` derive macro needing `rand` in scope)
+- Ran `cargo clippy --release --all-targets`: zero warnings
+- Ran dead code check (`RUSTFLAGS="-W dead_code"`): zero warnings on core crates
+- Duplicate deps in Cargo.lock: all transitive (strum 0.27 from sp1 stack, rand versions from various ecosystems)
+- **No action needed. Spec current, codebase healthy.**
