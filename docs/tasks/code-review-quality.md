@@ -3116,3 +3116,13 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Fork choice spec alignment**: Verified our `is_supporting_vote_gloas_at_slot` and `get_payload_tiebreaker` implementations correctly handle PRs #4892 and #4898 (both still open, our code already matches the proposed changes).
 - **No code changes** — verification-only run.
 
+
+### Run 2137 (2026-03-21)
+
+**Simplify is_global_ipv4 + spec monitoring**
+
+- **Code change**: Refactored `is_global_ipv4` in `config.rs` to use early-return guard clauses instead of a single long boolean chain. This eliminated the `#[allow(clippy::nonminimal_bool)]` suppression. Also simplified the future-use range check (`240.0.0.0/4`) by removing the redundant `!addr.is_broadcast()` condition (broadcast is already excluded by an earlier guard). 27/27 IP address tests pass, zero clippy warnings.
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since #5005 (March 15). PR #4843 (Variable PTC deadline) still open with `mergeable_state: clean` — key changes: `payload_present`→`payload_timely` rename, `is_payload_timely`→`has_payload_quorum` rename, new `MIN_PAYLOAD_DUE_BPS` config, `payload_envelopes` in Store, size-based `get_payload_due_ms`. PR #4979 (PTC Lookbehind) also open — adds `previous_ptc`/`current_ptc` to BeaconState.
+- **CI**: All 6/6 jobs green. 5+ consecutive nightly successes.
+- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071, unmaintained transitive deps).
+- **Dependencies**: No semver-compatible updates. Remaining major bumps blocked.
