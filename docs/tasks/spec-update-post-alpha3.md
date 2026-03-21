@@ -33,6 +33,7 @@ Audited all Gloas spec commits since alpha.3 (17 PRs total). All implemented or 
 | #5005 | Fix builder voluntary exit success test (yield missing fixture) | Test-only; our EF test runner already handles missing fixtures with SkippedKnownFailure |
 | #4940 | Add initial fork choice tests for Gloas (genesis + on_execution_payload) | Test-only; our EF test runner already supports on_execution_payload steps, all tests pass |
 | #5008 | Fix field name `block_root` → `beacon_block_root` in EnvelopesByRoot spec prose | Doc-only; our code already uses `beacon_block_root` correctly |
+| #5022 | Add check that block is known in `on_payload_attestation_message` | Already implemented (UnknownBeaconBlockRoot error at fork_choice.rs:1426-1432) |
 
 ### Implemented
 

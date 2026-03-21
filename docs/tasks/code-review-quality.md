@@ -2969,3 +2969,17 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps).
 - **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
 
+### Run 2107 (2026-03-21)
+
+**Spec audit + workspace test verification**
+
+- **Spec**: v1.7.0-alpha.3 still latest. Audited 5 new post-alpha.3 merged PRs:
+  - #4940 (fork choice tests for Gloas) — test-only; our EF runner already supports `OnExecutionPayload` steps + `head_payload_status` checks
+  - #5001 (parent_block_root in bid filtering key) — already implemented (3-tuple dedup key in `observed_execution_bids.rs`)
+  - #5005 (builder voluntary exit test fix) — test-only
+  - #5008 (field name fix in EnvelopesByRoot) — doc-only; code already correct
+  - #5022 (block known check in on_payload_attestation_message) — already implemented (`UnknownBeaconBlockRoot` error at `fork_choice.rs:1426-1432`)
+- **Tests**: Ran full workspace tests (excluding ef_tests, beacon_chain, slasher, network, http_api): 4994/4998 pass. 4 failures all in `web3signer_tests` (external service timeout flakes — web3signer upcheck timeout after 30s).
+- **Doc update**: Added #5022 to spec-update-post-alpha3.md tracking table.
+- **No code changes needed** — all spec changes already implemented.
+
