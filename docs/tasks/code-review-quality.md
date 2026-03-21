@@ -3306,3 +3306,15 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
 
 No actionable code changes. All priorities 1-6 complete. Codebase stable.
+
+### Run 2068 (2026-03-21)
+
+**Unused dependency cleanup.**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (March 15). Open PRs unchanged.
+- **Code changes**: Removed 3 unused dev-dependencies from `testing/web3signer_tests/Cargo.toml`: `environment`, `logging`, `serde_json` — none are imported in the test source code.
+- **False positives investigated**: `lcli` `bls` (needed for feature flags), `lcli` `malloc_utils` (side-effect jemalloc allocator, has cargo-udeps ignore), `eth2`/`state_processing` `rand` (needed by TestRandom derive macro expansion).
+- **Build**: `cargo check -p web3signer_tests` clean. `cargo clippy -p web3signer_tests` zero warnings. `cargo sort --check -w` clean.
+- **CI**: Previous run (wildcard imports commit) green. All 7 jobs passed.
+- **Tests**: Workspace tests 308/312 pass (4 beacon_node CLI tests are flaky under full-suite concurrency — pass individually and in isolation, likely port/FD exhaustion under load).
+- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071 no fix, 5 unmaintained transitive deps). No new advisories.
