@@ -528,7 +528,7 @@ impl TestRig {
                 block_root,
                 RpcBlock::new_without_blobs(Some(block_root), self.next_block.clone()),
                 std::time::Duration::default(),
-                BlockProcessType::SingleBlock { id: 0 },
+                BlockProcessType::Block { id: 0 },
             )
             .unwrap();
     }
@@ -540,7 +540,7 @@ impl TestRig {
                 block_root,
                 RpcBlock::new_without_blobs(Some(block_root), self.next_block.clone()),
                 std::time::Duration::default(),
-                BlockProcessType::SingleBlock { id: 1 },
+                BlockProcessType::Block { id: 1 },
             )
             .unwrap();
     }
@@ -553,7 +553,7 @@ impl TestRig {
                     self.next_block.canonical_root(),
                     blobs,
                     std::time::Duration::default(),
-                    BlockProcessType::SingleBlob { id: 1 },
+                    BlockProcessType::Blob { id: 1 },
                 )
                 .unwrap();
         }
@@ -566,7 +566,7 @@ impl TestRig {
                     self.next_block.canonical_root(),
                     data_columns,
                     Duration::default(),
-                    BlockProcessType::SingleCustodyColumn(1),
+                    BlockProcessType::CustodyColumn(1),
                 )
                 .unwrap();
         }

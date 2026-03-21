@@ -98,12 +98,11 @@ pub type CustodyByRootResult<T> =
     Result<(DataColumnSidecarList<T>, PeerGroup, Duration), RpcResponseError>;
 
 #[derive(Debug)]
-#[allow(clippy::enum_variant_names)]
 pub enum RpcResponseError {
-    RpcError(#[allow(dead_code)] RPCError),
-    VerifyError(LookupVerifyError),
-    CustodyRequestError(#[allow(dead_code)] CustodyRequestError),
-    BlockComponentCouplingError(CouplingError),
+    Rpc(#[allow(dead_code)] RPCError),
+    Verify(LookupVerifyError),
+    CustodyRequest(#[allow(dead_code)] CustodyRequestError),
+    BlockComponentCoupling(CouplingError),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -130,13 +129,13 @@ pub enum SendErrorProcessor {
 
 impl From<RPCError> for RpcResponseError {
     fn from(e: RPCError) -> Self {
-        RpcResponseError::RpcError(e)
+        RpcResponseError::Rpc(e)
     }
 }
 
 impl From<LookupVerifyError> for RpcResponseError {
     fn from(e: LookupVerifyError) -> Self {
-        RpcResponseError::VerifyError(e)
+        RpcResponseError::Verify(e)
     }
 }
 
@@ -901,17 +900,13 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
                 RangeBlockComponent::Block(req_id, resp) => resp.and_then(|(blocks, _)| {
                     request.record_peer(peer_id, vec![0]);
                     request.add_blocks(req_id, blocks).map_err(|e| {
-                        RpcResponseError::BlockComponentCouplingError(CouplingError::InternalError(
-                            e,
-                        ))
+                        RpcResponseError::BlockComponentCoupling(CouplingError::InternalError(e))
                     })
                 }),
                 RangeBlockComponent::Blob(req_id, resp) => resp.and_then(|(blobs, _)| {
                     request.record_peer(peer_id, vec![1]);
                     request.add_blobs(req_id, blobs).map_err(|e| {
-                        RpcResponseError::BlockComponentCouplingError(CouplingError::InternalError(
-                            e,
-                        ))
+                        RpcResponseError::BlockComponentCoupling(CouplingError::InternalError(e))
                     })
                 }),
                 RangeBlockComponent::CustodyColumns(req_id, resp) => {
@@ -922,7 +917,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
                         request
                             .add_custody_columns(req_id, custody_columns)
                             .map_err(|e| {
-                                RpcResponseError::BlockComponentCouplingError(
+                                RpcResponseError::BlockComponentCoupling(
                                     CouplingError::InternalError(e),
                                 )
                             })
@@ -957,7 +952,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
                 entry.remove();
             }
             // If the request is finished, dequeue everything
-            Some(blocks_result.map_err(RpcResponseError::BlockComponentCouplingError))
+            Some(blocks_result.map_err(RpcResponseError::BlockComponentCoupling))
         } else {
             None
         }
@@ -1782,11 +1777,9 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
                         Err(e) => Err(e.into()),
                     }
                 } else {
-                    Err(RpcResponseError::VerifyError(
-                        LookupVerifyError::InternalError(
-                            "Requested blobs for a block that has no blobs".to_string(),
-                        ),
-                    ))
+                    Err(RpcResponseError::Verify(LookupVerifyError::InternalError(
+                        "Requested blobs for a block that has no blobs".to_string(),
+                    )))
                 }
             })
         });
@@ -1847,7 +1840,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
         resp: Option<RpcResponseResult<R>>,
         peer_id: PeerId,
     ) -> Option<RpcResponseResult<R>> {
-        if let Some(Err(RpcResponseError::VerifyError(e))) = &resp {
+        if let Some(Err(RpcResponseError::Verify(e))) = &resp {
             self.report_peer(peer_id, PeerAction::LowToleranceError, e.into());
         }
         resp
@@ -1887,9 +1880,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
         request: ActiveCustodyRequest<T>,
         result: CustodyRequestResult<T::EthSpec>,
     ) -> Option<CustodyByRootResult<T::EthSpec>> {
-        let result = result
-            .map_err(RpcResponseError::CustodyRequestError)
-            .transpose();
+        let result = result.map_err(RpcResponseError::CustodyRequest).transpose();
 
         // Convert a result from internal format of `ActiveCustodyRequest` (error first to use ?) to
         // an Option first to use in an `if let Some() { act on result }` block.
@@ -1928,7 +1919,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
                 block_root,
                 block,
                 seen_timestamp,
-                BlockProcessType::SingleBlock { id },
+                BlockProcessType::Block { id },
             )
             .map_err(|e| {
                 error!(
@@ -1958,7 +1949,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
                 block_root,
                 blobs,
                 seen_timestamp,
-                BlockProcessType::SingleBlob { id },
+                BlockProcessType::Blob { id },
             )
             .map_err(|e| {
                 error!(
@@ -2080,9 +2071,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
                 request
                     .add_custody_columns(req_id, data_columns)
                     .map_err(|e| {
-                        RpcResponseError::BlockComponentCouplingError(CouplingError::InternalError(
-                            e,
-                        ))
+                        RpcResponseError::BlockComponentCoupling(CouplingError::InternalError(e))
                     })
             })
         } {
@@ -2097,7 +2086,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
                 entry.remove();
             }
             // If the request is finished, dequeue everything
-            Some(data_column_result.map_err(RpcResponseError::BlockComponentCouplingError))
+            Some(data_column_result.map_err(RpcResponseError::BlockComponentCoupling))
         } else {
             None
         }

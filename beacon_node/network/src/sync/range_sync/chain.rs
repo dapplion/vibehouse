@@ -901,7 +901,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
         let _guard = self.span.clone().entered();
         let batch_state = self.visualize_batch_state();
         if let Some(batch) = self.batches.get_mut(&batch_id) {
-            if let RpcResponseError::BlockComponentCouplingError(coupling_error) = &err {
+            if let RpcResponseError::BlockComponentCoupling(coupling_error) = &err {
                 match coupling_error {
                     CouplingError::DataColumnPeerFailure {
                         error,

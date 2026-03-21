@@ -592,7 +592,7 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
                 debug!(batch_epoch = %batch_id, error = ?err, "Batch download failed");
 
                 // If there are any coupling errors, penalize the appropriate peers
-                if let RpcResponseError::BlockComponentCouplingError(coupling_error) = err
+                if let RpcResponseError::BlockComponentCoupling(coupling_error) = err
                     && let CouplingError::DataColumnPeerFailure {
                         error,
                         faulty_peers,

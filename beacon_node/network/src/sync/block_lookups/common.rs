@@ -192,7 +192,7 @@ impl<T: BeaconChainTypes> RequestState<T> for CustodyRequestState<T::EthSpec> {
             block_root,
             value,
             seen_timestamp,
-            BlockProcessType::SingleCustodyColumn(id),
+            BlockProcessType::CustodyColumn(id),
         )
         .map_err(LookupRequestError::SendFailedProcessor)
     }

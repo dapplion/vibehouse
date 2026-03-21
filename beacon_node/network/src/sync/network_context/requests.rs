@@ -207,12 +207,10 @@ impl<K: Copy + Eq + Hash + std::fmt::Display, T: ActiveRequestItems> ActiveReque
             }
             Err(e) => {
                 let err_str: &'static str = match &e {
-                    RpcResponseError::RpcError(e) => e.into(),
-                    RpcResponseError::VerifyError(e) => e.into(),
-                    RpcResponseError::CustodyRequestError(_) => "CustodyRequestError",
-                    RpcResponseError::BlockComponentCouplingError(_) => {
-                        "BlockComponentCouplingError"
-                    }
+                    RpcResponseError::Rpc(e) => e.into(),
+                    RpcResponseError::Verify(e) => e.into(),
+                    RpcResponseError::CustodyRequest(_) => "CustodyRequestError",
+                    RpcResponseError::BlockComponentCoupling(_) => "BlockComponentCouplingError",
                 };
                 metrics::inc_counter_vec(&metrics::SYNC_RPC_REQUEST_ERRORS, &[self.name, err_str]);
                 debug!(

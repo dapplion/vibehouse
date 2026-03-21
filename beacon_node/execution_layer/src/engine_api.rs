@@ -44,7 +44,6 @@ pub const LATEST_TAG: &str = "latest";
 
 pub type PayloadId = [u8; 8];
 
-#[allow(clippy::enum_variant_names)]
 #[derive(Debug)]
 pub enum Error {
     HttpClient(PrettyReqwestError),
@@ -57,7 +56,7 @@ pub enum Error {
     ExecutionBlockNotFound(ExecutionBlockHash),
     ExecutionHeadBlockNotFound,
     PayloadIdUnavailable,
-    SszError(ssz_types::Error),
+    Ssz(ssz_types::Error),
     BuilderApi(builder_client::Error),
     IncorrectStateVariant,
     RequiredMethodUnsupported(&'static str),
@@ -98,7 +97,7 @@ impl From<builder_client::Error> for Error {
 
 impl From<ssz_types::Error> for Error {
     fn from(e: ssz_types::Error) -> Self {
-        Error::SszError(e)
+        Error::Ssz(e)
     }
 }
 
@@ -1382,7 +1381,7 @@ mod tests {
     fn error_from_ssz_types() {
         let ssz_err = ssz_types::Error::OutOfBounds { i: 10, len: 5 };
         let err = Error::from(ssz_err);
-        assert!(matches!(err, Error::SszError(_)));
+        assert!(matches!(err, Error::Ssz(_)));
     }
 
     #[test]

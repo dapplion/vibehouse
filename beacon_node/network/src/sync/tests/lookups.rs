@@ -437,7 +437,7 @@ impl TestRig {
 
     fn single_block_component_processed(&mut self, id: Id, result: BlockProcessingResult) {
         self.send_sync_message(SyncMessage::BlockComponentProcessed {
-            process_type: BlockProcessType::SingleBlock { id },
+            process_type: BlockProcessType::Block { id },
             result,
         });
     }
@@ -452,7 +452,7 @@ impl TestRig {
 
     fn single_blob_component_processed(&mut self, id: Id, result: BlockProcessingResult) {
         self.send_sync_message(SyncMessage::BlockComponentProcessed {
-            process_type: BlockProcessType::SingleBlob { id },
+            process_type: BlockProcessType::Blob { id },
             result,
         });
     }
@@ -667,7 +667,7 @@ impl TestRig {
 
         // Respond with valid result
         self.send_sync_message(SyncMessage::BlockComponentProcessed {
-            process_type: BlockProcessType::SingleCustodyColumn(lookup_id),
+            process_type: BlockProcessType::CustodyColumn(lookup_id),
             result: if missing_components {
                 BlockProcessingResult::Ok(AvailabilityProcessingStatus::MissingComponents(
                     first_column.slot(),
@@ -2095,7 +2095,7 @@ fn custody_lookup_bad_data_triggers_penalty_and_retry() {
 
     let first_column = data_columns.first().cloned().unwrap();
     r.send_sync_message(SyncMessage::BlockComponentProcessed {
-        process_type: BlockProcessType::SingleCustodyColumn(lookup_id),
+        process_type: BlockProcessType::CustodyColumn(lookup_id),
         result: BlockProcessingResult::Ok(AvailabilityProcessingStatus::Imported(
             first_column.block_root(),
         )),

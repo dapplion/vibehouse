@@ -551,25 +551,24 @@ pub struct PayloadVerificationOutcome {
 }
 
 /// Information about invalid blocks which might still be slashable despite being invalid.
-#[allow(clippy::enum_variant_names)]
 pub enum BlockSlashInfo<TErr> {
     /// The block is invalid, but its proposer signature wasn't checked.
-    SignatureNotChecked(SignedBeaconBlockHeader, TErr),
+    NotChecked(SignedBeaconBlockHeader, TErr),
     /// The block's proposer signature is invalid, so it will never be slashable.
-    SignatureInvalid(TErr),
-    /// The signature is valid but the attestation is invalid in some other way.
-    SignatureValid(SignedBeaconBlockHeader, TErr),
+    Invalid(TErr),
+    /// The signature is valid but the block is invalid in some other way.
+    Valid(SignedBeaconBlockHeader, TErr),
 }
 
 impl BlockSlashInfo<BlockError> {
     pub fn from_early_error_block(header: SignedBeaconBlockHeader, e: BlockError) -> Self {
         match e {
             BlockError::InvalidSignature(InvalidSignature::ProposerSignature) => {
-                BlockSlashInfo::SignatureInvalid(e)
+                BlockSlashInfo::Invalid(e)
             }
             // `InvalidSignature` could indicate any signature in the block, so we want
             // to recheck the proposer signature alone.
-            _ => BlockSlashInfo::SignatureNotChecked(header, e),
+            _ => BlockSlashInfo::NotChecked(header, e),
         }
     }
 }
@@ -577,10 +576,10 @@ impl BlockSlashInfo<BlockError> {
 impl BlockSlashInfo<GossipBlobError> {
     pub fn from_early_error_blob(header: SignedBeaconBlockHeader, e: GossipBlobError) -> Self {
         match e {
-            GossipBlobError::ProposalSignatureInvalid => BlockSlashInfo::SignatureInvalid(e),
+            GossipBlobError::ProposalSignatureInvalid => BlockSlashInfo::Invalid(e),
             // `InvalidSignature` could indicate any signature in the block, so we want
             // to recheck the proposer signature alone.
-            _ => BlockSlashInfo::SignatureNotChecked(header, e),
+            _ => BlockSlashInfo::NotChecked(header, e),
         }
     }
 }
@@ -591,10 +590,10 @@ impl BlockSlashInfo<GossipDataColumnError> {
         e: GossipDataColumnError,
     ) -> Self {
         match e {
-            GossipDataColumnError::ProposalSignatureInvalid => BlockSlashInfo::SignatureInvalid(e),
+            GossipDataColumnError::ProposalSignatureInvalid => BlockSlashInfo::Invalid(e),
             // `InvalidSignature` could indicate any signature in the block, so we want
             // to recheck the proposer signature alone.
-            _ => BlockSlashInfo::SignatureNotChecked(header, e),
+            _ => BlockSlashInfo::NotChecked(header, e),
         }
     }
 }
@@ -608,24 +607,24 @@ pub(crate) fn process_block_slash_info<T: BeaconChainTypes, TErr: BlockBlobError
 ) -> TErr {
     if let Some(slasher) = chain.slasher.as_ref() {
         let (verified_header, error) = match slash_info {
-            BlockSlashInfo::SignatureNotChecked(header, e) => {
+            BlockSlashInfo::NotChecked(header, e) => {
                 if verify_header_signature::<_, TErr>(chain, &header).is_ok() {
                     (header, e)
                 } else {
                     return e;
                 }
             }
-            BlockSlashInfo::SignatureInvalid(e) => return e,
-            BlockSlashInfo::SignatureValid(header, e) => (header, e),
+            BlockSlashInfo::Invalid(e) => return e,
+            BlockSlashInfo::Valid(header, e) => (header, e),
         };
 
         slasher.accept_block_header(verified_header);
         error
     } else {
         match slash_info {
-            BlockSlashInfo::SignatureNotChecked(_, e)
-            | BlockSlashInfo::SignatureInvalid(e)
-            | BlockSlashInfo::SignatureValid(_, e) => e,
+            BlockSlashInfo::NotChecked(_, e)
+            | BlockSlashInfo::Invalid(e)
+            | BlockSlashInfo::Valid(_, e) => e,
         }
     }
 }
@@ -1318,8 +1317,7 @@ impl<T: BeaconChainTypes> IntoExecutionPendingBlock<T> for SignatureVerifiedBloc
         let (parent, block) = if let Some(parent) = self.parent {
             (parent, self.block)
         } else {
-            load_parent(self.block, chain)
-                .map_err(|e| BlockSlashInfo::SignatureValid(header.clone(), e))?
+            load_parent(self.block, chain).map_err(|e| BlockSlashInfo::Valid(header.clone(), e))?
         };
 
         ExecutionPendingBlock::from_signature_verified_components(
@@ -1330,7 +1328,7 @@ impl<T: BeaconChainTypes> IntoExecutionPendingBlock<T> for SignatureVerifiedBloc
             chain,
             notify_execution_layer,
         )
-        .map_err(|e| BlockSlashInfo::SignatureValid(header, e))
+        .map_err(|e| BlockSlashInfo::Valid(header, e))
     }
 
     fn block(&self) -> &SignedBeaconBlock<T::EthSpec> {
@@ -1358,12 +1356,12 @@ impl<T: BeaconChainTypes> IntoExecutionPendingBlock<T> for RpcBlock<T::EthSpec> 
     ) -> Result<ExecutionPendingBlock<T>, BlockSlashInfo<BlockError>> {
         // Perform an early check to prevent wasting time on irrelevant blocks.
         let block_root = check_block_relevancy(self.as_block(), block_root, chain)
-            .map_err(|e| BlockSlashInfo::SignatureNotChecked(self.signed_block_header(), e))?;
+            .map_err(|e| BlockSlashInfo::NotChecked(self.signed_block_header(), e))?;
         let maybe_available = chain
             .data_availability_checker
             .verify_kzg_for_rpc_block(self.clone())
             .map_err(|e| {
-                BlockSlashInfo::SignatureNotChecked(
+                BlockSlashInfo::NotChecked(
                     self.signed_block_header(),
                     BlockError::AvailabilityCheck(e),
                 )

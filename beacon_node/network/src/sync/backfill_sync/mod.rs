@@ -320,7 +320,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
         err: RpcResponseError,
     ) -> Result<(), BackFillError> {
         if let Some(batch) = self.batches.get_mut(&batch_id) {
-            if let RpcResponseError::BlockComponentCouplingError(coupling_error) = &err {
+            if let RpcResponseError::BlockComponentCoupling(coupling_error) = &err {
                 match coupling_error {
                     CouplingError::DataColumnPeerFailure {
                         error,
