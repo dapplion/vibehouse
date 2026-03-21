@@ -38,14 +38,18 @@ pub(crate) struct TaskSpawner<E: EthSpec> {
 }
 
 impl<E: EthSpec> TaskSpawner<E> {
-    pub fn new(beacon_processor_send: Option<BeaconProcessorSend<E>>) -> Self {
+    pub(crate) fn new(beacon_processor_send: Option<BeaconProcessorSend<E>>) -> Self {
         Self {
             beacon_processor_send,
         }
     }
 
     /// Executes a "blocking" (non-async) task which returns an arbitrary value.
-    pub async fn blocking_task<F, T>(self, priority: Priority, func: F) -> Result<T, ApiError>
+    pub(crate) async fn blocking_task<F, T>(
+        self,
+        priority: Priority,
+        func: F,
+    ) -> Result<T, ApiError>
     where
         F: FnOnce() -> Result<T, ApiError> + Send + Sync + 'static,
         T: Send + 'static,
@@ -73,7 +77,7 @@ impl<E: EthSpec> TaskSpawner<E> {
     }
 
     /// Executes a "blocking" (non-async) task which returns a `Response`.
-    pub async fn blocking_response_task<F>(
+    pub(crate) async fn blocking_response_task<F>(
         self,
         priority: Priority,
         func: F,
@@ -86,7 +90,7 @@ impl<E: EthSpec> TaskSpawner<E> {
 
     /// Executes a "blocking" (non-async) task which returns a JSON-serializable
     /// object.
-    pub async fn blocking_json_task<F, T>(
+    pub(crate) async fn blocking_json_task<F, T>(
         self,
         priority: Priority,
         func: F,
@@ -100,7 +104,7 @@ impl<E: EthSpec> TaskSpawner<E> {
     }
 
     /// Executes an async task which may return an `ApiError`.
-    pub async fn spawn_async_with_rejection(
+    pub(crate) async fn spawn_async_with_rejection(
         self,
         priority: Priority,
         func: impl Future<Output = Result<Response, ApiError>> + Send + Sync + 'static,
@@ -127,7 +131,7 @@ impl<E: EthSpec> TaskSpawner<E> {
         }
     }
 
-    pub fn try_send(&self, work_event: WorkEvent<E>) -> Result<(), ApiError> {
+    pub(crate) fn try_send(&self, work_event: WorkEvent<E>) -> Result<(), ApiError> {
         if let Some(beacon_processor_send) = &self.beacon_processor_send {
             let error_message = match beacon_processor_send.try_send(work_event) {
                 Ok(()) => None,

@@ -22,7 +22,7 @@ use vibehouse_tracing::{SPAN_PRODUCE_BLOCK_V2, SPAN_PRODUCE_BLOCK_V3};
 /// to keep the precision.
 const DEFAULT_BOOST_FACTOR: u64 = 100;
 
-pub fn get_randao_verification(
+pub(crate) fn get_randao_verification(
     query: &api_types::ValidatorBlocksQuery,
     randao_reveal_infinity: bool,
 ) -> Result<ProduceBlockVerification, ApiError> {
@@ -45,7 +45,7 @@ pub fn get_randao_verification(
     skip_all,
     fields(%slot)
 )]
-pub async fn produce_block_v3<T: BeaconChainTypes>(
+pub(crate) async fn produce_block_v3<T: BeaconChainTypes>(
     accept_header: Option<api_types::Accept>,
     chain: Arc<BeaconChain<T>>,
     slot: Slot,
@@ -83,7 +83,7 @@ pub async fn produce_block_v3<T: BeaconChainTypes>(
     build_response_v3(chain, block_response_type, accept_header)
 }
 
-pub fn build_response_v3<T: BeaconChainTypes>(
+pub(crate) fn build_response_v3<T: BeaconChainTypes>(
     chain: Arc<BeaconChain<T>>,
     block_response: BeaconBlockResponseWrapper<T::EthSpec>,
     accept_header: Option<api_types::Accept>,
@@ -129,7 +129,7 @@ pub fn build_response_v3<T: BeaconChainTypes>(
     }
 }
 
-pub async fn produce_blinded_block_v2<T: BeaconChainTypes>(
+pub(crate) async fn produce_blinded_block_v2<T: BeaconChainTypes>(
     accept_header: Option<api_types::Accept>,
     chain: Arc<BeaconChain<T>>,
     slot: Slot,
@@ -166,7 +166,7 @@ pub async fn produce_blinded_block_v2<T: BeaconChainTypes>(
     skip_all,
     fields(%slot)
 )]
-pub async fn produce_block_v2<T: BeaconChainTypes>(
+pub(crate) async fn produce_block_v2<T: BeaconChainTypes>(
     accept_header: Option<api_types::Accept>,
     chain: Arc<BeaconChain<T>>,
     slot: Slot,
@@ -199,7 +199,7 @@ pub async fn produce_block_v2<T: BeaconChainTypes>(
     build_response_v2(chain, block_response_type, accept_header)
 }
 
-pub fn build_response_v2<T: BeaconChainTypes>(
+pub(crate) fn build_response_v2<T: BeaconChainTypes>(
     chain: Arc<BeaconChain<T>>,
     block_response: BeaconBlockResponseWrapper<T::EthSpec>,
     accept_header: Option<api_types::Accept>,

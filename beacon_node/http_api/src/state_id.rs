@@ -254,7 +254,7 @@ impl fmt::Display for StateId {
 
 /// Returns the first slot of the checkpoint's `epoch` and the execution status of the checkpoint's
 /// `root`.
-pub fn checkpoint_slot_and_execution_optimistic<T: BeaconChainTypes>(
+pub(crate) fn checkpoint_slot_and_execution_optimistic<T: BeaconChainTypes>(
     chain: &BeaconChain<T>,
     checkpoint: Checkpoint,
 ) -> Result<(Slot, ExecutionOptimistic), ApiError> {

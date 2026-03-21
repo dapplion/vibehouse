@@ -12,7 +12,7 @@ use types::{AttestationDuty, BeaconState, ChainSpec, Epoch, EthSpec, Hash256, Re
 type ApiDuties = api_types::DutiesResponse<Vec<api_types::AttesterData>>;
 
 /// Handles a request from the HTTP API for attester duties.
-pub fn attester_duties<T: BeaconChainTypes>(
+pub(crate) fn attester_duties<T: BeaconChainTypes>(
     request_epoch: Epoch,
     request_indices: &[u64],
     chain: &BeaconChain<T>,

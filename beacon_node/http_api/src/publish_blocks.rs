@@ -871,7 +871,7 @@ fn check_slashable<T: BeaconChainTypes>(
 
 /// Converting from a `SignedBlindedBeaconBlock` into a full `SignedBlockContents`.
 #[allow(clippy::type_complexity)]
-pub fn into_full_block_and_blobs<T: BeaconChainTypes>(
+pub(crate) fn into_full_block_and_blobs<T: BeaconChainTypes>(
     blinded_block: SignedBlindedBeaconBlock<T::EthSpec>,
     maybe_full_payload_contents: FullPayloadContents<T::EthSpec>,
 ) -> Result<(Arc<SignedBeaconBlock<T::EthSpec>>, UnverifiedBlobs<T>), String> {

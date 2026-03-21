@@ -4,7 +4,9 @@ use eth2::vibehouse::CustodyInfo;
 use std::sync::Arc;
 use types::EthSpec;
 
-pub fn info<T: BeaconChainTypes>(chain: Arc<BeaconChain<T>>) -> Result<CustodyInfo, ApiError> {
+pub(crate) fn info<T: BeaconChainTypes>(
+    chain: Arc<BeaconChain<T>>,
+) -> Result<CustodyInfo, ApiError> {
     if !chain.spec.is_fulu_scheduled() {
         return Err(ApiError::bad_request("Fulu is not scheduled".to_string()));
     }

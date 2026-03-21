@@ -26,7 +26,7 @@ use vibehouse_network::PubsubMessage;
 type SyncDuties = api_types::ExecutionOptimisticResponse<Vec<SyncDuty>>;
 
 /// Handles a request from the HTTP API for sync committee duties.
-pub fn sync_committee_duties<T: BeaconChainTypes>(
+pub(crate) fn sync_committee_duties<T: BeaconChainTypes>(
     request_epoch: Epoch,
     request_indices: &[u64],
     chain: &BeaconChain<T>,
@@ -181,7 +181,7 @@ fn convert_to_response(duties: Vec<Option<SyncDuty>>, execution_optimistic: bool
 }
 
 /// Receive sync committee duties, storing them in the pools & broadcasting them.
-pub fn process_sync_committee_signatures<T: BeaconChainTypes>(
+pub(crate) fn process_sync_committee_signatures<T: BeaconChainTypes>(
     sync_committee_signatures: Vec<SyncCommitteeMessage>,
     network_tx: UnboundedSender<NetworkMessage<T::EthSpec>>,
     chain: &BeaconChain<T>,
@@ -296,7 +296,7 @@ pub fn process_sync_committee_signatures<T: BeaconChainTypes>(
 }
 
 /// Get the set of all subnet assignments for a `SyncCommitteeMessage`.
-pub fn get_subnet_positions_for_sync_committee_message<T: BeaconChainTypes>(
+pub(crate) fn get_subnet_positions_for_sync_committee_message<T: BeaconChainTypes>(
     sync_message: &SyncCommitteeMessage,
     chain: &BeaconChain<T>,
 ) -> Result<HashMap<SyncSubnetId, Vec<usize>>, SyncVerificationError> {
@@ -310,7 +310,7 @@ pub fn get_subnet_positions_for_sync_committee_message<T: BeaconChainTypes>(
 }
 
 /// Receive signed contributions and proofs, storing them in the op pool and broadcasting.
-pub fn process_signed_contribution_and_proofs<T: BeaconChainTypes>(
+pub(crate) fn process_signed_contribution_and_proofs<T: BeaconChainTypes>(
     signed_contribution_and_proofs: Vec<SignedContributionAndProof<T::EthSpec>>,
     network_tx: UnboundedSender<NetworkMessage<T::EthSpec>>,
     chain: &BeaconChain<T>,

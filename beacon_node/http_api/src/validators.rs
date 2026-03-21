@@ -7,7 +7,7 @@ use eth2::types::{
 };
 use std::{collections::HashSet, sync::Arc};
 
-pub fn get_beacon_state_validators<T: BeaconChainTypes>(
+pub(crate) fn get_beacon_state_validators<T: BeaconChainTypes>(
     state_id: StateId,
     chain: Arc<BeaconChain<T>>,
     query_ids: &Option<Vec<ValidatorId>>,
@@ -84,7 +84,7 @@ pub fn get_beacon_state_validators<T: BeaconChainTypes>(
     })
 }
 
-pub fn get_beacon_state_validator_balances<T: BeaconChainTypes>(
+pub(crate) fn get_beacon_state_validator_balances<T: BeaconChainTypes>(
     state_id: StateId,
     chain: Arc<BeaconChain<T>>,
     optional_ids: Option<&[ValidatorId]>,
@@ -131,7 +131,7 @@ pub fn get_beacon_state_validator_balances<T: BeaconChainTypes>(
     })
 }
 
-pub fn get_beacon_state_validator_identities<T: BeaconChainTypes>(
+pub(crate) fn get_beacon_state_validator_identities<T: BeaconChainTypes>(
     state_id: StateId,
     chain: Arc<BeaconChain<T>>,
     optional_ids: Option<&[ValidatorId]>,

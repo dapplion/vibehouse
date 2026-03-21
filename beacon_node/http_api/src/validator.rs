@@ -3,7 +3,7 @@ use types::{BeaconState, PublicKeyBytes};
 
 /// Uses the `chain.validator_pubkey_cache` to resolve a pubkey to a validator
 /// index and then ensures that the validator exists in the given `state`.
-pub fn pubkey_to_validator_index<T: BeaconChainTypes>(
+pub(crate) fn pubkey_to_validator_index<T: BeaconChainTypes>(
     chain: &BeaconChain<T>,
     state: &BeaconState<T::EthSpec>,
     pubkey: &PublicKeyBytes,

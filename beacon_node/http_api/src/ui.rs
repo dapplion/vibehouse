@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ValidatorCountResponse {
+pub(crate) struct ValidatorCountResponse {
     pub active_ongoing: u64,
     pub active_exiting: u64,
     pub active_slashed: u64,
@@ -20,7 +20,7 @@ pub struct ValidatorCountResponse {
     pub exited_slashed: u64,
 }
 
-pub fn get_validator_count<T: BeaconChainTypes>(
+pub(crate) fn get_validator_count<T: BeaconChainTypes>(
     chain: Arc<BeaconChain<T>>,
 ) -> Result<ValidatorCountResponse, ApiError> {
     let spec = &chain.spec;
@@ -74,13 +74,13 @@ pub fn get_validator_count<T: BeaconChainTypes>(
 }
 
 #[derive(PartialEq, Eq, Serialize, Deserialize)]
-pub struct ValidatorInfoRequestData {
+pub(crate) struct ValidatorInfoRequestData {
     #[serde(with = "serde_utils::quoted_u64_vec")]
     indices: Vec<u64>,
 }
 
 #[derive(PartialEq, Eq, Serialize, Deserialize)]
-pub struct ValidatorInfoValues {
+pub(crate) struct ValidatorInfoValues {
     #[serde(with = "serde_utils::quoted_u64")]
     epoch: u64,
     #[serde(with = "serde_utils::quoted_u64")]
@@ -88,16 +88,16 @@ pub struct ValidatorInfoValues {
 }
 
 #[derive(PartialEq, Eq, Serialize, Deserialize)]
-pub struct ValidatorInfo {
+pub(crate) struct ValidatorInfo {
     info: Vec<ValidatorInfoValues>,
 }
 
 #[derive(PartialEq, Eq, Serialize, Deserialize)]
-pub struct ValidatorInfoResponse {
+pub(crate) struct ValidatorInfoResponse {
     validators: HashMap<String, ValidatorInfo>,
 }
 
-pub fn get_validator_info<T: BeaconChainTypes>(
+pub(crate) fn get_validator_info<T: BeaconChainTypes>(
     request_data: ValidatorInfoRequestData,
     chain: Arc<BeaconChain<T>>,
 ) -> Result<ValidatorInfoResponse, ApiError> {
@@ -149,12 +149,12 @@ pub fn get_validator_info<T: BeaconChainTypes>(
 }
 
 #[derive(PartialEq, Eq, Serialize, Deserialize)]
-pub struct ValidatorMetricsRequestData {
+pub(crate) struct ValidatorMetricsRequestData {
     indices: Vec<u64>,
 }
 
 #[derive(PartialEq, Serialize, Deserialize)]
-pub struct ValidatorMetrics {
+pub(crate) struct ValidatorMetrics {
     attestation_hits: u64,
     attestation_misses: u64,
     attestation_hit_percentage: f64,
@@ -168,11 +168,11 @@ pub struct ValidatorMetrics {
 }
 
 #[derive(PartialEq, Serialize, Deserialize)]
-pub struct ValidatorMetricsResponse {
+pub(crate) struct ValidatorMetricsResponse {
     validators: HashMap<String, ValidatorMetrics>,
 }
 
-pub fn post_validator_monitor_metrics<T: BeaconChainTypes>(
+pub(crate) fn post_validator_monitor_metrics<T: BeaconChainTypes>(
     request_data: ValidatorMetricsRequestData,
     chain: Arc<BeaconChain<T>>,
 ) -> Result<ValidatorMetricsResponse, ApiError> {

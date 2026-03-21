@@ -53,7 +53,7 @@ use vibehouse_network::PubsubMessage;
 
 // Error variants are only used in `Debug` and considered `dead_code` by the compiler.
 #[derive(Debug)]
-pub enum Error {
+pub(crate) enum Error {
     Validation(AttestationError),
     Publication,
     ForkChoice(#[allow(dead_code)] Box<BeaconChainError>),
@@ -124,7 +124,7 @@ fn verify_and_publish_attestation<T: BeaconChainTypes>(
     }
 }
 
-pub async fn publish_attestations<T: BeaconChainTypes>(
+pub(crate) async fn publish_attestations<T: BeaconChainTypes>(
     task_spawner: TaskSpawner<T::EthSpec>,
     chain: Arc<BeaconChain<T>>,
     attestations: Vec<SingleAttestation>,

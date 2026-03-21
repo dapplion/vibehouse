@@ -10,7 +10,7 @@ use types::{Epoch, EthSpec, Slot};
 type ApiDuties = api_types::DutiesResponse<Vec<api_types::PtcDutyData>>;
 
 /// Handles a request from the HTTP API for PTC duties.
-pub fn ptc_duties<T: BeaconChainTypes>(
+pub(crate) fn ptc_duties<T: BeaconChainTypes>(
     request_epoch: Epoch,
     request_indices: &[u64],
     chain: &BeaconChain<T>,

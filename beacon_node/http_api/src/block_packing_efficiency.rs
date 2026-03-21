@@ -236,7 +236,7 @@ impl<E: EthSpec> PackingEfficiencyHandler<E> {
     }
 }
 
-pub fn get_block_packing_efficiency<T: BeaconChainTypes>(
+pub(crate) fn get_block_packing_efficiency<T: BeaconChainTypes>(
     query: BlockPackingEfficiencyQuery,
     chain: Arc<BeaconChain<T>>,
 ) -> Result<Vec<BlockPackingEfficiency>, ApiError> {

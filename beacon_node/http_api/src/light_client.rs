@@ -15,7 +15,7 @@ use types::{BeaconResponse, EthSpec, ForkName, Hash256, LightClientBootstrap};
 
 const MAX_REQUEST_LIGHT_CLIENT_UPDATES: u64 = 128;
 
-pub fn get_light_client_updates<T: BeaconChainTypes>(
+pub(crate) fn get_light_client_updates<T: BeaconChainTypes>(
     chain: Arc<BeaconChain<T>>,
     query: LightClientUpdatesQuery,
     accept_header: Option<api_types::Accept>,
@@ -48,7 +48,7 @@ pub fn get_light_client_updates<T: BeaconChainTypes>(
     }
 }
 
-pub fn get_light_client_bootstrap<T: BeaconChainTypes>(
+pub(crate) fn get_light_client_bootstrap<T: BeaconChainTypes>(
     chain: Arc<BeaconChain<T>>,
     block_root: &Hash256,
     accept_header: Option<api_types::Accept>,
@@ -82,7 +82,7 @@ pub fn get_light_client_bootstrap<T: BeaconChainTypes>(
     }
 }
 
-pub fn validate_light_client_updates_request<T: BeaconChainTypes>(
+pub(crate) fn validate_light_client_updates_request<T: BeaconChainTypes>(
     chain: &BeaconChain<T>,
     query: &LightClientUpdatesQuery,
 ) -> Result<(), ApiError> {

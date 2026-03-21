@@ -12,7 +12,7 @@ const MAX_EPOCH_LOOKAHEAD: u64 = 2;
 
 /// Get the withdrawals computed from the specified state, that will be included in the block
 /// that gets built on the specified state.
-pub fn get_next_withdrawals<T: BeaconChainTypes>(
+pub(crate) fn get_next_withdrawals<T: BeaconChainTypes>(
     chain: &Arc<BeaconChain<T>>,
     mut state: BeaconState<T::EthSpec>,
     state_id: StateId,

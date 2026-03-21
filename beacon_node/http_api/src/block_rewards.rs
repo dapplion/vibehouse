@@ -13,7 +13,7 @@ use types::non_zero_usize::new_non_zero_usize;
 const STATE_CACHE_SIZE: NonZeroUsize = new_non_zero_usize(2);
 
 /// Fetch block rewards for blocks from the canonical chain.
-pub fn get_block_rewards<T: BeaconChainTypes>(
+pub(crate) fn get_block_rewards<T: BeaconChainTypes>(
     query: BlockRewardsQuery,
     chain: Arc<BeaconChain<T>>,
 ) -> Result<Vec<BlockReward>, ApiError> {
@@ -106,7 +106,7 @@ pub fn get_block_rewards<T: BeaconChainTypes>(
 }
 
 /// Compute block rewards for blocks passed in as input.
-pub fn compute_block_rewards<T: BeaconChainTypes>(
+pub(crate) fn compute_block_rewards<T: BeaconChainTypes>(
     blocks: Vec<BlindedBeaconBlock<T::EthSpec>>,
     chain: Arc<BeaconChain<T>>,
 ) -> Result<Vec<BlockReward>, ApiError> {

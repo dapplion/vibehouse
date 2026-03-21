@@ -15,17 +15,17 @@ use types::{
     },
 };
 
-pub const V1: EndpointVersion = EndpointVersion(1);
-pub const V2: EndpointVersion = EndpointVersion(2);
-pub const V3: EndpointVersion = EndpointVersion(3);
+pub(crate) const V1: EndpointVersion = EndpointVersion(1);
+pub(crate) const V2: EndpointVersion = EndpointVersion(2);
+pub(crate) const V3: EndpointVersion = EndpointVersion(3);
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize)]
-pub enum ResponseIncludesVersion {
+pub(crate) enum ResponseIncludesVersion {
     Yes(ForkName),
     No,
 }
 
-pub fn beacon_response<T: Serialize>(
+pub(crate) fn beacon_response<T: Serialize>(
     require_version: ResponseIncludesVersion,
     data: T,
 ) -> BeaconResponse<T> {
@@ -44,7 +44,7 @@ pub fn beacon_response<T: Serialize>(
     }
 }
 
-pub fn execution_optimistic_finalized_beacon_response<T: Serialize>(
+pub(crate) fn execution_optimistic_finalized_beacon_response<T: Serialize>(
     require_version: ResponseIncludesVersion,
     execution_optimistic: bool,
     finalized: bool,
@@ -70,7 +70,7 @@ pub fn execution_optimistic_finalized_beacon_response<T: Serialize>(
 }
 
 /// Add the 'Content-Type application/octet-stream` header to a response.
-pub fn add_ssz_content_type_header(resp: Response) -> Response {
+pub(crate) fn add_ssz_content_type_header(resp: Response) -> Response {
     let mut resp = resp;
     resp.headers_mut().insert(
         CONTENT_TYPE_HEADER,
@@ -80,7 +80,7 @@ pub fn add_ssz_content_type_header(resp: Response) -> Response {
 }
 
 /// Add the `Eth-Consensus-Version` header to a response.
-pub fn add_consensus_version_header(resp: Response, fork_name: ForkName) -> Response {
+pub(crate) fn add_consensus_version_header(resp: Response, fork_name: ForkName) -> Response {
     let mut resp = resp;
     resp.headers_mut().insert(
         CONSENSUS_VERSION_HEADER,
@@ -90,7 +90,7 @@ pub fn add_consensus_version_header(resp: Response, fork_name: ForkName) -> Resp
 }
 
 /// Add the `Eth-Execution-Payload-Blinded` header to a response.
-pub fn add_execution_payload_blinded_header(
+pub(crate) fn add_execution_payload_blinded_header(
     resp: Response,
     execution_payload_blinded: bool,
 ) -> Response {
@@ -103,7 +103,7 @@ pub fn add_execution_payload_blinded_header(
 }
 
 /// Add the `Eth-Execution-Payload-Value` header to a response.
-pub fn add_execution_payload_value_header(
+pub(crate) fn add_execution_payload_value_header(
     resp: Response,
     execution_payload_value: Uint256,
 ) -> Response {
@@ -116,7 +116,7 @@ pub fn add_execution_payload_value_header(
 }
 
 /// Add the `Eth-Consensus-Block-Value` header to a response.
-pub fn add_consensus_block_value_header(
+pub(crate) fn add_consensus_block_value_header(
     resp: Response,
     consensus_payload_value: Uint256,
 ) -> Response {
@@ -128,11 +128,11 @@ pub fn add_consensus_block_value_header(
     resp
 }
 
-pub fn inconsistent_fork_rejection(error: InconsistentFork) -> ApiError {
+pub(crate) fn inconsistent_fork_rejection(error: InconsistentFork) -> ApiError {
     ApiError::server_error(format!("wrong fork: {error:?}"))
 }
 
-pub fn unsupported_version_rejection(version: EndpointVersion) -> ApiError {
+pub(crate) fn unsupported_version_rejection(version: EndpointVersion) -> ApiError {
     ApiError::bad_request(format!("Unsupported endpoint version: {version}"))
 }
 

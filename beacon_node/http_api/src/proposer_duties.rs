@@ -18,7 +18,7 @@ use types::{Epoch, EthSpec, Hash256, Slot};
 type ApiDuties = api_types::DutiesResponse<Vec<api_types::ProposerData>>;
 
 /// Handles a request from the HTTP API for proposer duties.
-pub fn proposer_duties<T: BeaconChainTypes>(
+pub(crate) fn proposer_duties<T: BeaconChainTypes>(
     request_epoch: Epoch,
     chain: &BeaconChain<T>,
 ) -> Result<ApiDuties, ApiError> {

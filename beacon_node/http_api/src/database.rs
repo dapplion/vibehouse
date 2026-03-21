@@ -6,15 +6,17 @@ use std::sync::Arc;
 use store::{AnchorInfo, BlobInfo, Split, StoreConfig};
 
 #[derive(Debug, Serialize)]
-pub struct DatabaseInfo {
-    pub schema_version: u64,
-    pub config: StoreConfig,
-    pub split: Split,
-    pub anchor: AnchorInfo,
-    pub blob_info: BlobInfo,
+pub(crate) struct DatabaseInfo {
+    pub(crate) schema_version: u64,
+    pub(crate) config: StoreConfig,
+    pub(crate) split: Split,
+    pub(crate) anchor: AnchorInfo,
+    pub(crate) blob_info: BlobInfo,
 }
 
-pub fn info<T: BeaconChainTypes>(chain: Arc<BeaconChain<T>>) -> Result<DatabaseInfo, ApiError> {
+pub(crate) fn info<T: BeaconChainTypes>(
+    chain: Arc<BeaconChain<T>>,
+) -> Result<DatabaseInfo, ApiError> {
     let store = &chain.store;
     let split = store.get_split_info();
     let config = store.get_config().clone();

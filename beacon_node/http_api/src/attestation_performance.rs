@@ -32,7 +32,7 @@ impl From<BeaconStateError> for AttestationPerformanceError {
     }
 }
 
-pub fn get_attestation_performance<T: BeaconChainTypes>(
+pub(crate) fn get_attestation_performance<T: BeaconChainTypes>(
     target: String,
     query: AttestationPerformanceQuery,
     chain: Arc<BeaconChain<T>>,

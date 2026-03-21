@@ -7,7 +7,7 @@ use std::sync::Arc;
 use tracing::debug;
 use types::{BeaconState, SignedBlindedBeaconBlock};
 
-pub fn compute_sync_committee_rewards<T: BeaconChainTypes>(
+pub(crate) fn compute_sync_committee_rewards<T: BeaconChainTypes>(
     chain: Arc<BeaconChain<T>>,
     block_id: BlockId,
     validators: Vec<ValidatorId>,
@@ -45,7 +45,7 @@ pub fn compute_sync_committee_rewards<T: BeaconChainTypes>(
     Ok((data, execution_optimistic, finalized))
 }
 
-pub fn get_state_before_applying_block<T: BeaconChainTypes>(
+pub(crate) fn get_state_before_applying_block<T: BeaconChainTypes>(
     chain: Arc<BeaconChain<T>>,
     block: &SignedBlindedBeaconBlock<T::EthSpec>,
 ) -> Result<BeaconState<T::EthSpec>, ApiError> {

@@ -38,7 +38,7 @@ fn convert_cache_error(error: BeaconStateError) -> ApiError {
 
 /// Returns information about *all validators* (i.e., global) and how they performed during a given
 /// epoch.
-pub fn global_validator_inclusion_data<T: BeaconChainTypes>(
+pub(crate) fn global_validator_inclusion_data<T: BeaconChainTypes>(
     epoch: Epoch,
     chain: &BeaconChain<T>,
 ) -> Result<GlobalValidatorInclusionData, ApiError> {
@@ -60,7 +60,7 @@ pub fn global_validator_inclusion_data<T: BeaconChainTypes>(
 }
 
 /// Returns information about a single validator and how it performed during a given epoch.
-pub fn validator_inclusion_data<T: BeaconChainTypes>(
+pub(crate) fn validator_inclusion_data<T: BeaconChainTypes>(
     epoch: Epoch,
     validator_id: &ValidatorId,
     chain: &BeaconChain<T>,

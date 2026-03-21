@@ -10,7 +10,7 @@ use std::sync::Arc;
 use types::beacon_response::EmptyMetadata;
 use types::{CommitteeIndex, ForkVersionedResponse};
 
-pub fn get_aggregate_attestation<T: BeaconChainTypes>(
+pub(crate) fn get_aggregate_attestation<T: BeaconChainTypes>(
     slot: Slot,
     attestation_data_root: &Hash256,
     committee_index: Option<CommitteeIndex>,
