@@ -3547,3 +3547,16 @@ No actionable code changes. All priorities 1-6 complete. Codebase stable.
 - **GitHub issues**: No new issues. #36 has 2 non-critical remaining + 5 blocked.
 
 No actionable code changes. All priorities 1-6 complete. Codebase stable.
+
+### Run 2086 (2026-03-21)
+
+**Visibility audit — pub→pub(crate) downgrades in beacon_chain internals**
+
+Downgraded 17 `pub` functions to `pub(crate)` across 3 beacon_chain-internal modules:
+- **block_times_cache.rs** (11 functions): `set_time_blob_observed`, `set_time_if_less`, `set_time_consensus_verified`, `set_time_executed`, `set_time_started_execution`, `set_time_attestable`, `set_time_imported`, `set_time_set_as_head`, `get_block_delays`, `get_peer_info`, `prune`
+- **shuffling_cache.rs** (3 functions): `is_promise`, `contains`, `update_head_shuffling_ids`
+- **pre_finalization_cache.rs** (3 functions): `is_pre_finalization_block`, `pre_finalization_block_rejected`, `block_processed`
+
+Verified each function is only used within the beacon_chain crate (not by http_api, network, or other crates). Notably, `ShufflingCache::get` and `insert_committee_cache` must stay `pub` (used by http_api). `set_time_observed` must stay `pub` (used by network).
+
+41 targeted tests pass. Full workspace compiles. Clippy clean.
