@@ -12,8 +12,7 @@ pub const CURRENT_SCHEMA_VERSION: SchemaVersion = SchemaVersion(28);
 pub const SCHEMA_VERSION_KEY: Hash256 = Hash256::repeat_byte(0);
 pub const CONFIG_KEY: Hash256 = Hash256::repeat_byte(1);
 pub const SPLIT_KEY: Hash256 = Hash256::repeat_byte(2);
-// DEPRECATED
-// pub const PRUNING_CHECKPOINT_KEY: Hash256 = Hash256::repeat_byte(3);
+// Note: repeat_byte(3) was PRUNING_CHECKPOINT_KEY, now removed.
 pub const COMPACTION_TIMESTAMP_KEY: Hash256 = Hash256::repeat_byte(4);
 pub const ANCHOR_INFO_KEY: Hash256 = Hash256::repeat_byte(5);
 pub const BLOB_INFO_KEY: Hash256 = Hash256::repeat_byte(6);

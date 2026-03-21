@@ -117,7 +117,6 @@ pub use peer_manager::{
     peerdb::client::Client,
     peerdb::score::{PeerAction, ReportSource},
 };
-// pub use service::{load_private_key, Context, Libp2pEvent, Service, NETWORK_KEY_FILENAME};
 pub use service::api_types::Response;
 pub use service::utils::{
     Context, METADATA_FILENAME, NETWORK_KEY_FILENAME, build_transport, load_or_build_metadata,
