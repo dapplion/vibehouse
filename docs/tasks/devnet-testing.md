@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 2126 (Mar 21) — maintenance check, all stable
+
+CI in progress (opentelemetry 0.31 update; check+clippy+fmt passed). 7 consecutive green nightlies. Spec HEAD unchanged (85ab2d23, Mar 13). No new Gloas PRs merged — verified #5001 (parent_block_root in bid key) already implemented in observed_execution_bids.rs. #5022 (block known check in on_payload_attestation) already handled by UnknownBeaconBlockRoot error. Open PRs #4843/#5023/#4960/#4979/#4992 still in review. 0 compatible dep updates. cargo audit unchanged (1 vuln rsa timing — no fix, 5 allowed). Project in maintenance mode.
+
 ### run 2125 (Mar 21) — maintenance check, all stable
 
 CI green (opentelemetry/hashlink/cargo_metadata update running, check+clippy passed). 6 consecutive green nightlies. Spec HEAD unchanged (1baa05e, Mar 15). No new Gloas PRs merged — #4843 (variable PTC deadline) has 1 approval (jtraglia) with active review from potuz/fradamt, #5022/#4979/#4992 still open. 0 compatible dep updates (26 major-version-only bumps remaining). cargo audit unchanged (rsa timing, no fix). Build clean, zero warnings. Reviewed PR #4843 diff in detail: payload_present→payload_timely rename, new MIN_PAYLOAD_DUE_BPS config, get_payload_due_ms size-based interpolation, store.payload_envelopes field, is_payload_timely validator-side check, has_payload_quorum fork choice rename. Ready to implement when merged. Project in maintenance mode.
