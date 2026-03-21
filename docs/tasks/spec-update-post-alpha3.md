@@ -287,3 +287,11 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - Open Gloas PRs unchanged: #4979, #4992, #5020 (PTC lookbehind), #4843 (variable PTC deadline), #5022 (block-known check)
 - CI green, clippy clean, cargo audit unchanged, cargo update no changes
 - **No action needed.**
+
+### run 2043 (Mar 21) — routine spec check
+
+- No new consensus-specs merges since #5005 (Mar 15), no new release since alpha.3
+- Open Gloas PRs unchanged: PTC lookbehind (#4979/#4992/#5020) design unsettled, #5022 + #5023 still open
+- CI green (4 consecutive nightly successes), cargo audit unchanged (RUSTSEC-2023-0071 rsa, unfixable)
+- Mar 17 nightly flake (range test) confirmed fixed in 8f8faa7de
+- **No action needed.**
