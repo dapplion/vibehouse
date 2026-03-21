@@ -1975,3 +1975,13 @@ Repeated spec tracking checks, all stable. Key facts from this period:
 - **Production code quality**: zero unwrap() in consensus-critical hot paths (per_block_processing, per_epoch_processing, fork_choice, block_verification, attestation_verification).
 - All stable. No action needed.
 
+### Run 2060 (2026-03-21) — health check
+- **Spec**: v1.7.0-alpha.3 still latest. No new merged PRs since #5005 (Mar 15).
+- **New open Gloas PRs**: #5022 (assert block known in on_payload_attestation_message — we already return UnknownBeaconBlockRoot error), #5020 (PTC lookbehind minimal state change — alternative to #4979, both still open).
+- **Open Gloas PRs**: #4992 (cached PTCs, 23 reviews), #4979 (PTC lookbehind, 10 reviews, MERGEABLE), #5020 (minimal PTC lookbehind, 2 reviews), #4843 (variable PTC deadline, 11 reviews), #4954 (milliseconds), #4939 (envelope request), #4898/#4892 (already implemented).
+- **EF tests**: 113/113 fake crypto minimal passing.
+- **Build**: zero clippy warnings, zero build warnings. cargo audit unchanged (rsa advisory, no fix).
+- **CI**: all green. Nightly green since Mar 18.
+- Prep branch `cached-ptc` remains ready on origin.
+- All stable. No action needed.
+
