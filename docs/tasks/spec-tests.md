@@ -30,6 +30,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2061 (Mar 21) — health check, all stable
+
+- CI: 5/5 recent runs green. Nightly: Mar 18-20 all green (Mar 17 flake already fixed — `expect_empty_network` removed from `finalized_sync_not_enough_custody_peers_on_start`).
+- Spec: v1.7.0-alpha.3 still latest. consensus-specs HEAD unchanged at 1baa05e (Mar 15). No new merges.
+- Spec test vectors: still v1.6.0-beta.0 (Fulu). No Gloas vectors published yet.
+- Open Gloas PRs: #5023 (block root filenames — test infra, open), #4960 (fork choice deposit test, open), #4932 (sanity/blocks tests, open), #4840 (EIP-7843, open). None merged.
+- Security: cargo audit clean (rsa RUSTSEC-2023-0071 no fix available, 5 unmaintained crate warnings).
+- Build: zero warnings, zero clippy warnings, `cargo check --release` clean.
+- All priorities complete. Project in maintenance mode.
+
 ### run 2042 (Mar 21) — health check, all stable
 
 - CI: all green. rustls-webpki RUSTSEC-2026-0049 fix shipped. Nightly: Mar 18-20 all green.
