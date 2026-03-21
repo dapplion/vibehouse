@@ -3027,3 +3027,16 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Build**: `cargo clippy --workspace --all-targets` zero warnings.
 - **Remaining major bumps**: 22 (bincode v1→v3, rand v0.9→v0.10, reqwest v0.12→v0.13, etc — all require careful migration or blocked by transitive dep conflicts).
 
+### Run 2130 (2026-03-21)
+
+**Visibility audit — pub→pub(crate) in store and state_processing**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since #5005 (Mar 15). Open Gloas PRs unchanged (#4843, #5022, #5023, #4979, #4992, #5008, #4892, #4898 all still open).
+- **CI**: fully green (run 23382597558). 8 consecutive green nightlies.
+- **Code changes** — downgraded `pub` to `pub(crate)` for internal-only items:
+  - **store**: `HotHDiffBufferCache` (state_cache.rs), `HierarchyConfig` methods: `exponent_for_slot`, `should_commit_immediately`, `replay_from_range`, `diff_base_slot` (hdiff.rs)
+  - **state_processing**: `PreEpochCache` (epoch_cache.rs), `translate_participation` (upgrade/altair.rs), `eth2_genesis_time` (genesis.rs, also removed from lib.rs re-export)
+  - Attempted forwards iterator types (`FrozenForwardsIterator`, `SimpleForwardsIterator`, `HybridForwardsIterator`) but reverted — they leak through `impl Iterator` return types in beacon_chain.
+- **Tests**: 236/236 store pass, 1026/1026 state_processing pass.
+- **Build**: `cargo clippy --workspace --all-targets` zero warnings, `make lint-full` clean.
+

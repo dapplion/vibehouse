@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 2130 (Mar 21) — pub(crate) visibility audit
+
+CI fully green (8 consecutive nightlies). Spec unchanged (no new merges since Mar 15). Downgraded `pub` to `pub(crate)` for 7 internal-only items in store (HotHDiffBufferCache, 4 HierarchyConfig methods) and state_processing (PreEpochCache, translate_participation, eth2_genesis_time). All tests pass (236 store, 1026 state_processing). 10 remaining TODOs all blocked on external factors.
+
 ### run 2126 (Mar 21) — maintenance check, all stable
 
 CI in progress (opentelemetry 0.31 update; check+clippy+fmt passed). 7 consecutive green nightlies. Spec HEAD unchanged (85ab2d23, Mar 13). No new Gloas PRs merged — verified #5001 (parent_block_root in bid key) already implemented in observed_execution_bids.rs. #5022 (block known check in on_payload_attestation) already handled by UnknownBeaconBlockRoot error. Open PRs #4843/#5023/#4960/#4979/#4992 still in review. 0 compatible dep updates. cargo audit unchanged (1 vuln rsa timing — no fix, 5 allowed). Project in maintenance mode.
