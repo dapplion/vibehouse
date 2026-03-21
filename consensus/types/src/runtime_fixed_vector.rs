@@ -31,9 +31,12 @@ impl<T: Clone + Default> RuntimeFixedVector<T> {
         self.vec.as_slice()
     }
 
-    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         self.len
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
     }
 
     pub fn into_vec(self) -> Vec<T> {

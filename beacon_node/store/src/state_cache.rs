@@ -77,7 +77,6 @@ pub enum PutStateOutcome {
     New(Vec<Hash256>),
 }
 
-#[allow(clippy::len_without_is_empty)]
 impl<E: EthSpec> StateCache<E> {
     pub fn new(
         state_capacity: NonZeroUsize,
@@ -97,6 +96,10 @@ impl<E: EthSpec> StateCache<E> {
 
     pub fn len(&self) -> usize {
         self.states.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.states.len() == 0
     }
 
     pub fn capacity(&self) -> usize {

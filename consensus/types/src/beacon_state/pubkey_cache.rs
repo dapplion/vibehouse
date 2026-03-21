@@ -3,7 +3,6 @@ use rpds::HashTrieMapSync as HashTrieMap;
 
 type ValidatorIndex = usize;
 
-#[allow(clippy::len_without_is_empty)]
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct PubkeyCache {
     /// Maintain the number of keys added to the map. It is not sufficient to just use the
@@ -15,9 +14,13 @@ pub struct PubkeyCache {
 
 impl PubkeyCache {
     /// Returns the number of validator indices added to the map so far.
-    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> ValidatorIndex {
         self.len
+    }
+
+    /// Returns `true` if no validator indices have been added.
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
     }
 
     /// Inserts a validator index into the map.
