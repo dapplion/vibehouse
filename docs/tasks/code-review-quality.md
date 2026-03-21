@@ -3078,3 +3078,16 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Outdated deps**: Only `rand_xorshift` 0.4→0.5 remains, blocked by `rand_core` version mismatch (needs full rand ecosystem bump).
 - **No code changes** — monitoring/verification run.
 
+### Run 2134 (2026-03-21)
+
+**Monitoring run — spec check + EF test verification + codebase health**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since #5005 (March 15). Latest commit on master is `1baa05e7` (March 15). Open Gloas PRs: #5023 (test fix), #5022 (on_payload_attestation block check — already implemented), #5020 (PTC lookbehind minimal — competing with #4992), #5008 (field name fix — already aligned), #4843 (variable PTC deadline — still open, not merged). Nightly reftest workflow hasn't run successfully since March 7 (March 8-9 cancelled), so no post-alpha.3 test vectors yet.
+- **CI**: Run 23384161014 (dep update commit 5cb0b0d89) — all 6/6 jobs passed (check+clippy, ef-tests, unit-tests, http_api, network+op_pool, beacon_chain). Full green.
+- **EF tests**: 139/139 pass (minimal, fake_crypto). Verified locally this run.
+- **Security**: `cargo audit` — only RUSTSEC-2023-0071 (rsa, no fix). No new advisories.
+- **Dependencies**: `cargo update --dry-run` shows no semver-compatible updates. All remaining major bumps blocked (ssz ecosystem rewrite, rand ecosystem, libp2p/prometheus).
+- **Toolchain**: Rust stable 1.94.0 (current). rustup 1.29.0 available (non-critical).
+- **Codebase**: Zero clippy warnings, zero TODOs without issue refs, zero dead code annotations on non-test functions. All `#[allow(dead_code)]` are on enum fields (required by Rust — Debug derive doesn't count as field read).
+- **No code changes** — verification-only run.
+
