@@ -4342,3 +4342,24 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Build**: Zero warnings on `cargo build --release`. `make lint` clean.
 - **Full test suite**: 4919/4919 non-web3signer tests pass (8 web3signer failures are pre-existing infrastructure-dependent). One intermittent failure in `advertise_false_custody_group_count` on first run — passed on retry (port allocation race, pre-existing).
 - **Conclusion**: No code changes needed. Spec tracking up to date. Codebase healthy.
+
+### Run 2201
+
+**Spec tracking + devnet verification + full test suite**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since March 15. Open Gloas PRs reviewed:
+  - #5022 (payload attestation block check — already implemented)
+  - #5020/#4979/#4992 (PTC lookbehind — still debated)
+  - #5008 (field name doc fix)
+  - #4954 (fork choice store milliseconds — open, no reviews)
+  - #4898 (remove pending status from tiebreaker — open, 3 comments)
+  - #4892 (remove impossible branch in forkchoice — open, 3 comments)
+  - #4843 (variable PTC deadline — still open)
+  - #4840 (EIP-7843 SLOTNUM opcode — draft, early stage)
+  - #4747 (fast confirmation rule — open)
+  All unmerged. No action needed.
+- **EF test fixtures**: Latest release still v1.6.0-beta.0 (Sep 2025). No new fixtures.
+- **Devnet**: 4-node minimal devnet passed — finalized epoch 8 (slot 81, epoch 10), Gloas fork at epoch 1. No stalls or errors.
+- **Build**: Zero warnings on `cargo build --release`. `make lint` clean.
+- **Full test suite**: 4991/4999 tests pass (8 web3signer failures are pre-existing infrastructure-dependent).
+- **Conclusion**: No code changes needed. Spec tracking up to date. Devnet healthy. Codebase in excellent shape.
