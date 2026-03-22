@@ -42,7 +42,7 @@ const ACCEPTABLE_FALLBACK_ATTESTATION_HIT_PERCENTAGE: f64 = 95.0;
 const SUGGESTED_FEE_RECIPIENT: [u8; 20] =
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
 
-pub fn run_fallback_sim(matches: &ArgMatches) -> Result<(), String> {
+pub(crate) fn run_fallback_sim(matches: &ArgMatches) -> Result<(), String> {
     let (_name, subcommand_matches) = matches.subcommand().expect("subcommand");
     let vc_count = subcommand_matches
         .get_one::<String>("vc-count")

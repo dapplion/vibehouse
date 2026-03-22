@@ -2,7 +2,7 @@ use crate::case_result::CaseResult;
 use crate::error::Error;
 use std::path::Path;
 
-pub fn assert_tests_pass(handler_name: &str, path: &Path, results: &[CaseResult]) {
+pub(crate) fn assert_tests_pass(handler_name: &str, path: &Path, results: &[CaseResult]) {
     let (failed, skipped_bls, skipped_known_failures) = categorize_results(results);
 
     if failed.len() + skipped_known_failures.len() > 0 {
@@ -19,7 +19,7 @@ pub fn assert_tests_pass(handler_name: &str, path: &Path, results: &[CaseResult]
     }
 }
 
-pub fn categorize_results(
+pub(crate) fn categorize_results(
     results: &[CaseResult],
 ) -> (Vec<&CaseResult>, Vec<&CaseResult>, Vec<&CaseResult>) {
     let mut failed = vec![];
@@ -38,7 +38,7 @@ pub fn categorize_results(
     (failed, skipped_bls, skipped_known_failures)
 }
 
-pub fn print_results(
+pub(crate) fn print_results(
     handler_name: &str,
     failed: &[&CaseResult],
     skipped_bls: &[&CaseResult],

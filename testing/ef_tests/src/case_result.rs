@@ -4,7 +4,7 @@ use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 use types::BeaconState;
 
-pub const MAX_VALUE_STRING_LEN: usize = 500;
+pub(crate) const MAX_VALUE_STRING_LEN: usize = 500;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct CaseResult {
@@ -32,7 +32,7 @@ impl CaseResult {
 
 /// Same as `compare_result_detailed`, however it drops the caches on both states before
 /// comparison.
-pub fn compare_beacon_state_results_without_caches<E: EthSpec, T: Debug>(
+pub(crate) fn compare_beacon_state_results_without_caches<E: EthSpec, T: Debug>(
     result: &mut Result<BeaconState<E>, T>,
     expected: &mut Option<BeaconState<E>>,
 ) -> Result<(), Error> {
@@ -49,7 +49,7 @@ pub fn compare_beacon_state_results_without_caches<E: EthSpec, T: Debug>(
 
 /// Same as `compare_result`, however utilizes the `CompareFields` trait to give a list of
 /// mismatching fields when `Ok(result) != Some(expected)`.
-pub fn compare_result_detailed<T, U>(
+pub(crate) fn compare_result_detailed<T, U>(
     result: &Result<T, U>,
     expected: &Option<T>,
 ) -> Result<(), Error>
@@ -86,7 +86,7 @@ where
 ///
 /// If `expected.is_none()` then `result` is expected to be `Err`. Otherwise, `T` in `result` and
 /// `expected` must be equal.
-pub fn compare_result<T, U>(result: &Result<T, U>, expected: &Option<T>) -> Result<(), Error>
+pub(crate) fn compare_result<T, U>(result: &Result<T, U>, expected: &Option<T>) -> Result<(), Error>
 where
     T: PartialEq<T> + Debug,
     U: Debug,

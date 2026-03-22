@@ -39,7 +39,7 @@ const SUGGESTED_FEE_RECIPIENT: [u8; 20] =
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
 
 #[allow(clippy::large_stack_frames)]
-pub fn run_basic_sim(matches: &ArgMatches) -> Result<(), String> {
+pub(crate) fn run_basic_sim(matches: &ArgMatches) -> Result<(), String> {
     let (_name, subcommand_matches) = matches.subcommand().expect("subcommand");
     let node_count = subcommand_matches
         .get_one::<String>("nodes")

@@ -25,7 +25,7 @@ fn build_result(repo_dir: &Path) -> Output {
         .expect("failed to make nethermind")
 }
 
-pub fn build(execution_clients_dir: &Path) {
+pub(crate) fn build(execution_clients_dir: &Path) {
     let repo_dir = execution_clients_dir.join("nethermind");
 
     if !repo_dir.exists() {
@@ -60,7 +60,7 @@ pub fn build(execution_clients_dir: &Path) {
  */
 
 #[derive(Clone)]
-pub struct NethermindEngine;
+pub(crate) struct NethermindEngine;
 
 impl NethermindEngine {
     fn binary_path() -> PathBuf {

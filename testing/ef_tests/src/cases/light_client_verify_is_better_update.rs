@@ -9,7 +9,7 @@ pub struct LightClientVerifyIsBetterUpdate<E: EthSpec> {
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
-pub struct Metadata {
+pub(super) struct Metadata {
     updates_count: u64,
 }
 

@@ -9,8 +9,8 @@ macro_rules! uint_wrapper {
     ($wrapper_name:ident, $wrapped_type:ty) => {
         #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Decode, Encode, Deserialize)]
         #[serde(try_from = "String")]
-        pub struct $wrapper_name {
-            pub x: $wrapped_type,
+        pub(crate) struct $wrapper_name {
+            pub(crate) x: $wrapped_type,
         }
 
         impl TryFrom<String> for $wrapper_name {

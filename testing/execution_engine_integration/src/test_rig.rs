@@ -40,7 +40,7 @@ struct ExecutionPair<Engine, E: EthSpec> {
 ///
 /// There are two EEs held here so that we can test out-of-order application of payloads, and other
 /// edge-cases.
-pub struct TestRig<Engine, E: EthSpec = MainnetEthSpec> {
+pub(crate) struct TestRig<Engine, E: EthSpec = MainnetEthSpec> {
     #[allow(dead_code)]
     runtime: Arc<tokio::runtime::Runtime>,
     ee_a: ExecutionPair<Engine, E>,
@@ -108,7 +108,7 @@ async fn import_and_unlock(http_url: SensitiveUrl, priv_keys: &[&str], password:
 }
 
 impl<Engine: GenericExecutionEngine> TestRig<Engine> {
-    pub fn new(generic_engine: Engine, use_local_signing: bool) -> Self {
+    pub(crate) fn new(generic_engine: Engine, use_local_signing: bool) -> Self {
         let runtime = Arc::new(
             tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
@@ -169,13 +169,13 @@ impl<Engine: GenericExecutionEngine> TestRig<Engine> {
         }
     }
 
-    pub fn perform_tests_blocking(&self) {
+    pub(crate) fn perform_tests_blocking(&self) {
         self.runtime
             .handle()
             .block_on(async { self.perform_tests().await });
     }
 
-    pub async fn wait_until_synced(&self) {
+    pub(crate) async fn wait_until_synced(&self) {
         let start_instant = Instant::now();
 
         for pair in [&self.ee_a, &self.ee_b] {
@@ -194,7 +194,7 @@ impl<Engine: GenericExecutionEngine> TestRig<Engine> {
         }
     }
 
-    pub async fn perform_tests(&self) {
+    pub(crate) async fn perform_tests(&self) {
         self.wait_until_synced().await;
 
         let account1 = Address::from_slice(&hex::decode(ACCOUNT1).unwrap());
@@ -711,7 +711,7 @@ async fn check_payload_reconstruction<E: GenericExecutionEngine>(
 }
 
 /// Returns the duration since the unix epoch.
-pub fn timestamp_now() -> u64 {
+pub(crate) fn timestamp_now() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_else(|_| Duration::from_secs(0))

@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
-pub fn prepare_dir() -> PathBuf {
+pub(crate) fn prepare_dir() -> PathBuf {
     let manifest_dir: PathBuf = env::var("CARGO_MANIFEST_DIR").unwrap().into();
     let execution_clients_dir = manifest_dir.join("execution_clients");
 
@@ -15,7 +15,7 @@ pub fn prepare_dir() -> PathBuf {
     execution_clients_dir
 }
 
-pub fn clone_repo(repo_dir: &Path, repo_url: &str) -> Result<(), String> {
+pub(crate) fn clone_repo(repo_dir: &Path, repo_url: &str) -> Result<(), String> {
     output_to_result(
         Command::new("git")
             .arg("clone")
@@ -27,7 +27,7 @@ pub fn clone_repo(repo_dir: &Path, repo_url: &str) -> Result<(), String> {
     )
 }
 
-pub fn checkout(repo_dir: &Path, revision_or_branch: &str) -> Result<(), String> {
+pub(crate) fn checkout(repo_dir: &Path, revision_or_branch: &str) -> Result<(), String> {
     output_to_result(
         Command::new("git")
             .arg("checkout")
@@ -61,7 +61,7 @@ pub fn checkout(repo_dir: &Path, revision_or_branch: &str) -> Result<(), String>
 }
 
 /// Gets the last annotated tag of the given repo.
-pub fn get_latest_release(repo_dir: &Path, branch_name: &str) -> Result<String, String> {
+pub(crate) fn get_latest_release(repo_dir: &Path, branch_name: &str) -> Result<String, String> {
     // If the directory was already present it is possible we don't have the most recent tags.
     // Fetch them
     output_to_result(
@@ -110,7 +110,7 @@ where
     }
 }
 
-pub fn check_command_output<F>(output: Output, failure_msg: F)
+pub(crate) fn check_command_output<F>(output: Output, failure_msg: F)
 where
     F: Fn() -> String,
 {
@@ -124,7 +124,7 @@ where
 }
 
 /// Builds the stdout/stderr handler for commands which might output to the terminal.
-pub fn build_stdio() -> Stdio {
+pub(crate) fn build_stdio() -> Stdio {
     if SUPPRESS_LOGS {
         Stdio::null()
     } else {

@@ -77,7 +77,7 @@ impl<T: SszStaticType + for<'de> ContextDeserialize<'de, ForkName>> LoadCase for
     }
 }
 
-pub fn check_serialization<T: SszStaticType>(
+pub(crate) fn check_serialization<T: SszStaticType>(
     value: &T,
     serialized: &[u8],
     deserializer: impl FnOnce(&[u8]) -> Result<T, ssz::DecodeError>,
@@ -94,7 +94,7 @@ pub fn check_serialization<T: SszStaticType>(
     Ok(())
 }
 
-pub fn check_tree_hash(expected_str: &str, actual_root: &[u8]) -> Result<(), Error> {
+pub(crate) fn check_tree_hash(expected_str: &str, actual_root: &[u8]) -> Result<(), Error> {
     let expected_root =
         hex::decode(&expected_str[2..]).map_err(|e| Error::FailedToParseTest(format!("{e:?}")))?;
     let expected_root = Hash256::from_slice(&expected_root);

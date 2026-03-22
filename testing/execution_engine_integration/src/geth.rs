@@ -10,7 +10,7 @@ use tempfile::TempDir;
 const GETH_BRANCH: &str = "master";
 const GETH_REPO_URL: &str = "https://github.com/ethereum/go-ethereum";
 
-pub fn build_result(repo_dir: &Path) -> Output {
+pub(crate) fn build_result(repo_dir: &Path) -> Output {
     Command::new("make")
         .arg("geth")
         .current_dir(repo_dir)
@@ -22,7 +22,7 @@ pub fn build_result(repo_dir: &Path) -> Output {
         .expect("failed to make geth")
 }
 
-pub fn build(execution_clients_dir: &Path) {
+pub(crate) fn build(execution_clients_dir: &Path) {
     let repo_dir = execution_clients_dir.join("go-ethereum");
 
     if !repo_dir.exists() {
@@ -40,7 +40,7 @@ pub fn build(execution_clients_dir: &Path) {
     });
 }
 
-pub fn clean(execution_clients_dir: &Path) {
+pub(crate) fn clean(execution_clients_dir: &Path) {
     let repo_dir = execution_clients_dir.join("go-ethereum");
     if let Err(e) = fs::remove_dir_all(repo_dir) {
         eprintln!("Error while deleting folder: {e}");
@@ -52,7 +52,7 @@ pub fn clean(execution_clients_dir: &Path) {
  */
 
 #[derive(Clone)]
-pub struct GethEngine;
+pub(crate) struct GethEngine;
 
 impl GethEngine {
     fn binary_path() -> PathBuf {

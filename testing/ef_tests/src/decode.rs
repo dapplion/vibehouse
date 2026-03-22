@@ -32,11 +32,11 @@ pub fn log_file_access<P: AsRef<Path>>(file_accessed: P) {
     fs2::FileExt::unlock(&file).expect("unable to unlock file");
 }
 
-pub fn yaml_decode<T: serde::de::DeserializeOwned>(string: &str) -> Result<T, Error> {
+pub(crate) fn yaml_decode<T: serde::de::DeserializeOwned>(string: &str) -> Result<T, Error> {
     serde_yaml::from_str(string).map_err(|e| Error::FailedToParseTest(format!("{e:?}")))
 }
 
-pub fn context_yaml_decode<'de, T, C>(string: &'de str, context: C) -> Result<T, Error>
+pub(crate) fn context_yaml_decode<'de, T, C>(string: &'de str, context: C) -> Result<T, Error>
 where
     T: ContextDeserialize<'de, C>,
 {
@@ -45,7 +45,7 @@ where
         .map_err(|e| Error::FailedToParseTest(format!("{e:?}")))
 }
 
-pub fn context_yaml_decode_file<T, C>(path: &Path, context: C) -> Result<T, Error>
+pub(crate) fn context_yaml_decode_file<T, C>(path: &Path, context: C) -> Result<T, Error>
 where
     T: for<'de> ContextDeserialize<'de, C>,
 {
@@ -57,7 +57,7 @@ where
         .and_then(|s| context_yaml_decode(&s, context))
 }
 
-pub fn yaml_decode_file<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, Error> {
+pub(crate) fn yaml_decode_file<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, Error> {
     log_file_access(path);
     fs::read_to_string(path)
         .map_err(|e| {
@@ -69,7 +69,7 @@ pub fn yaml_decode_file<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T
 /// Decode a Snappy encoded file.
 ///
 /// Files in the EF tests are unframed, so we need to use `snap::raw::Decoder`.
-pub fn snappy_decode_file(path: &Path) -> Result<Vec<u8>, Error> {
+pub(crate) fn snappy_decode_file(path: &Path) -> Result<Vec<u8>, Error> {
     log_file_access(path);
     let bytes = fs::read(path).map_err(|e| {
         Error::FailedToParseTest(format!("Unable to load {}: {:?}", path.display(), e))
@@ -84,7 +84,7 @@ pub fn snappy_decode_file(path: &Path) -> Result<Vec<u8>, Error> {
     })
 }
 
-pub fn ssz_decode_file_with<T, F>(path: &Path, f: F) -> Result<T, Error>
+pub(crate) fn ssz_decode_file_with<T, F>(path: &Path, f: F) -> Result<T, Error>
 where
     F: FnOnce(&[u8]) -> Result<T, ssz::DecodeError>,
 {
@@ -105,12 +105,12 @@ where
     })
 }
 
-pub fn ssz_decode_file<T: ssz::Decode>(path: &Path) -> Result<T, Error> {
+pub(crate) fn ssz_decode_file<T: ssz::Decode>(path: &Path) -> Result<T, Error> {
     log_file_access(path);
     ssz_decode_file_with(path, T::from_ssz_bytes)
 }
 
-pub fn ssz_decode_state<E: EthSpec>(
+pub(crate) fn ssz_decode_state<E: EthSpec>(
     path: &Path,
     spec: &ChainSpec,
 ) -> Result<BeaconState<E>, Error> {
@@ -118,7 +118,7 @@ pub fn ssz_decode_state<E: EthSpec>(
     ssz_decode_file_with(path, |bytes| BeaconState::from_ssz_bytes(bytes, spec))
 }
 
-pub fn ssz_decode_light_client_update<E: EthSpec>(
+pub(crate) fn ssz_decode_light_client_update<E: EthSpec>(
     path: &Path,
     fork_name: &ForkName,
 ) -> Result<LightClientUpdate<E>, Error> {

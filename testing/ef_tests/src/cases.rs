@@ -41,42 +41,42 @@ mod ssz_generic;
 mod ssz_static;
 mod transition;
 
-pub use self::fork_choice::*;
-pub use bls_aggregate_sigs::*;
-pub use bls_aggregate_verify::*;
-pub use bls_batch_verify::*;
-pub use bls_eth_aggregate_pubkeys::*;
-pub use bls_eth_fast_aggregate_verify::*;
-pub use bls_fast_aggregate_verify::*;
-pub use bls_sign_msg::*;
-pub use bls_verify_msg::*;
-pub use common::SszStaticType;
-pub use compute_columns_for_custody_groups::*;
+pub(crate) use self::fork_choice::*;
+pub(crate) use bls_aggregate_sigs::*;
+pub(crate) use bls_aggregate_verify::*;
+pub(crate) use bls_batch_verify::*;
+pub(crate) use bls_eth_aggregate_pubkeys::*;
+pub(crate) use bls_eth_fast_aggregate_verify::*;
+pub(crate) use bls_fast_aggregate_verify::*;
+pub(crate) use bls_sign_msg::*;
+pub(crate) use bls_verify_msg::*;
+pub(crate) use common::SszStaticType;
+pub(crate) use compute_columns_for_custody_groups::*;
 pub use epoch_processing::*;
-pub use fork::ForkTest;
-pub use genesis_initialization::*;
-pub use genesis_validity::*;
-pub use get_custody_groups::*;
-pub use kzg_blob_to_kzg_commitment::*;
-pub use kzg_compute_blob_kzg_proof::*;
-pub use kzg_compute_cells::*;
-pub use kzg_compute_cells_and_kzg_proofs::*;
-pub use kzg_compute_kzg_proof::*;
-pub use kzg_recover_cells_and_kzg_proofs::*;
-pub use kzg_verify_blob_kzg_proof::*;
-pub use kzg_verify_blob_kzg_proof_batch::*;
-pub use kzg_verify_cell_kzg_proof_batch::*;
-pub use kzg_verify_kzg_proof::*;
-pub use light_client_verify_is_better_update::*;
-pub use merkle_proof_validity::*;
+pub(crate) use fork::ForkTest;
+pub(crate) use genesis_initialization::*;
+pub(crate) use genesis_validity::*;
+pub(crate) use get_custody_groups::*;
+pub(crate) use kzg_blob_to_kzg_commitment::*;
+pub(crate) use kzg_compute_blob_kzg_proof::*;
+pub(crate) use kzg_compute_cells::*;
+pub(crate) use kzg_compute_cells_and_kzg_proofs::*;
+pub(crate) use kzg_compute_kzg_proof::*;
+pub(crate) use kzg_recover_cells_and_kzg_proofs::*;
+pub(crate) use kzg_verify_blob_kzg_proof::*;
+pub(crate) use kzg_verify_blob_kzg_proof_batch::*;
+pub(crate) use kzg_verify_cell_kzg_proof_batch::*;
+pub(crate) use kzg_verify_kzg_proof::*;
+pub(crate) use light_client_verify_is_better_update::*;
+pub(crate) use merkle_proof_validity::*;
 pub use operations::*;
-pub use rewards::RewardsTest;
-pub use sanity_blocks::*;
-pub use sanity_slots::*;
-pub use shuffling::*;
-pub use ssz_generic::*;
-pub use ssz_static::*;
-pub use transition::TransitionTest;
+pub(crate) use rewards::RewardsTest;
+pub(crate) use sanity_blocks::*;
+pub(crate) use sanity_slots::*;
+pub(crate) use shuffling::*;
+pub(crate) use ssz_generic::*;
+pub(crate) use ssz_static::*;
+pub(crate) use transition::TransitionTest;
 
 /// Used for running feature tests for future forks that have not yet been added to `ForkName`.
 /// This runs tests in the directory named by the feature instead of the fork name. This has been
@@ -157,12 +157,12 @@ pub trait Case: Debug + Sync {
 }
 
 #[derive(Debug)]
-pub struct Cases<T> {
+pub(crate) struct Cases<T> {
     pub test_cases: Vec<(PathBuf, T)>,
 }
 
 impl<T: Case> Cases<T> {
-    pub fn test_results(&self, fork_name: ForkName, use_rayon: bool) -> Vec<CaseResult> {
+    pub(crate) fn test_results(&self, fork_name: ForkName, use_rayon: bool) -> Vec<CaseResult> {
         if use_rayon {
             self.test_cases
                 .into_par_iter()

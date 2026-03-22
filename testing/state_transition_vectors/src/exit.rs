@@ -8,9 +8,9 @@ use state_processing::{
 use types::{BeaconBlock, BeaconState, Epoch, EthSpec, SignedBeaconBlock};
 
 // Default validator index to exit.
-pub const VALIDATOR_INDEX: u64 = 0;
+pub(crate) const VALIDATOR_INDEX: u64 = 0;
 // Epoch that the state will be transitioned to by default, equal to SHARD_COMMITTEE_PERIOD.
-pub const STATE_EPOCH: Epoch = Epoch::new(256);
+pub(crate) const STATE_EPOCH: Epoch = Epoch::new(256);
 
 struct ExitTest {
     validator_index: u64,

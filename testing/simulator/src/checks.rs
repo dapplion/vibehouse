@@ -5,7 +5,7 @@ use types::{Epoch, EthSpec, ExecPayload, ExecutionBlockHash, Slot, Unsigned};
 
 /// Checks that all of the validators have on-boarded by the start of the second eth1 voting
 /// period.
-pub async fn verify_initial_validator_count<E: EthSpec>(
+pub(crate) async fn verify_initial_validator_count<E: EthSpec>(
     network: LocalNetwork<E>,
     slot_duration: Duration,
     initial_validator_count: usize,
@@ -17,7 +17,7 @@ pub async fn verify_initial_validator_count<E: EthSpec>(
 
 /// Checks that all of the validators have on-boarded by the start of the second eth1 voting
 /// period.
-pub async fn verify_validator_onboarding<E: EthSpec>(
+pub(crate) async fn verify_validator_onboarding<E: EthSpec>(
     network: LocalNetwork<E>,
     slot_duration: Duration,
     expected_validator_count: usize,
@@ -34,7 +34,7 @@ pub async fn verify_validator_onboarding<E: EthSpec>(
 /// Checks that the chain has made the first possible finalization.
 ///
 /// Intended to be run as soon as chain starts.
-pub async fn verify_first_finalization<E: EthSpec>(
+pub(crate) async fn verify_first_finalization<E: EthSpec>(
     network: LocalNetwork<E>,
     slot_duration: Duration,
 ) -> Result<(), String> {
@@ -44,7 +44,7 @@ pub async fn verify_first_finalization<E: EthSpec>(
 }
 
 /// Delays for `epochs`, plus half a slot extra.
-pub async fn epoch_delay(epochs: Epoch, slot_duration: Duration, slots_per_epoch: u64) {
+pub(crate) async fn epoch_delay(epochs: Epoch, slot_duration: Duration, slots_per_epoch: u64) {
     let duration = slot_duration * (epochs.as_u64() * slots_per_epoch) as u32 + slot_duration / 2;
     tokio::time::sleep(duration).await;
 }
@@ -57,7 +57,7 @@ async fn slot_delay(slots: Slot, slot_duration: Duration) {
 
 /// Verifies that all beacon nodes in the given network have a head state that has a finalized
 /// epoch of `epoch`.
-pub async fn verify_all_finalized_at<E: EthSpec>(
+pub(crate) async fn verify_all_finalized_at<E: EthSpec>(
     network: LocalNetwork<E>,
     epoch: Epoch,
 ) -> Result<(), String> {
@@ -118,7 +118,7 @@ async fn verify_validator_count<E: EthSpec>(
 }
 
 /// Verifies that there's been a block produced at every slot up to and including `slot`.
-pub async fn verify_full_block_production_up_to<E: EthSpec>(
+pub(crate) async fn verify_full_block_production_up_to<E: EthSpec>(
     network: LocalNetwork<E>,
     slot: Slot,
     slot_duration: Duration,
@@ -149,7 +149,7 @@ pub async fn verify_full_block_production_up_to<E: EthSpec>(
 }
 
 /// Verify that all nodes have the correct fork version after the `fork_epoch`.
-pub async fn verify_fork_version<E: EthSpec>(
+pub(crate) async fn verify_fork_version<E: EthSpec>(
     network: LocalNetwork<E>,
     fork_epoch: Epoch,
     slot_duration: Duration,
@@ -173,7 +173,7 @@ pub async fn verify_fork_version<E: EthSpec>(
 
 /// Verify that all sync aggregates from `sync_committee_start_slot` until `upto_slot`
 /// have full aggregates.
-pub async fn verify_full_sync_aggregates_up_to<E: EthSpec>(
+pub(crate) async fn verify_full_sync_aggregates_up_to<E: EthSpec>(
     network: LocalNetwork<E>,
     sync_committee_start_slot: Slot,
     upto_slot: Slot,
@@ -214,7 +214,7 @@ pub async fn verify_full_sync_aggregates_up_to<E: EthSpec>(
 }
 
 /// Verify that the first merged PoS block got finalized.
-pub async fn verify_transition_block_finalized<E: EthSpec>(
+pub(crate) async fn verify_transition_block_finalized<E: EthSpec>(
     network: LocalNetwork<E>,
     transition_epoch: Epoch,
     slot_duration: Duration,
@@ -361,7 +361,7 @@ pub(crate) async fn verify_light_client_updates<E: EthSpec>(
 
 /// Checks that a node is synced with the network.
 /// Useful for ensuring that a node which started after genesis is able to sync to the head.
-pub async fn ensure_node_synced_up_to_slot<E: EthSpec>(
+pub(crate) async fn ensure_node_synced_up_to_slot<E: EthSpec>(
     network: LocalNetwork<E>,
     node_index: usize,
     upto_slot: Slot,
@@ -395,7 +395,7 @@ pub async fn ensure_node_synced_up_to_slot<E: EthSpec>(
 
 /// Verifies that there's been blobs produced at every slot with a block from `blob_start_slot` up
 /// to and including `upto_slot`.
-pub async fn verify_full_blob_production_up_to<E: EthSpec>(
+pub(crate) async fn verify_full_blob_production_up_to<E: EthSpec>(
     network: LocalNetwork<E>,
     blob_start_slot: Slot,
     upto_slot: Slot,
@@ -428,7 +428,7 @@ pub async fn verify_full_blob_production_up_to<E: EthSpec>(
 }
 
 // Causes the beacon node at `node_index` to disconnect from the execution layer.
-pub async fn disconnect_from_execution_layer<E: EthSpec>(
+pub(crate) async fn disconnect_from_execution_layer<E: EthSpec>(
     network: LocalNetwork<E>,
     node_index: usize,
 ) -> Result<(), String> {
@@ -442,7 +442,7 @@ pub async fn disconnect_from_execution_layer<E: EthSpec>(
 }
 
 // Causes the beacon node at `node_index` to reconnect from the execution layer.
-pub async fn reconnect_to_execution_layer<E: EthSpec>(
+pub(crate) async fn reconnect_to_execution_layer<E: EthSpec>(
     network: LocalNetwork<E>,
     node_index: usize,
 ) -> Result<(), String> {
@@ -455,7 +455,7 @@ pub async fn reconnect_to_execution_layer<E: EthSpec>(
 }
 
 /// Ensure all validators have attested correctly.
-pub async fn check_attestation_correctness<E: EthSpec>(
+pub(crate) async fn check_attestation_correctness<E: EthSpec>(
     network: LocalNetwork<E>,
     start_epoch: u64,
     upto_epoch: u64,

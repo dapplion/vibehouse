@@ -97,7 +97,7 @@ fn default_mock_execution_config<E: EthSpec>(
 }
 
 /// Helper struct to reduce `Arc` usage.
-pub struct Inner<E: EthSpec> {
+pub(crate) struct Inner<E: EthSpec> {
     pub context: RuntimeContext<E>,
     pub beacon_nodes: RwLock<Vec<LocalBeaconNode<E>>>,
     pub proposer_nodes: RwLock<Vec<LocalBeaconNode<E>>>,
@@ -108,7 +108,7 @@ pub struct Inner<E: EthSpec> {
 /// Represents a set of interconnected `LocalBeaconNode` and `LocalValidatorClient`.
 ///
 /// Provides functions to allow adding new beacon nodes and validators.
-pub struct LocalNetwork<E: EthSpec> {
+pub(crate) struct LocalNetwork<E: EthSpec> {
     inner: Arc<Inner<E>>,
 }
 
@@ -129,7 +129,7 @@ impl<E: EthSpec> Deref for LocalNetwork<E> {
 }
 
 impl<E: EthSpec> LocalNetwork<E> {
-    pub async fn create_local_network(
+    pub(crate) async fn create_local_network(
         client_config: Option<ClientConfig>,
         mock_execution_config: Option<MockExecutionConfig>,
         network_params: LocalNetworkParams,
@@ -170,7 +170,7 @@ impl<E: EthSpec> LocalNetwork<E> {
     ///
     /// Note: does not count nodes that are external to this `LocalNetwork` that may have connected
     /// (e.g., another Vibehouse process on the same machine.)
-    pub fn beacon_node_count(&self) -> usize {
+    pub(crate) fn beacon_node_count(&self) -> usize {
         self.beacon_nodes.read().len()
     }
 
@@ -178,7 +178,7 @@ impl<E: EthSpec> LocalNetwork<E> {
     ///
     /// Note: does not count nodes that are external to this `LocalNetwork` that may have connected
     /// (e.g., another Vibehouse process on the same machine.)
-    pub fn proposer_node_count(&self) -> usize {
+    pub(crate) fn proposer_node_count(&self) -> usize {
         self.proposer_nodes.read().len()
     }
 
@@ -186,7 +186,7 @@ impl<E: EthSpec> LocalNetwork<E> {
     ///
     /// Note: does not count nodes that are external to this `LocalNetwork` that may have connected
     /// (e.g., another Vibehouse process on the same machine.)
-    pub fn validator_client_count(&self) -> usize {
+    pub(crate) fn validator_client_count(&self) -> usize {
         self.validator_clients.read().len()
     }
 
@@ -276,7 +276,7 @@ impl<E: EthSpec> LocalNetwork<E> {
     }
 
     /// Adds a beacon node to the network, connecting to the 0'th beacon node via ENR.
-    pub async fn add_beacon_node(
+    pub(crate) async fn add_beacon_node(
         &self,
         mut beacon_config: ClientConfig,
         mock_execution_config: MockExecutionConfig,
@@ -319,7 +319,7 @@ impl<E: EthSpec> LocalNetwork<E> {
 
     // Add a new node with a delay. This node will not have validators and is only used to test
     // sync.
-    pub async fn add_beacon_node_with_delay(
+    pub(crate) async fn add_beacon_node_with_delay(
         &self,
         beacon_config: ClientConfig,
         mock_execution_config: MockExecutionConfig,
@@ -337,7 +337,7 @@ impl<E: EthSpec> LocalNetwork<E> {
 
     /// Adds a validator client to the network, connecting it to the beacon node with index
     /// `beacon_node`.
-    pub async fn add_validator_client(
+    pub(crate) async fn add_validator_client(
         &self,
         mut validator_config: ValidatorConfig,
         beacon_node: usize,
@@ -398,7 +398,7 @@ impl<E: EthSpec> LocalNetwork<E> {
         Ok(())
     }
 
-    pub async fn add_validator_client_with_fallbacks(
+    pub(crate) async fn add_validator_client_with_fallbacks(
         &self,
         mut validator_config: ValidatorConfig,
         validator_index: usize,
@@ -441,7 +441,7 @@ impl<E: EthSpec> LocalNetwork<E> {
     }
 
     /// For all beacon nodes in `Self`, return a HTTP client to access each nodes HTTP API.
-    pub fn remote_nodes(&self) -> Result<Vec<BeaconNodeHttpClient>, String> {
+    pub(crate) fn remote_nodes(&self) -> Result<Vec<BeaconNodeHttpClient>, String> {
         let beacon_nodes = self.beacon_nodes.read();
         let proposer_nodes = self.proposer_nodes.read();
 
@@ -453,7 +453,7 @@ impl<E: EthSpec> LocalNetwork<E> {
     }
 
     /// Return current epoch of bootnode.
-    pub async fn _bootnode_epoch(&self) -> Result<Epoch, String> {
+    pub(crate) async fn _bootnode_epoch(&self) -> Result<Epoch, String> {
         let nodes = self.remote_nodes().expect("Failed to get remote nodes");
         let bootnode = nodes.first().expect("Should contain bootnode");
         bootnode
@@ -463,7 +463,7 @@ impl<E: EthSpec> LocalNetwork<E> {
             .map(|body| body.unwrap().data.finalized.epoch)
     }
 
-    pub async fn duration_to_genesis(&self) -> Result<Duration, &'static str> {
+    pub(crate) async fn duration_to_genesis(&self) -> Result<Duration, &'static str> {
         let nodes = self.remote_nodes().expect("Failed to get remote nodes");
         let bootnode = nodes.first().expect("Should contain bootnode");
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();

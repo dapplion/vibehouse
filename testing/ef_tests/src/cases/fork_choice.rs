@@ -35,7 +35,7 @@ use types::{
 };
 
 // When set to true, cache any states fetched from the db.
-pub const CACHE_STATE_IN_TESTS: bool = true;
+pub(crate) const CACHE_STATE_IN_TESTS: bool = true;
 
 #[derive(Default, Debug, PartialEq, Eq, Clone, Deserialize, Decode)]
 #[serde(deny_unknown_fields)]
@@ -47,14 +47,14 @@ pub struct PowBlock {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct Head {
+pub(crate) struct Head {
     slot: Slot,
     root: Hash256,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ShouldOverrideFcu {
+pub(crate) struct ShouldOverrideFcu {
     validator_is_connected: bool,
     result: bool,
 }
@@ -151,7 +151,7 @@ fn default_true() -> bool {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct Meta {
+pub(crate) struct Meta {
     #[serde(rename(deserialize = "description"))]
     _description: String,
 }
@@ -456,7 +456,7 @@ struct Tester<E: EthSpec> {
 }
 
 impl<E: EthSpec> Tester<E> {
-    pub fn new(case: &ForkChoiceTest<E>, spec: ChainSpec) -> Result<Self, Error> {
+    pub(crate) fn new(case: &ForkChoiceTest<E>, spec: ChainSpec) -> Result<Self, Error> {
         let spec = Arc::new(spec);
         let genesis_time = case.anchor_state.genesis_time();
 
@@ -535,7 +535,7 @@ impl<E: EthSpec> Tester<E> {
         Ok(self.harness.chain.canonical_head.cached_head())
     }
 
-    pub fn set_tick(&self, tick: u64) {
+    pub(crate) fn set_tick(&self, tick: u64) {
         self.harness
             .chain
             .slot_clock
@@ -553,7 +553,7 @@ impl<E: EthSpec> Tester<E> {
             .unwrap();
     }
 
-    pub fn process_block_and_columns(
+    pub(crate) fn process_block_and_columns(
         &self,
         block: SignedBeaconBlock<E>,
         columns: Option<DataColumnSidecarList<E>>,
@@ -614,7 +614,7 @@ impl<E: EthSpec> Tester<E> {
         Ok(())
     }
 
-    pub fn process_block_and_blobs(
+    pub(crate) fn process_block_and_blobs(
         &self,
         block: SignedBeaconBlock<E>,
         blobs: Option<BlobsList<E>>,
@@ -782,7 +782,7 @@ impl<E: EthSpec> Tester<E> {
         Ok(())
     }
 
-    pub fn process_attestation(&self, attestation: &Attestation<E>) -> Result<(), Error> {
+    pub(crate) fn process_attestation(&self, attestation: &Attestation<E>) -> Result<(), Error> {
         let (indexed_attestation, _) = obtain_indexed_attestation_and_committees_per_slot(
             &self.harness.chain,
             attestation.to_ref(),
@@ -800,7 +800,7 @@ impl<E: EthSpec> Tester<E> {
             .map_err(|e| Error::InternalError(format!("attestation import failed with {e:?}")))
     }
 
-    pub fn process_attester_slashing(&self, attester_slashing: AttesterSlashingRef<E>) {
+    pub(crate) fn process_attester_slashing(&self, attester_slashing: AttesterSlashingRef<E>) {
         self.harness
             .chain
             .canonical_head
@@ -808,7 +808,7 @@ impl<E: EthSpec> Tester<E> {
             .on_attester_slashing(attester_slashing);
     }
 
-    pub fn process_pow_block(&self, pow_block: &PowBlock) {
+    pub(crate) fn process_pow_block(&self, pow_block: &PowBlock) {
         let el = self.harness.mock_execution_layer.as_ref().unwrap();
 
         // The EF tests don't supply a block number. Our mock execution layer is fine with duplicate
@@ -823,7 +823,7 @@ impl<E: EthSpec> Tester<E> {
         );
     }
 
-    pub fn process_execution_payload(
+    pub(crate) fn process_execution_payload(
         &self,
         signed_envelope: &SignedExecutionPayloadEnvelope<E>,
         valid: bool,
@@ -877,7 +877,7 @@ impl<E: EthSpec> Tester<E> {
         Ok(())
     }
 
-    pub fn check_head_payload_status(&self, expected_status: u64) -> Result<(), Error> {
+    pub(crate) fn check_head_payload_status(&self, expected_status: u64) -> Result<(), Error> {
         // Recompute head so that find_head_gloas runs and stores the payload status.
         let _head = self.find_head()?;
         let payload_status = self
@@ -897,7 +897,7 @@ impl<E: EthSpec> Tester<E> {
         )
     }
 
-    pub fn check_head(&self, expected_head: Head) -> Result<(), Error> {
+    pub(crate) fn check_head(&self, expected_head: Head) -> Result<(), Error> {
         let head = self.find_head()?;
         let chain_head = Head {
             slot: head.head_slot(),
@@ -907,7 +907,7 @@ impl<E: EthSpec> Tester<E> {
         check_equal("head", chain_head, expected_head)
     }
 
-    pub fn check_time(&self, expected_time: u64) -> Result<(), Error> {
+    pub(crate) fn check_time(&self, expected_time: u64) -> Result<(), Error> {
         let slot =
             self.harness.chain.slot().map_err(|e| {
                 Error::InternalError(format!("reading current slot failed with {e:?}"))
@@ -916,12 +916,15 @@ impl<E: EthSpec> Tester<E> {
         check_equal("time", slot, expected_slot)
     }
 
-    pub fn check_genesis_time(&self, expected_genesis_time: u64) -> Result<(), Error> {
+    pub(crate) fn check_genesis_time(&self, expected_genesis_time: u64) -> Result<(), Error> {
         let genesis_time = self.harness.chain.slot_clock.genesis_duration().as_secs();
         check_equal("genesis_time", genesis_time, expected_genesis_time)
     }
 
-    pub fn check_justified_checkpoint(&self, expected_checkpoint: Checkpoint) -> Result<(), Error> {
+    pub(crate) fn check_justified_checkpoint(
+        &self,
+        expected_checkpoint: Checkpoint,
+    ) -> Result<(), Error> {
         let head_checkpoint = self.find_head()?.justified_checkpoint();
         let fc_checkpoint = self
             .harness
@@ -935,7 +938,7 @@ impl<E: EthSpec> Tester<E> {
         check_equal("justified_checkpoint", fc_checkpoint, expected_checkpoint)
     }
 
-    pub fn check_justified_checkpoint_root(
+    pub(crate) fn check_justified_checkpoint_root(
         &self,
         expected_checkpoint_root: Hash256,
     ) -> Result<(), Error> {
@@ -956,7 +959,10 @@ impl<E: EthSpec> Tester<E> {
         )
     }
 
-    pub fn check_finalized_checkpoint(&self, expected_checkpoint: Checkpoint) -> Result<(), Error> {
+    pub(crate) fn check_finalized_checkpoint(
+        &self,
+        expected_checkpoint: Checkpoint,
+    ) -> Result<(), Error> {
         let head_checkpoint = self.find_head()?.finalized_checkpoint();
         let fc_checkpoint = self
             .harness
@@ -970,7 +976,7 @@ impl<E: EthSpec> Tester<E> {
         check_equal("finalized_checkpoint", fc_checkpoint, expected_checkpoint)
     }
 
-    pub fn check_u_justified_checkpoint(
+    pub(crate) fn check_u_justified_checkpoint(
         &self,
         expected_checkpoint: Checkpoint,
     ) -> Result<(), Error> {
@@ -987,7 +993,7 @@ impl<E: EthSpec> Tester<E> {
         )
     }
 
-    pub fn check_u_finalized_checkpoint(
+    pub(crate) fn check_u_finalized_checkpoint(
         &self,
         expected_checkpoint: Checkpoint,
     ) -> Result<(), Error> {
@@ -1004,7 +1010,7 @@ impl<E: EthSpec> Tester<E> {
         )
     }
 
-    pub fn check_expected_proposer_boost_root(
+    pub(crate) fn check_expected_proposer_boost_root(
         &self,
         expected_proposer_boost_root: Hash256,
     ) -> Result<(), Error> {
@@ -1021,7 +1027,7 @@ impl<E: EthSpec> Tester<E> {
         )
     }
 
-    pub fn check_expected_proposer_head(
+    pub(crate) fn check_expected_proposer_head(
         &self,
         expected_proposer_head: Hash256,
     ) -> Result<(), Error> {
@@ -1045,7 +1051,7 @@ impl<E: EthSpec> Tester<E> {
         check_equal("proposer_head", proposer_head, expected_proposer_head)
     }
 
-    pub fn check_should_override_fcu(
+    pub(crate) fn check_should_override_fcu(
         &self,
         expected_should_override_fcu: ShouldOverrideFcu,
     ) -> Result<(), Error> {
@@ -1129,7 +1135,7 @@ fn check_equal<T: Debug + PartialEq>(check: &str, result: T, expected: T) -> Res
 /// The `BeaconChain` verification is not appropriate since these tests use `Attestation`s with
 /// multiple participating validators. Therefore, they are neither aggregated or unaggregated
 /// attestations.
-pub struct ManuallyVerifiedAttestation<'a, T: BeaconChainTypes> {
+pub(crate) struct ManuallyVerifiedAttestation<'a, T: BeaconChainTypes> {
     #[allow(dead_code)]
     attestation: &'a Attestation<T::EthSpec>,
     indexed_attestation: IndexedAttestation<T::EthSpec>,

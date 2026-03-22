@@ -7,7 +7,7 @@ use std::marker::PhantomData;
 use std::str::FromStr;
 use types::Hash256;
 
-pub fn parse_point(point: &str) -> Result<Hash256, Error> {
+pub(crate) fn parse_point(point: &str) -> Result<Hash256, Error> {
     Hash256::from_str(&point[2..])
         .map_err(|e| Error::FailedToParseTest(format!("Failed to parse point: {e:?}")))
 }

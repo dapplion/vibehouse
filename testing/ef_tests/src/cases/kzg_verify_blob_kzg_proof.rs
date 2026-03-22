@@ -16,11 +16,11 @@ static KZG: LazyLock<Arc<Kzg>> = LazyLock::new(|| {
     Arc::new(kzg)
 });
 
-pub fn get_kzg() -> Arc<Kzg> {
+pub(crate) fn get_kzg() -> Arc<Kzg> {
     Arc::clone(&KZG)
 }
 
-pub fn parse_cells_and_proofs(
+pub(crate) fn parse_cells_and_proofs(
     cells: &[String],
     proofs: &[String],
 ) -> Result<(Vec<Cell>, Vec<KzgProof>), Error> {
@@ -37,7 +37,7 @@ pub fn parse_cells_and_proofs(
     Ok((cells, proofs))
 }
 
-pub fn parse_cell(cell: &str) -> Result<Cell, Error> {
+pub(crate) fn parse_cell(cell: &str) -> Result<Cell, Error> {
     hex::decode(strip_0x(cell)?)
         .map_err(|e| Error::FailedToParseTest(format!("Failed to parse cell: {e:?}")))
         .and_then(|bytes| {
@@ -47,7 +47,7 @@ pub fn parse_cell(cell: &str) -> Result<Cell, Error> {
         })
 }
 
-pub fn parse_proof(proof: &str) -> Result<KzgProof, Error> {
+pub(crate) fn parse_proof(proof: &str) -> Result<KzgProof, Error> {
     hex::decode(strip_0x(proof)?)
         .map_err(|e| Error::FailedToParseTest(format!("Failed to parse proof: {e:?}")))
         .and_then(|bytes| {
@@ -58,7 +58,7 @@ pub fn parse_proof(proof: &str) -> Result<KzgProof, Error> {
         .map(KzgProof)
 }
 
-pub fn parse_commitment(commitment: &str) -> Result<KzgCommitment, Error> {
+pub(crate) fn parse_commitment(commitment: &str) -> Result<KzgCommitment, Error> {
     hex::decode(strip_0x(commitment)?)
         .map_err(|e| Error::FailedToParseTest(format!("Failed to parse commitment: {e:?}")))
         .and_then(|bytes| {
@@ -69,7 +69,7 @@ pub fn parse_commitment(commitment: &str) -> Result<KzgCommitment, Error> {
         .map(KzgCommitment)
 }
 
-pub fn parse_blob<E: EthSpec>(blob: &str) -> Result<Blob<E>, Error> {
+pub(crate) fn parse_blob<E: EthSpec>(blob: &str) -> Result<Blob<E>, Error> {
     hex::decode(strip_0x(blob)?)
         .map_err(|e| Error::FailedToParseTest(format!("Failed to parse blob: {e:?}")))
         .and_then(|bytes| {

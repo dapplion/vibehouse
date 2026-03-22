@@ -16,7 +16,7 @@ use state_processing::{
 use types::BeaconState;
 
 #[derive(Debug, Clone, PartialEq, Eq, Decode, Encode, CompareFields)]
-pub struct Deltas {
+pub(super) struct Deltas {
     #[compare_fields(as_slice)]
     rewards: Vec<u64>,
     #[compare_fields(as_slice)]
@@ -38,7 +38,7 @@ pub struct AllDeltas {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, CompareFields)]
-pub struct TotalDeltas {
+pub(super) struct TotalDeltas {
     deltas: Vec<i64>,
 }
 

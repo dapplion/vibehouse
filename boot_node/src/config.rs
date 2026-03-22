@@ -26,7 +26,7 @@ pub(crate) struct BootNodeConfig<E: EthSpec> {
 }
 
 impl<E: EthSpec> BootNodeConfig<E> {
-    pub async fn new(
+    pub(crate) async fn new(
         matches: &ArgMatches,
         eth2_network_config: &Eth2NetworkConfig,
     ) -> Result<Self, String> {

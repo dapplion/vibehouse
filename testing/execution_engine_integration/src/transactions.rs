@@ -4,10 +4,10 @@ use deposit_contract::{BYTECODE, CONTRACT_DEPLOY_GAS, DEPOSIT_GAS, encode_eth1_t
 use types::{DepositData, EthSpec, FixedBytesExtended, Hash256, Keypair, Signature};
 
 /// Hardcoded deposit contract address based on sender address and nonce
-pub const DEPOSIT_CONTRACT_ADDRESS: &str = "64f43BEc7F86526686C931d65362bB8698872F90";
+pub(crate) const DEPOSIT_CONTRACT_ADDRESS: &str = "64f43BEc7F86526686C931d65362bB8698872F90";
 
 #[derive(Debug)]
-pub enum Transaction {
+pub(crate) enum Transaction {
     Transfer(Address, Address),
     TransferLegacy(Address, Address),
     TransferAccessList(Address, Address),
@@ -19,7 +19,10 @@ pub enum Transaction {
 }
 
 /// Get a list of transactions to publish to the execution layer.
-pub fn transactions<E: EthSpec>(account1: Address, account2: Address) -> Vec<TransactionRequest> {
+pub(crate) fn transactions<E: EthSpec>(
+    account1: Address,
+    account2: Address,
+) -> Vec<TransactionRequest> {
     vec![
         Transaction::Transfer(account1, account2).to_request::<E>(),
         Transaction::TransferLegacy(account1, account2).to_request::<E>(),
@@ -36,7 +39,7 @@ pub fn transactions<E: EthSpec>(account1: Address, account2: Address) -> Vec<Tra
 }
 
 impl Transaction {
-    pub fn to_request<E: EthSpec>(&self) -> TransactionRequest {
+    pub(crate) fn to_request<E: EthSpec>(&self) -> TransactionRequest {
         match &self {
             Self::TransferLegacy(from, to) => TransactionRequest::default()
                 .from(*from)

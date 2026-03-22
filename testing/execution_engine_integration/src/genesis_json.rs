@@ -3,7 +3,7 @@ use serde_json::{Value, json};
 /// Sourced from:
 ///
 /// <https://notes.ethereum.org/rmVErCfCRPKGqGkUe89-Kg>
-pub fn geth_genesis_json() -> Value {
+pub(crate) fn geth_genesis_json() -> Value {
     json!({
         "config": {
             "chainId":1,
@@ -46,7 +46,7 @@ pub fn geth_genesis_json() -> Value {
 }
 
 /// Modified kiln config
-pub fn nethermind_genesis_json() -> Value {
+pub(crate) fn nethermind_genesis_json() -> Value {
     json!(
         {
             "name": "vibehouse_test_network",

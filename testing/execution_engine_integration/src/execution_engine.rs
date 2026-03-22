@@ -10,16 +10,16 @@ use std::path::PathBuf;
 use std::process::Child;
 use tempfile::TempDir;
 
-pub const KEYSTORE_PASSWORD: &str = "testpwd";
-pub const ACCOUNT1: &str = "7b8C3a386C0eea54693fFB0DA17373ffC9228139";
-pub const ACCOUNT2: &str = "dA2DD7560DB7e212B945fC72cEB54B7D8C886D77";
-pub const PRIVATE_KEYS: [&str; 2] = [
+pub(crate) const KEYSTORE_PASSWORD: &str = "testpwd";
+pub(crate) const ACCOUNT1: &str = "7b8C3a386C0eea54693fFB0DA17373ffC9228139";
+pub(crate) const ACCOUNT2: &str = "dA2DD7560DB7e212B945fC72cEB54B7D8C886D77";
+pub(crate) const PRIVATE_KEYS: [&str; 2] = [
     "115fe42a60e5ef45f5490e599add1f03c73aeaca129c2c41451eca6cf8ff9e04",
     "6a692e710077d9000be1326acbe32f777b403902ac8779b19eb1398b849c99c3",
 ];
 
 /// Defined for each EE type (e.g., Geth, Nethermind, etc).
-pub trait GenericExecutionEngine: Clone {
+pub(crate) trait GenericExecutionEngine: Clone {
     fn init_datadir() -> TempDir;
     fn start_client(
         datadir: &TempDir,
@@ -29,7 +29,7 @@ pub trait GenericExecutionEngine: Clone {
     ) -> Child;
 }
 
-pub type HttpProvider = FillProvider<
+pub(crate) type HttpProvider = FillProvider<
     JoinFill<
         alloy_provider::Identity,
         JoinFill<GasFiller, JoinFill<BlobGasFiller, JoinFill<NonceFiller, ChainIdFiller>>>,
@@ -39,7 +39,7 @@ pub type HttpProvider = FillProvider<
 >;
 
 /// Holds handle to a running EE process, plus some other metadata.
-pub struct ExecutionEngine<E> {
+pub(crate) struct ExecutionEngine<E> {
     #[allow(dead_code)]
     engine: E,
     #[allow(dead_code)]
@@ -60,7 +60,7 @@ impl<E> Drop for ExecutionEngine<E> {
 }
 
 impl<E: GenericExecutionEngine> ExecutionEngine<E> {
-    pub fn new(engine: E) -> Self {
+    pub(crate) fn new(engine: E) -> Self {
         let datadir = E::init_datadir();
         let jwt_secret_path = datadir.path().join(DEFAULT_JWT_FILE);
         let http_port = unused_tcp4_port().unwrap();
@@ -80,15 +80,15 @@ impl<E: GenericExecutionEngine> ExecutionEngine<E> {
         }
     }
 
-    pub fn http_auth_url(&self) -> SensitiveUrl {
+    pub(crate) fn http_auth_url(&self) -> SensitiveUrl {
         SensitiveUrl::parse(&format!("http://127.0.0.1:{}", self.http_auth_port)).unwrap()
     }
 
-    pub fn http_url(&self) -> SensitiveUrl {
+    pub(crate) fn http_url(&self) -> SensitiveUrl {
         SensitiveUrl::parse(&format!("http://127.0.0.1:{}", self.http_port)).unwrap()
     }
 
-    pub fn datadir(&self) -> PathBuf {
+    pub(crate) fn datadir(&self) -> PathBuf {
         self.datadir.path().to_path_buf()
     }
 }

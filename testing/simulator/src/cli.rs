@@ -1,6 +1,6 @@
 use clap::{Arg, ArgAction, Command, crate_version};
 
-pub fn cli_app() -> Command {
+pub(crate) fn cli_app() -> Command {
     Command::new("simulator")
         .version(crate_version!())
         .about("Options for interacting with simulator")
