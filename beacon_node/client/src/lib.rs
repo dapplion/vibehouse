@@ -1,10 +1,10 @@
 mod compute_light_client_updates;
-pub mod config;
+mod config;
 mod metrics;
 mod notifier;
 mod proof_broadcaster;
 
-pub mod builder;
+mod builder;
 
 use beacon_chain::BeaconChain;
 use std::net::SocketAddr;

@@ -4,7 +4,7 @@ use malloc_utils::scrape_allocator_metrics;
 use metrics::TextEncoder;
 use vibehouse_network::prometheus_client::encoding::text::encode;
 
-pub fn gather_prometheus_metrics<T: BeaconChainTypes>(
+pub(crate) fn gather_prometheus_metrics<T: BeaconChainTypes>(
     ctx: &Context<T>,
 ) -> std::result::Result<String, String> {
     let mut buffer = String::new();

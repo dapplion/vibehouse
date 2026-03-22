@@ -49,9 +49,6 @@ use types::{
 use vibehouse_network::identity::Keypair;
 use vibehouse_network::{NetworkGlobals, prometheus_client::registry::Registry};
 
-/// Interval between polling the eth1 node for genesis information.
-pub const ETH1_GENESIS_UPDATE_INTERVAL_MILLIS: u64 = 7_000;
-
 /// Reduces the blob availability period by some epochs. Helps prevent the user
 /// from starting a genesis sync so near to the blob pruning window that blobs
 /// have been pruned before they can manage to sync the chain.

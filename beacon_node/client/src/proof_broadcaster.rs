@@ -14,7 +14,7 @@ use vibehouse_network::PubsubMessage;
 ///
 /// Each proof received from the generator is wrapped in a `PubsubMessage::ExecutionProof`
 /// and sent to the network for gossip publication.
-pub async fn run_proof_broadcaster<E: EthSpec>(
+pub(crate) async fn run_proof_broadcaster<E: EthSpec>(
     mut proof_rx: ProofReceiver,
     network_tx: UnboundedSender<NetworkMessage<E>>,
 ) {

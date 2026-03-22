@@ -24,7 +24,7 @@ use types::{EthSpec, ExecPayload, ExecutionBlockHash, ForkName, Slot};
 use vibehouse_network::{NetworkGlobals, types::SyncState};
 
 /// Create a warning log whenever the peer count is at or below this value.
-pub const WARN_PEER_COUNT: usize = 1;
+const WARN_PEER_COUNT: usize = 1;
 
 const DAYS_PER_WEEK: i64 = 7;
 const HOURS_PER_DAY: i64 = 24;
@@ -40,7 +40,7 @@ pub const FORK_READINESS_PREPARATION_SECONDS: u64 = SECONDS_IN_A_WEEK * 2;
 pub const ENGINE_CAPABILITIES_REFRESH_INTERVAL: u64 = 300;
 
 /// Spawns a notifier service which periodically logs information about the node.
-pub fn spawn_notifier<T: BeaconChainTypes>(
+pub(crate) fn spawn_notifier<T: BeaconChainTypes>(
     executor: task_executor::TaskExecutor,
     beacon_chain: Arc<BeaconChain<T>>,
     network: Arc<NetworkGlobals<T::EthSpec>>,

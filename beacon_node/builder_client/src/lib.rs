@@ -21,21 +21,21 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
-pub const DEFAULT_TIMEOUT_MILLIS: u64 = 15000;
+const DEFAULT_TIMEOUT_MILLIS: u64 = 15000;
 
 /// This timeout is in accordance with v0.2.0 of the [builder specs](https://github.com/flashbots/mev-boost/pull/20).
-pub const DEFAULT_GET_HEADER_TIMEOUT_MILLIS: u64 = 1000;
+const DEFAULT_GET_HEADER_TIMEOUT_MILLIS: u64 = 1000;
 
 /// Default user agent for HTTP requests.
-pub const DEFAULT_USER_AGENT: &str = vibehouse_version::VERSION;
+const DEFAULT_USER_AGENT: &str = vibehouse_version::VERSION;
 
 /// The value we set on the `ACCEPT` http header to indicate a preference for ssz response.
-pub const PREFERENCE_ACCEPT_VALUE: &str = "application/octet-stream;q=1.0,application/json;q=0.9";
+const PREFERENCE_ACCEPT_VALUE: &str = "application/octet-stream;q=1.0,application/json;q=0.9";
 /// Only accept json responses.
-pub const JSON_ACCEPT_VALUE: &str = "application/json";
+const JSON_ACCEPT_VALUE: &str = "application/json";
 
 #[derive(Clone)]
-pub struct Timeouts {
+struct Timeouts {
     get_header: Duration,
     post_validators: Duration,
     post_blinded_blocks: Duration,
