@@ -5,7 +5,7 @@ use types::{ChainSpec, Deposit, DepositData, Hash256};
 
 /// Accepts the genesis block validator `DepositData` list and produces a list of `Deposit`, with
 /// proofs.
-pub fn genesis_deposits(
+pub(crate) fn genesis_deposits(
     deposit_data: Vec<DepositData>,
     spec: &ChainSpec,
 ) -> Result<Vec<Deposit>, String> {

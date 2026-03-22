@@ -10,7 +10,7 @@ pub enum RayonPoolType {
     LowPriority,
 }
 
-pub struct RayonPoolProvider {
+pub(crate) struct RayonPoolProvider {
     /// Smaller rayon thread pool for lower-priority, compute-intensive tasks.
     /// By default ~25% of CPUs or a minimum of 1 thread.
     low_priority_thread_pool: Arc<ThreadPool>,
