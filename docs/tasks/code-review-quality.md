@@ -4513,3 +4513,15 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - **Skipped**: beacon_chain (109 warnings) and eth2_wallet (3 warnings) — both have `pub use` re-exports that need manual handling to avoid E0365 errors
 - **Tests**: 1917 core tests pass, 204 network tests pass, 48 validator tests pass. Clippy clean, workspace compiles with zero warnings.
 - **CI**: Pre-push hook (lint-full) passed, push succeeded.
+
+### Run 2211
+
+**Complete beacon_chain + eth2_wallet + bls unreachable pub → pub(crate) downgrade**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. Checked two recently merged PRs: #5008 (field name `block_root` → `beacon_block_root` in p2p-interface doc — our `ExecutionPayloadEnvelope` already uses `beacon_block_root`), #5001 (add `parent_block_root` to bid filtering key — already implemented, `highest_bid_values` HashMap keyed on `(Slot, ExecutionBlockHash, Hash256)` with tests at lines 405-419 of `observed_execution_bids.rs`). No action needed.
+- **beacon_chain crate**: 108 `pub` → `pub(crate)` downgrades across 15 files (attestation_verification, beacon_chain, beacon_fork_choice_store, block_verification, custody_context, overflow_lru_cache, state_lru_cache, early_attester_cache, fork_revert, observed_aggregates, observed_attesters, observed_slashable, single_attestation, state_advance_timer, summaries_dag). Skipped `block_verification.rs:74` (`pub use fork_choice::{AttestationFromBlock, PayloadVerificationStatus}`) — re-exported via `lib.rs`.
+- **eth2_wallet crate**: Split `pub use` in `wallet.rs` — `Mnemonic`, `Bip39Seed`, `DerivedKeyError` downgraded to `pub(crate)` (not re-exported from lib.rs); `DerivedKey` kept `pub` (re-exported).
+- **bls crate**: Removed unnecessary `pub` on `StringVisitor` struct inside function body in `macros.rs` deserialization macro.
+- **Remaining**: 162 `unreachable_pub` warnings left, all in `testing/` crates (ef_tests, simulator, execution_engine_integration) — test infrastructure only.
+- **Tests**: 4991/4999 workspace (8 web3signer infra), 422/422 beacon_chain Gloas. Lint clean.
+- **CI**: Pre-push hook (lint-full) passed, push succeeded.
