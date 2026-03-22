@@ -3925,3 +3925,28 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - `TIMEOUT_DURATION` → private (only used internally in `MonitoringHttpClient::post()`)
 - **Crates audited with no changes needed**: graffiti_file (all pub items used externally), validator_metrics (all 65+ pub items used across 6 sub-crates), health_metrics (Observe trait + scrape function used externally), lru_cache (LRUTimeCache used in 5 files)
 - **Tests**: 87/87 affected crate tests pass. `make lint` clean, zero warnings.
+
+### Run 2185
+
+**Pub visibility downgrades in eth2, genesis, beacon_node, environment + dead code removal**
+
+- **Scope**: Full visibility audit of eth2 (HTTP client), genesis, beacon_node, environment, proto_array, store, validator_client, task_executor crates.
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since March 15. Reviewed full Gloas PR history — all tracked.
+- **Changes — eth2/lib.rs** (12 methods downgraded, 5 dead methods removed, 2 dead imports removed, 4 unused type params fixed):
+  - `get_fork_contextual`, `get_bytes_opt_accept_header`, `get_response_with_response_headers` → `pub(crate)` (internal helpers only)
+  - `post_beacon_blocks_v2_path`, `post_beacon_blinded_blocks_v2_path` → `pub(crate)` (path builders, internal only)
+  - `get_validator_blocks_v3_path`, `get_validator_blocks_v3_modular`, `get_validator_blocks_v3_modular_ssz` → `pub(crate)` (internal implementation details)
+  - `get_validator_blocks_modular_ssz`, `get_validator_blinded_blocks_modular_ssz` → `pub(crate)` (internal SSZ variants)
+  - `get_validator_blocks_path`, `get_validator_blinded_blocks_path` → `pub(crate)` + removed unused `<E: EthSpec>` type parameter (E not used in body)
+  - **Dead code removed**: `post_beacon_blocks_ssz` (V1 SSZ posting, no callers), `get_beacon_blocks_attestations_v1` (superseded by V2), `post_beacon_rewards_sync_committee` (never wired), `post_beacon_rewards_attestations` (never wired), `get_debug_beacon_heads_v1` (superseded by V2)
+  - **Dead imports removed**: `StandardAttestationRewards`, `SyncCommitteeReward` (only used by removed methods)
+- **Changes — genesis/interop.rs** (1 type alias downgraded):
+  - `WithdrawalCredentialsFn` → private (only used within interop.rs)
+- **Changes — beacon_node/config.rs** (1 function downgraded):
+  - `parse_listening_addresses` → `pub(crate)` (only used within config.rs)
+- **Changes — beacon_node/lib.rs** (1 dead re-export removed):
+  - `pub use eth2_config::Eth2Config` — removed (zero imports via `beacon_node::Eth2Config`)
+- **Changes — environment/lib.rs** (1 constant downgraded):
+  - `SSE_LOG_CHANNEL_SIZE` → private (only used within lib.rs)
+- **Crates audited with no changes needed**: proto_array (all pub items used externally or required by SszContainer pub fields), store (all pub items actively used by beacon_chain, network, http_api), validator_client (all 3 pub items used by vibehouse binary and test_rig), task_executor (all pub items used across 57+ files)
+- **Tests**: 211/211 affected crate tests pass. `make lint` clean, zero warnings.
