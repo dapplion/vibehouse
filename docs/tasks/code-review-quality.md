@@ -4363,3 +4363,20 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Build**: Zero warnings on `cargo build --release`. `make lint` clean.
 - **Full test suite**: 4991/4999 tests pass (8 web3signer failures are pre-existing infrastructure-dependent).
 - **Conclusion**: No code changes needed. Spec tracking up to date. Devnet healthy. Codebase in excellent shape.
+
+### Run 2202
+
+**Dead code cleanup: remove unused functions, constants, stale annotations**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since March 15. All 9 tracked open PRs (#5022, #5020, #4979, #4992, #4898, #4892, #4954, #4843, #4747) remain unmerged. No new EF test fixtures.
+- **Removed genuinely dead code** (10 files, -131 lines):
+  - `Client::http_metrics_listen_addr` field + getter, `libp2p_listen_addresses()` method — never called externally
+  - 4 `preliminary_check_*` slashing database functions — never called, all clippy-disallowed. Removed their clippy.toml disallowed-methods entries.
+  - `MerkleTree::print_node` debug helper — never called
+  - Mainnet deposit contract `ABI` constant — testnet ABI is used instead
+- **Improved dead_code annotations**:
+  - `deposit_contract::testnet` module → `#[cfg(test)]` (only used in internal tests)
+  - `REDB_DATA_FILENAME` → `#[cfg(feature = "redb")]` (only compiled when redb feature enabled)
+  - `Comparison::from_slice`, `ObservedPayloadEnvelopes::new/is_empty` → `#[cfg(test)]` (test-only)
+  - Removed stale `#[allow(dead_code)]` from `should_broadcast_latest_finality_update` (actively used by http_api)
+- **Tests**: 191/191 affected crate tests pass. Zero warnings on `cargo check --workspace`. `make lint-full` clean.
