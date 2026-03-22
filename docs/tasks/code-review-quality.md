@@ -4420,3 +4420,17 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Tests**: 999/999 beacon_chain tests pass. `make lint-full` clean, zero warnings.
 - **EL call ordering deviation** (not fixing): Spec processes EL `verify_and_notify_new_payload` inside `process_execution_payload` (between checks and request processing). Vibehouse calls EL *before* state processing, which is more efficient (avoids wasted state transition on invalid payloads) and produces the same end result.
 - **Optimistic execution status** (not fixing): Standard optimistic sync behavior — payloads accepted as `Optimistic` when EL returns `Syncing`/`Accepted`, upgraded to `Valid` later. Consistent with pre-ePBS block handling.
+
+### Run 2206
+
+**Deep audit: fork choice, block production, gossip validation — duplicate attestation bug fix**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. #5008 (field name fix) and #4902 (phase0 gossip functions) already handled in run 2204. All open Gloas PRs remain unmerged.
+- **Fork choice audit** (proto_array, fork_choice): No issues found. Three-state payload model (PENDING/EMPTY/FULL) is correct, viability filtering is precise, weight computation uses safe arithmetic, tiebreaker logic matches spec, anchor initialization correct. Extensive test coverage.
+- **Block production audit** (beacon_chain.rs, block_verification.rs, execution_payload.rs): No issues found. Self-build vs external builder path is correct. The `bellatrix_enabled()` + `selected_external_bid.is_none()` check at line 6997 correctly handles Gloas self-build (needs EL payload for envelope construction). `load_parent` fallback patch well-documented for value-0 self-builds. No unwraps in production paths.
+- **Gossip validation audit**: Found one real bug in payload attestation verification.
+  - **Bug**: `verify_payload_attestation_for_gossip` treated `Duplicate` observations the same as `New` (line 694), allowing the same validator's attestation through. This violated the spec's "[IGNORE] first valid message from validator" rule. In the pool, duplicate entries would cause `get_payload_attestations_for_block` to aggregate the same validator's signature twice, producing an invalid aggregate signature — the proposer would create an invalid block.
+  - **Fix**: Return `DuplicateAttestation` error for duplicate validators. Added handler in gossip_methods.rs (maps to `Ignore` — no peer penalty). Updated tests.
+  - **Test fix**: `attestation_duplicate_same_value_still_passes` → `_rejected`, `attestation_mixed_duplicate_and_new_passes` → `_rejected` (both now expect rejection). Fixed `test_gloas_gossip_payload_attestation_accumulates_ptc_weight` which revealed that PTC_SIZE=512 with VALIDATOR_COUNT=32 causes all PTC positions to map to the same validator — test now skips when insufficient unique validators.
+  - **Other findings verified clean**: self-build bids correctly never go through gossip (false alarm from agent), equivocation detection order is correct (sig verify before observation), DoS protection adequate, peer scoring appropriate.
+- **Tests**: 999/999 beacon_chain, 204/204 network, 61/61 gloas_verification. `make lint-full` clean.
