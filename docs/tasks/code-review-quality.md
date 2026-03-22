@@ -3533,3 +3533,29 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - Issue #36 remaining items: all blocked on external dependencies or deprioritized
 - **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since March 15. Open PRs: #4979 (PTC lookbehind), #4843 (variable PTC deadline), #4954 (millisecond timing), #5022 (already implemented), #5008 (field rename).
 - **Tests**: 15/15 deposit_contract tests pass. Full workspace clippy zero warnings.
+
+### Run 2166 (2026-03-22)
+
+**Visibility downgrades across logging, slot_clock, task_executor, fork_choice, http_api, operation_pool, vibehouse binary + dead code removal**
+
+- **Code changes — logging crate** (6 items downgraded, 1 dead field removed):
+  - **tracing_logging_layer.rs**: `pub struct SpanData` → `pub(crate)`, fields `pub` → `pub(crate)`, removed dead `name` field (set but never read, exposed by visibility downgrade)
+  - **tracing_metrics_layer.rs**: 3 `pub static` → `static` (DEP_INFOS_TOTAL, DEP_WARNS_TOTAL, DEP_ERRORS_TOTAL — module-private, only used within same file)
+  - **utils.rs**: `pub fn is_ascii_control` → `pub(crate) fn` (only used by tracing_logging_layer within crate)
+- **Code changes — slot_clock crate** (5 items downgraded):
+  - **metrics.rs**: `pub use metrics::*` → `pub(crate) use metrics::*`, 4 `pub static` → `pub(crate) static` (PRESENT_SLOT, PRESENT_EPOCH, SLOTS_PER_EPOCH, SECONDS_PER_SLOT — all internal). `scrape_for_metrics` remains `pub` (used externally).
+- **Code changes — task_executor crate** (7 items downgraded):
+  - **metrics.rs**: `pub use metrics::*` → `pub(crate) use metrics::*`, 6 `pub static` → `pub(crate) static` (all metrics constants — module already private)
+- **Code changes — fork_choice crate** (1 item downgraded):
+  - **metrics.rs**: `pub use metrics::*` → `pub(crate) use metrics::*` (statics already `pub(crate)`)
+- **Code changes — http_api crate** (1 item downgraded):
+  - **metrics.rs**: `pub use metrics::{...}` → `pub(crate) use metrics::{...}` (statics already `pub(crate)`)
+- **Code changes — operation_pool crate** (1 item downgraded):
+  - **metrics.rs**: `pub use metrics::{...}` → `pub(crate) use metrics::{...}` (statics already `pub(crate)`)
+- **Code changes — vibehouse binary** (6 items downgraded):
+  - **cli.rs**: `pub enum VibehouseSubcommands` → `pub(crate)` (binary crate, no external consumers)
+  - **main.rs**: `pub static SHORT_VERSION` → `static`, `pub static LONG_VERSION` → `static` (only used within main.rs)
+  - **metrics.rs**: `pub use metrics::*` → `use metrics::*`, 2 `pub static` → `static`, 2 `pub fn` → `pub(crate) fn`
+- **Dead code removed — eth2 crate**: removed unused `serde_status_code` module from `common/eth2/src/types.rs` (defined but never referenced in any `#[serde(with = ...)]` attribute)
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since March 15.
+- **Tests**: 454/454 (logging + slot_clock + task_executor + fork_choice + operation_pool + eth2) pass, 311/311 vibehouse binary tests pass. Full workspace clippy zero warnings. `make lint-full` passes.
