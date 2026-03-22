@@ -4592,3 +4592,17 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Makefile lint target**: now has zero `-A` flags. All defaults plus 5 extra `-D` lints enforced. Updated comment to reflect.
 - **Tests**: 1085/1085 types, 1255/1255 state_processing+proto_array+account_utils+signing_method. `make lint-full` clean.
 - **CI**: Pre-push hook passed on both commits, pushed successfully.
+
+### Run 2217 (2026-03-22)
+
+**Monitoring run — spec check, CI health, nightly investigation**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new merges since #5014 (March 22, EIP-8025 p2p ZK proofs — not Gloas-related). Recent merges: #5008 (field name fix), #4902 (phase0 gossip validation). All open Gloas PRs remain unmerged: #5022, #5023, #5020, #4992, #4979, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4747.
+- **CI**: Run 23412596593 in progress — check+clippy+fmt passed, remaining 5 jobs building. Previous run succeeded (all 6 green).
+- **Nightly failure** (March 22): `op-pool-tests (capella)` failed due to transient `cargo-nextest-0.9.132` binary 404 on GitHub releases (curl exit code 22). Binary exists now — confirmed via `gh api`. Same transient infra issue as March 21 (and March 20). Workflow already pinned to `@v2` with `tool: cargo-nextest@0.9.132`. Tonight's nightly should self-resolve.
+- **Clippy**: Zero warnings (full workspace, all targets).
+- **Dependencies**: Zero semver-compatible updates. All major bumps blocked (ssz ecosystem, rand, libp2p/prometheus).
+- **Security**: `cargo audit` — unchanged (rsa RUSTSEC-2023-0071, no fix available; 5 unmaintained transitive deps).
+- **Remaining Lighthouse references**: 18 occurrences across 3 files — all legitimate (P2P peer client identification for Lighthouse nodes, Engine API `ClientCode::Lighthouse` per spec). Must remain.
+- **Clippy suppressions audit**: Reviewed all `needless_collect` (10, all justified — lock/borrow patterns), `await_holding_lock` (4, 3 in tests, 1 production with TODO), `large_stack_frames` (12, all tests/CLI). None removable.
+- **No code changes** — monitoring-only run.
