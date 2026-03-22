@@ -7,7 +7,6 @@ pub use cli::cli_app;
 pub use client::{Client, ClientBuilder, ClientConfig, ClientGenesis};
 pub use config::{get_config, get_data_dir, set_network_config};
 use environment::RuntimeContext;
-pub use eth2_config::Eth2Config;
 use network_utils::enr_ext::peer_id_to_node_id;
 use slasher::{DatabaseBackendOverride, Slasher};
 use std::ops::{Deref, DerefMut};

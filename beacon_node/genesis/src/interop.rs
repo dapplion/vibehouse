@@ -23,8 +23,7 @@ fn eth1_withdrawal_credentials(pubkey: &PublicKey, spec: &ChainSpec) -> Hash256 
     Hash256::from(credentials)
 }
 
-pub type WithdrawalCredentialsFn =
-    Box<dyn for<'a> Fn(usize, &'a PublicKey, &'a ChainSpec) -> Hash256>;
+type WithdrawalCredentialsFn = Box<dyn for<'a> Fn(usize, &'a PublicKey, &'a ChainSpec) -> Hash256>;
 
 /// Builds a genesis state as defined by the Eth2 interop procedure (see below).
 ///

@@ -35,7 +35,7 @@ use {futures::channel::oneshot, std::cell::RefCell};
 
 pub mod tracing_common;
 
-pub const SSE_LOG_CHANNEL_SIZE: usize = 2048;
+const SSE_LOG_CHANNEL_SIZE: usize = 2048;
 /// The maximum time in seconds the client will wait for all internal tasks to shutdown.
 const MAXIMUM_SHUTDOWN_TIME: u64 = 15;
 

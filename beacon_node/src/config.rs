@@ -899,7 +899,7 @@ pub fn get_config<E: EthSpec>(
 }
 
 /// Gets the listening_addresses for vibehouse based on the cli options.
-pub fn parse_listening_addresses(cli_args: &ArgMatches) -> Result<ListenAddress, String> {
+pub(crate) fn parse_listening_addresses(cli_args: &ArgMatches) -> Result<ListenAddress, String> {
     let listen_addresses_str = cli_args
         .get_many::<String>("listen-address")
         .unwrap_or_default();
