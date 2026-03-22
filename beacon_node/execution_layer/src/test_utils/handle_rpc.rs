@@ -614,7 +614,7 @@ pub async fn handle_rpc<E: EthSpec>(
         }
         ENGINE_EXCHANGE_CAPABILITIES => {
             let engine_capabilities = ctx.engine_capabilities.read();
-            Ok(serde_json::to_value(engine_capabilities.to_response()).unwrap())
+            Ok(serde_json::to_value(engine_capabilities.as_response()).unwrap())
         }
         ENGINE_GET_CLIENT_VERSION_V1 => {
             Ok(serde_json::to_value([DEFAULT_CLIENT_VERSION.clone()]).unwrap())

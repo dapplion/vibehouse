@@ -11,7 +11,6 @@ use eth2::types::{
     BlobsBundle, SsePayloadAttributes, SsePayloadAttributesV1, SsePayloadAttributesV2,
     SsePayloadAttributesV3,
 };
-pub use json_structures::{JsonWithdrawal, TransitionConfigurationV1};
 use pretty_reqwest_error::PrettyReqwestError;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -34,15 +33,14 @@ pub mod http;
 pub mod json_structures;
 mod new_payload_request;
 
-pub use new_payload_request::{
-    NewPayloadRequest, NewPayloadRequestBellatrix, NewPayloadRequestCapella,
+pub use new_payload_request::{NewPayloadRequest, NewPayloadRequestGloas};
+pub(crate) use new_payload_request::{
     NewPayloadRequestDeneb, NewPayloadRequestElectra, NewPayloadRequestFulu,
-    NewPayloadRequestGloas,
 };
 
-pub const LATEST_TAG: &str = "latest";
+pub(crate) const LATEST_TAG: &str = "latest";
 
-pub type PayloadId = [u8; 8];
+pub(crate) type PayloadId = [u8; 8];
 
 #[derive(Debug)]
 pub enum Error {
@@ -142,7 +140,10 @@ pub struct ExecutionBlock {
 }
 
 impl ExecutionBlock {
-    pub fn terminal_total_difficulty_reached(&self, terminal_total_difficulty: Uint256) -> bool {
+    pub(crate) fn terminal_total_difficulty_reached(
+        &self,
+        terminal_total_difficulty: Uint256,
+    ) -> bool {
         self.total_difficulty
             .is_none_or(|td| td >= terminal_total_difficulty)
     }
@@ -242,23 +243,9 @@ impl From<PayloadAttributes> for SsePayloadAttributes {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ForkchoiceUpdatedResponse {
+pub(crate) struct ForkchoiceUpdatedResponse {
     pub payload_status: PayloadStatusV1,
     pub payload_id: Option<PayloadId>,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ProposeBlindedBlockResponseStatus {
-    Valid,
-    Invalid,
-    Syncing,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ProposeBlindedBlockResponse {
-    pub status: ProposeBlindedBlockResponseStatus,
-    pub latest_valid_hash: Option<Hash256>,
-    pub validation_error: Option<String>,
 }
 
 #[superstruct(
@@ -375,7 +362,8 @@ impl<E: EthSpec> From<GetPayloadResponse<E>>
     }
 }
 
-pub enum GetPayloadResponseType<E: EthSpec> {
+#[allow(dead_code)]
+pub(crate) enum GetPayloadResponseType<E: EthSpec> {
     Full(GetPayloadResponse<E>),
     Blinded(GetPayloadResponse<E>),
 }
@@ -587,7 +575,7 @@ pub struct EngineCapabilities {
 }
 
 impl EngineCapabilities {
-    pub fn to_response(&self) -> Vec<&str> {
+    pub(crate) fn as_response(&self) -> Vec<&str> {
         let mut response = Vec::new();
         if self.new_payload_v1 {
             response.push(ENGINE_NEW_PAYLOAD_V1);
@@ -1062,7 +1050,7 @@ mod tests {
             get_blobs_v1: false,
             get_blobs_v2: false,
         };
-        assert!(caps.to_response().is_empty());
+        assert!(caps.as_response().is_empty());
     }
 
     #[test]
@@ -1087,7 +1075,7 @@ mod tests {
             get_blobs_v1: true,
             get_blobs_v2: true,
         };
-        let response = caps.to_response();
+        let response = caps.as_response();
         assert_eq!(response.len(), 18);
         assert!(response.contains(&"engine_newPayloadV1"));
         assert!(response.contains(&"engine_newPayloadV5"));
@@ -1119,7 +1107,7 @@ mod tests {
             get_blobs_v1: false,
             get_blobs_v2: false,
         };
-        let response = caps.to_response();
+        let response = caps.as_response();
         assert_eq!(response.len(), 3);
         assert!(response.contains(&"engine_newPayloadV3"));
         assert!(response.contains(&"engine_forkchoiceUpdatedV3"));
@@ -1389,18 +1377,6 @@ mod tests {
         let auth_err = auth::Error::InvalidToken;
         let err = Error::from(auth_err);
         assert!(matches!(err, Error::Auth(_)));
-    }
-
-    // --- ProposeBlindedBlockResponseStatus ---
-
-    #[test]
-    fn propose_blinded_block_response_status_variants() {
-        let valid = ProposeBlindedBlockResponseStatus::Valid;
-        let invalid = ProposeBlindedBlockResponseStatus::Invalid;
-        let syncing = ProposeBlindedBlockResponseStatus::Syncing;
-        assert_ne!(valid, invalid);
-        assert_ne!(valid, syncing);
-        assert_ne!(invalid, syncing);
     }
 
     // --- PayloadStatusV1 ---

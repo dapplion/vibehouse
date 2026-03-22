@@ -96,7 +96,7 @@ impl<'block, E: EthSpec> NewPayloadRequest<'block, E> {
         }
     }
 
-    pub fn into_execution_payload(self) -> ExecutionPayload<E> {
+    pub(crate) fn into_execution_payload(self) -> ExecutionPayload<E> {
         match self {
             Self::Bellatrix(request) => {
                 ExecutionPayload::Bellatrix(request.execution_payload.clone())
@@ -129,7 +129,7 @@ impl<'block, E: EthSpec> NewPayloadRequest<'block, E> {
     ///
     /// Equivalent to `is_valid_block_hash` in the spec:
     /// <https://github.com/ethereum/consensus-specs/blob/v1.4.0-beta.2/specs/deneb/beacon-chain.md#is_valid_block_hash>
-    pub fn verify_payload_block_hash(&self) -> Result<(), Error> {
+    pub(crate) fn verify_payload_block_hash(&self) -> Result<(), Error> {
         let payload = self.execution_payload_ref();
         let parent_beacon_block_root = self.parent_beacon_block_root().ok().copied();
 
@@ -163,7 +163,7 @@ impl<'block, E: EthSpec> NewPayloadRequest<'block, E> {
     ///
     /// Equivalent to `is_valid_versioned_hashes` in the spec:
     /// <https://github.com/ethereum/consensus-specs/blob/v1.4.0-beta.2/specs/deneb/beacon-chain.md#is_valid_versioned_hashes>
-    pub fn verify_versioned_hashes(&self) -> Result<(), Error> {
+    pub(crate) fn verify_versioned_hashes(&self) -> Result<(), Error> {
         if let Ok(versioned_hashes) = self.versioned_hashes() {
             verify_versioned_hashes(self.execution_payload_ref(), versioned_hashes)
                 .map_err(Error::VerifyingVersionedHashes)?;
