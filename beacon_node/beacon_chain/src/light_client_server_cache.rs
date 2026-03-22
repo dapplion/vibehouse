@@ -46,7 +46,7 @@ pub struct LightClientServerCache<T: BeaconChainTypes> {
 }
 
 impl<T: BeaconChainTypes> LightClientServerCache<T> {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             latest_finality_update: None.into(),
             latest_optimistic_update: None.into(),
@@ -81,7 +81,7 @@ impl<T: BeaconChainTypes> LightClientServerCache<T> {
 
     /// Given a block with a SyncAggregate computes better or more recent light client updates. The
     /// results are cached either on disk or memory to be served via p2p and rest API
-    pub fn recompute_and_cache_updates(
+    pub(crate) fn recompute_and_cache_updates(
         &self,
         store: BeaconStore<T>,
         block_slot: Slot,
@@ -341,6 +341,7 @@ impl<T: BeaconChainTypes> LightClientServerCache<T> {
     /// Checks if we've already broadcasted the latest finality update.
     /// If we haven't, update the `latest_broadcasted_finality_update` cache
     /// and return the latest finality update for broadcasting, else return `None`.
+    #[allow(dead_code)]
     pub fn should_broadcast_latest_finality_update(
         &self,
     ) -> Option<LightClientFinalityUpdate<T::EthSpec>> {
@@ -364,26 +365,26 @@ impl<T: BeaconChainTypes> LightClientServerCache<T> {
         self.latest_finality_update.read().clone()
     }
 
-    pub fn get_latest_broadcasted_optimistic_update(
+    pub(crate) fn get_latest_broadcasted_optimistic_update(
         &self,
     ) -> Option<LightClientOptimisticUpdate<T::EthSpec>> {
         self.latest_broadcasted_optimistic_update.read().clone()
     }
 
-    pub fn get_latest_broadcasted_finality_update(
+    pub(crate) fn get_latest_broadcasted_finality_update(
         &self,
     ) -> Option<LightClientFinalityUpdate<T::EthSpec>> {
         self.latest_broadcasted_finality_update.read().clone()
     }
 
-    pub fn set_latest_broadcasted_optimistic_update(
+    pub(crate) fn set_latest_broadcasted_optimistic_update(
         &self,
         optimistic_update: LightClientOptimisticUpdate<T::EthSpec>,
     ) {
         *self.latest_broadcasted_optimistic_update.write() = Some(optimistic_update);
     }
 
-    pub fn set_latest_broadcasted_finality_update(
+    pub(crate) fn set_latest_broadcasted_finality_update(
         &self,
         finality_update: LightClientFinalityUpdate<T::EthSpec>,
     ) {

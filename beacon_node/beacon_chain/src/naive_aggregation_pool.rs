@@ -60,7 +60,9 @@ impl TreeHash for AttestationKey {
 }
 
 impl AttestationKey {
-    pub fn from_attestation_ref<E: EthSpec>(attestation: AttestationRef<E>) -> Result<Self, Error> {
+    pub(crate) fn from_attestation_ref<E: EthSpec>(
+        attestation: AttestationRef<E>,
+    ) -> Result<Self, Error> {
         let slot = attestation.data().slot;
         match attestation {
             AttestationRef::Base(att) => Ok(Self {
@@ -87,7 +89,7 @@ impl AttestationKey {
         }
     }
 
-    pub fn new_base(data: &AttestationData) -> Self {
+    pub(crate) fn new_base(data: &AttestationData) -> Self {
         let slot = data.slot;
         Self {
             data_root: data.tree_hash_root(),
@@ -96,7 +98,11 @@ impl AttestationKey {
         }
     }
 
-    pub fn new_electra(slot: Slot, data_root: Hash256, committee_index: CommitteeIndex) -> Self {
+    pub(crate) fn new_electra(
+        slot: Slot,
+        data_root: Hash256,
+        committee_index: CommitteeIndex,
+    ) -> Self {
         Self {
             data_root,
             committee_index: Some(committee_index),
@@ -104,7 +110,7 @@ impl AttestationKey {
         }
     }
 
-    pub fn new_base_from_slot_and_root(slot: Slot, data_root: Hash256) -> Self {
+    pub(crate) fn new_base_from_slot_and_root(slot: Slot, data_root: Hash256) -> Self {
         Self {
             data_root,
             committee_index: None,
@@ -168,6 +174,7 @@ pub enum Error {
     /// function.
     InconsistentBitfieldLengths,
     /// The given item was for the incorrect slot. This is an internal error.
+    #[allow(dead_code)]
     IncorrectSlot { expected: Slot, actual: Slot },
 }
 
@@ -522,7 +529,7 @@ where
     }
 
     /// Returns an aggregated `T::Value` with the given `T::Data`, if any.
-    pub fn get(&self, data: &T::Data) -> Option<T::Value> {
+    pub(crate) fn get(&self, data: &T::Data) -> Option<T::Value> {
         self.maps
             .get(&data.get_slot())
             .and_then(|map| map.get(data))
@@ -535,7 +542,7 @@ where
 
     /// Removes any items with a slot lower than `current_slot` and bars any future
     /// items with a slot lower than `current_slot - SLOTS_RETAINED`.
-    pub fn prune(&mut self, current_slot: Slot) {
+    pub(crate) fn prune(&mut self, current_slot: Slot) {
         let _timer = T::start_prune_timer();
 
         let lowest_permissible_slot = current_slot.saturating_sub(Slot::from(SLOTS_RETAINED));

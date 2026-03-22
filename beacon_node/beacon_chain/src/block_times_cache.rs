@@ -29,29 +29,29 @@ pub struct Timestamps {
 
 // Helps arrange delay data so it is more relevant to metrics.
 #[derive(Debug, Default)]
-pub struct BlockDelays {
+pub(crate) struct BlockDelays {
     /// Time after start of slot we saw the block.
-    pub observed: Option<Duration>,
+    pub(crate) observed: Option<Duration>,
     /// The time after the start of the slot we saw all blobs.
-    pub all_blobs_observed: Option<Duration>,
+    pub(crate) all_blobs_observed: Option<Duration>,
     /// The time it took to complete consensus verification of the block.
-    pub consensus_verification_time: Option<Duration>,
+    pub(crate) consensus_verification_time: Option<Duration>,
     /// The time it took to complete execution verification of the block.
-    pub execution_time: Option<Duration>,
+    pub(crate) execution_time: Option<Duration>,
     /// The delay from the start of the slot before the block became available
     ///
     /// Equal to max(`observed + execution_time`, `all_blobs_observed`).
-    pub available: Option<Duration>,
+    pub(crate) available: Option<Duration>,
     /// Time after `available`.
-    pub attestable: Option<Duration>,
+    pub(crate) attestable: Option<Duration>,
     /// Time
     /// ALSO time after `available`.
     ///
     /// We need to use `available` again rather than `attestable` to handle the case where the block
     /// does not get added to the early-attester cache.
-    pub imported: Option<Duration>,
+    pub(crate) imported: Option<Duration>,
     /// Time after `imported`.
-    pub set_as_head: Option<Duration>,
+    pub(crate) set_as_head: Option<Duration>,
 }
 
 impl BlockDelays {

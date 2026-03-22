@@ -27,12 +27,13 @@ pub struct ObservedPayloadEnvelopes<E: EthSpec> {
 }
 
 impl<E: EthSpec> ObservedPayloadEnvelopes<E> {
-    pub fn new() -> Self {
+    #[allow(dead_code)]
+    pub(crate) fn new() -> Self {
         Self::default()
     }
 
     /// Returns `true` if a valid envelope has already been recorded for this root.
-    pub fn is_known(&self, beacon_block_root: &Hash256) -> bool {
+    pub(crate) fn is_known(&self, beacon_block_root: &Hash256) -> bool {
         self.observed_roots.contains(beacon_block_root)
     }
 
@@ -40,14 +41,14 @@ impl<E: EthSpec> ObservedPayloadEnvelopes<E> {
     ///
     /// Call this only after full validation succeeds, so that invalid
     /// envelopes don't prevent a later valid one from being processed.
-    pub fn observe_envelope(&mut self, beacon_block_root: Hash256) {
+    pub(crate) fn observe_envelope(&mut self, beacon_block_root: Hash256) {
         if self.observed_roots.insert(beacon_block_root) {
             self.insertion_order.push(beacon_block_root);
         }
     }
 
     /// Keep only the most recent `MAX_OBSERVED_ROOTS` entries (FIFO).
-    pub fn prune(&mut self) {
+    pub(crate) fn prune(&mut self) {
         if self.insertion_order.len() <= MAX_OBSERVED_ROOTS {
             return;
         }
@@ -62,12 +63,13 @@ impl<E: EthSpec> ObservedPayloadEnvelopes<E> {
     }
 
     /// Number of block roots currently tracked.
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.observed_roots.len()
     }
 
     /// Returns true if no roots are tracked.
-    pub fn is_empty(&self) -> bool {
+    #[allow(dead_code)]
+    pub(crate) fn is_empty(&self) -> bool {
         self.observed_roots.is_empty()
     }
 

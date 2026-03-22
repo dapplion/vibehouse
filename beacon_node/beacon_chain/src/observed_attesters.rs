@@ -33,7 +33,7 @@ use types::{Epoch, EthSpec, Hash256, Slot, Unsigned};
 ///
 /// This means that during the current epoch we will always accept an attestation from
 /// at least one slot in the epoch prior to the previous epoch.
-pub const MAX_CACHED_EPOCHS: u64 = 4;
+pub(crate) const MAX_CACHED_EPOCHS: u64 = 4;
 
 pub type ObservedAttesters<E> = AutoPruningEpochContainer<EpochBitfield, E>;
 pub type ObservedSyncContributors<E> =
@@ -54,6 +54,7 @@ pub enum Error {
     },
     /// We have reached the maximum number of unique items that can be observed in a slot.
     /// This is a DoS protection function.
+    #[allow(dead_code)]
     ReachedMaxObservationsPerSlot(usize),
     /// The function to obtain a set index failed, this is an internal error.
     ValidatorIndexTooHigh(usize),

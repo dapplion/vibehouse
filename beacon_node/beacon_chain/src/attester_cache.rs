@@ -38,6 +38,7 @@ type CacheHashMap = HashMap<AttesterCacheKey, AttesterCacheValue>;
 const MAX_CACHE_LEN: usize = 1_024;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum Error {
     BeaconState(BeaconStateError),
     // Boxed to avoid an infinite-size recursion issue.
@@ -77,7 +78,7 @@ impl From<BeaconChainError> for Error {
 
 /// Stores the minimal amount of data required to compute the committee length for any committee at any
 /// slot in a given `epoch`.
-pub struct CommitteeLengths {
+pub(crate) struct CommitteeLengths {
     /// The `epoch` to which the lengths pertain.
     epoch: Epoch,
     /// The length of the shuffling in `self.epoch`.
@@ -95,7 +96,7 @@ impl CommitteeLengths {
     }
 
     /// Instantiate `Self` using `state.current_epoch()`.
-    pub fn new<E: EthSpec>(state: &BeaconState<E>, spec: &ChainSpec) -> Result<Self, Error> {
+    pub(crate) fn new<E: EthSpec>(state: &BeaconState<E>, spec: &ChainSpec) -> Result<Self, Error> {
         let active_validator_indices_len = if let Ok(committee_cache) =
             state.committee_cache(RelativeEpoch::Current)
         {
@@ -113,7 +114,7 @@ impl CommitteeLengths {
     }
 
     /// Get the count of committees per each slot of `self.epoch`.
-    pub fn get_committee_count_per_slot<E: EthSpec>(
+    pub(crate) fn get_committee_count_per_slot<E: EthSpec>(
         &self,
         spec: &ChainSpec,
     ) -> Result<usize, Error> {
@@ -121,7 +122,7 @@ impl CommitteeLengths {
     }
 
     /// Get the length of the committee at the given `slot` and `committee_index`.
-    pub fn get_committee_length<E: EthSpec>(
+    pub(crate) fn get_committee_length<E: EthSpec>(
         &self,
         slot: Slot,
         committee_index: CommitteeIndex,
@@ -166,14 +167,14 @@ impl CommitteeLengths {
 /// - The committee lengths for all indices and slots.
 ///
 /// These values are used during attestation production.
-pub struct AttesterCacheValue {
+pub(crate) struct AttesterCacheValue {
     current_justified_checkpoint: Checkpoint,
     committee_lengths: CommitteeLengths,
 }
 
 impl AttesterCacheValue {
     /// Instantiate `Self` using `state.current_epoch()`.
-    pub fn new<E: EthSpec>(state: &BeaconState<E>, spec: &ChainSpec) -> Result<Self, Error> {
+    pub(crate) fn new<E: EthSpec>(state: &BeaconState<E>, spec: &ChainSpec) -> Result<Self, Error> {
         let current_justified_checkpoint = state.current_justified_checkpoint();
         let committee_lengths = CommitteeLengths::new(state, spec)?;
         Ok(Self {
@@ -208,7 +209,7 @@ impl AttesterCacheValue {
 /// It is also safe, but not maximally efficient, to key the attester shuffling with the same
 /// strategy. For better shuffling keying strategies, see the `ShufflingCache`.
 #[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
-pub struct AttesterCacheKey {
+pub(crate) struct AttesterCacheKey {
     /// The epoch from which the justified checkpoint should be observed.
     ///
     /// Attestations which use `self.epoch` as `target.epoch` should use this key.
@@ -227,7 +228,7 @@ impl AttesterCacheKey {
     /// ## Errors
     ///
     /// May error if `epoch` is out of the range of `state.block_roots`.
-    pub fn new<E: EthSpec>(
+    pub(crate) fn new<E: EthSpec>(
         epoch: Epoch,
         state: &BeaconState<E>,
         latest_block_root: Hash256,
@@ -259,14 +260,14 @@ impl AttesterCacheKey {
 ///
 /// See the module-level documentation for more information.
 #[derive(Default)]
-pub struct AttesterCache {
+pub(crate) struct AttesterCache {
     cache: RwLock<CacheHashMap>,
 }
 
 impl AttesterCache {
     /// Get the justified checkpoint and committee length for the `slot` and `committee_index` in
     /// the state identified by the cache `key`.
-    pub fn get<E: EthSpec>(
+    pub(crate) fn get<E: EthSpec>(
         &self,
         key: &AttesterCacheKey,
         slot: Slot,
@@ -281,7 +282,7 @@ impl AttesterCache {
     }
 
     /// Cache the `state.current_epoch()` values if they are not already present in the state.
-    pub fn maybe_cache_state<E: EthSpec>(
+    pub(crate) fn maybe_cache_state<E: EthSpec>(
         &self,
         state: &BeaconState<E>,
         latest_block_root: Hash256,
@@ -305,7 +306,7 @@ impl AttesterCache {
     /// This function takes a write-lock on the internal cache. Prefer attempting a `Self::get` call
     /// before running this function as `Self::get` only takes a read-lock and is therefore less
     /// likely to create contention.
-    pub fn load_and_cache_state<T: BeaconChainTypes>(
+    pub(crate) fn load_and_cache_state<T: BeaconChainTypes>(
         &self,
         state_root: Hash256,
         key: AttesterCacheKey,
@@ -387,7 +388,7 @@ impl AttesterCache {
     /// Remove all entries where the `key.epoch` is lower than the given `epoch`.
     ///
     /// Generally, the provided `epoch` should be the finalized epoch.
-    pub fn prune_below(&self, epoch: Epoch) {
+    pub(crate) fn prune_below(&self, epoch: Epoch) {
         self.cache.write().retain(|target, _| target.epoch >= epoch);
     }
 }

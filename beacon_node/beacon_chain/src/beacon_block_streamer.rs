@@ -20,12 +20,13 @@ use types::{
 };
 
 #[derive(PartialEq, Eq)]
-pub enum CheckCaches {
+pub(crate) enum CheckCaches {
     Yes,
     No,
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum Error {
     PayloadReconstruction(String),
     BlocksByRangeFailure(Box<execution_layer::Error>),
@@ -62,7 +63,7 @@ struct BlockParts<E: EthSpec> {
 }
 
 impl<E: EthSpec> BlockParts<E> {
-    pub fn new(
+    pub(crate) fn new(
         blinded: Box<SignedBlindedBeaconBlock<E>>,
         header: ExecutionPayloadHeader<E>,
     ) -> Self {
@@ -73,15 +74,15 @@ impl<E: EthSpec> BlockParts<E> {
         }
     }
 
-    pub fn root(&self) -> Hash256 {
+    pub(crate) fn root(&self) -> Hash256 {
         self.blinded_block.canonical_root()
     }
 
-    pub fn slot(&self) -> Slot {
+    pub(crate) fn slot(&self) -> Slot {
         self.blinded_block.message().slot()
     }
 
-    pub fn block_hash(&self) -> ExecutionBlockHash {
+    pub(crate) fn block_hash(&self) -> ExecutionBlockHash {
         self.header.block_hash()
     }
 }
@@ -179,7 +180,7 @@ fn reconstruct_blocks<E: EthSpec>(
 }
 
 impl<E: EthSpec> BodiesByRange<E> {
-    pub fn new(maybe_block_parts: Option<BlockParts<E>>) -> Self {
+    pub(crate) fn new(maybe_block_parts: Option<BlockParts<E>>) -> Self {
         if let Some(block_parts) = maybe_block_parts {
             Self {
                 start: block_parts.header.block_number(),
@@ -195,11 +196,14 @@ impl<E: EthSpec> BodiesByRange<E> {
         }
     }
 
-    pub fn is_unsent(&self) -> bool {
+    pub(crate) fn is_unsent(&self) -> bool {
         matches!(self.state, RequestState::UnSent(_))
     }
 
-    pub fn push_block_parts(&mut self, block_parts: BlockParts<E>) -> Result<(), BlockParts<E>> {
+    pub(crate) fn push_block_parts(
+        &mut self,
+        block_parts: BlockParts<E>,
+    ) -> Result<(), BlockParts<E>> {
         if self.count == BLOCKS_PER_RANGE_REQUEST {
             return Err(block_parts);
         }
@@ -276,7 +280,7 @@ impl<E: EthSpec> BodiesByRange<E> {
         }
     }
 
-    pub async fn get_block_result(
+    pub(crate) async fn get_block_result(
         &mut self,
         root: &Hash256,
         execution_layer: &ExecutionLayer<E>,
@@ -298,21 +302,21 @@ enum EngineRequest<E: EthSpec> {
 }
 
 impl<E: EthSpec> EngineRequest<E> {
-    pub fn new_by_range() -> Self {
+    pub(crate) fn new_by_range() -> Self {
         Self::ByRange(Arc::new(RwLock::new(BodiesByRange::new(None))))
     }
-    pub fn new_no_request() -> Self {
+    pub(crate) fn new_no_request() -> Self {
         Self::NoRequest(Arc::new(RwLock::new(HashMap::new())))
     }
 
-    pub async fn is_unsent(&self) -> bool {
+    pub(crate) async fn is_unsent(&self) -> bool {
         match self {
             Self::ByRange(bodies_by_range) => bodies_by_range.read().await.is_unsent(),
             Self::NoRequest(_) => false,
         }
     }
 
-    pub async fn push_block_parts(&mut self, block_parts: BlockParts<E>) {
+    pub(crate) async fn push_block_parts(&mut self, block_parts: BlockParts<E>) {
         match self {
             Self::ByRange(bodies_by_range) => {
                 let mut request = bodies_by_range.write().await;
@@ -333,7 +337,7 @@ impl<E: EthSpec> EngineRequest<E> {
         }
     }
 
-    pub async fn push_block_result(&mut self, root: Hash256, block_result: BlockResult<E>) {
+    pub(crate) async fn push_block_result(&mut self, root: Hash256, block_result: BlockResult<E>) {
         // this function will only fail if something is seriously wrong
         match self {
             Self::ByRange(_) => {
@@ -349,7 +353,7 @@ impl<E: EthSpec> EngineRequest<E> {
         }
     }
 
-    pub async fn get_block_result(
+    pub(crate) async fn get_block_result(
         &self,
         root: &Hash256,
         execution_layer: &ExecutionLayer<E>,
@@ -375,14 +379,14 @@ impl<E: EthSpec> EngineRequest<E> {
     }
 }
 
-pub struct BeaconBlockStreamer<T: BeaconChainTypes> {
+pub(crate) struct BeaconBlockStreamer<T: BeaconChainTypes> {
     execution_layer: ExecutionLayer<T::EthSpec>,
     check_caches: CheckCaches,
     beacon_chain: Arc<BeaconChain<T>>,
 }
 
 impl<T: BeaconChainTypes> BeaconBlockStreamer<T> {
-    pub fn new(
+    pub(crate) fn new(
         beacon_chain: &Arc<BeaconChain<T>>,
         check_caches: CheckCaches,
     ) -> Result<Arc<Self>, BeaconChainError> {
@@ -618,7 +622,7 @@ impl<T: BeaconChainTypes> BeaconBlockStreamer<T> {
         );
     }
 
-    pub async fn stream(
+    pub(crate) async fn stream(
         self: Arc<Self>,
         block_roots: Vec<Hash256>,
         sender: UnboundedSender<(Hash256, Arc<BlockResult<T::EthSpec>>)>,
@@ -644,7 +648,7 @@ impl<T: BeaconChainTypes> BeaconBlockStreamer<T> {
         }
     }
 
-    pub fn launch_stream(
+    pub(crate) fn launch_stream(
         self: Arc<Self>,
         block_roots: Vec<Hash256>,
     ) -> impl Stream<Item = (Hash256, Arc<BlockResult<T::EthSpec>>)> {

@@ -45,10 +45,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     ///
     /// Return `true` if the attestation to this block should be rejected outright,
     /// return `false` if more information is needed from a single-block-lookup.
-    pub(crate) fn is_pre_finalization_block(
-        &self,
-        block_root: Hash256,
-    ) -> Result<bool, BeaconChainError> {
+    pub fn is_pre_finalization_block(&self, block_root: Hash256) -> Result<bool, BeaconChainError> {
         let mut cache = self.pre_finalization_block_cache.cache.lock();
 
         // Check the cache to see if we already know this pre-finalization block root.
@@ -95,7 +92,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         Ok(false)
     }
 
-    pub(crate) fn pre_finalization_block_rejected(&self, block_root: Hash256) {
+    pub fn pre_finalization_block_rejected(&self, block_root: Hash256) {
         // Future requests can know that this block is invalid without having to look it up again.
         let mut cache = self.pre_finalization_block_cache.cache.lock();
         cache.in_progress_lookups.pop(&block_root);
@@ -104,7 +101,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 }
 
 impl PreFinalizationBlockCache {
-    pub(crate) fn block_processed(&self, block_root: Hash256) {
+    pub fn block_processed(&self, block_root: Hash256) {
         // Future requests will find this block in fork choice, so no need to cache it in the
         // ongoing lookup cache any longer.
         self.cache.lock().in_progress_lookups.pop(&block_root);

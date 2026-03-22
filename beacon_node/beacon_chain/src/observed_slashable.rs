@@ -51,7 +51,7 @@ impl<E: EthSpec> ObservedSlashable<E> {
     ///
     /// - `header.proposer_index` is greater than `VALIDATOR_REGISTRY_LIMIT`.
     /// - `header.slot` is equal to or less than the latest pruned `finalized_slot`.
-    pub fn observe_slashable(
+    pub(crate) fn observe_slashable(
         &mut self,
         slot: Slot,
         proposer_index: u64,
@@ -133,7 +133,7 @@ impl<E: EthSpec> ObservedSlashable<E> {
     /// equal to or less than `finalized_slot`.
     ///
     /// No-op if `finalized_slot == 0`.
-    pub fn prune(&mut self, finalized_slot: Slot) {
+    pub(crate) fn prune(&mut self, finalized_slot: Slot) {
         if finalized_slot == 0 {
             return;
         }
