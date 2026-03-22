@@ -19,7 +19,7 @@ use types::{
     FixedBytesExtended, Hash256, Slot,
 };
 
-pub const DEFAULT_PRUNE_THRESHOLD: usize = 256;
+pub(crate) const DEFAULT_PRUNE_THRESHOLD: usize = 256;
 
 #[derive(Default, Debug, PartialEq, Eq, Clone, Encode, Decode)]
 pub struct VoteTracker {
@@ -259,7 +259,7 @@ impl Block {
 /// E.g., a `get` or `insert` to an out-of-bounds element will cause the Vec to grow (using
 /// Default) to the smallest size required to fulfill the request.
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
-pub struct ElasticList<T>(pub Vec<T>);
+pub(crate) struct ElasticList<T>(pub(crate) Vec<T>);
 
 impl<T> ElasticList<T>
 where

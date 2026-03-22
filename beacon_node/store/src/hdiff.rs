@@ -149,22 +149,22 @@ pub struct HDiff {
 }
 
 #[derive(Debug, PartialEq, Eq, Encode, Decode)]
-pub struct BytesDiff {
+pub(crate) struct BytesDiff {
     bytes: Vec<u8>,
 }
 
 #[derive(Debug, PartialEq, Eq, Encode, Decode)]
-pub struct CompressedU64Diff {
+pub(crate) struct CompressedU64Diff {
     bytes: Vec<u8>,
 }
 
 #[derive(Debug, PartialEq, Eq, Encode, Decode)]
-pub struct ValidatorsDiff {
+pub(crate) struct ValidatorsDiff {
     bytes: Vec<u8>,
 }
 
 #[derive(Debug, PartialEq, Eq, Encode, Decode)]
-pub struct AppendOnlyDiff<T: Encode + Decode> {
+pub(crate) struct AppendOnlyDiff<T: Encode + Decode> {
     values: Vec<T>,
 }
 
