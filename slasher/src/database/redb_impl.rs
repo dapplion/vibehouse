@@ -90,6 +90,7 @@ impl Environment {
         }))
     }
 
+    #[allow(dead_code)] // called via interface::Environment::filenames, only used on Windows
     pub fn filenames(&self, config: &Config) -> Vec<PathBuf> {
         vec![config.database_path.join(REDB_DATA_FILENAME)]
     }

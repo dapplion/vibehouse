@@ -30,10 +30,8 @@ use vibehouse_network::{
     types::{EnrAttestationBitfield, EnrSyncCommitteeBitfield, SyncState},
 };
 
-pub const TCP_PORT: u16 = 42;
-pub const UDP_PORT: u16 = 42;
-pub const SEQ_NUMBER: u64 = 0;
-pub const EXTERNAL_ADDR: &str = "/ip4/0.0.0.0/tcp/9000";
+const SEQ_NUMBER: u64 = 0;
+const EXTERNAL_ADDR: &str = "/ip4/0.0.0.0/tcp/9000";
 
 /// HTTP API tester that allows interaction with the underlying beacon chain harness.
 pub struct InteractiveTester<E: EthSpec> {

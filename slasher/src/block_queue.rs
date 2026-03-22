@@ -17,10 +17,12 @@ impl BlockQueue {
         std::mem::take(&mut *blocks)
     }
 
+    #[cfg(test)]
     pub fn len(&self) -> usize {
         self.blocks.lock().len()
     }
 
+    #[cfg(test)]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }

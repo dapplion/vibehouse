@@ -18,13 +18,14 @@ mod slasher;
 pub mod test_utils;
 
 pub use crate::slasher::Slasher;
-pub use attestation_queue::{AttestationBatch, AttestationQueue, SimpleBatch};
-pub use attester_record::{AttesterRecord, CompactAttesterRecord, IndexedAttesterRecord};
-pub use block_queue::BlockQueue;
+pub(crate) use attestation_queue::{AttestationBatch, AttestationQueue, SimpleBatch};
+pub(crate) use attester_record::{AttesterRecord, CompactAttesterRecord, IndexedAttesterRecord};
+pub(crate) use block_queue::BlockQueue;
 pub use config::{Config, DatabaseBackend, DatabaseBackendOverride};
-pub use database::{
-    IndexedAttestationId, SlasherDB,
-    interface::{Database, Environment, RwTransaction},
+pub use database::SlasherDB;
+pub(crate) use database::{
+    IndexedAttestationId,
+    interface::{Database, RwTransaction},
 };
 pub use error::Error;
 

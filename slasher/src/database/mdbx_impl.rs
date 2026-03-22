@@ -82,6 +82,7 @@ impl Environment {
         Ok(RwTransaction { txn })
     }
 
+    #[allow(dead_code)] // called via interface::Environment::filenames, only used on Windows
     pub fn filenames(&self, config: &Config) -> Vec<PathBuf> {
         vec![
             config.database_path.join("mdbx.dat"),

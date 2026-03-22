@@ -100,10 +100,12 @@ impl<E: EthSpec> AttestationQueue<E> {
         self.queue.lock().extend(batch);
     }
 
+    #[cfg(test)]
     pub fn len(&self) -> usize {
         self.queue.lock().len()
     }
 
+    #[cfg(test)]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }

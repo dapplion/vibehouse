@@ -11,6 +11,7 @@ use crate::database::mdbx_impl;
 use crate::database::redb_impl;
 
 #[derive(Debug)]
+#[allow(dead_code)] // Disabled variant is reachable at runtime via DatabaseBackend::Disabled
 pub enum Environment {
     #[cfg(feature = "mdbx")]
     Mdbx(mdbx_impl::Environment),
@@ -108,6 +109,7 @@ impl Environment {
     }
 
     /// List of all files used by the database.
+    #[allow(dead_code)] // only used on Windows (cfg(windows) in database.rs)
     pub fn filenames(&self, config: &Config) -> Vec<PathBuf> {
         match self {
             #[cfg(feature = "mdbx")]
