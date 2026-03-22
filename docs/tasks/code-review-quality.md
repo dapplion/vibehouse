@@ -4380,3 +4380,17 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - `Comparison::from_slice`, `ObservedPayloadEnvelopes::new/is_empty` → `#[cfg(test)]` (test-only)
   - Removed stale `#[allow(dead_code)]` from `should_broadcast_latest_finality_update` (actively used by http_api)
 - **Tests**: 191/191 affected crate tests pass. Zero warnings on `cargo check --workspace`. `make lint-full` clean.
+
+### Run 2203
+
+**Nightly CI fix: bump cargo-nextest; dead_code annotation audit**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. One new merge: #4902 (phase0 gossip validation functions — not Gloas-related). No new EF test fixtures.
+- **Nightly CI failure**: op-pool-tests (capella) failed again — `install-action@v2` tried to install `cargo-nextest@latest` (0.9.132) instead of the pinned `@0.9.131`, and the 0.9.132 binary wasn't yet published. Root cause: floating `@v2` tag of install-action resolved to a version that ignores the version pin in certain cases.
+- **Fix**: Bumped `cargo-nextest` from 0.9.131 to 0.9.132 across both `ci.yml` and `nightly-tests.yml` (11 occurrences total). The 0.9.132 binary is now available on GitHub Releases.
+- **Dead code audit**: Reviewed all 63 remaining `#[allow(dead_code)]` annotations across 32 files. All are legitimate:
+  - 47 are error enum variants (standard Rust pattern — inner fields used in Debug/Display)
+  - 7 are platform-specific or feature-gated code
+  - 9 are items only used in test code or test_utils (correctly suppressed)
+  - 0 genuinely dead items found
+- **Build**: Zero warnings on `cargo check`. `make lint-full` clean.
