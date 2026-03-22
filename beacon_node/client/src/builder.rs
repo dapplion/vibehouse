@@ -548,7 +548,7 @@ where
     /// Immediately start the slasher service.
     ///
     /// Error if no slasher is configured.
-    pub fn start_slasher_service(&self) -> Result<(), String> {
+    pub(crate) fn start_slasher_service(&self) -> Result<(), String> {
         let beacon_chain = self
             .beacon_chain
             .clone()

@@ -1,5 +1,5 @@
 /// This crate provides the network server for Vibehouse.
-pub mod service;
+mod service;
 
 mod metrics;
 mod nat;

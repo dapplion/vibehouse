@@ -36,8 +36,8 @@ const SPEEDO_OBSERVATIONS: usize = 4;
 /// The number of slots between logs that give detail about backfill process.
 const BACKFILL_LOG_INTERVAL: u64 = 5;
 
-pub const FORK_READINESS_PREPARATION_SECONDS: u64 = SECONDS_IN_A_WEEK * 2;
-pub const ENGINE_CAPABILITIES_REFRESH_INTERVAL: u64 = 300;
+const FORK_READINESS_PREPARATION_SECONDS: u64 = SECONDS_IN_A_WEEK * 2;
+const ENGINE_CAPABILITIES_REFRESH_INTERVAL: u64 = 300;
 
 /// Spawns a notifier service which periodically logs information about the node.
 pub(crate) fn spawn_notifier<T: BeaconChainTypes>(
@@ -776,11 +776,11 @@ fn seconds_pretty(secs: f64) -> String {
 
 /// "Speedo" is Australian for speedometer. This struct observes syncing times.
 #[derive(Default)]
-pub struct Speedo(Vec<(Slot, Instant)>);
+struct Speedo(Vec<(Slot, Instant)>);
 
 impl Speedo {
     /// Observe that we were at some `slot` at the given `instant`.
-    pub fn observe(&mut self, slot: Slot, instant: Instant) {
+    fn observe(&mut self, slot: Slot, instant: Instant) {
         if self.0.len() > SPEEDO_OBSERVATIONS {
             self.0.remove(0);
         }
@@ -791,7 +791,7 @@ impl Speedo {
     /// Returns the average of the speeds between each observation.
     ///
     /// Does not gracefully handle slots that are above `u32::MAX`.
-    pub fn slots_per_second(&self) -> Option<f64> {
+    fn slots_per_second(&self) -> Option<f64> {
         let speeds = self
             .0
             .windows(2)
@@ -827,7 +827,7 @@ impl Speedo {
     ///
     /// Returns `None` if the slot is prior to our latest observed slot or we have not made any
     /// observations.
-    pub fn estimated_time_till_slot(&self, target_slot: Slot) -> Option<f64> {
+    fn estimated_time_till_slot(&self, target_slot: Slot) -> Option<f64> {
         let (prev_slot, _) = self.0.last()?;
         let slots_per_second = self.slots_per_second()?;
 
@@ -840,7 +840,7 @@ impl Speedo {
     }
 
     /// Clears all past observations to be used for an alternative sync (i.e backfill sync).
-    pub fn clear(&mut self) {
+    fn clear(&mut self) {
         self.0.clear();
     }
 }
