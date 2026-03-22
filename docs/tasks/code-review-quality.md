@@ -4186,3 +4186,18 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - **network**: all pub items in test modules are `#[cfg(test)]` (don't leak); main API surface all used by client/http_api
   - **http_api**: `BlockId`, `StateId`, `ProvenancedBlock`, `publish_block`, `publish_blinded_block`, `reconstruct_block`, `test_utils`, `api_error` all used by integration tests (separate crate targets) — can't downgrade
 - **Tests**: 1085/1085 types tests pass, 1026/1026 state_processing tests pass. Clippy clean, zero warnings. All downstream crates (http_api, network) compile.
+
+### Run 2194
+
+**Pub visibility downgrades in beacon_processor, execution_layer; audit of fork_choice, proto_array, slot_clock**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs releases.
+- **Changes — execution_layer/engine_api.rs** (1 struct downgraded):
+  - `GetPayloadResponse<E>` (superstruct) → `pub(crate)` (only used within execution_layer; not re-exported in lib.rs)
+- **Crates audited with no changes needed**:
+  - **fork_choice**: `InvalidExecutionBid`, `InvalidPayloadAttestation` embedded in pub `Error<T>` enum — can't downgrade without private_interfaces warning. `queued_attestations()` used by integration tests (tests/tests.rs).
+  - **beacon_processor**: `WORKER_FREED`, `NOTHING_TO_DO`, `QUEUED_ATTESTATION_DELAY`, `QUEUED_RPC_BLOCK_DELAY`, `ADDITIONAL_QUEUED_BLOCK_DELAY` all used by network tests (network_beacon_processor/tests.rs). `QueuedBackfillBatch` embedded in pub `ReprocessQueueMessage` enum.
+  - **proto_array**: `VoteTracker` and `ProposerBoost` are field types of pub `SszContainer`. `Iter` returned by pub `iter_nodes()`. `fork_choice_test_definition` module used by bin.rs binary target. All pub items required by trait impls or pub type signatures.
+  - **slot_clock**: All struct fields already private. All pub methods (`set_slot`, `set_current_time`, `advance_time`, `advance_slot`, `genesis_duration`, `duration_to_slot`) used externally by beacon_chain, network, validator_client, http_api tests.
+  - **execution_layer**: `ClientCode` is field type of pub `ClientVersionV1` used by beacon_chain. All other pub items re-exported in lib.rs or used by beacon_chain/network.
+- **Tests**: 272/272 affected crate tests pass (fork_choice + execution_layer). Clippy clean, zero warnings. All downstream crates compile.

@@ -257,7 +257,7 @@ pub(crate) struct ForkchoiceUpdatedResponse {
     partial_getter_error(ty = "Error", expr = "Error::IncorrectStateVariant")
 )]
 #[derive(Clone, Debug, PartialEq)]
-pub struct GetPayloadResponse<E: EthSpec> {
+pub(crate) struct GetPayloadResponse<E: EthSpec> {
     #[superstruct(
         only(Bellatrix),
         partial_getter(rename = "execution_payload_bellatrix")
