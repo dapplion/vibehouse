@@ -235,7 +235,7 @@ pub(crate) struct DBError {
 
 impl DBError {
     #[cfg(test)]
-    pub fn new(message: String) -> Self {
+    pub(crate) fn new(message: String) -> Self {
         Self { message }
     }
 }

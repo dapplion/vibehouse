@@ -134,7 +134,7 @@ struct TestWallet {
 
 impl TestWallet {
     /// Creates a new wallet tester, without _actually_ creating it via the CLI.
-    pub fn new<P: AsRef<Path>>(base_dir: P, name: &str) -> Self {
+    pub(crate) fn new<P: AsRef<Path>>(base_dir: P, name: &str) -> Self {
         Self {
             base_dir: base_dir.as_ref().into(),
             password_dir: tempdir().unwrap(),
@@ -143,20 +143,20 @@ impl TestWallet {
         }
     }
 
-    pub fn base_dir(&self) -> PathBuf {
+    pub(crate) fn base_dir(&self) -> PathBuf {
         self.base_dir.clone()
     }
 
-    pub fn password_path(&self) -> PathBuf {
+    pub(crate) fn password_path(&self) -> PathBuf {
         self.password_dir.path().join("password.pass")
     }
 
-    pub fn mnemonic_path(&self) -> PathBuf {
+    pub(crate) fn mnemonic_path(&self) -> PathBuf {
         self.mnemonic_dir.path().join("mnemonic")
     }
 
     /// Actually create the wallet using the vibehouse CLI.
-    pub fn create(&self) -> Result<Output, String> {
+    pub(crate) fn create(&self) -> Result<Output, String> {
         create_wallet(
             &self.name,
             self.base_dir(),
@@ -166,7 +166,7 @@ impl TestWallet {
     }
 
     /// Create a wallet, expecting it to succeed.
-    pub fn create_expect_success(&self) {
+    pub(crate) fn create_expect_success(&self) {
         self.create().unwrap();
         assert!(self.password_path().exists(), "{} password", self.name);
         assert!(self.mnemonic_path().exists(), "{} mnemonic", self.name);
@@ -232,7 +232,11 @@ struct TestValidator {
 }
 
 impl TestValidator {
-    pub fn new<P: AsRef<Path>>(validator_dir: P, secrets_dir: P, wallet: TestWallet) -> Self {
+    pub(crate) fn new<P: AsRef<Path>>(
+        validator_dir: P,
+        secrets_dir: P,
+        wallet: TestWallet,
+    ) -> Self {
         Self {
             wallet,
             validator_dir: validator_dir.as_ref().into(),
@@ -241,7 +245,7 @@ impl TestValidator {
     }
 
     /// Create validators, returning a list of validator pubkeys on success.
-    pub fn create(
+    pub(crate) fn create(
         &self,
         quantity_flag: &str,
         quantity: usize,
@@ -291,7 +295,7 @@ impl TestValidator {
     }
 
     /// Create a validators, expecting success.
-    pub fn create_expect_success(
+    pub(crate) fn create_expect_success(
         &self,
         quantity_flag: &str,
         quantity: usize,

@@ -6,7 +6,7 @@ use std::sync::LazyLock;
 use types::{Epoch, EthSpec, Hash256, Keypair, MainnetEthSpec, PublicKeyBytes, Slot};
 
 // Should ideally be divisible by 3.
-pub const VALIDATOR_COUNT: usize = 48;
+pub(crate) const VALIDATOR_COUNT: usize = 48;
 
 /// A cached set of keys.
 static KEYPAIRS: LazyLock<Vec<Keypair>> =

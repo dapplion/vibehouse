@@ -155,7 +155,7 @@ pub(crate) struct HttpJsonRpc {
 
 impl HttpJsonRpc {
     #[cfg(test)]
-    pub fn new(
+    pub(crate) fn new(
         url: SensitiveUrl,
         execution_timeout_multiplier: Option<u32>,
     ) -> Result<Self, Error> {
@@ -987,7 +987,7 @@ mod test {
     }
 
     impl Tester {
-        pub fn new(with_auth: bool) -> Self {
+        pub(crate) fn new(with_auth: bool) -> Self {
             let spec = Arc::new(MainnetEthSpec::default_spec());
             let server = MockServer::unit_testing(spec);
 
@@ -1017,7 +1017,7 @@ mod test {
             }
         }
 
-        pub async fn assert_request_equals<R, F>(
+        pub(crate) async fn assert_request_equals<R, F>(
             self,
             request_func: R,
             expected_json: serde_json::Value,
@@ -1037,7 +1037,7 @@ mod test {
             self
         }
 
-        pub async fn assert_auth_failure<R, F, T>(self, request_func: R) -> Self
+        pub(crate) async fn assert_auth_failure<R, F, T>(self, request_func: R) -> Self
         where
             R: Fn(Arc<HttpJsonRpc>) -> F,
             F: Future<Output = Result<T, Error>>,
@@ -1051,7 +1051,7 @@ mod test {
             self
         }
 
-        pub async fn with_preloaded_responses<R, F>(
+        pub(crate) async fn with_preloaded_responses<R, F>(
             self,
             preloaded_responses: Vec<serde_json::Value>,
             request_func: R,

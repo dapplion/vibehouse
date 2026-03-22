@@ -179,7 +179,7 @@ mod tests {
     impl Web3SignerRig {
         // We need to hold that lock as we want to get the binary only once
         #[allow(clippy::await_holding_lock)]
-        pub async fn new(network: &str, listen_address: &str, listen_port: u16) -> Self {
+        pub(crate) async fn new(network: &str, listen_address: &str, listen_port: u16) -> Self {
             GET_WEB3SIGNER_BIN
                 .get_or_init(|| async {
                     download_binary(TEMP_DIR.lock().path().to_path_buf()).await;
@@ -278,7 +278,7 @@ mod tests {
             s
         }
 
-        pub async fn wait_until_up(&self, timeout: Duration) {
+        pub(crate) async fn wait_until_up(&self, timeout: Duration) {
             let start = Instant::now();
             loop {
                 if self.upcheck().await.is_ok() {
@@ -291,7 +291,7 @@ mod tests {
             }
         }
 
-        pub async fn upcheck(&self) -> Result<(), ()> {
+        pub(crate) async fn upcheck(&self) -> Result<(), ()> {
             let url = self.url.join("upcheck").unwrap();
             self.http_client
                 .get(url)
@@ -314,7 +314,7 @@ mod tests {
     }
 
     impl ValidatorStoreRig {
-        pub async fn new(
+        pub(crate) async fn new(
             validator_definitions: Vec<ValidatorDefinition>,
             slashing_protection_config: SlashingProtectionConfig,
             using_web3signer: bool,
@@ -377,7 +377,7 @@ mod tests {
             }
         }
 
-        pub fn shutdown(self) {
+        pub(crate) fn shutdown(self) {
             Arc::try_unwrap(self.runtime).unwrap().shutdown_background();
         }
     }
@@ -402,7 +402,7 @@ mod tests {
     }
 
     impl TestingRig {
-        pub async fn new(
+        pub(crate) async fn new(
             network: &str,
             slashing_protection_config: SlashingProtectionConfig,
             spec: Arc<ChainSpec>,
@@ -475,7 +475,7 @@ mod tests {
 
         /// Run the `generate_sig` function across all validator stores on `self` and assert that
         /// they all return the same value.
-        pub async fn assert_signatures_match<F, R, S>(
+        pub(crate) async fn assert_signatures_match<F, R, S>(
             self,
             case_name: &str,
             generate_sig: F,
@@ -509,7 +509,7 @@ mod tests {
 
         /// Assert that a slashable message fails to be signed locally and is either signed or not
         /// by the web3signer rig depending on the value of `web3signer_should_sign`.
-        pub async fn assert_slashable_message_should_sign<F, R>(
+        pub(crate) async fn assert_slashable_message_should_sign<F, R>(
             self,
             case_name: &str,
             generate_sig: F,

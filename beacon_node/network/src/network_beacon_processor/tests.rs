@@ -101,7 +101,7 @@ impl Drop for TestRig {
 }
 
 impl TestRig {
-    pub async fn new(chain_length: u64) -> Self {
+    pub(crate) async fn new(chain_length: u64) -> Self {
         // This allows for testing voluntary exits without building out a massive chain.
         let mut spec = test_spec::<E>();
         spec.shard_committee_period = 2;
@@ -114,7 +114,7 @@ impl TestRig {
         .await
     }
 
-    pub async fn new_supernode(chain_length: u64) -> Self {
+    pub(crate) async fn new_supernode(chain_length: u64) -> Self {
         // This allows for testing voluntary exits without building out a massive chain.
         let mut spec = test_spec::<E>();
         spec.shard_committee_period = 2;
@@ -127,7 +127,7 @@ impl TestRig {
         .await
     }
 
-    pub async fn new_parametric(
+    pub(crate) async fn new_parametric(
         chain_length: u64,
         beacon_processor_config: BeaconProcessorConfig,
         node_custody_type: NodeCustodyType,
@@ -358,7 +358,7 @@ impl TestRig {
     /// Build a TestRig from a pre-built harness. This skips the next-block and
     /// attestation setup (not needed for bid/envelope gossip tests) but wires up
     /// the full beacon processor and network channels.
-    pub async fn new_from_harness(harness: BeaconChainHarness<T>) -> Self {
+    pub(crate) async fn new_from_harness(harness: BeaconChainHarness<T>) -> Self {
         let spec = harness.chain.spec.clone();
         let beacon_processor_config = BeaconProcessorConfig::default();
 
@@ -470,15 +470,15 @@ impl TestRig {
         }
     }
 
-    pub async fn recompute_head(&self) {
+    pub(crate) async fn recompute_head(&self) {
         self.chain.recompute_head_at_current_slot().await;
     }
 
-    pub fn head_root(&self) -> Hash256 {
+    pub(crate) fn head_root(&self) -> Hash256 {
         self.chain.head_snapshot().beacon_block_root
     }
 
-    pub fn enqueue_gossip_block(&self) {
+    pub(crate) fn enqueue_gossip_block(&self) {
         self.network_beacon_processor
             .send_gossip_beacon_block(
                 junk_message_id(),
@@ -490,7 +490,7 @@ impl TestRig {
             .unwrap();
     }
 
-    pub fn enqueue_gossip_blob(&self, blob_index: usize) {
+    pub(crate) fn enqueue_gossip_blob(&self, blob_index: usize) {
         if let Some(blobs) = self.next_blobs.as_ref() {
             let blob = blobs.get(blob_index).unwrap();
             self.network_beacon_processor
@@ -506,7 +506,7 @@ impl TestRig {
         }
     }
 
-    pub fn enqueue_gossip_data_columns(&self, col_index: usize) {
+    pub(crate) fn enqueue_gossip_data_columns(&self, col_index: usize) {
         if let Some(data_columns) = self.next_data_columns.as_ref() {
             let data_column = data_columns.get(col_index).unwrap();
             self.network_beacon_processor
@@ -521,7 +521,7 @@ impl TestRig {
         }
     }
 
-    pub fn enqueue_rpc_block(&self) {
+    pub(crate) fn enqueue_rpc_block(&self) {
         let block_root = self.next_block.canonical_root();
         self.network_beacon_processor
             .send_rpc_beacon_block(
@@ -533,7 +533,7 @@ impl TestRig {
             .unwrap();
     }
 
-    pub fn enqueue_single_lookup_rpc_block(&self) {
+    pub(crate) fn enqueue_single_lookup_rpc_block(&self) {
         let block_root = self.next_block.canonical_root();
         self.network_beacon_processor
             .send_rpc_beacon_block(
@@ -545,7 +545,7 @@ impl TestRig {
             .unwrap();
     }
 
-    pub fn enqueue_single_lookup_rpc_blobs(&self) {
+    pub(crate) fn enqueue_single_lookup_rpc_blobs(&self) {
         if let Some(blobs) = self.next_blobs.clone() {
             let blobs = FixedBlobSidecarList::new(blobs.into_iter().map(Some).collect::<Vec<_>>());
             self.network_beacon_processor
@@ -559,7 +559,7 @@ impl TestRig {
         }
     }
 
-    pub fn enqueue_single_lookup_rpc_data_columns(&self) {
+    pub(crate) fn enqueue_single_lookup_rpc_data_columns(&self) {
         if let Some(data_columns) = self.next_data_columns.clone() {
             self.network_beacon_processor
                 .send_rpc_custody_columns(
@@ -572,7 +572,7 @@ impl TestRig {
         }
     }
 
-    pub fn enqueue_blobs_by_range_request(&self, start_slot: u64, count: u64) {
+    pub(crate) fn enqueue_blobs_by_range_request(&self, start_slot: u64, count: u64) {
         self.network_beacon_processor
             .send_blobs_by_range_request(
                 PeerId::random(),
@@ -582,7 +582,10 @@ impl TestRig {
             .unwrap();
     }
 
-    pub fn enqueue_blobs_by_root_request(&self, blob_ids: RuntimeVariableList<BlobIdentifier>) {
+    pub(crate) fn enqueue_blobs_by_root_request(
+        &self,
+        blob_ids: RuntimeVariableList<BlobIdentifier>,
+    ) {
         self.network_beacon_processor
             .send_blobs_by_roots_request(
                 PeerId::random(),
@@ -592,7 +595,7 @@ impl TestRig {
             .unwrap();
     }
 
-    pub fn enqueue_envelopes_by_root_request(&self, block_roots: Vec<Hash256>) {
+    pub(crate) fn enqueue_envelopes_by_root_request(&self, block_roots: Vec<Hash256>) {
         let request = ExecutionPayloadEnvelopesByRootRequest {
             block_roots: RuntimeVariableList::new(
                 block_roots,
@@ -609,7 +612,7 @@ impl TestRig {
             .unwrap();
     }
 
-    pub fn enqueue_data_columns_by_range_request(&self, count: u64, columns: Vec<u64>) {
+    pub(crate) fn enqueue_data_columns_by_range_request(&self, count: u64, columns: Vec<u64>) {
         self.network_beacon_processor
             .send_data_columns_by_range_request(
                 PeerId::random(),
@@ -623,7 +626,7 @@ impl TestRig {
             .unwrap();
     }
 
-    pub fn enqueue_backfill_batch(&self, epoch: Epoch) {
+    pub(crate) fn enqueue_backfill_batch(&self, epoch: Epoch) {
         self.network_beacon_processor
             .send_chain_segment(
                 ChainSegmentProcessId::BackSyncBatchId(epoch),
@@ -632,7 +635,7 @@ impl TestRig {
             .unwrap();
     }
 
-    pub fn enqueue_unaggregated_attestation(&self) {
+    pub(crate) fn enqueue_unaggregated_attestation(&self) {
         let (attestation, subnet_id) = self.attestations.first().unwrap().clone();
         self.network_beacon_processor
             .send_unaggregated_attestation(
@@ -646,7 +649,7 @@ impl TestRig {
             .unwrap();
     }
 
-    pub fn enqueue_gossip_attester_slashing(&self) {
+    pub(crate) fn enqueue_gossip_attester_slashing(&self) {
         self.network_beacon_processor
             .send_gossip_attester_slashing(
                 junk_message_id(),
@@ -656,7 +659,7 @@ impl TestRig {
             .unwrap();
     }
 
-    pub fn enqueue_gossip_proposer_slashing(&self) {
+    pub(crate) fn enqueue_gossip_proposer_slashing(&self) {
         self.network_beacon_processor
             .send_gossip_proposer_slashing(
                 junk_message_id(),
@@ -666,7 +669,7 @@ impl TestRig {
             .unwrap();
     }
 
-    pub fn enqueue_gossip_voluntary_exit(&self) {
+    pub(crate) fn enqueue_gossip_voluntary_exit(&self) {
         self.network_beacon_processor
             .send_gossip_voluntary_exit(
                 junk_message_id(),
@@ -676,7 +679,7 @@ impl TestRig {
             .unwrap();
     }
 
-    pub fn enqueue_next_block_unaggregated_attestation(&self) {
+    pub(crate) fn enqueue_next_block_unaggregated_attestation(&self) {
         let (attestation, subnet_id) = self.next_block_attestations.first().unwrap().clone();
         self.network_beacon_processor
             .send_unaggregated_attestation(
@@ -690,7 +693,7 @@ impl TestRig {
             .unwrap();
     }
 
-    pub fn enqueue_next_block_aggregated_attestation(&self) {
+    pub(crate) fn enqueue_next_block_aggregated_attestation(&self) {
         let aggregate = self
             .next_block_aggregate_attestations
             .first()
@@ -707,7 +710,7 @@ impl TestRig {
     }
 
     /// Assert that the `BeaconProcessor` doesn't produce any events in the given `duration`.
-    pub async fn assert_no_events_for(&mut self, duration: Duration) {
+    pub(crate) async fn assert_no_events_for(&mut self, duration: Duration) {
         tokio::select! {
             _ = tokio::time::sleep(duration) => (),
             event = self.work_journal_rx.recv() => panic!(
@@ -724,7 +727,7 @@ impl TestRig {
     ///
     /// Given the described logic, `expected` must not contain `WORKER_FREED` or `NOTHING_TO_DO`
     /// events.
-    pub async fn assert_event_journal_contains_ordered(&mut self, expected: &[WorkType]) {
+    pub(crate) async fn assert_event_journal_contains_ordered(&mut self, expected: &[WorkType]) {
         let expected = expected
             .iter()
             .map(Into::into)
@@ -770,12 +773,12 @@ impl TestRig {
         assert_eq!(worker_freed_remaining, 0);
     }
 
-    pub async fn assert_event_journal(&mut self, expected: &[&str]) {
+    pub(crate) async fn assert_event_journal(&mut self, expected: &[&str]) {
         self.assert_event_journal_with_timeout(expected, STANDARD_TIMEOUT, false, false)
             .await;
     }
 
-    pub async fn assert_event_journal_completes_with_timeout(
+    pub(crate) async fn assert_event_journal_completes_with_timeout(
         &mut self,
         expected: &[WorkType],
         timeout: Duration,
@@ -794,7 +797,7 @@ impl TestRig {
         .await;
     }
 
-    pub async fn assert_event_journal_does_not_complete_with_timeout(
+    pub(crate) async fn assert_event_journal_does_not_complete_with_timeout(
         &mut self,
         expected: &[WorkType],
         timeout: Duration,
@@ -811,7 +814,7 @@ impl TestRig {
         .await;
     }
 
-    pub async fn assert_event_journal_completes(&mut self, expected: &[WorkType]) {
+    pub(crate) async fn assert_event_journal_completes(&mut self, expected: &[WorkType]) {
         self.assert_event_journal(
             &expected
                 .iter()
@@ -829,7 +832,7 @@ impl TestRig {
     ///
     /// We won't attempt to listen for any more than `expected.len()` events. As such, it makes sense
     /// to use the `NOTHING_TO_DO` event to ensure that execution has completed.
-    pub async fn assert_event_journal_with_timeout(
+    pub(crate) async fn assert_event_journal_with_timeout(
         &mut self,
         expected: &[&str],
         timeout: Duration,
@@ -872,7 +875,7 @@ impl TestRig {
     }
 
     /// Assert that the `BeaconProcessor` event journal is not as `expected`.
-    pub async fn assert_not_in_event_journal_with_timeout(
+    pub(crate) async fn assert_not_in_event_journal_with_timeout(
         &mut self,
         expected: &[&str],
         timeout: Duration,
@@ -910,7 +913,7 @@ impl TestRig {
     ///
     /// * `timeout` - Maximum duration to listen for messages
     /// * `count` - Optional maximum number of messages to collect before returning
-    pub async fn receive_network_messages_with_timeout(
+    pub(crate) async fn receive_network_messages_with_timeout(
         &mut self,
         timeout: Duration,
         count: Option<usize>,
@@ -949,7 +952,7 @@ impl TestRig {
     /// Listen for sync messages and collect them for a specified duration or until reaching a count.
     ///
     /// Returns None if no messages were received, or Some(Vec) containing the received messages.
-    pub async fn receive_sync_messages_with_timeout(
+    pub(crate) async fn receive_sync_messages_with_timeout(
         &mut self,
         timeout: Duration,
         count: Option<usize>,

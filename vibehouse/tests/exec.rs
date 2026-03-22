@@ -7,7 +7,7 @@ use std::str::from_utf8;
 use tempfile::TempDir;
 use types::Config;
 
-pub trait CommandLineTestExec {
+pub(crate) trait CommandLineTestExec {
     type Config: DeserializeOwned;
 
     fn cmd_mut(&mut self) -> &mut Command;
@@ -121,7 +121,7 @@ fn output_result(cmd: &mut Command) -> Result<Output, String> {
     }
 }
 
-pub struct CompletedTest<C> {
+pub(crate) struct CompletedTest<C> {
     config: C,
     dir: TempDir,
 }
@@ -131,11 +131,11 @@ impl<C> CompletedTest<C> {
         CompletedTest { config, dir }
     }
 
-    pub fn with_config<F: Fn(&C)>(self, func: F) {
+    pub(crate) fn with_config<F: Fn(&C)>(self, func: F) {
         func(&self.config);
     }
 
-    pub fn with_config_and_dir<F: Fn(&C, &TempDir)>(self, func: F) {
+    pub(crate) fn with_config_and_dir<F: Fn(&C, &TempDir)>(self, func: F) {
         func(&self.config, &self.dir);
     }
 }

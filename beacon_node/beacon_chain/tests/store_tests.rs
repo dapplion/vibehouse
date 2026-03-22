@@ -50,11 +50,11 @@ use types::test_utils::{SeedableRng, XorShiftRng};
 use types::*;
 
 // Should ideally be divisible by 3.
-pub const LOW_VALIDATOR_COUNT: usize = 24;
-pub const HIGH_VALIDATOR_COUNT: usize = 64;
+pub(crate) const LOW_VALIDATOR_COUNT: usize = 24;
+pub(crate) const HIGH_VALIDATOR_COUNT: usize = 64;
 
 // When set to true, cache any states fetched from the db.
-pub const CACHE_STATE_IN_TESTS: bool = true;
+pub(crate) const CACHE_STATE_IN_TESTS: bool = true;
 
 /// A cached set of keys.
 static KEYPAIRS: LazyLock<Vec<Keypair>> =

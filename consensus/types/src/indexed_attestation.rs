@@ -211,7 +211,7 @@ mod tests {
     use crate::test_utils::{SeedableRng, XorShiftRng};
 
     #[test]
-    pub fn test_is_double_vote_true() {
+    pub(super) fn test_is_double_vote_true() {
         let indexed_vote_first = create_indexed_attestation(3, 1);
         let indexed_vote_second = create_indexed_attestation(3, 2);
 
@@ -219,7 +219,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_is_double_vote_false() {
+    pub(super) fn test_is_double_vote_false() {
         let indexed_vote_first = create_indexed_attestation(1, 1);
         let indexed_vote_second = create_indexed_attestation(2, 1);
 
@@ -227,7 +227,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_is_surround_vote_true() {
+    pub(super) fn test_is_surround_vote_true() {
         let indexed_vote_first = create_indexed_attestation(2, 1);
         let indexed_vote_second = create_indexed_attestation(1, 2);
 
@@ -235,7 +235,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_is_surround_vote_true_realistic() {
+    pub(super) fn test_is_surround_vote_true_realistic() {
         let indexed_vote_first = create_indexed_attestation(4, 1);
         let indexed_vote_second = create_indexed_attestation(3, 2);
 
@@ -243,7 +243,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_is_surround_vote_false_source_epoch_fails() {
+    pub(super) fn test_is_surround_vote_false_source_epoch_fails() {
         let indexed_vote_first = create_indexed_attestation(2, 2);
         let indexed_vote_second = create_indexed_attestation(1, 1);
 
@@ -251,7 +251,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_is_surround_vote_false_target_epoch_fails() {
+    pub(super) fn test_is_surround_vote_false_target_epoch_fails() {
         let indexed_vote_first = create_indexed_attestation(1, 1);
         let indexed_vote_second = create_indexed_attestation(2, 2);
 

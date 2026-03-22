@@ -904,7 +904,7 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
 
     #[cfg(test)]
     /// get the state cache for inspection (used only for tests)
-    pub fn state_lru_cache(&self) -> &StateLRUCache<T> {
+    pub(crate) fn state_lru_cache(&self) -> &StateLRUCache<T> {
         &self.state_cache
     }
 
@@ -1381,7 +1381,7 @@ mod pending_components_tests {
         usize,
     );
 
-    pub fn pre_setup() -> Setup<E> {
+    pub(crate) fn pre_setup() -> Setup<E> {
         let mut rng = StdRng::seed_from_u64(0xDEAD_BEEF_0BAD_5EED_u64);
         let spec = test_spec::<E>();
         let (block, blobs_vec) =
@@ -1415,7 +1415,7 @@ mod pending_components_tests {
         RuntimeFixedVector<Option<KzgVerifiedBlob<E>>>,
     );
 
-    pub fn setup_pending_components(
+    pub(crate) fn setup_pending_components(
         block: SignedBeaconBlock<E>,
         valid_blobs: RuntimeFixedVector<Option<Arc<BlobSidecar<E>>>>,
         invalid_blobs: RuntimeFixedVector<Option<Arc<BlobSidecar<E>>>>,
@@ -1457,7 +1457,7 @@ mod pending_components_tests {
         (block.into(), blobs, invalid_blobs)
     }
 
-    pub fn assert_cache_consistent(cache: PendingComponents<E>, max_len: usize) {
+    pub(crate) fn assert_cache_consistent(cache: PendingComponents<E>, max_len: usize) {
         if let Some(cached_block) = &cache.block {
             let cached_block_commitments = cached_block.get_commitments();
             for index in 0..max_len {
@@ -1471,7 +1471,7 @@ mod pending_components_tests {
         }
     }
 
-    pub fn assert_empty_blob_cache(cache: PendingComponents<E>) {
+    pub(crate) fn assert_empty_blob_cache(cache: PendingComponents<E>) {
         for blob in cache.get_cached_blobs() {
             assert!(blob.is_none());
         }

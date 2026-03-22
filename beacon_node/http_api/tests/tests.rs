@@ -119,12 +119,12 @@ impl ApiTesterConfig {
 }
 
 impl ApiTester {
-    pub async fn new() -> Self {
+    pub(crate) async fn new() -> Self {
         // This allows for testing voluntary exits without building out a massive chain.
         Self::new_from_config(ApiTesterConfig::default()).await
     }
 
-    pub async fn new_with_hard_forks() -> Self {
+    pub(crate) async fn new_with_hard_forks() -> Self {
         let config = ApiTesterConfig {
             spec: test_spec::<E>(),
             ..Default::default()
@@ -132,7 +132,7 @@ impl ApiTester {
         Self::new_from_config(config).await
     }
 
-    pub async fn new_from_config(config: ApiTesterConfig) -> Self {
+    pub(crate) async fn new_from_config(config: ApiTesterConfig) -> Self {
         let spec = Arc::new(config.spec);
 
         let mut harness = BeaconChainHarness::builder(MainnetEthSpec)
@@ -347,7 +347,7 @@ impl ApiTester {
         }
     }
 
-    pub async fn new_from_genesis() -> Self {
+    pub(crate) async fn new_from_genesis() -> Self {
         let harness = Arc::new(
             BeaconChainHarness::builder(MainnetEthSpec)
                 .default_spec()
@@ -439,7 +439,7 @@ impl ApiTester {
         &self.harness.validator_keypairs
     }
 
-    pub async fn new_mev_tester() -> Self {
+    pub(crate) async fn new_mev_tester() -> Self {
         let tester = Self::new_with_hard_forks()
             .await
             .test_post_validator_register_validator()
@@ -449,7 +449,7 @@ impl ApiTester {
         tester
     }
 
-    pub async fn new_mev_tester_default_payload_value() -> Self {
+    pub(crate) async fn new_mev_tester_default_payload_value() -> Self {
         let mut config = ApiTesterConfig::default();
         config.spec.altair_fork_epoch = Some(Epoch::new(0));
         config.spec.bellatrix_fork_epoch = Some(Epoch::new(0));
@@ -516,7 +516,7 @@ impl ApiTester {
         )));
         ids
     }
-    pub async fn test_beacon_genesis(self) -> Self {
+    pub(crate) async fn test_beacon_genesis(self) -> Self {
         let result = self.client.get_beacon_genesis().await.unwrap().data;
 
         let state = &self.chain.head_snapshot().beacon_state;
@@ -532,7 +532,7 @@ impl ApiTester {
     }
 
     // finalization tests
-    pub async fn test_beacon_states_root_finalized(self) -> Self {
+    pub(crate) async fn test_beacon_states_root_finalized(self) -> Self {
         for state_id in self.interesting_state_ids() {
             let state_root = state_id.root(&self.chain);
             let state = state_id.state(&self.chain);
@@ -569,7 +569,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_states_fork_finalized(self) -> Self {
+    pub(crate) async fn test_beacon_states_fork_finalized(self) -> Self {
         for state_id in self.interesting_state_ids() {
             let state_root = state_id.root(&self.chain);
             let state = state_id.state(&self.chain);
@@ -606,7 +606,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_states_finality_checkpoints_finalized(self) -> Self {
+    pub(crate) async fn test_beacon_states_finality_checkpoints_finalized(self) -> Self {
         for state_id in self.interesting_state_ids() {
             let state_root = state_id.root(&self.chain);
             let state = state_id.state(&self.chain);
@@ -643,7 +643,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_headers_block_id_finalized(self) -> Self {
+    pub(crate) async fn test_beacon_headers_block_id_finalized(self) -> Self {
         for block_id in self.interesting_block_ids() {
             let block_root = block_id.root(&self.chain);
             let block = block_id.full_block(&self.chain).await;
@@ -680,7 +680,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_blocks_finalized(self) -> Self {
+    pub(crate) async fn test_beacon_blocks_finalized(self) -> Self {
         for block_id in self.interesting_block_ids() {
             let block_root = block_id.root(&self.chain);
             let block = block_id.full_block(&self.chain).await;
@@ -717,7 +717,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_blinded_blocks_finalized(self) -> Self {
+    pub(crate) async fn test_beacon_blinded_blocks_finalized(self) -> Self {
         for block_id in self.interesting_block_ids() {
             let block_root = block_id.root(&self.chain);
             let block = block_id.full_block(&self.chain).await;
@@ -754,7 +754,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_debug_beacon_states_finalized(self) -> Self {
+    pub(crate) async fn test_debug_beacon_states_finalized(self) -> Self {
         for state_id in self.interesting_state_ids() {
             let state_root = state_id.root(&self.chain);
             let state = state_id.state(&self.chain);
@@ -792,7 +792,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_states_root(self) -> Self {
+    pub(crate) async fn test_beacon_states_root(self) -> Self {
         for state_id in self.interesting_state_ids() {
             let result = self
                 .client
@@ -812,7 +812,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_states_fork(self) -> Self {
+    pub(crate) async fn test_beacon_states_fork(self) -> Self {
         for state_id in self.interesting_state_ids() {
             let result = self
                 .client
@@ -829,7 +829,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_states_finality_checkpoints(self) -> Self {
+    pub(crate) async fn test_beacon_states_finality_checkpoints(self) -> Self {
         for state_id in self.interesting_state_ids() {
             let result = self
                 .client
@@ -852,7 +852,9 @@ impl ApiTester {
         self
     }
 
-    pub async fn post_beacon_states_validator_balances_unsupported_media_failure(self) -> Self {
+    pub(crate) async fn post_beacon_states_validator_balances_unsupported_media_failure(
+        self,
+    ) -> Self {
         for state_id in self.interesting_state_ids() {
             for validator_indices in self.interesting_validator_indices() {
                 let validator_index_ids = validator_indices
@@ -885,7 +887,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_states_validator_balances(self) -> Self {
+    pub(crate) async fn test_beacon_states_validator_balances(self) -> Self {
         for state_id in self.interesting_state_ids() {
             for validator_indices in self.interesting_validator_indices() {
                 let state_opt = state_id.state(&self.chain).ok();
@@ -982,7 +984,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_states_validator_identities(self) -> Self {
+    pub(crate) async fn test_beacon_states_validator_identities(self) -> Self {
         for state_id in self.interesting_state_ids() {
             for validator_indices in self.interesting_validator_indices() {
                 let state_opt = state_id.state(&self.chain).ok();
@@ -1063,7 +1065,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_states_validators(self) -> Self {
+    pub(crate) async fn test_beacon_states_validators(self) -> Self {
         for state_id in self.interesting_state_ids() {
             for statuses in self.interesting_validator_statuses() {
                 for validator_indices in self.interesting_validator_indices() {
@@ -1182,7 +1184,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_states_validator_id(self) -> Self {
+    pub(crate) async fn test_beacon_states_validator_id(self) -> Self {
         for state_id in self.interesting_state_ids() {
             let state_opt = state_id
                 .state(&self.chain)
@@ -1237,7 +1239,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_states_committees(self) -> Self {
+    pub(crate) async fn test_beacon_states_committees(self) -> Self {
         for state_id in self.interesting_state_ids() {
             let mut state_opt = state_id
                 .state(&self.chain)
@@ -1284,7 +1286,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_states_randao(self) -> Self {
+    pub(crate) async fn test_beacon_states_randao(self) -> Self {
         for state_id in self.interesting_state_ids() {
             let mut state_opt = state_id
                 .state(&self.chain)
@@ -1314,7 +1316,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_states_pending_deposits(self) -> Self {
+    pub(crate) async fn test_beacon_states_pending_deposits(self) -> Self {
         for state_id in self.interesting_state_ids() {
             let mut state_opt = state_id
                 .state(&self.chain)
@@ -1341,7 +1343,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_states_pending_partial_withdrawals(self) -> Self {
+    pub(crate) async fn test_beacon_states_pending_partial_withdrawals(self) -> Self {
         for state_id in self.interesting_state_ids() {
             let mut state_opt = state_id
                 .state(&self.chain)
@@ -1368,7 +1370,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_states_pending_consolidations(self) -> Self {
+    pub(crate) async fn test_beacon_states_pending_consolidations(self) -> Self {
         for state_id in self.interesting_state_ids() {
             let mut state_opt = state_id
                 .state(&self.chain)
@@ -1402,7 +1404,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_headers_all_slots(self) -> Self {
+    pub(crate) async fn test_beacon_headers_all_slots(self) -> Self {
         for slot in 0..CHAIN_LENGTH {
             let slot = Slot::from(slot);
 
@@ -1444,7 +1446,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_headers_all_parents(self) -> Self {
+    pub(crate) async fn test_beacon_headers_all_parents(self) -> Self {
         let mut roots = self
             .chain
             .forwards_iter_block_roots(Slot::new(0))
@@ -1475,7 +1477,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_headers_block_id(self) -> Self {
+    pub(crate) async fn test_beacon_headers_block_id(self) -> Self {
         for block_id in self.interesting_block_ids() {
             let result = self
                 .client
@@ -1535,7 +1537,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_blocks_root(self) -> Self {
+    pub(crate) async fn test_beacon_blocks_root(self) -> Self {
         for block_id in self.interesting_block_ids() {
             let result = self
                 .client
@@ -1561,7 +1563,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_post_beacon_blocks_valid(mut self) -> Self {
+    pub(crate) async fn test_post_beacon_blocks_valid(mut self) -> Self {
         let next_block = self.next_block.clone();
 
         self.client
@@ -1577,7 +1579,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_post_beacon_blocks_ssz_valid(mut self) -> Self {
+    pub(crate) async fn test_post_beacon_blocks_ssz_valid(mut self) -> Self {
         let next_block = &self.next_block;
 
         self.client
@@ -1593,7 +1595,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_post_beacon_blocks_invalid(mut self) -> Self {
+    pub(crate) async fn test_post_beacon_blocks_invalid(mut self) -> Self {
         let block = self
             .harness
             .make_block_with_modifier(
@@ -1623,7 +1625,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_post_beacon_blocks_ssz_invalid(mut self) -> Self {
+    pub(crate) async fn test_post_beacon_blocks_ssz_invalid(mut self) -> Self {
         let block = self
             .harness
             .make_block_with_modifier(
@@ -1651,7 +1653,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_post_beacon_blocks_duplicate(self) -> Self {
+    pub(crate) async fn test_post_beacon_blocks_duplicate(self) -> Self {
         let block_contents = self
             .harness
             .make_block(
@@ -1698,7 +1700,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_blocks(self) -> Self {
+    pub(crate) async fn test_beacon_blocks(self) -> Self {
         for block_id in self.interesting_block_ids() {
             let expected = block_id
                 .full_block(&self.chain)
@@ -1783,7 +1785,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_blinded_blocks(self) -> Self {
+    pub(crate) async fn test_beacon_blinded_blocks(self) -> Self {
         for block_id in self.interesting_block_ids() {
             let expected = block_id
                 .blinded_block(&self.chain)
@@ -1859,7 +1861,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_blob_sidecars(self, use_indices: bool) -> Self {
+    pub(crate) async fn test_get_blob_sidecars(self, use_indices: bool) -> Self {
         let block_id = BlockId(CoreBlockId::Finalized);
         let (block_root, _, _) = block_id.root(&self.chain).unwrap();
         let (block, _, _) = block_id.full_block(&self.chain).await.unwrap();
@@ -1892,7 +1894,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_blobs(self, versioned_hashes: bool) -> Self {
+    pub(crate) async fn test_get_blobs(self, versioned_hashes: bool) -> Self {
         let block_id = BlockId(CoreBlockId::Finalized);
         let (block_root, _, _) = block_id.root(&self.chain).unwrap();
         let (block, _, _) = block_id.full_block(&self.chain).await.unwrap();
@@ -1930,7 +1932,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_blobs_post_fulu_full_node(self, versioned_hashes: bool) -> Self {
+    pub(crate) async fn test_get_blobs_post_fulu_full_node(self, versioned_hashes: bool) -> Self {
         let block_id = BlockId(CoreBlockId::Finalized);
         let (block_root, _, _) = block_id.root(&self.chain).unwrap();
         let (block, _, _) = block_id.full_block(&self.chain).await.unwrap();
@@ -1967,7 +1969,7 @@ impl ApiTester {
     ///
     /// If `zero_blobs` is false, test a block with >0 blobs, which should be unavailable.
     /// If `zero_blobs` is true, then test a block with 0 blobs, which should still be available.
-    pub async fn test_get_blob_sidecars_pruned(self, zero_blobs: bool) -> Self {
+    pub(crate) async fn test_get_blob_sidecars_pruned(self, zero_blobs: bool) -> Self {
         // Prune all blobs prior to the database's split epoch.
         let store = &self.chain.store;
         let split_epoch = store.get_split_slot().epoch(E::slots_per_epoch());
@@ -2022,7 +2024,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_blob_sidecars_pre_deneb(self) -> Self {
+    pub(crate) async fn test_get_blob_sidecars_pre_deneb(self) -> Self {
         let oldest_blob_slot = self.chain.store.get_blob_info().oldest_blob_slot.unwrap();
         assert_ne!(
             oldest_blob_slot, 0,
@@ -2050,7 +2052,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_beacon_blocks_attestations(self) -> Self {
+    pub(crate) async fn test_beacon_blocks_attestations(self) -> Self {
         for block_id in self.interesting_block_ids() {
             let result = self
                 .client
@@ -2084,7 +2086,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_post_beacon_pool_attestations_valid(mut self) -> Self {
+    pub(crate) async fn test_post_beacon_pool_attestations_valid(mut self) -> Self {
         let fork_name = self
             .attestations
             .first()
@@ -2139,7 +2141,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_post_beacon_pool_attestations_valid_v2(mut self) -> Self {
+    pub(crate) async fn test_post_beacon_pool_attestations_valid_v2(mut self) -> Self {
         if self.single_attestations.is_empty() {
             return self;
         }
@@ -2161,7 +2163,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_post_beacon_pool_attestations_invalid_v1(mut self) -> Self {
+    pub(crate) async fn test_post_beacon_pool_attestations_invalid_v1(mut self) -> Self {
         let mut attestations = Vec::new();
         let state = &self.chain.head_snapshot().beacon_state;
         for attestation in &self.attestations {
@@ -2266,7 +2268,7 @@ impl ApiTester {
 
         self
     }
-    pub async fn test_post_beacon_pool_attestations_invalid_v2(mut self) -> Self {
+    pub(crate) async fn test_post_beacon_pool_attestations_invalid_v2(mut self) -> Self {
         if self.single_attestations.is_empty() {
             return self;
         }
@@ -2311,7 +2313,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_beacon_light_client_updates_ssz(self) -> Self {
+    pub(crate) async fn test_get_beacon_light_client_updates_ssz(self) -> Self {
         let current_epoch = self.chain.epoch().unwrap();
         let current_sync_committee_period = current_epoch
             .sync_committee_period(&self.chain.spec)
@@ -2329,7 +2331,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_beacon_light_client_updates(self) -> Self {
+    pub(crate) async fn test_get_beacon_light_client_updates(self) -> Self {
         let current_epoch = self.chain.epoch().unwrap();
         let current_sync_committee_period = current_epoch
             .sync_committee_period(&self.chain.spec)
@@ -2359,7 +2361,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_beacon_light_client_bootstrap(self) -> Self {
+    pub(crate) async fn test_get_beacon_light_client_bootstrap(self) -> Self {
         let block_id = BlockId(CoreBlockId::Finalized);
         let (block_root, _, _) = block_id.root(&self.chain).unwrap();
 
@@ -2385,7 +2387,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_beacon_light_client_optimistic_update(self) -> Self {
+    pub(crate) async fn test_get_beacon_light_client_optimistic_update(self) -> Self {
         // get_beacon_light_client_optimistic_update returns Ok(None) on 404 NOT FOUND
         let result = match self
             .client
@@ -2405,7 +2407,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_beacon_light_client_finality_update(self) -> Self {
+    pub(crate) async fn test_get_beacon_light_client_finality_update(self) -> Self {
         let result = match self
             .client
             .get_beacon_light_client_finality_update::<E>()
@@ -2424,7 +2426,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_beacon_pool_attestations(self) {
+    pub(crate) async fn test_get_beacon_pool_attestations(self) {
         let result = self
             .client
             .get_beacon_pool_attestations_v1(None, None)
@@ -2519,7 +2521,7 @@ impl ApiTester {
         }
     }
 
-    pub async fn test_post_beacon_pool_attester_slashings_valid_v1(mut self) -> Self {
+    pub(crate) async fn test_post_beacon_pool_attester_slashings_valid_v1(mut self) -> Self {
         self.client
             .post_beacon_pool_attester_slashings_v1(&self.attester_slashing)
             .await
@@ -2533,7 +2535,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_post_beacon_pool_attester_slashings_valid_v2(mut self) -> Self {
+    pub(crate) async fn test_post_beacon_pool_attester_slashings_valid_v2(mut self) -> Self {
         let fork_name = self
             .chain
             .spec
@@ -2551,7 +2553,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_post_beacon_pool_attester_slashings_invalid_v1(mut self) -> Self {
+    pub(crate) async fn test_post_beacon_pool_attester_slashings_invalid_v1(mut self) -> Self {
         let mut slashing = self.attester_slashing.clone();
         match &mut slashing {
             AttesterSlashing::Base(slashing) => {
@@ -2575,7 +2577,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_post_beacon_pool_attester_slashings_invalid_v2(mut self) -> Self {
+    pub(crate) async fn test_post_beacon_pool_attester_slashings_invalid_v2(mut self) -> Self {
         let mut slashing = self.attester_slashing.clone();
         match &mut slashing {
             AttesterSlashing::Base(slashing) => {
@@ -2603,7 +2605,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_beacon_pool_attester_slashings(self) -> Self {
+    pub(crate) async fn test_get_beacon_pool_attester_slashings(self) -> Self {
         let result = self
             .client
             .get_beacon_pool_attester_slashings_v1()
@@ -2626,7 +2628,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_post_beacon_pool_proposer_slashings_valid(mut self) -> Self {
+    pub(crate) async fn test_post_beacon_pool_proposer_slashings_valid(mut self) -> Self {
         self.client
             .post_beacon_pool_proposer_slashings(&self.proposer_slashing)
             .await
@@ -2640,7 +2642,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_post_beacon_pool_proposer_slashings_invalid(mut self) -> Self {
+    pub(crate) async fn test_post_beacon_pool_proposer_slashings_invalid(mut self) -> Self {
         let mut slashing = self.proposer_slashing.clone();
         slashing.signed_header_1.message.slot += 1;
 
@@ -2657,7 +2659,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_beacon_pool_proposer_slashings(self) -> Self {
+    pub(crate) async fn test_get_beacon_pool_proposer_slashings(self) -> Self {
         let result = self
             .client
             .get_beacon_pool_proposer_slashings()
@@ -2672,7 +2674,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_post_beacon_pool_voluntary_exits_valid(mut self) -> Self {
+    pub(crate) async fn test_post_beacon_pool_voluntary_exits_valid(mut self) -> Self {
         self.client
             .post_beacon_pool_voluntary_exits(&self.voluntary_exit)
             .await
@@ -2686,7 +2688,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_post_beacon_pool_voluntary_exits_invalid(mut self) -> Self {
+    pub(crate) async fn test_post_beacon_pool_voluntary_exits_invalid(mut self) -> Self {
         let mut exit = self.voluntary_exit.clone();
         exit.message.epoch += 1;
 
@@ -2703,7 +2705,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_beacon_pool_voluntary_exits(self) -> Self {
+    pub(crate) async fn test_get_beacon_pool_voluntary_exits(self) -> Self {
         let result = self
             .client
             .get_beacon_pool_voluntary_exits()
@@ -2718,7 +2720,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_config_fork_schedule(self) -> Self {
+    pub(crate) async fn test_get_config_fork_schedule(self) -> Self {
         let result = self.client.get_config_fork_schedule().await.unwrap().data;
 
         let expected: Vec<Fork> = ForkName::list_all()
@@ -2731,7 +2733,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_config_spec(self) -> Self {
+    pub(crate) async fn test_get_config_spec(self) -> Self {
         let result = if self.chain.spec.is_gloas_scheduled() {
             self.client
                 .get_config_spec::<ConfigAndPresetGloas>()
@@ -2756,7 +2758,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_config_deposit_contract(self) -> Self {
+    pub(crate) async fn test_get_config_deposit_contract(self) -> Self {
         let result = self
             .client
             .get_config_deposit_contract()
@@ -2774,7 +2776,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_node_version(self) -> Self {
+    pub(crate) async fn test_get_node_version(self) -> Self {
         let result = self.client.get_node_version().await.unwrap().data;
 
         let expected = VersionData {
@@ -2786,7 +2788,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_node_syncing(self) -> Self {
+    pub(crate) async fn test_get_node_syncing(self) -> Self {
         let result = self.client.get_node_syncing().await.unwrap().data;
         let head_slot = self.chain.canonical_head.cached_head().head_slot();
         let sync_distance = self.chain.slot().unwrap() - head_slot;
@@ -2805,7 +2807,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_node_syncing_stalled(self) -> Self {
+    pub(crate) async fn test_get_node_syncing_stalled(self) -> Self {
         // Set sync status to stalled.
         *self
             .ctx
@@ -2836,7 +2838,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_node_identity(self) -> Self {
+    pub(crate) async fn test_get_node_identity(self) -> Self {
         let result = self.client.get_node_identity().await.unwrap().data;
 
         let expected = IdentityData {
@@ -2856,7 +2858,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_node_health(self) -> Self {
+    pub(crate) async fn test_get_node_health(self) -> Self {
         let status = self.client.get_node_health().await;
         match status {
             Ok(status) => {
@@ -2869,7 +2871,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_node_peers_by_id(self) -> Self {
+    pub(crate) async fn test_get_node_peers_by_id(self) -> Self {
         let result = self
             .client
             .get_node_peers_by_id(self.external_peer_id)
@@ -2890,7 +2892,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_node_peers(self) -> Self {
+    pub(crate) async fn test_get_node_peers(self) -> Self {
         let peer_states: Vec<Option<&[PeerState]>> = vec![
             Some(&[PeerState::Connected]),
             Some(&[PeerState::Connecting]),
@@ -2940,7 +2942,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_node_peer_count(self) -> Self {
+    pub(crate) async fn test_get_node_peer_count(self) -> Self {
         let result = self.client.get_node_peer_count().await.unwrap().data;
         assert_eq!(
             result,
@@ -2954,7 +2956,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_debug_beacon_states(self) -> Self {
+    pub(crate) async fn test_get_debug_beacon_states(self) -> Self {
         for state_id in self.interesting_state_ids() {
             let result_json = self
                 .client
@@ -3018,7 +3020,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_debug_beacon_heads(self) -> Self {
+    pub(crate) async fn test_get_debug_beacon_heads(self) -> Self {
         let result = self
             .client
             .get_debug_beacon_heads()
@@ -3036,7 +3038,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_debug_fork_choice(self) -> Self {
+    pub(crate) async fn test_get_debug_fork_choice(self) -> Self {
         let result = self.client.get_debug_fork_choice().await.unwrap();
 
         let beacon_fork_choice = self.chain.canonical_head.fork_choice_read_lock();
@@ -3137,7 +3139,7 @@ impl ApiTester {
         interesting
     }
 
-    pub async fn test_get_validator_duties_attester(self) -> Self {
+    pub(crate) async fn test_get_validator_duties_attester(self) -> Self {
         let current_epoch = self.chain.epoch().unwrap().as_u64();
 
         let half = current_epoch / 2;
@@ -3237,7 +3239,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_validator_duties_proposer(self) -> Self {
+    pub(crate) async fn test_get_validator_duties_proposer(self) -> Self {
         let current_epoch = self.chain.epoch().unwrap();
 
         for epoch in 0..=self.chain.epoch().unwrap().as_u64() + 1 {
@@ -3359,7 +3361,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_validator_duties_early(self) -> Self {
+    pub(crate) async fn test_get_validator_duties_early(self) -> Self {
         let current_epoch = self.chain.epoch().unwrap();
         let next_epoch = current_epoch + 1;
         let current_epoch_start = self
@@ -3434,7 +3436,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_block_production(self) -> Self {
+    pub(crate) async fn test_block_production(self) -> Self {
         let fork = self.chain.canonical_head.cached_head().head_fork();
         let genesis_validators_root = self.chain.genesis_validators_root;
 
@@ -3498,7 +3500,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_block_production_ssz(self) -> Self {
+    pub(crate) async fn test_block_production_ssz(self) -> Self {
         let fork = self.chain.canonical_head.cached_head().head_fork();
         let genesis_validators_root = self.chain.genesis_validators_root;
 
@@ -3591,7 +3593,7 @@ impl ApiTester {
         assert!(!metadata.consensus_block_value.is_zero());
     }
 
-    pub async fn test_block_production_v3_ssz(self) -> Self {
+    pub(crate) async fn test_block_production_v3_ssz(self) -> Self {
         let fork = self.chain.canonical_head.cached_head().head_fork();
         let genesis_validators_root = self.chain.genesis_validators_root;
 
@@ -3686,7 +3688,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_block_production_no_verify_randao(self) -> Self {
+    pub(crate) async fn test_block_production_no_verify_randao(self) -> Self {
         for _ in 0..E::slots_per_epoch() {
             let slot = self.chain.slot().unwrap();
 
@@ -3710,7 +3712,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_block_production_verify_randao_invalid(self) -> Self {
+    pub(crate) async fn test_block_production_verify_randao_invalid(self) -> Self {
         let fork = self.chain.canonical_head.cached_head().head_fork();
         let genesis_validators_root = self.chain.genesis_validators_root;
 
@@ -3771,7 +3773,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_blinded_block_production(&self) {
+    pub(crate) async fn test_blinded_block_production(&self) {
         let fork = self.chain.canonical_head.cached_head().head_fork();
         let genesis_validators_root = self.chain.genesis_validators_root;
 
@@ -3837,7 +3839,7 @@ impl ApiTester {
         }
     }
 
-    pub async fn test_blinded_block_production_ssz(&self) {
+    pub(crate) async fn test_blinded_block_production_ssz(&self) {
         let fork = self.chain.canonical_head.cached_head().head_fork();
         let genesis_validators_root = self.chain.genesis_validators_root;
 
@@ -3911,7 +3913,7 @@ impl ApiTester {
         }
     }
 
-    pub async fn test_blinded_block_production_no_verify_randao(self) -> Self {
+    pub(crate) async fn test_blinded_block_production_no_verify_randao(self) -> Self {
         for _ in 0..E::slots_per_epoch() {
             let slot = self.chain.slot().unwrap();
 
@@ -3933,7 +3935,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_blinded_block_production_verify_randao_invalid(self) -> Self {
+    pub(crate) async fn test_blinded_block_production_verify_randao_invalid(self) -> Self {
         let fork = self.chain.canonical_head.cached_head().head_fork();
         let genesis_validators_root = self.chain.genesis_validators_root;
 
@@ -3994,7 +3996,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_validator_attestation_data(self) -> Self {
+    pub(crate) async fn test_get_validator_attestation_data(self) -> Self {
         let mut state = self.chain.head_beacon_state_cloned();
         let slot = state.slot();
         state
@@ -4022,7 +4024,7 @@ impl ApiTester {
     }
 
     #[allow(clippy::await_holding_lock)] // This is a test, so it should be fine.
-    pub async fn test_get_validator_aggregate_attestation_v1(self) -> Self {
+    pub(crate) async fn test_get_validator_aggregate_attestation_v1(self) -> Self {
         let attestation = self
             .chain
             .head_beacon_block()
@@ -4049,7 +4051,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_validator_aggregate_attestation_v2(self) -> Self {
+    pub(crate) async fn test_get_validator_aggregate_attestation_v2(self) -> Self {
         let attestations = self
             .chain
             .naive_aggregation_pool
@@ -4076,7 +4078,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn get_aggregate(&mut self) -> SignedAggregateAndProof<E> {
+    pub(crate) async fn get_aggregate(&mut self) -> SignedAggregateAndProof<E> {
         let slot = self.chain.slot().unwrap();
         let epoch = self.chain.epoch().unwrap();
 
@@ -4175,7 +4177,7 @@ impl ApiTester {
         )
     }
 
-    pub async fn test_get_validator_aggregate_and_proofs_valid_v1(mut self) -> Self {
+    pub(crate) async fn test_get_validator_aggregate_and_proofs_valid_v1(mut self) -> Self {
         let aggregate = self.get_aggregate().await;
 
         self.client
@@ -4188,7 +4190,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_validator_aggregate_and_proofs_invalid_v1(mut self) -> Self {
+    pub(crate) async fn test_get_validator_aggregate_and_proofs_invalid_v1(mut self) -> Self {
         let mut aggregate = self.get_aggregate().await;
         match &mut aggregate {
             SignedAggregateAndProof::Base(aggregate) => {
@@ -4209,7 +4211,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_validator_aggregate_and_proofs_valid_v2(mut self) -> Self {
+    pub(crate) async fn test_get_validator_aggregate_and_proofs_valid_v2(mut self) -> Self {
         let aggregate = self.get_aggregate().await;
         let fork_name = self
             .chain
@@ -4225,7 +4227,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_validator_aggregate_and_proofs_invalid_v2(mut self) -> Self {
+    pub(crate) async fn test_get_validator_aggregate_and_proofs_invalid_v2(mut self) -> Self {
         let mut aggregate = self.get_aggregate().await;
         match &mut aggregate {
             SignedAggregateAndProof::Base(aggregate) => {
@@ -4249,7 +4251,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_validator_beacon_committee_subscriptions(mut self) -> Self {
+    pub(crate) async fn test_get_validator_beacon_committee_subscriptions(mut self) -> Self {
         let subscription = BeaconCommitteeSubscription {
             validator_index: 0,
             committee_index: 0,
@@ -4319,7 +4321,7 @@ impl ApiTester {
         (registrations, fee_recipients)
     }
 
-    pub async fn test_post_validator_register_validator(self) -> Self {
+    pub(crate) async fn test_post_validator_register_validator(self) -> Self {
         let (registrations, fee_recipients) = self
             .generate_validator_registration_data(
                 |val_index| Address::from_low_u64_be(val_index as u64),
@@ -4362,7 +4364,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_post_validator_register_validator_slashed(self) -> Self {
+    pub(crate) async fn test_post_validator_register_validator_slashed(self) -> Self {
         // slash a validator
         self.client
             .post_beacon_pool_attester_slashings_v1(&self.attester_slashing)
@@ -4415,7 +4417,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_post_validator_register_validator_higher_gas_limit(&self) {
+    pub(crate) async fn test_post_validator_register_validator_higher_gas_limit(&self) {
         let (registrations, fee_recipients) = self
             .generate_validator_registration_data(
                 |val_index| Address::from_low_u64_be(val_index as u64),
@@ -4456,7 +4458,7 @@ impl ApiTester {
         }
     }
 
-    pub async fn test_post_validator_liveness_epoch(self) -> Self {
+    pub(crate) async fn test_post_validator_liveness_epoch(self) -> Self {
         let epoch = self.chain.epoch().unwrap();
         let head_state = self.chain.head_beacon_state_cloned();
         let indices = (0..head_state.validators().len())
@@ -4592,7 +4594,7 @@ impl ApiTester {
         (proposer_index, randao_reveal)
     }
 
-    pub async fn test_payload_v3_respects_registration(self) -> Self {
+    pub(crate) async fn test_payload_v3_respects_registration(self) -> Self {
         let slot = self.chain.slot().unwrap();
         let epoch = self.chain.epoch().unwrap();
 
@@ -4619,7 +4621,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_payload_v3_zero_builder_boost_factor(self) -> Self {
+    pub(crate) async fn test_payload_v3_zero_builder_boost_factor(self) -> Self {
         let slot = self.chain.slot().unwrap();
         let epoch = self.chain.epoch().unwrap();
 
@@ -4647,7 +4649,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_payload_v3_max_builder_boost_factor(self) -> Self {
+    pub(crate) async fn test_payload_v3_max_builder_boost_factor(self) -> Self {
         let slot = self.chain.slot().unwrap();
         let epoch = self.chain.epoch().unwrap();
 
@@ -4674,7 +4676,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_payload_respects_registration(self) -> Self {
+    pub(crate) async fn test_payload_respects_registration(self) -> Self {
         let slot = self.chain.slot().unwrap();
         let epoch = self.chain.epoch().unwrap();
 
@@ -4709,7 +4711,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_payload_accepts_mutated_gas_limit(self) -> Self {
+    pub(crate) async fn test_payload_accepts_mutated_gas_limit(self) -> Self {
         // Mutate gas limit.
         let builder_limit = expected_gas_limit(
             DEFAULT_GAS_LIMIT,
@@ -4757,7 +4759,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_builder_payload_rejected_when_gas_limit_incorrect(self) -> Self {
+    pub(crate) async fn test_builder_payload_rejected_when_gas_limit_incorrect(self) -> Self {
         self.test_post_validator_register_validator_higher_gas_limit()
             .await;
 
@@ -4798,7 +4800,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_payload_v3_accepts_mutated_gas_limit(self) -> Self {
+    pub(crate) async fn test_payload_v3_accepts_mutated_gas_limit(self) -> Self {
         // Mutate gas limit.
         self.mock_builder
             .as_ref()
@@ -4831,7 +4833,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_payload_accepts_changed_fee_recipient(self) -> Self {
+    pub(crate) async fn test_payload_accepts_changed_fee_recipient(self) -> Self {
         let test_fee_recipient = "0x4242424242424242424242424242424242424242"
             .parse::<Address>()
             .unwrap();
@@ -4875,7 +4877,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_payload_v3_accepts_changed_fee_recipient(self) -> Self {
+    pub(crate) async fn test_payload_v3_accepts_changed_fee_recipient(self) -> Self {
         let test_fee_recipient = "0x4242424242424242424242424242424242424242"
             .parse::<Address>()
             .unwrap();
@@ -4910,7 +4912,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_payload_rejects_invalid_parent_hash(self) -> Self {
+    pub(crate) async fn test_payload_rejects_invalid_parent_hash(self) -> Self {
         let invalid_parent_hash =
             "0x4242424242424242424242424242424242424242424242424242424242424242"
                 .parse::<Hash256>()
@@ -4962,7 +4964,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_payload_v3_rejects_invalid_parent_hash(self) -> Self {
+    pub(crate) async fn test_payload_v3_rejects_invalid_parent_hash(self) -> Self {
         let invalid_parent_hash =
             "0x4242424242424242424242424242424242424242424242424242424242424242"
                 .parse::<Hash256>()
@@ -5005,7 +5007,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_payload_rejects_invalid_prev_randao(self) -> Self {
+    pub(crate) async fn test_payload_rejects_invalid_prev_randao(self) -> Self {
         let invalid_prev_randao =
             "0x4242424242424242424242424242424242424242424242424242424242424242"
                 .parse::<Hash256>()
@@ -5055,7 +5057,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_payload_v3_rejects_invalid_prev_randao(self) -> Self {
+    pub(crate) async fn test_payload_v3_rejects_invalid_prev_randao(self) -> Self {
         let invalid_prev_randao =
             "0x4242424242424242424242424242424242424242424242424242424242424242"
                 .parse::<Hash256>()
@@ -5096,7 +5098,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_payload_rejects_invalid_block_number(self) -> Self {
+    pub(crate) async fn test_payload_rejects_invalid_block_number(self) -> Self {
         let invalid_block_number = 2;
 
         // Mutate block number.
@@ -5146,7 +5148,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_payload_v3_rejects_invalid_block_number(self) -> Self {
+    pub(crate) async fn test_payload_v3_rejects_invalid_block_number(self) -> Self {
         let invalid_block_number = 2;
 
         // Mutate block number.
@@ -5187,7 +5189,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_payload_rejects_invalid_timestamp(self) -> Self {
+    pub(crate) async fn test_payload_rejects_invalid_timestamp(self) -> Self {
         let invalid_timestamp = 2;
 
         // Mutate timestamp.
@@ -5236,7 +5238,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_payload_v3_rejects_invalid_timestamp(self) -> Self {
+    pub(crate) async fn test_payload_v3_rejects_invalid_timestamp(self) -> Self {
         let invalid_timestamp = 2;
 
         // Mutate timestamp.
@@ -5276,7 +5278,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_payload_rejects_invalid_signature(self) -> Self {
+    pub(crate) async fn test_payload_rejects_invalid_signature(self) -> Self {
         self.mock_builder.as_ref().unwrap().invalid_signatures();
 
         let slot = self.chain.slot().unwrap();
@@ -5310,7 +5312,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_payload_v3_rejects_invalid_signature(self) -> Self {
+    pub(crate) async fn test_payload_v3_rejects_invalid_signature(self) -> Self {
         self.mock_builder.as_ref().unwrap().invalid_signatures();
 
         let slot = self.chain.slot().unwrap();
@@ -5333,7 +5335,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_builder_chain_health_skips(self) -> Self {
+    pub(crate) async fn test_builder_chain_health_skips(self) -> Self {
         let slot = self.chain.slot().unwrap();
 
         // Since we are proposing this slot, start the count from the previous slot.
@@ -5374,7 +5376,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_builder_v3_chain_health_skips(self) -> Self {
+    pub(crate) async fn test_builder_v3_chain_health_skips(self) -> Self {
         let slot = self.chain.slot().unwrap();
 
         // Since we are proposing this slot, start the count from the previous slot.
@@ -5404,7 +5406,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_builder_chain_health_skips_per_epoch(self) -> Self {
+    pub(crate) async fn test_builder_chain_health_skips_per_epoch(self) -> Self {
         // Fill an epoch with `builder_fallback_skips_per_epoch` skip slots.
         for i in 0..E::slots_per_epoch() {
             if i == 0 || i as usize > self.chain.config.builder_fallback_skips_per_epoch {
@@ -5483,7 +5485,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_builder_v3_chain_health_skips_per_epoch(self) -> Self {
+    pub(crate) async fn test_builder_v3_chain_health_skips_per_epoch(self) -> Self {
         // Fill an epoch with `builder_fallback_skips_per_epoch` skip slots.
         for i in 0..E::slots_per_epoch() {
             if i == 0 || i as usize > self.chain.config.builder_fallback_skips_per_epoch {
@@ -5540,7 +5542,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_builder_chain_health_epochs_since_finalization(self) -> Self {
+    pub(crate) async fn test_builder_chain_health_epochs_since_finalization(self) -> Self {
         let skips = E::slots_per_epoch()
             * self.chain.config.builder_fallback_epochs_since_finalization as u64;
 
@@ -5634,7 +5636,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_builder_v3_chain_health_epochs_since_finalization(self) -> Self {
+    pub(crate) async fn test_builder_v3_chain_health_epochs_since_finalization(self) -> Self {
         let skips = E::slots_per_epoch()
             * self.chain.config.builder_fallback_epochs_since_finalization as u64;
 
@@ -5706,7 +5708,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_builder_chain_health_optimistic_head(self) -> Self {
+    pub(crate) async fn test_builder_chain_health_optimistic_head(self) -> Self {
         // Make sure the next payload verification will return optimistic before advancing the chain.
         self.harness.mock_execution_layer.as_ref().inspect(|el| {
             el.server.all_payloads_syncing(true);
@@ -5754,7 +5756,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_builder_v3_chain_health_optimistic_head(self) -> Self {
+    pub(crate) async fn test_builder_v3_chain_health_optimistic_head(self) -> Self {
         // Make sure the next payload verification will return optimistic before advancing the chain.
         self.harness.mock_execution_layer.as_ref().inspect(|el| {
             el.server.all_payloads_syncing(true);
@@ -5793,7 +5795,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_builder_payload_chosen_when_more_profitable(self) -> Self {
+    pub(crate) async fn test_builder_payload_chosen_when_more_profitable(self) -> Self {
         // Mutate value.
         self.mock_builder
             .as_ref()
@@ -5833,7 +5835,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_builder_payload_v3_chosen_when_more_profitable(self) -> Self {
+    pub(crate) async fn test_builder_payload_v3_chosen_when_more_profitable(self) -> Self {
         // Mutate value.
         self.mock_builder
             .as_ref()
@@ -5862,7 +5864,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_local_payload_chosen_when_equally_profitable(self) -> Self {
+    pub(crate) async fn test_local_payload_chosen_when_equally_profitable(self) -> Self {
         // Mutate value.
         self.mock_builder
             .as_ref()
@@ -5902,7 +5904,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_local_payload_v3_chosen_when_equally_profitable(self) -> Self {
+    pub(crate) async fn test_local_payload_v3_chosen_when_equally_profitable(self) -> Self {
         // Mutate value.
         self.mock_builder
             .as_ref()
@@ -5931,7 +5933,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_local_payload_chosen_when_more_profitable(self) -> Self {
+    pub(crate) async fn test_local_payload_chosen_when_more_profitable(self) -> Self {
         // Mutate value.
         self.mock_builder
             .as_ref()
@@ -5971,7 +5973,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_local_payload_v3_chosen_when_more_profitable(self) -> Self {
+    pub(crate) async fn test_local_payload_v3_chosen_when_more_profitable(self) -> Self {
         // Mutate value.
         self.mock_builder
             .as_ref()
@@ -6000,7 +6002,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_builder_works_post_capella(self) -> Self {
+    pub(crate) async fn test_builder_works_post_capella(self) -> Self {
         // Ensure builder payload is chosen
         self.mock_builder
             .as_ref()
@@ -6039,7 +6041,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_builder_works_post_deneb(self) -> Self {
+    pub(crate) async fn test_builder_works_post_deneb(self) -> Self {
         // Ensure builder payload is chosen
         self.mock_builder
             .as_ref()
@@ -6067,7 +6069,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_vibehouse_rejects_invalid_withdrawals_root(self) -> Self {
+    pub(crate) async fn test_vibehouse_rejects_invalid_withdrawals_root(self) -> Self {
         // Ensure builder payload *would be* chosen
         self.mock_builder
             .as_ref()
@@ -6108,7 +6110,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_vibehouse_rejects_invalid_withdrawals_root_v3(self) -> Self {
+    pub(crate) async fn test_vibehouse_rejects_invalid_withdrawals_root_v3(self) -> Self {
         // Ensure builder payload *would be* chosen
         self.mock_builder
             .as_ref()
@@ -6142,7 +6144,7 @@ impl ApiTester {
     }
 
     #[cfg(target_os = "linux")]
-    pub async fn test_get_vibehouse_health(self) -> Self {
+    pub(crate) async fn test_get_vibehouse_health(self) -> Self {
         self.client.get_vibehouse_health().await.unwrap();
 
         self
@@ -6155,19 +6157,19 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_vibehouse_syncing(self) -> Self {
+    pub(crate) async fn test_get_vibehouse_syncing(self) -> Self {
         self.client.get_vibehouse_syncing().await.unwrap();
 
         self
     }
 
-    pub async fn test_get_vibehouse_proto_array(self) -> Self {
+    pub(crate) async fn test_get_vibehouse_proto_array(self) -> Self {
         self.client.get_vibehouse_proto_array().await.unwrap();
 
         self
     }
 
-    pub async fn test_get_vibehouse_validator_inclusion_global(self) -> Self {
+    pub(crate) async fn test_get_vibehouse_validator_inclusion_global(self) -> Self {
         let epoch = self.chain.epoch().unwrap() - 1;
         self.client
             .get_vibehouse_validator_inclusion_global(epoch)
@@ -6177,7 +6179,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_vibehouse_validator_inclusion(self) -> Self {
+    pub(crate) async fn test_get_vibehouse_validator_inclusion(self) -> Self {
         let epoch = self.chain.epoch().unwrap() - 1;
         self.client
             .get_vibehouse_validator_inclusion(epoch, ValidatorId::Index(0))
@@ -6187,7 +6189,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_post_vibehouse_database_reconstruct(self) -> Self {
+    pub(crate) async fn test_post_vibehouse_database_reconstruct(self) -> Self {
         let response = self
             .client
             .post_vibehouse_database_reconstruct()
@@ -6197,7 +6199,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_post_vibehouse_add_remove_peer(self) -> Self {
+    pub(crate) async fn test_post_vibehouse_add_remove_peer(self) -> Self {
         let trusted_peers = self.ctx.network_globals.as_ref().unwrap().trusted_peers();
         // Check that there aren't any trusted peers on startup
         assert!(trusted_peers.is_empty());
@@ -6218,7 +6220,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_post_vibehouse_liveness(self) -> Self {
+    pub(crate) async fn test_post_vibehouse_liveness(self) -> Self {
         let epoch = self.chain.epoch().unwrap();
         let head_state = self.chain.head_beacon_state_cloned();
         let indices = (0..head_state.validators().len())
@@ -6320,7 +6322,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_events(self) -> Self {
+    pub(crate) async fn test_get_events(self) -> Self {
         // Subscribe to all events
         let topics = vec![
             EventTopic::Attestation,
@@ -6575,7 +6577,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_expected_withdrawals_invalid_state(self) -> Self {
+    pub(crate) async fn test_get_expected_withdrawals_invalid_state(self) -> Self {
         let state_id = CoreStateId::Root(Hash256::zero());
 
         let result = self.client.get_expected_withdrawals(&state_id).await;
@@ -6590,7 +6592,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_expected_withdrawals_capella(self) -> Self {
+    pub(crate) async fn test_get_expected_withdrawals_capella(self) -> Self {
         let slot = self.chain.slot().unwrap();
         let state_id = CoreStateId::Slot(slot);
 
@@ -6627,7 +6629,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_expected_withdrawals_pre_capella(self) -> Self {
+    pub(crate) async fn test_get_expected_withdrawals_pre_capella(self) -> Self {
         let state_id = CoreStateId::Head;
 
         let result = self.client.get_expected_withdrawals(&state_id).await;
@@ -6642,7 +6644,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_events_electra(self) -> Self {
+    pub(crate) async fn test_get_events_electra(self) -> Self {
         let topics = vec![EventTopic::SingleAttestation];
         let mut events_future = self
             .client
@@ -6684,7 +6686,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_events_altair(self) -> Self {
+    pub(crate) async fn test_get_events_altair(self) -> Self {
         let topics = vec![EventTopic::ContributionAndProof];
         let mut events_future = self
             .client
@@ -6718,7 +6720,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_events_from_genesis(self) -> Self {
+    pub(crate) async fn test_get_events_from_genesis(self) -> Self {
         let topics = vec![EventTopic::Block, EventTopic::Head];
         let mut events_future = self
             .client
@@ -6756,7 +6758,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_check_optimistic_responses(&mut self) {
+    pub(crate) async fn test_check_optimistic_responses(&mut self) {
         // Check responses are not optimistic.
         let result = self
             .client

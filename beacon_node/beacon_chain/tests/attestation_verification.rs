@@ -27,16 +27,16 @@ use types::{
     test_utils::generate_deterministic_keypair,
 };
 
-pub type E = MainnetEthSpec;
+pub(crate) type E = MainnetEthSpec;
 
 /// The validator count needs to be relatively high compared to other tests to ensure that we can
 /// have committees where _some_ validators are aggregators but not _all_.
-pub const VALIDATOR_COUNT: usize = 256;
+pub(crate) const VALIDATOR_COUNT: usize = 256;
 
-pub const CAPELLA_FORK_EPOCH: usize = 1;
+pub(crate) const CAPELLA_FORK_EPOCH: usize = 1;
 
 // When set to true, cache any states fetched from the db.
-pub const CACHE_STATE_IN_TESTS: bool = true;
+pub(crate) const CACHE_STATE_IN_TESTS: bool = true;
 
 /// A cached set of keys.
 static KEYPAIRS: LazyLock<Vec<Keypair>> =
@@ -295,7 +295,7 @@ struct GossipTester {
 }
 
 impl GossipTester {
-    pub async fn new() -> Self {
+    pub(crate) async fn new() -> Self {
         let harness = get_harness(VALIDATOR_COUNT);
 
         // Extend the chain out a few epochs so we have some chain depth to play with.
@@ -360,15 +360,15 @@ impl GossipTester {
         }
     }
 
-    pub fn slot(&self) -> Slot {
+    pub(crate) fn slot(&self) -> Slot {
         self.harness.chain.slot().unwrap()
     }
 
-    pub fn epoch(&self) -> Epoch {
+    pub(crate) fn epoch(&self) -> Epoch {
         self.harness.chain.epoch().unwrap()
     }
 
-    pub fn earliest_valid_attestation_slot(&self) -> Slot {
+    pub(crate) fn earliest_valid_attestation_slot(&self) -> Slot {
         let offset = if self
             .harness
             .spec
@@ -396,14 +396,14 @@ impl GossipTester {
             .into()
     }
 
-    pub fn non_aggregator(&self) -> (usize, SecretKey) {
+    pub(crate) fn non_aggregator(&self) -> (usize, SecretKey) {
         get_non_aggregator(
             &self.harness.chain,
             self.valid_aggregate.message().aggregate(),
         )
     }
 
-    pub fn import_valid_aggregate(self) -> Self {
+    pub(crate) fn import_valid_aggregate(self) -> Self {
         assert!(
             self.harness
                 .chain
@@ -414,7 +414,7 @@ impl GossipTester {
         self
     }
 
-    pub fn import_valid_unaggregate(self) -> Self {
+    pub(crate) fn import_valid_unaggregate(self) -> Self {
         self.harness
             .chain
             .verify_unaggregated_attestation_for_gossip(
@@ -425,7 +425,7 @@ impl GossipTester {
         self
     }
 
-    pub fn inspect_aggregate_err<G, I>(self, desc: &str, get_attn: G, inspect_err: I) -> Self
+    pub(crate) fn inspect_aggregate_err<G, I>(self, desc: &str, get_attn: G, inspect_err: I) -> Self
     where
         G: Fn(&Self, &mut SignedAggregateAndProof<E>),
         I: Fn(&Self, AttnError),
@@ -472,7 +472,12 @@ impl GossipTester {
         self
     }
 
-    pub fn inspect_unaggregate_err<G, I>(self, desc: &str, get_attn: G, inspect_err: I) -> Self
+    pub(crate) fn inspect_unaggregate_err<G, I>(
+        self,
+        desc: &str,
+        get_attn: G,
+        inspect_err: I,
+    ) -> Self
     where
         G: Fn(&Self, &mut SingleAttestation, &mut SubnetId, &ChainSpec),
         I: Fn(&Self, AttnError),

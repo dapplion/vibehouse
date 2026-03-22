@@ -18,7 +18,7 @@ use store::database::interface::BeaconNodeBackend;
 use tempfile::{TempDir, tempdir};
 use types::*;
 
-pub const VALIDATOR_COUNT: usize = 24;
+pub(crate) const VALIDATOR_COUNT: usize = 24;
 
 /// A cached set of keys.
 static KEYPAIRS: LazyLock<Vec<Keypair>> =

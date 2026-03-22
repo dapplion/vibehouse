@@ -88,7 +88,7 @@ pub(crate) struct CommitteeLengths {
 impl CommitteeLengths {
     /// Construct `CommitteeLengths` directly for unit tests (fields are private).
     #[cfg(test)]
-    pub fn new_for_testing(epoch: Epoch, active_validator_indices_len: usize) -> Self {
+    pub(crate) fn new_for_testing(epoch: Epoch, active_validator_indices_len: usize) -> Self {
         Self {
             epoch,
             active_validator_indices_len,

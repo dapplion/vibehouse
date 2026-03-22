@@ -35,7 +35,7 @@ use vibehouse_validator_store::{Config as ValidatorStoreConfig, VibehouseValidat
 use zeroize::Zeroizing;
 
 const PASSWORD_BYTES: &[u8] = &[42, 50, 37];
-pub const TEST_DEFAULT_FEE_RECIPIENT: Address = Address::repeat_byte(42);
+pub(crate) const TEST_DEFAULT_FEE_RECIPIENT: Address = Address::repeat_byte(42);
 
 type E = MainnetEthSpec;
 
@@ -52,7 +52,7 @@ struct ApiTester {
 }
 
 impl ApiTester {
-    pub async fn new() -> Self {
+    pub(crate) async fn new() -> Self {
         let config = ValidatorStoreConfig {
             fee_recipient: Some(TEST_DEFAULT_FEE_RECIPIENT),
             ..Default::default()
@@ -60,7 +60,7 @@ impl ApiTester {
         Self::new_with_config(config).await
     }
 
-    pub async fn new_with_config(config: ValidatorStoreConfig) -> Self {
+    pub(crate) async fn new_with_config(config: ValidatorStoreConfig) -> Self {
         let validator_dir = tempdir().unwrap();
         let secrets_dir = tempdir().unwrap();
         let token_path = tempdir().unwrap().path().join("api-token.txt");
@@ -160,14 +160,14 @@ impl ApiTester {
         }
     }
 
-    pub fn invalid_token_client(&self) -> ValidatorClientHttpClient {
+    pub(crate) fn invalid_token_client(&self) -> ValidatorClientHttpClient {
         let tmp = tempdir().unwrap().path().join("invalid-token.txt");
         let api_secret = ApiSecret::create_or_open(tmp).unwrap();
         let invalid_pubkey = api_secret.api_token();
         ValidatorClientHttpClient::new(self.url.clone(), invalid_pubkey.clone()).unwrap()
     }
 
-    pub async fn test_with_invalid_auth<F, A, T>(self, func: F) -> Self
+    pub(crate) async fn test_with_invalid_auth<F, A, T>(self, func: F) -> Self
     where
         F: Fn(ValidatorClientHttpClient) -> A,
         A: Future<Output = Result<T, ApiError>>,
@@ -197,17 +197,17 @@ impl ApiTester {
         self
     }
 
-    pub fn invalidate_api_token(mut self) -> Self {
+    pub(crate) fn invalidate_api_token(mut self) -> Self {
         self.client = self.invalid_token_client();
         self
     }
 
-    pub async fn test_get_vibehouse_version_invalid(self) -> Self {
+    pub(crate) async fn test_get_vibehouse_version_invalid(self) -> Self {
         self.client.get_vibehouse_version().await.unwrap_err();
         self
     }
 
-    pub async fn test_get_vibehouse_spec(self) -> Self {
+    pub(crate) async fn test_get_vibehouse_spec(self) -> Self {
         let result = if self.spec.is_gloas_scheduled() {
             self.client
                 .get_vibehouse_spec::<ConfigAndPresetGloas>()
@@ -232,7 +232,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_vibehouse_version(self) -> Self {
+    pub(crate) async fn test_get_vibehouse_version(self) -> Self {
         let result = self.client.get_vibehouse_version().await.unwrap().data;
 
         let expected = VersionData {
@@ -245,7 +245,7 @@ impl ApiTester {
     }
 
     #[cfg(target_os = "linux")]
-    pub async fn test_get_vibehouse_health(self) -> Self {
+    pub(crate) async fn test_get_vibehouse_health(self) -> Self {
         self.client.get_vibehouse_health().await.unwrap();
 
         self
@@ -257,25 +257,25 @@ impl ApiTester {
 
         self
     }
-    pub fn vals_total(&self) -> usize {
+    pub(crate) fn vals_total(&self) -> usize {
         self.initialized_validators.read().num_total()
     }
 
-    pub fn vals_enabled(&self) -> usize {
+    pub(crate) fn vals_enabled(&self) -> usize {
         self.initialized_validators.read().num_enabled()
     }
 
-    pub fn assert_enabled_validators_count(self, count: usize) -> Self {
+    pub(crate) fn assert_enabled_validators_count(self, count: usize) -> Self {
         assert_eq!(self.vals_enabled(), count);
         self
     }
 
-    pub fn assert_validators_count(self, count: usize) -> Self {
+    pub(crate) fn assert_validators_count(self, count: usize) -> Self {
         assert_eq!(self.vals_total(), count);
         self
     }
 
-    pub async fn create_hd_validators(self, s: HdValidatorScenario) -> Self {
+    pub(crate) async fn create_hd_validators(self, s: HdValidatorScenario) -> Self {
         let initial_vals = self.vals_total();
         let initial_enabled_vals = self.vals_enabled();
 
@@ -401,7 +401,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn create_keystore_validators(self, s: KeystoreValidatorScenario) -> Self {
+    pub(crate) async fn create_keystore_validators(self, s: KeystoreValidatorScenario) -> Self {
         let initial_vals = self.vals_total();
         let initial_enabled_vals = self.vals_enabled();
 
@@ -471,7 +471,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn create_web3signer_validators(self, s: Web3SignerValidatorScenario) -> Self {
+    pub(crate) async fn create_web3signer_validators(self, s: Web3SignerValidatorScenario) -> Self {
         let initial_vals = self.vals_total();
         let initial_enabled_vals = self.vals_enabled();
 
@@ -512,7 +512,11 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_sign_voluntary_exits(self, index: usize, maybe_epoch: Option<Epoch>) -> Self {
+    pub(crate) async fn test_sign_voluntary_exits(
+        self,
+        index: usize,
+        maybe_epoch: Option<Epoch>,
+    ) -> Self {
         let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
         // manually setting validator index in `ValidatorStore`
         self.initialized_validators
@@ -539,7 +543,7 @@ impl ApiTester {
             .unwrap()
     }
 
-    pub async fn set_validator_enabled(self, index: usize, enabled: bool) -> Self {
+    pub(crate) async fn set_validator_enabled(self, index: usize, enabled: bool) -> Self {
         let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
 
         self.client
@@ -590,7 +594,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn set_gas_limit(self, index: usize, gas_limit: u64) -> Self {
+    pub(crate) async fn set_gas_limit(self, index: usize, gas_limit: u64) -> Self {
         let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
 
         self.client
@@ -609,7 +613,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn assert_gas_limit(self, index: usize, gas_limit: u64) -> Self {
+    pub(crate) async fn assert_gas_limit(self, index: usize, gas_limit: u64) -> Self {
         let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
 
         assert_eq!(
@@ -620,7 +624,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn set_builder_proposals(self, index: usize, builder_proposals: bool) -> Self {
+    pub(crate) async fn set_builder_proposals(self, index: usize, builder_proposals: bool) -> Self {
         let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
 
         self.client
@@ -639,7 +643,11 @@ impl ApiTester {
         self
     }
 
-    pub async fn set_builder_boost_factor(self, index: usize, builder_boost_factor: u64) -> Self {
+    pub(crate) async fn set_builder_boost_factor(
+        self,
+        index: usize,
+        builder_boost_factor: u64,
+    ) -> Self {
         let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
 
         self.client
@@ -658,7 +666,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn set_prefer_builder_proposals(
+    pub(crate) async fn set_prefer_builder_proposals(
         self,
         index: usize,
         prefer_builder_proposals: bool,
@@ -681,7 +689,11 @@ impl ApiTester {
         self
     }
 
-    pub async fn assert_builder_proposals(self, index: usize, builder_proposals: bool) -> Self {
+    pub(crate) async fn assert_builder_proposals(
+        self,
+        index: usize,
+        builder_proposals: bool,
+    ) -> Self {
         let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
 
         assert_eq!(
@@ -693,7 +705,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn assert_builder_boost_factor(
+    pub(crate) async fn assert_builder_boost_factor(
         self,
         index: usize,
         builder_boost_factor: Option<u64>,
@@ -709,7 +721,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn assert_validator_derived_builder_boost_factor(
+    pub(crate) async fn assert_validator_derived_builder_boost_factor(
         self,
         index: usize,
         builder_boost_factor: Option<u64>,
@@ -725,7 +737,10 @@ impl ApiTester {
         self
     }
 
-    pub fn assert_default_builder_boost_factor(self, builder_boost_factor: Option<u64>) -> Self {
+    pub(crate) fn assert_default_builder_boost_factor(
+        self,
+        builder_boost_factor: Option<u64>,
+    ) -> Self {
         assert_eq!(
             self.validator_store
                 .determine_builder_boost_factor(&PublicKeyBytes::empty()),
@@ -735,7 +750,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn assert_prefer_builder_proposals(
+    pub(crate) async fn assert_prefer_builder_proposals(
         self,
         index: usize,
         prefer_builder_proposals: bool,
@@ -751,7 +766,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn set_graffiti(self, index: usize, graffiti: &str) -> Self {
+    pub(crate) async fn set_graffiti(self, index: usize, graffiti: &str) -> Self {
         let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
         let graffiti_str = GraffitiString::from_str(graffiti).unwrap();
         self.client
@@ -770,7 +785,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn assert_graffiti(self, index: usize, graffiti: &str) -> Self {
+    pub(crate) async fn assert_graffiti(self, index: usize, graffiti: &str) -> Self {
         let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
         let graffiti_str = GraffitiString::from_str(graffiti).unwrap();
         assert_eq!(
@@ -781,7 +796,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_set_graffiti(self, index: usize, graffiti: &str) -> Self {
+    pub(crate) async fn test_set_graffiti(self, index: usize, graffiti: &str) -> Self {
         let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
         let graffiti_str = GraffitiString::from_str(graffiti).unwrap();
         let resp = self
@@ -794,7 +809,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_delete_graffiti(self, index: usize) -> Self {
+    pub(crate) async fn test_delete_graffiti(self, index: usize) -> Self {
         let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
         let resp = self.client.get_graffiti(&validator.voting_pubkey).await;
 
@@ -813,7 +828,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_graffiti(self, index: usize, expected_graffiti: &str) -> Self {
+    pub(crate) async fn test_get_graffiti(self, index: usize, expected_graffiti: &str) -> Self {
         let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
         let expected_graffiti_str = GraffitiString::from_str(expected_graffiti).unwrap();
         let resp = self.client.get_graffiti(&validator.voting_pubkey).await;

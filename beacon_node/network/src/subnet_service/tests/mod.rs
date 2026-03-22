@@ -32,13 +32,13 @@ type TestBeaconChainType = Witness<
     MemoryStore<MainnetEthSpec>,
 >;
 
-pub struct TestBeaconChain {
+pub(super) struct TestBeaconChain {
     chain: Arc<BeaconChain<TestBeaconChainType>>,
     _test_runtime: TestRuntime,
 }
 
 impl TestBeaconChain {
-    pub fn new_with_system_clock() -> Self {
+    pub(super) fn new_with_system_clock() -> Self {
         let spec = Arc::new(MainnetEthSpec::default_spec());
 
         get_tracing_subscriber(TEST_LOG_LEVEL);
@@ -89,7 +89,7 @@ impl TestBeaconChain {
     }
 }
 
-pub fn recent_genesis_time() -> u64 {
+pub(super) fn recent_genesis_time() -> u64 {
     SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()

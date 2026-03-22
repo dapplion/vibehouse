@@ -475,14 +475,14 @@ fn metrics_allow_origin_all_flag() {
         .with_config(|config| assert_eq!(config.http_metrics.allow_origin, Some("*".to_string())));
 }
 #[test]
-pub fn malloc_tuning_flag() {
+pub(crate) fn malloc_tuning_flag() {
     CommandLineTest::new()
         .flag("disable-malloc-tuning", None)
         .run()
         .with_config(|config| assert!(!config.http_metrics.allocator_metrics_enabled));
 }
 #[test]
-pub fn malloc_tuning_default() {
+pub(crate) fn malloc_tuning_default() {
     CommandLineTest::new()
         .run()
         .with_config(|config| assert!(config.http_metrics.allocator_metrics_enabled));

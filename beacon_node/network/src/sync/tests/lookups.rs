@@ -50,7 +50,7 @@ type DCByRootIds = Vec<DCByRootId>;
 type DCByRootId = (SyncRequestId, Vec<ColumnIndex>);
 
 impl TestRig {
-    pub fn test_setup() -> Self {
+    pub(super) fn test_setup() -> Self {
         // Use `fork_from_env` logic to set correct fork epochs
         let spec = test_spec::<E>();
 
@@ -140,7 +140,7 @@ impl TestRig {
         }
     }
 
-    pub fn test_setup_after_fulu() -> Option<Self> {
+    pub(super) fn test_setup_after_fulu() -> Option<Self> {
         let r = Self::test_setup();
         if r.fork_name.fulu_enabled() {
             Some(r)
@@ -149,15 +149,15 @@ impl TestRig {
         }
     }
 
-    pub fn log(&self, msg: &str) {
+    pub(super) fn log(&self, msg: &str) {
         info!(msg, "TEST_RIG");
     }
 
-    pub fn after_deneb(&self) -> bool {
+    pub(super) fn after_deneb(&self) -> bool {
         self.fork_name.deneb_enabled() && !self.fork_name.gloas_enabled()
     }
 
-    pub fn after_fulu(&self) -> bool {
+    pub(super) fn after_fulu(&self) -> bool {
         self.fork_name.fulu_enabled() && !self.fork_name.gloas_enabled()
     }
 
@@ -232,7 +232,7 @@ impl TestRig {
         )
     }
 
-    pub fn rand_block_and_parent(
+    pub(super) fn rand_block_and_parent(
         &mut self,
     ) -> (SignedBeaconBlock<E>, SignedBeaconBlock<E>, Hash256, Hash256) {
         let parent = self.rand_block();
@@ -243,7 +243,7 @@ impl TestRig {
         (parent, block, parent_root, block_root)
     }
 
-    pub fn send_sync_message(&mut self, sync_message: SyncMessage<E>) {
+    pub(super) fn send_sync_message(&mut self, sync_message: SyncMessage<E>) {
         self.sync_manager.handle_message(sync_message);
     }
 
@@ -356,7 +356,7 @@ impl TestRig {
         self.expect_empty_network();
     }
 
-    pub fn new_connected_peer(&mut self) -> PeerId {
+    pub(super) fn new_connected_peer(&mut self) -> PeerId {
         let key = self.determinstic_key();
         let peer_id = self
             .network_globals
@@ -367,7 +367,7 @@ impl TestRig {
         peer_id
     }
 
-    pub fn new_connected_supernode_peer(&mut self) -> PeerId {
+    pub(super) fn new_connected_supernode_peer(&mut self) -> PeerId {
         let key = self.determinstic_key();
         self.network_globals
             .peers
@@ -384,7 +384,7 @@ impl TestRig {
             .into()
     }
 
-    pub fn new_connected_peers_for_peerdas(&mut self) {
+    pub(super) fn new_connected_peers_for_peerdas(&mut self) {
         // Enough sampling peers with few columns
         for _ in 0..100 {
             self.new_connected_peer();
@@ -728,7 +728,7 @@ impl TestRig {
         }
     }
 
-    pub fn peer_disconnected(&mut self, peer_id: PeerId) {
+    pub(super) fn peer_disconnected(&mut self, peer_id: PeerId) {
         self.send_sync_message(SyncMessage::Disconnect(peer_id));
     }
 
@@ -744,7 +744,7 @@ impl TestRig {
         }
     }
 
-    pub fn pop_received_network_event<T, F: Fn(&NetworkMessage<E>) -> Option<T>>(
+    pub(super) fn pop_received_network_event<T, F: Fn(&NetworkMessage<E>) -> Option<T>>(
         &mut self,
         predicate_transform: F,
     ) -> Result<T, String> {
@@ -767,7 +767,7 @@ impl TestRig {
         }
     }
 
-    pub fn pop_received_processor_event<T, F: Fn(&WorkEvent<E>) -> Option<T>>(
+    pub(super) fn pop_received_processor_event<T, F: Fn(&WorkEvent<E>) -> Option<T>>(
         &mut self,
         predicate_transform: F,
     ) -> Result<T, String> {
@@ -790,7 +790,7 @@ impl TestRig {
         }
     }
 
-    pub fn expect_empty_processor(&mut self) {
+    pub(super) fn expect_empty_processor(&mut self) {
         self.drain_processor_rx();
         assert!(
             self.beacon_processor_rx_queue.is_empty(),
@@ -999,7 +999,7 @@ impl TestRig {
     }
 
     #[track_caller]
-    pub fn expect_empty_network(&mut self) {
+    pub(super) fn expect_empty_network(&mut self) {
         self.drain_network_rx();
         if !self.network_rx_queue.is_empty() {
             let n = self.network_rx_queue.len();
@@ -1020,7 +1020,7 @@ impl TestRig {
     }
 
     #[track_caller]
-    pub fn expect_penalty(&mut self, peer_id: PeerId, expect_penalty_msg: &'static str) {
+    pub(super) fn expect_penalty(&mut self, peer_id: PeerId, expect_penalty_msg: &'static str) {
         let penalty_msg = self
             .pop_received_network_event(|ev| match ev {
                 NetworkMessage::ReportPeer {
@@ -1041,7 +1041,7 @@ impl TestRig {
         self.log(&format!("Found expected penalty {penalty_msg}"));
     }
 
-    pub fn block_with_parent_and_blobs(
+    pub(super) fn block_with_parent_and_blobs(
         &mut self,
         parent_root: Hash256,
         num_blobs: NumBlobs,
@@ -1054,7 +1054,7 @@ impl TestRig {
         (block, blobs)
     }
 
-    pub fn rand_blockchain(&mut self, depth: usize) -> Vec<Arc<SignedBeaconBlock<E>>> {
+    pub(super) fn rand_blockchain(&mut self, depth: usize) -> Vec<Arc<SignedBeaconBlock<E>>> {
         let mut blocks = Vec::<Arc<SignedBeaconBlock<E>>>::with_capacity(depth);
         for slot in 0..depth {
             let parent = blocks

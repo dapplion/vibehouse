@@ -5,7 +5,7 @@ use beacon_chain::types::*;
 use std::sync::LazyLock;
 use swap_or_not_shuffle::shuffle_list;
 
-pub const VALIDATOR_COUNT: usize = 16;
+pub(super) const VALIDATOR_COUNT: usize = 16;
 
 /// A cached set of keys.
 static KEYPAIRS: LazyLock<Vec<Keypair>> =

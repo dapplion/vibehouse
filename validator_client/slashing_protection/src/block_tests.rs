@@ -4,7 +4,7 @@ use super::*;
 use crate::test_utils::*;
 use types::{BeaconBlockHeader, FixedBytesExtended, Slot};
 
-pub fn block(slot: u64) -> BeaconBlockHeader {
+pub(crate) fn block(slot: u64) -> BeaconBlockHeader {
     BeaconBlockHeader {
         slot: Slot::new(slot),
         proposer_index: 0,

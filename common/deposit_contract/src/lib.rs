@@ -14,9 +14,9 @@ pub const DEPOSIT_DATA_LEN: usize = 420; // lol
 
 #[cfg(test)]
 pub(crate) mod testnet {
-    pub const ABI: &[u8] =
+    pub(crate) const ABI: &[u8] =
         include_bytes!("../contracts/v0.12.1_testnet_validator_registration.json");
-    pub const BYTECODE: &[u8] =
+    pub(crate) const BYTECODE: &[u8] =
         include_bytes!("../contracts/v0.12.1_testnet_validator_registration.bytecode");
 }
 

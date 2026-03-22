@@ -219,7 +219,7 @@ mod test {
             self
         }
 
-        pub async fn run_test(self) -> TestResult {
+        pub(crate) async fn run_test(self) -> TestResult {
             let import_builder = self.src_import_builder.unwrap();
             let import_test_result = import_builder.run_test().await;
             assert!(import_test_result.result.is_ok());

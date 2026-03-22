@@ -51,12 +51,12 @@ impl fmt::Debug for ForkChoiceTest {
 
 impl ForkChoiceTest {
     /// Creates a new tester.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self::new_with_chain_config(ChainConfig::default())
     }
 
     /// Creates a new tester with a custom chain config.
-    pub fn new_with_chain_config(chain_config: ChainConfig) -> Self {
+    pub(crate) fn new_with_chain_config(chain_config: ChainConfig) -> Self {
         // Run fork choice tests against the latest fork.
         let spec = ForkName::latest_stable().make_genesis_spec(ChainSpec::default());
         let harness = BeaconChainHarness::builder(MainnetEthSpec)
@@ -85,7 +85,7 @@ impl ForkChoiceTest {
     }
 
     /// Assert the epochs match.
-    pub fn assert_finalized_epoch(self, epoch: u64) -> Self {
+    pub(crate) fn assert_finalized_epoch(self, epoch: u64) -> Self {
         assert_eq!(
             self.get(|fc_store| fc_store.finalized_checkpoint().epoch),
             Epoch::new(epoch),
@@ -95,7 +95,7 @@ impl ForkChoiceTest {
     }
 
     /// Assert the epochs match.
-    pub fn assert_justified_epoch(self, epoch: u64) -> Self {
+    pub(crate) fn assert_justified_epoch(self, epoch: u64) -> Self {
         assert_eq!(
             self.get(|fc_store| fc_store.justified_checkpoint().epoch),
             Epoch::new(epoch),
@@ -105,13 +105,13 @@ impl ForkChoiceTest {
     }
 
     /// Assert the given slot is greater than the head slot.
-    pub fn assert_finalized_epoch_is_less_than(self, epoch: Epoch) -> Self {
+    pub(crate) fn assert_finalized_epoch_is_less_than(self, epoch: Epoch) -> Self {
         assert!(self.harness.finalized_checkpoint().epoch < epoch);
         self
     }
 
     /// Assert there was a shutdown signal sent by the beacon chain.
-    pub fn shutdown_signal_sent(&self) -> bool {
+    pub(crate) fn shutdown_signal_sent(&self) -> bool {
         let mutex = self.harness.shutdown_receiver.clone();
         let mut shutdown_receiver = mutex.lock();
 
@@ -120,19 +120,19 @@ impl ForkChoiceTest {
     }
 
     /// Assert there was a shutdown signal sent by the beacon chain.
-    pub fn assert_shutdown_signal_sent(self) -> Self {
+    pub(crate) fn assert_shutdown_signal_sent(self) -> Self {
         assert!(self.shutdown_signal_sent());
         self
     }
 
     /// Assert no shutdown was signal sent by the beacon chain.
-    pub fn assert_shutdown_signal_not_sent(self) -> Self {
+    pub(crate) fn assert_shutdown_signal_not_sent(self) -> Self {
         assert!(!self.shutdown_signal_sent());
         self
     }
 
     /// Inspect the queued attestations in fork choice.
-    pub fn inspect_queued_attestations<F>(self, mut func: F) -> Self
+    pub(crate) fn inspect_queued_attestations<F>(self, mut func: F) -> Self
     where
         F: FnMut(&[QueuedAttestation]),
     {
@@ -153,13 +153,13 @@ impl ForkChoiceTest {
     }
 
     /// Skip a slot, without producing a block.
-    pub fn skip_slot(self) -> Self {
+    pub(crate) fn skip_slot(self) -> Self {
         self.harness.advance_slot();
         self
     }
 
     /// Skips `count` slots, without producing a block.
-    pub fn skip_slots(self, count: usize) -> Self {
+    pub(crate) fn skip_slots(self, count: usize) -> Self {
         for _ in 0..count {
             self.harness.advance_slot();
         }
@@ -167,7 +167,7 @@ impl ForkChoiceTest {
     }
 
     /// Build the chain whilst `predicate` returns `true` and `process_block_result` does not error.
-    pub async fn apply_blocks_while<F>(self, mut predicate: F) -> Result<Self, Self>
+    pub(crate) async fn apply_blocks_while<F>(self, mut predicate: F) -> Result<Self, Self>
     where
         F: FnMut(BeaconBlockRef<'_, E>, &BeaconState<E>) -> bool,
     {
@@ -217,7 +217,7 @@ impl ForkChoiceTest {
     ///
     /// Note that in the case of slashed validators, their proposals will be skipped and the chain
     /// may be advanced by *more than* `count` slots.
-    pub async fn apply_blocks(self, count: usize) -> Self {
+    pub(crate) async fn apply_blocks(self, count: usize) -> Self {
         // Use `Self::apply_blocks_while` which gracefully handles slashed validators.
         let mut blocks_applied = 0;
         self.apply_blocks_while(|_, _| {
@@ -231,7 +231,7 @@ impl ForkChoiceTest {
     }
 
     /// Slash a validator from the previous epoch committee.
-    pub async fn add_previous_epoch_attester_slashing(self) -> Self {
+    pub(crate) async fn add_previous_epoch_attester_slashing(self) -> Self {
         let state = self.harness.get_current_state();
         let previous_epoch_shuffling = state.get_shuffling(RelativeEpoch::Previous).unwrap();
         let validator_indices = previous_epoch_shuffling
@@ -248,7 +248,7 @@ impl ForkChoiceTest {
     }
 
     /// Slash the proposer of a block in the previous epoch.
-    pub async fn add_previous_epoch_proposer_slashing(self, slots_per_epoch: u64) -> Self {
+    pub(crate) async fn add_previous_epoch_proposer_slashing(self, slots_per_epoch: u64) -> Self {
         let previous_epoch_slot = self.harness.get_current_slot() - slots_per_epoch;
         let previous_epoch_block = self
             .harness
@@ -264,7 +264,7 @@ impl ForkChoiceTest {
     }
 
     /// Apply `count` blocks to the chain (without attestations).
-    pub async fn apply_blocks_without_new_attestations(self, count: usize) -> Self {
+    pub(crate) async fn apply_blocks_without_new_attestations(self, count: usize) -> Self {
         // This function does not gracefully handle slashed proposers, but may need to in future.
         self.harness.advance_slot();
         self.harness
@@ -281,7 +281,7 @@ impl ForkChoiceTest {
     /// Applies a block directly to fork choice, bypassing the beacon chain.
     ///
     /// Asserts the block was applied successfully.
-    pub async fn apply_block_directly_to_fork_choice<F>(self, mut func: F) -> Self
+    pub(crate) async fn apply_block_directly_to_fork_choice<F>(self, mut func: F) -> Self
     where
         F: FnMut(&mut SignedBeaconBlock<E>, &mut BeaconState<E>),
     {
@@ -319,7 +319,7 @@ impl ForkChoiceTest {
     /// Applies a block directly to fork choice, bypassing the beacon chain.
     ///
     /// Asserts that an error occurred and allows inspecting it via `comparison_func`.
-    pub async fn apply_invalid_block_directly_to_fork_choice<F, G>(
+    pub(crate) async fn apply_invalid_block_directly_to_fork_choice<F, G>(
         self,
         mut mutation_func: F,
         mut comparison_func: G,
@@ -505,7 +505,7 @@ impl ForkChoiceTest {
     }
 
     /// Check to ensure that we can read the finalized block. This is a regression test.
-    pub fn check_finalized_block_is_accessible(self) -> Self {
+    pub(crate) fn check_finalized_block_is_accessible(self) -> Self {
         self.harness
             .chain
             .canonical_head

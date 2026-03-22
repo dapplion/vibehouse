@@ -12,7 +12,7 @@ macro_rules! ssz_and_tree_hash_tests {
 macro_rules! ssz_tests {
     ($type: ty) => {
         #[test]
-        pub fn test_ssz_round_trip() {
+        fn test_ssz_round_trip() {
             use ssz::{Decode, ssz_encode};
             use $crate::test_utils::{SeedableRng, TestRandom, XorShiftRng};
 
@@ -31,7 +31,7 @@ macro_rules! ssz_tests {
 macro_rules! tree_hash_tests {
     ($type: ty) => {
         #[test]
-        pub fn test_tree_hash_root() {
+        fn test_tree_hash_root() {
             use tree_hash::TreeHash;
             use $crate::test_utils::{SeedableRng, TestRandom, XorShiftRng};
 

@@ -277,7 +277,7 @@ pub(crate) enum RangeBlockComponent<E: EthSpec> {
 
 #[cfg(test)]
 impl<E: EthSpec> SyncNetworkContext<TestBeaconChainType<E>> {
-    pub fn new_for_testing(
+    pub(super) fn new_for_testing(
         beacon_chain: Arc<BeaconChain<TestBeaconChainType<E>>>,
         network_globals: Arc<NetworkGlobals<E>>,
         task_executor: TaskExecutor,

@@ -17,12 +17,12 @@ use types::{
     SecretKey, Slot, SyncContributionData, SyncSelectionProof, SyncSubnetId, Unsigned,
 };
 
-pub type E = MainnetEthSpec;
+pub(crate) type E = MainnetEthSpec;
 
-pub const VALIDATOR_COUNT: usize = 256;
+pub(crate) const VALIDATOR_COUNT: usize = 256;
 
 // When set to true, cache any states fetched from the db.
-pub const CACHE_STATE_IN_TESTS: bool = true;
+pub(crate) const CACHE_STATE_IN_TESTS: bool = true;
 
 /// A cached set of keys.
 static KEYPAIRS: LazyLock<Vec<Keypair>> =

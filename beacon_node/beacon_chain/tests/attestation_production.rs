@@ -10,7 +10,7 @@ use types::{
     AggregateSignature, Attestation, EthSpec, Keypair, MainnetEthSpec, RelativeEpoch, Slot,
 };
 
-pub const VALIDATOR_COUNT: usize = 16;
+pub(crate) const VALIDATOR_COUNT: usize = 16;
 
 /// A cached set of keys.
 static KEYPAIRS: LazyLock<Vec<Keypair>> =

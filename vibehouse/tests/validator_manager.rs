@@ -128,12 +128,12 @@ impl CommandLineTest<ExitConfig> {
 }
 
 #[test]
-pub fn validator_create_without_output_path() {
+pub(crate) fn validator_create_without_output_path() {
     CommandLineTest::validators_create().assert_failed();
 }
 
 #[test]
-pub fn validator_create_defaults() {
+pub(crate) fn validator_create_defaults() {
     CommandLineTest::validators_create()
         .flag("--output-path", Some("./meow"))
         .flag("--count", Some("1"))
@@ -161,7 +161,7 @@ pub fn validator_create_defaults() {
 }
 
 #[test]
-pub fn validator_create_misc_flags() {
+pub(crate) fn validator_create_misc_flags() {
     CommandLineTest::validators_create()
         .flag("--output-path", Some("./meow"))
         .flag("--deposit-gwei", Some("42"))
@@ -202,7 +202,7 @@ pub fn validator_create_misc_flags() {
 }
 
 #[test]
-pub fn validator_create_disable_deposits() {
+pub(crate) fn validator_create_disable_deposits() {
     CommandLineTest::validators_create()
         .flag("--output-path", Some("./meow"))
         .flag("--count", Some("1"))
@@ -215,7 +215,7 @@ pub fn validator_create_disable_deposits() {
 }
 
 #[test]
-pub fn validator_import_defaults() {
+pub(crate) fn validator_import_defaults() {
     CommandLineTest::validators_import()
         .flag("--validators-file", Some("./vals.json"))
         .flag("--vc-token", Some("./token.json"))
@@ -239,7 +239,7 @@ pub fn validator_import_defaults() {
 }
 
 #[test]
-pub fn validator_import_misc_flags() {
+pub(crate) fn validator_import_misc_flags() {
     CommandLineTest::validators_import()
         .flag("--validators-file", Some("./vals.json"))
         .flag("--vc-token", Some("./token.json"))
@@ -264,14 +264,14 @@ pub fn validator_import_misc_flags() {
 }
 
 #[test]
-pub fn validator_import_missing_token() {
+pub(crate) fn validator_import_missing_token() {
     CommandLineTest::validators_import()
         .flag("--validators-file", Some("./vals.json"))
         .assert_failed();
 }
 
 #[test]
-pub fn validator_import_using_both_file_flags() {
+pub(crate) fn validator_import_using_both_file_flags() {
     CommandLineTest::validators_import()
         .flag("--vc-token", Some("./token.json"))
         .flag("--validators-file", Some("./vals.json"))
@@ -281,7 +281,7 @@ pub fn validator_import_using_both_file_flags() {
 }
 
 #[test]
-pub fn validator_import_keystore_file_without_password_flag_should_fail() {
+pub(crate) fn validator_import_keystore_file_without_password_flag_should_fail() {
     CommandLineTest::validators_import()
         .flag("--vc-token", Some("./token.json"))
         .flag("--keystore-file", Some("./keystore.json"))
@@ -289,7 +289,7 @@ pub fn validator_import_keystore_file_without_password_flag_should_fail() {
 }
 
 #[test]
-pub fn validator_import_keystore_file_with_password_flag_should_pass() {
+pub(crate) fn validator_import_keystore_file_with_password_flag_should_pass() {
     CommandLineTest::validators_import()
         .flag("--vc-token", Some("./token.json"))
         .flag("--keystore-file", Some("./keystore.json"))
@@ -315,14 +315,14 @@ pub fn validator_import_keystore_file_with_password_flag_should_pass() {
 }
 
 #[test]
-pub fn validator_import_missing_both_file_flags() {
+pub(crate) fn validator_import_missing_both_file_flags() {
     CommandLineTest::validators_import()
         .flag("--vc-token", Some("./token.json"))
         .assert_failed();
 }
 
 #[test]
-pub fn validator_import_fee_recipient_override() {
+pub(crate) fn validator_import_fee_recipient_override() {
     CommandLineTest::validators_import()
         .flag("--validators-file", Some("./vals.json"))
         .flag("--vc-token", Some("./token.json"))
@@ -352,7 +352,7 @@ pub fn validator_import_fee_recipient_override() {
 }
 
 #[test]
-pub fn validator_move_defaults() {
+pub(crate) fn validator_move_defaults() {
     CommandLineTest::validators_move()
         .flag("--src-vc-url", Some("http://localhost:1"))
         .flag("--src-vc-token", Some("./1.json"))
@@ -380,7 +380,7 @@ pub fn validator_move_defaults() {
 }
 
 #[test]
-pub fn validator_move_misc_flags_0() {
+pub(crate) fn validator_move_misc_flags_0() {
     CommandLineTest::validators_move()
         .flag("--src-vc-url", Some("http://localhost:1"))
         .flag("--src-vc-token", Some("./1.json"))
@@ -416,7 +416,7 @@ pub fn validator_move_misc_flags_0() {
 }
 
 #[test]
-pub fn validator_move_misc_flags_1() {
+pub(crate) fn validator_move_misc_flags_1() {
     CommandLineTest::validators_move()
         .flag("--src-vc-url", Some("http://localhost:1"))
         .flag("--src-vc-token", Some("./1.json"))
@@ -448,7 +448,7 @@ pub fn validator_move_misc_flags_1() {
 }
 
 #[test]
-pub fn validator_move_misc_flags_2() {
+pub(crate) fn validator_move_misc_flags_2() {
     CommandLineTest::validators_move()
         .flag("--src-vc-url", Some("http://localhost:1"))
         .flag("--src-vc-token", Some("./1.json"))
@@ -480,7 +480,7 @@ pub fn validator_move_misc_flags_2() {
 }
 
 #[test]
-pub fn validator_move_count() {
+pub(crate) fn validator_move_count() {
     CommandLineTest::validators_move()
         .flag("--src-vc-url", Some("http://localhost:1"))
         .flag("--src-vc-token", Some("./1.json"))
@@ -508,7 +508,7 @@ pub fn validator_move_count() {
 }
 
 #[test]
-pub fn validator_list_defaults() {
+pub(crate) fn validator_list_defaults() {
     CommandLineTest::validators_list()
         .flag("--vc-token", Some("./token.json"))
         .assert_success(|config| {
@@ -523,7 +523,7 @@ pub fn validator_list_defaults() {
 }
 
 #[test]
-pub fn validator_delete_defaults() {
+pub(crate) fn validator_delete_defaults() {
     CommandLineTest::validators_delete()
         .flag(
             "--validators",
@@ -544,14 +544,14 @@ pub fn validator_delete_defaults() {
 }
 
 #[test]
-pub fn validator_delete_missing_validator_flag() {
+pub(crate) fn validator_delete_missing_validator_flag() {
     CommandLineTest::validators_delete()
         .flag("--vc-token", Some("./token.json"))
         .assert_failed();
 }
 
 #[test]
-pub fn validator_exit_defaults() {
+pub(crate) fn validator_exit_defaults() {
     CommandLineTest::validators_exit()
         .flag(
             "--validators",
@@ -576,7 +576,7 @@ pub fn validator_exit_defaults() {
 }
 
 #[test]
-pub fn validator_exit_exit_epoch_and_presign_flags() {
+pub(crate) fn validator_exit_exit_epoch_and_presign_flags() {
     CommandLineTest::validators_exit()
         .flag(
             "--validators",
@@ -602,14 +602,14 @@ pub fn validator_exit_exit_epoch_and_presign_flags() {
 }
 
 #[test]
-pub fn validator_exit_missing_validator_flag() {
+pub(crate) fn validator_exit_missing_validator_flag() {
     CommandLineTest::validators_exit()
         .flag("--vc-token", Some("./token.json"))
         .assert_failed();
 }
 
 #[test]
-pub fn validator_exit_using_beacon_and_presign_flags() {
+pub(crate) fn validator_exit_using_beacon_and_presign_flags() {
     CommandLineTest::validators_exit()
         .flag("--vc-token", Some("./token.json"))
         .flag(
@@ -622,7 +622,7 @@ pub fn validator_exit_using_beacon_and_presign_flags() {
 }
 
 #[test]
-pub fn validator_exit_using_beacon_and_exit_epoch_flags() {
+pub(crate) fn validator_exit_using_beacon_and_exit_epoch_flags() {
     CommandLineTest::validators_exit()
         .flag("--vc-token", Some("./token.json"))
         .flag(
@@ -635,7 +635,7 @@ pub fn validator_exit_using_beacon_and_exit_epoch_flags() {
 }
 
 #[test]
-pub fn validator_exit_exit_epoch_flag_without_presign_flag() {
+pub(crate) fn validator_exit_exit_epoch_flag_without_presign_flag() {
     CommandLineTest::validators_exit()
         .flag("--vc-token", Some("./token.json"))
         .flag(

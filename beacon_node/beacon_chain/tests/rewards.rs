@@ -16,10 +16,10 @@ use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 use types::{ChainSpec, ForkName, Slot};
 
-pub const VALIDATOR_COUNT: usize = 64;
+pub(crate) const VALIDATOR_COUNT: usize = 64;
 
 // When set to true, cache any states fetched from the db.
-pub const CACHE_STATE_IN_TESTS: bool = true;
+pub(crate) const CACHE_STATE_IN_TESTS: bool = true;
 
 type E = MinimalEthSpec;
 

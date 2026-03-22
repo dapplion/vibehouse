@@ -12,7 +12,7 @@ use super::*;
 
 type BlobsBundle<E> = (KzgCommitments<E>, KzgProofs<E>, BlobsList<E>);
 
-pub fn generate_rand_block_and_blobs<E: EthSpec>(
+pub(super) fn generate_rand_block_and_blobs<E: EthSpec>(
     fork_name: ForkName,
     num_blobs: usize,
     rng: &mut impl Rng,
@@ -54,7 +54,7 @@ pub fn generate_rand_block_and_blobs<E: EthSpec>(
     (block, blob_sidecars)
 }
 
-pub fn generate_blobs<E: EthSpec>(n_blobs: usize) -> Result<BlobsBundle<E>, String> {
+pub(super) fn generate_blobs<E: EthSpec>(n_blobs: usize) -> Result<BlobsBundle<E>, String> {
     let (mut commitments, mut proofs, mut blobs) = BlobsBundle::<E>::default();
 
     for blob_index in 0..n_blobs {

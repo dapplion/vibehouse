@@ -11,8 +11,8 @@ use std::ops::Mul;
 use std::sync::LazyLock;
 use swap_or_not_shuffle::compute_shuffled_index;
 
-pub const MAX_VALIDATOR_COUNT: usize = 129;
-pub const SLOT_OFFSET: Slot = Slot::new(1);
+pub(super) const MAX_VALIDATOR_COUNT: usize = 129;
+pub(super) const SLOT_OFFSET: Slot = Slot::new(1);
 
 /// A cached set of keys.
 static KEYPAIRS: LazyLock<Vec<Keypair>> =

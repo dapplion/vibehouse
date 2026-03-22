@@ -73,13 +73,13 @@ struct TestRig {
 }
 
 // Environment variable to read if `fork_from_env` feature is enabled.
-pub const FORK_NAME_ENV_VAR: &str = "FORK_NAME";
+pub(super) const FORK_NAME_ENV_VAR: &str = "FORK_NAME";
 // Environment variable specifying the log output directory in CI.
-pub const CI_LOGGER_DIR_ENV_VAR: &str = "CI_LOGGER_DIR";
+pub(super) const CI_LOGGER_DIR_ENV_VAR: &str = "CI_LOGGER_DIR";
 
 static INIT_TRACING: Once = Once::new();
 
-pub fn init_tracing() {
+pub(super) fn init_tracing() {
     INIT_TRACING.call_once(|| {
         if std::env::var(CI_LOGGER_DIR_ENV_VAR).is_ok() {
             // Enable logging to log files for each test and each fork.

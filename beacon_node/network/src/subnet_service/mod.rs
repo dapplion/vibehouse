@@ -192,12 +192,12 @@ impl<T: BeaconChainTypes> SubnetService<T> {
 
     /// Return count of all currently subscribed short-lived subnets.
     #[cfg(test)]
-    pub fn subscriptions(&self) -> impl Iterator<Item = &Subnet> {
+    pub(crate) fn subscriptions(&self) -> impl Iterator<Item = &Subnet> {
         self.subscriptions.iter()
     }
 
     #[cfg(test)]
-    pub fn permanent_subscriptions(&self) -> impl Iterator<Item = &Subnet> {
+    pub(crate) fn permanent_subscriptions(&self) -> impl Iterator<Item = &Subnet> {
         self.permanent_attestation_subscriptions.iter()
     }
 

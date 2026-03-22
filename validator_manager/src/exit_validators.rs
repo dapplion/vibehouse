@@ -438,7 +438,7 @@ mod test {
             self
         }
 
-        pub async fn run_test(self) -> TestResult {
+        pub(crate) async fn run_test(self) -> TestResult {
             let import_builder = self.src_import_builder.unwrap();
             let initialized_validators = import_builder.vc.initialized_validators.clone();
             let import_test_result = import_builder.run_test().await;

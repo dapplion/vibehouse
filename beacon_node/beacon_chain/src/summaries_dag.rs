@@ -13,11 +13,11 @@ pub(crate) struct DAGStateSummary {
 
 #[cfg(test)]
 #[derive(Debug, Clone, Copy)]
-pub struct DAGStateSummaryV22 {
-    pub slot: Slot,
-    pub latest_block_root: Hash256,
-    pub block_slot: Slot,
-    pub block_parent_root: Hash256,
+pub(crate) struct DAGStateSummaryV22 {
+    pub(crate) slot: Slot,
+    pub(crate) latest_block_root: Hash256,
+    pub(crate) block_slot: Slot,
+    pub(crate) block_parent_root: Hash256,
 }
 
 #[derive(Debug)]
@@ -116,7 +116,7 @@ impl StateSummariesDAG {
     /// - Maybe include multiple disjoint trees. The root of each tree will have a ZERO parent state
     ///   root, which will error later when calling `previous_state_root`.
     #[cfg(test)]
-    pub fn new_from_v22(
+    pub(crate) fn new_from_v22(
         state_summaries_v22: Vec<(Hash256, DAGStateSummaryV22)>,
     ) -> Result<Self, Error> {
         // Group them by latest block root, and sorted state slot
@@ -255,7 +255,7 @@ impl StateSummariesDAG {
     }
 
     #[cfg(test)]
-    pub fn previous_state_root(&self, state_root: Hash256) -> Result<Hash256, Error> {
+    pub(crate) fn previous_state_root(&self, state_root: Hash256) -> Result<Hash256, Error> {
         let summary = self
             .state_summaries_by_state_root
             .get(&state_root)
@@ -271,7 +271,7 @@ impl StateSummariesDAG {
     }
 
     #[cfg(test)]
-    pub fn ancestor_state_root_at_slot(
+    pub(crate) fn ancestor_state_root_at_slot(
         &self,
         starting_state_root: Hash256,
         ancestor_slot: Slot,
@@ -369,7 +369,11 @@ impl StateSummariesDAG {
     /// function will not return the `state_root` of a state with a different `latest_block_root`
     /// even if it lies on the same chain.
     #[cfg(test)]
-    pub fn state_root_at_slot(&self, latest_block_root: Hash256, slot: Slot) -> Option<Hash256> {
+    pub(crate) fn state_root_at_slot(
+        &self,
+        latest_block_root: Hash256,
+        slot: Slot,
+    ) -> Option<Hash256> {
         self.state_summaries_by_block_root
             .get(&latest_block_root)?
             .get(&slot)

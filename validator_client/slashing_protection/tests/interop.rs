@@ -3,7 +3,7 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
-pub static TEST_ROOT_DIR: LazyLock<PathBuf> = LazyLock::new(test_root_dir);
+pub(crate) static TEST_ROOT_DIR: LazyLock<PathBuf> = LazyLock::new(test_root_dir);
 
 fn download_tests() {
     let make_output = std::process::Command::new("make")

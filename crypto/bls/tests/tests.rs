@@ -147,12 +147,12 @@ macro_rules! test_suite {
         }
 
         impl SignatureTester {
-            pub fn infinity_sig(mut self) -> Self {
+            fn infinity_sig(mut self) -> Self {
                 self.sig = Signature::deserialize(&INFINITY_SIGNATURE[..]).unwrap();
                 self
             }
 
-            pub fn assert_verify(self, is_valid: bool) {
+            fn assert_verify(self, is_valid: bool) {
                 assert_eq!(self.sig.verify(&self.pubkey, self.msg), is_valid);
 
                 // Check a single-signature signature set.
@@ -202,40 +202,40 @@ macro_rules! test_suite {
                 }
             }
 
-            pub fn empty_sig(mut self) -> Self {
+            fn empty_sig(mut self) -> Self {
                 self.sig = AggregateSignature::empty();
                 self
             }
 
-            pub fn wrong_sig(mut self) -> Self {
+            fn wrong_sig(mut self) -> Self {
                 let sk = SecretKey::deserialize(&[1; 32]).unwrap();
                 self.sig = AggregateSignature::infinity();
                 self.sig.add_assign(&sk.sign(Hash256::from_low_u64_be(1)));
                 self
             }
 
-            pub fn infinity_sig(mut self) -> Self {
+            fn infinity_sig(mut self) -> Self {
                 self.sig = AggregateSignature::deserialize(&INFINITY_SIGNATURE[..]).unwrap();
                 self
             }
 
-            pub fn aggregate_empty_sig(mut self) -> Self {
+            fn aggregate_empty_sig(mut self) -> Self {
                 self.sig.add_assign(&Signature::empty());
                 self
             }
 
-            pub fn aggregate_empty_agg_sig(mut self) -> Self {
+            fn aggregate_empty_agg_sig(mut self) -> Self {
                 self.sig.add_assign_aggregate(&AggregateSignature::empty());
                 self
             }
 
-            pub fn aggregate_infinity_sig(mut self) -> Self {
+            fn aggregate_infinity_sig(mut self) -> Self {
                 self.sig
                     .add_assign(&Signature::deserialize(&INFINITY_SIGNATURE[..]).unwrap());
                 self
             }
 
-            pub fn assert_single_message_verify(self, is_valid: bool) {
+            fn assert_single_message_verify(self, is_valid: bool) {
                 assert!(self.msgs.len() == 1);
                 let msg = self.msgs.first().unwrap();
                 let pubkeys = self.pubkeys.iter().collect::<Vec<_>>();
@@ -370,12 +370,12 @@ macro_rules! test_suite {
         }
 
         impl OwnedSignatureSet {
-            pub fn multiple_pubkeys(&self) -> SignatureSet<'_> {
+            fn multiple_pubkeys(&self) -> SignatureSet<'_> {
                 let signing_keys = self.signing_keys.iter().map(Cow::Borrowed).collect();
                 SignatureSet::multiple_pubkeys(&self.signature, signing_keys, self.message)
             }
 
-            pub fn run_checks(&self) {
+            fn run_checks(&self) {
                 assert_eq!(
                     self.multiple_pubkeys().verify(),
                     self.should_be_valid,
@@ -393,7 +393,7 @@ macro_rules! test_suite {
         }
 
         impl SignatureSetTester {
-            pub fn push_valid_set(mut self, num_signers: usize) -> Self {
+            fn push_valid_set(mut self, num_signers: usize) -> Self {
                 let mut signature = AggregateSignature::infinity();
                 let message = Hash256::from_low_u64_be(42);
 
@@ -416,7 +416,7 @@ macro_rules! test_suite {
                 self
             }
 
-            pub fn push_invalid_set(mut self) -> Self {
+            fn push_invalid_set(mut self) -> Self {
                 let mut signature = AggregateSignature::infinity();
                 let message = Hash256::from_low_u64_be(42);
 
@@ -432,7 +432,7 @@ macro_rules! test_suite {
                 self
             }
 
-            pub fn push_invalid_pubkey_infinity_set(mut self) -> Self {
+            fn push_invalid_pubkey_infinity_set(mut self) -> Self {
                 self.owned_sets.push(OwnedSignatureSet {
                     signature: AggregateSignature::deserialize(&INFINITY_SIGNATURE).unwrap(),
                     signing_keys: vec![secret_from_u64(42).public_key()],
@@ -442,7 +442,7 @@ macro_rules! test_suite {
                 self
             }
 
-            pub fn run_checks(self) {
+            fn run_checks(self) {
                 assert!(!self.owned_sets.is_empty(), "empty test is meaningless");
 
                 for owned_set in &self.owned_sets {

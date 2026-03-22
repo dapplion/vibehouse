@@ -659,7 +659,7 @@ mod test {
     }
 
     impl TestScenario {
-        pub fn pubkey_to_index_map(&self) -> HashMap<PublicKeyBytes, u64> {
+        pub(crate) fn pubkey_to_index_map(&self) -> HashMap<PublicKeyBytes, u64> {
             self.validators
                 .iter()
                 .enumerate()
@@ -667,22 +667,22 @@ mod test {
                 .collect()
         }
 
-        pub fn set_slot(self, slot: Slot) -> Self {
+        pub(crate) fn set_slot(self, slot: Slot) -> Self {
             self.slot_clock.set_slot(slot.into());
             self
         }
 
-        pub fn set_current_time(self, time: Duration) -> Self {
+        pub(crate) fn set_current_time(self, time: Duration) -> Self {
             self.slot_clock.set_current_time(time);
             self
         }
 
-        pub fn assert_prior_to_genesis(self) -> Self {
+        pub(crate) fn assert_prior_to_genesis(self) -> Self {
             assert!(self.slot_clock.is_prior_to_genesis().unwrap());
             self
         }
 
-        pub fn register_all_in_doppelganger_protection_if_enabled(self) -> Self {
+        pub(crate) fn register_all_in_doppelganger_protection_if_enabled(self) -> Self {
             let mut this = self;
             for i in 0..this.validators.len() {
                 this = this.register_validator(i as u64);
@@ -690,7 +690,7 @@ mod test {
             this
         }
 
-        pub fn register_validators(self, validators: &[u64]) -> Self {
+        pub(crate) fn register_validators(self, validators: &[u64]) -> Self {
             let mut this = self;
             for i in validators {
                 this = this.register_validator(*i);
@@ -698,7 +698,7 @@ mod test {
             this
         }
 
-        pub fn register_validator(self, index: u64) -> Self {
+        pub(crate) fn register_validator(self, index: u64) -> Self {
             let pubkey = *self
                 .validators
                 .get(index as usize)
@@ -716,7 +716,7 @@ mod test {
             self
         }
 
-        pub fn assert_all_enabled(self) -> Self {
+        pub(crate) fn assert_all_enabled(self) -> Self {
             /*
              * 1. Ensure all validators have the correct status.
              */
@@ -743,7 +743,7 @@ mod test {
             self
         }
 
-        pub fn assert_all_disabled(self) -> Self {
+        pub(crate) fn assert_all_disabled(self) -> Self {
             /*
              * 1. Ensure all validators have the correct status.
              */
@@ -779,7 +779,7 @@ mod test {
             self
         }
 
-        pub fn assert_all_states(self, state: &DoppelgangerState) -> Self {
+        pub(crate) fn assert_all_states(self, state: &DoppelgangerState) -> Self {
             let mut this = self;
             for i in 0..this.validators.len() {
                 this = this.assert_state(i as u64, state);
@@ -787,7 +787,7 @@ mod test {
             this
         }
 
-        pub fn assert_state(self, index: u64, state: &DoppelgangerState) -> Self {
+        pub(crate) fn assert_state(self, index: u64, state: &DoppelgangerState) -> Self {
             let pubkey = *self
                 .validators
                 .get(index as usize)
@@ -806,7 +806,7 @@ mod test {
             self
         }
 
-        pub fn assert_unregistered(self, index: u64) -> Self {
+        pub(crate) fn assert_unregistered(self, index: u64) -> Self {
             let pubkey = *self
                 .validators
                 .get(index as usize)
@@ -912,7 +912,7 @@ mod test {
     }
 
     impl TestScenario {
-        pub fn simulate_detect_doppelgangers<L, F>(
+        pub(crate) fn simulate_detect_doppelgangers<L, F>(
             self,
             slot: Slot,
             should_shutdown: ShouldShutdown,

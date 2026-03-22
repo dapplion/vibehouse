@@ -1,4 +1,5 @@
 #![cfg(test)]
+#![allow(unreachable_pub)]
 use std::sync::Arc;
 use std::sync::Weak;
 use tokio::runtime::Runtime;

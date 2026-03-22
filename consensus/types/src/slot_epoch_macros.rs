@@ -629,7 +629,7 @@ macro_rules! all_tests {
             math_between_tests!($type, u64);
 
             #[test]
-            pub fn as_64() {
+            fn as_64() {
                 let x = $type(0).as_u64();
                 assert_eq!(x, 0);
 
@@ -647,7 +647,7 @@ macro_rules! all_tests {
             from_into_tests!($type, usize);
 
             #[test]
-            pub fn as_usize() {
+            fn as_usize() {
                 let x = $type(0).as_usize();
                 assert_eq!(x, 0);
 

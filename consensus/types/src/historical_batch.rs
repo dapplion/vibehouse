@@ -29,7 +29,7 @@ use crate::MainnetEthSpec;
 mod tests {
     use super::*;
 
-    pub type FoundationHistoricalBatch = HistoricalBatch<MainnetEthSpec>;
+    pub(super) type FoundationHistoricalBatch = HistoricalBatch<MainnetEthSpec>;
 
     ssz_and_tree_hash_tests!(FoundationHistoricalBatch);
 }

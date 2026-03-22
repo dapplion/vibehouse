@@ -85,7 +85,7 @@ impl Auth {
     /// Create a new `Auth` struct given the path to the file containing the hex
     /// encoded jwt key.
     #[cfg(test)]
-    pub fn new_with_path(
+    pub(crate) fn new_with_path(
         jwt_path: std::path::PathBuf,
         id: Option<String>,
         clv: Option<String>,

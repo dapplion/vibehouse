@@ -1,4 +1,5 @@
 #![cfg(not(debug_assertions))]
+#![allow(unreachable_pub)]
 
 use eth2_keystore::{Keystore, KeystoreBuilder, PlainText};
 use std::fs::{self, File};

@@ -4,14 +4,14 @@ use crate::test_utils::*;
 use crate::*;
 use types::{AttestationData, Checkpoint, Epoch, FixedBytesExtended, Slot};
 
-pub fn build_checkpoint(epoch_num: u64) -> Checkpoint {
+pub(crate) fn build_checkpoint(epoch_num: u64) -> Checkpoint {
     Checkpoint {
         epoch: Epoch::from(epoch_num),
         root: Hash256::zero(),
     }
 }
 
-pub fn attestation_data_builder(source: u64, target: u64) -> AttestationData {
+pub(crate) fn attestation_data_builder(source: u64, target: u64) -> AttestationData {
     let source = build_checkpoint(source);
     let target = build_checkpoint(target);
     let index = 0u64;

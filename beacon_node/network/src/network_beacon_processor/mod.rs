@@ -1205,7 +1205,7 @@ impl<E: EthSpec> NetworkBeaconProcessor<TestBeaconChainType<E>> {
     // event receiver that would normally go to the beacon processor. This is
     // useful for testing that messages are actually being sent to the beacon
     // processor (but not much else).
-    pub fn null_for_testing(
+    pub(crate) fn null_for_testing(
         network_globals: Arc<NetworkGlobals<E>>,
         sync_tx: UnboundedSender<SyncMessage<E>>,
         chain: Arc<BeaconChain<TestBeaconChainType<E>>>,

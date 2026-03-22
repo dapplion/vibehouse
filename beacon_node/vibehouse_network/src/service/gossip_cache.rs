@@ -81,7 +81,7 @@ impl GossipCacheBuilder {
     /// By default, all timeouts all disabled. Setting a default timeout will enable all timeout
     /// that are not already set.
     #[cfg(test)]
-    pub fn default_timeout(mut self, timeout: Duration) -> Self {
+    pub(crate) fn default_timeout(mut self, timeout: Duration) -> Self {
         self.default_timeout = Some(timeout);
         self
     }

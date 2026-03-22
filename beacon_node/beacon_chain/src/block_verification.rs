@@ -71,6 +71,7 @@ use crate::{
 use educe::Educe;
 use eth2::types::{BlockGossip, EventKind};
 use execution_layer::PayloadStatus;
+#[allow(unreachable_pub)]
 pub use fork_choice::{AttestationFromBlock, PayloadVerificationStatus};
 use metrics::TryExt;
 use parking_lot::RwLockReadGuard;

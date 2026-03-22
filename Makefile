@@ -262,7 +262,7 @@ lint-fix:
 
 # Also run the lints on the optimized-only tests
 lint-full:
-	RUSTFLAGS="-C debug-assertions=no $(RUSTFLAGS)" $(MAKE) lint
+	RUSTFLAGS="-C debug-assertions=no -W unreachable_pub $(RUSTFLAGS)" $(MAKE) lint
 
 # Runs the makefile in the `ef_tests` repo.
 #
