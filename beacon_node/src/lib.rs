@@ -3,7 +3,6 @@ mod config;
 
 pub use beacon_chain;
 use beacon_chain::{builder::Witness, slot_clock::SystemTimeSlotClock};
-use clap::ArgMatches;
 pub use cli::cli_app;
 pub use client::{Client, ClientBuilder, ClientConfig, ClientGenesis};
 pub use config::{get_config, get_data_dir, set_network_config};
@@ -33,19 +32,6 @@ pub type ProductionClient<E> =
 pub struct ProductionBeaconNode<E: EthSpec>(ProductionClient<E>);
 
 impl<E: EthSpec> ProductionBeaconNode<E> {
-    /// Starts a new beacon node `Client` in the given `environment`.
-    ///
-    /// Identical to `start_from_client_config`, however the `client_config` is generated from the
-    /// given `matches` and potentially configuration files on the local filesystem or other
-    /// configurations hosted remotely.
-    pub async fn new_from_cli(
-        context: RuntimeContext<E>,
-        matches: ArgMatches,
-    ) -> Result<Self, String> {
-        let client_config = get_config::<E>(&matches, &context)?;
-        Self::new(context, client_config).await
-    }
-
     /// Starts a new beacon node `Client` in the given `environment`.
     ///
     /// Client behaviour is defined by the given `client_config`.

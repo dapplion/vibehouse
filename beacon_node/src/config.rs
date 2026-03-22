@@ -1522,11 +1522,7 @@ pub fn get_data_dir(cli_args: &ArgMatches) -> PathBuf {
 /// Parses the `cli_value` as a comma-separated string of values to be parsed with `parser`.
 ///
 /// If there is more than one value, log a warning. If there are no values, return an error.
-pub fn parse_only_one_value<F, T, U>(
-    cli_value: &str,
-    parser: F,
-    flag_name: &str,
-) -> Result<T, String>
+fn parse_only_one_value<F, T, U>(cli_value: &str, parser: F, flag_name: &str) -> Result<T, String>
 where
     F: Fn(&str) -> Result<T, U>,
     U: Debug,

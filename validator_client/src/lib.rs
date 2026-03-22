@@ -1,7 +1,6 @@
 pub mod cli;
-pub mod config;
+pub(crate) mod config;
 
-use crate::cli::ValidatorClient;
 use crate::duties_service::SelectionProofConfig;
 pub use config::Config;
 use initialized_validators::InitializedValidators;
@@ -14,7 +13,6 @@ use account_utils::validator_definitions::ValidatorDefinitions;
 use beacon_node_fallback::{
     BeaconNodeFallback, CandidateBeaconNode, start_fallback_updater_service,
 };
-use clap::ArgMatches;
 use doppelganger_service::DoppelgangerService;
 use environment::RuntimeContext;
 use eth2::{BeaconNodeHttpClient, StatusCode, Timeouts, reqwest::ClientBuilder};
@@ -93,18 +91,6 @@ pub struct ProductionValidatorClient<E: EthSpec> {
 }
 
 impl<E: EthSpec> ProductionValidatorClient<E> {
-    /// Instantiates the validator client, _without_ starting the timers to trigger block
-    /// and attestation production.
-    pub async fn new_from_cli(
-        context: RuntimeContext<E>,
-        cli_args: &ArgMatches,
-        validator_client_config: &ValidatorClient,
-    ) -> Result<Self, String> {
-        let config = Config::from_cli(cli_args, validator_client_config)
-            .map_err(|e| format!("Unable to initialize config: {e}"))?;
-        Self::new(context, config).await
-    }
-
     /// Instantiates the validator client, _without_ starting the timers to trigger block
     /// and attestation production.
     pub async fn new(context: RuntimeContext<E>, config: Config) -> Result<Self, String> {
