@@ -3826,3 +3826,14 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - `account_manager` — CLI binary, pub items are for CLI submodule assembly
 - **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since March 15.
 - **Tests**: 201/201 network tests pass (with FORK_NAME=gloas), `make lint` clean, zero warnings.
+
+### Run 2180
+
+**Mainnet preset EF test regression check — proposer boost timeliness fix**
+
+- **Scope**: Ran full mainnet preset EF tests (79 tests, real crypto) as regression check after runs 2173-2179 pub visibility refactoring. CI only runs minimal preset.
+- **Bug found**: `fork_choice_on_block` failed on mainnet preset for 2 cases: `proposer_boost` and `proposer_boost_is_first_block`. The `proposer_boost_root` was `0x00...00` when it should be non-zero.
+- **Root cause**: Strict `<` comparison instead of `<=` in proposer boost timeliness check (`fork_choice.rs:815`). The spec's `record_block_timeliness` considers a block timely when it arrives **at or before** the attestation deadline. On mainnet preset, `attestation_due_ms = 12000 * 2500 / 10000 = 3000ms`, and the EF test places blocks exactly at this boundary (tick=51, slot starts at tick=48, so delay=3000ms). On minimal preset, `6000 * 2500 / 10000 = 1500ms` and the test uses tick=25 (delay=1000ms < 1500ms), so it passed.
+- **Fix**: Changed `block_delay < Duration::from_millis(attestation_due_ms)` to `block_delay <= Duration::from_millis(attestation_due_ms)`.
+- **Tests**: 79/79 mainnet preset EF tests pass, 139/139 minimal preset EF tests pass, `make lint` clean.
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since March 15.
