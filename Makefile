@@ -250,6 +250,7 @@ lint:
 		-D clippy::large_stack_frames \
 		-D clippy::disallowed_methods \
 		-D clippy::derive_partial_eq_without_eq \
+		-D clippy::redundant_closure_for_method_calls \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.

@@ -159,7 +159,7 @@ fn get_states_descendant_of_block(
 #[tokio::test]
 async fn light_client_bootstrap_test() {
     // Gloas ePBS: light client headers require execution payload from envelope, not block body.
-    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+    if fork_name_from_env().is_some_and(types::ForkName::gloas_enabled) {
         return;
     }
     let spec = test_spec::<E>();
@@ -219,7 +219,7 @@ async fn light_client_bootstrap_test() {
 #[tokio::test]
 async fn light_client_updates_test() {
     // Gloas ePBS: light client headers require execution payload from envelope, not block body.
-    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+    if fork_name_from_env().is_some_and(types::ForkName::gloas_enabled) {
         return;
     }
     let spec = test_spec::<E>();
@@ -4352,7 +4352,7 @@ fn check_blob_existence(
 async fn fulu_prune_data_columns_happy_case() {
     // Gloas ePBS: data columns are delivered via the execution payload envelope,
     // not the beacon block body.
-    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+    if fork_name_from_env().is_some_and(types::ForkName::gloas_enabled) {
         return;
     }
     let db_path = tempdir().unwrap();
@@ -4412,7 +4412,7 @@ async fn fulu_prune_data_columns_happy_case() {
 async fn fulu_prune_data_columns_no_finalization() {
     // Gloas ePBS: data columns are delivered via the execution payload envelope,
     // not the beacon block body.
-    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+    if fork_name_from_env().is_some_and(types::ForkName::gloas_enabled) {
         return;
     }
     let db_path = tempdir().unwrap();
@@ -4618,7 +4618,7 @@ async fn test_earliest_custodied_data_column_epoch() {
 async fn fulu_prune_data_columns_margin1() {
     // Gloas ePBS: data columns are delivered via the execution payload envelope,
     // not the beacon block body.
-    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+    if fork_name_from_env().is_some_and(types::ForkName::gloas_enabled) {
         return;
     }
     fulu_prune_data_columns_margin_test(1).await;
@@ -4628,7 +4628,7 @@ async fn fulu_prune_data_columns_margin1() {
 async fn fulu_prune_data_columns_margin3() {
     // Gloas ePBS: data columns are delivered via the execution payload envelope,
     // not the beacon block body.
-    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+    if fork_name_from_env().is_some_and(types::ForkName::gloas_enabled) {
         return;
     }
     fulu_prune_data_columns_margin_test(3).await;
@@ -4638,7 +4638,7 @@ async fn fulu_prune_data_columns_margin3() {
 async fn fulu_prune_data_columns_margin4() {
     // Gloas ePBS: data columns are delivered via the execution payload envelope,
     // not the beacon block body.
-    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+    if fork_name_from_env().is_some_and(types::ForkName::gloas_enabled) {
         return;
     }
     fulu_prune_data_columns_margin_test(4).await;
@@ -4965,7 +4965,7 @@ async fn replay_from_split_state() {
 async fn test_custody_column_filtering_regular_node() {
     // Gloas ePBS: data columns are delivered via the execution payload envelope,
     // not the beacon block body.
-    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+    if fork_name_from_env().is_some_and(types::ForkName::gloas_enabled) {
         return;
     }
     // Skip test if PeerDAS is not scheduled
@@ -5014,7 +5014,7 @@ async fn test_custody_column_filtering_regular_node() {
 async fn test_custody_column_filtering_supernode() {
     // Gloas ePBS: data columns are delivered via the execution payload envelope,
     // not the beacon block body.
-    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+    if fork_name_from_env().is_some_and(types::ForkName::gloas_enabled) {
         return;
     }
     // Skip test if PeerDAS is not scheduled

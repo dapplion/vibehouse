@@ -1005,7 +1005,7 @@ async fn data_column_reconstruction_at_slot_start() {
         return;
     };
     // Gloas (ePBS): data columns come via envelope, not block body
-    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+    if fork_name_from_env().is_some_and(types::ForkName::gloas_enabled) {
         return;
     }
 
@@ -1027,7 +1027,11 @@ async fn data_column_reconstruction_at_slot_start() {
         "chain should be at the correct slot"
     );
 
-    let num_data_columns = rig.next_data_columns.as_ref().map(|c| c.len()).unwrap_or(0);
+    let num_data_columns = rig
+        .next_data_columns
+        .as_ref()
+        .map(std::vec::Vec::len)
+        .unwrap_or(0);
     for i in 0..num_data_columns {
         rig.enqueue_gossip_data_columns(i);
         rig.assert_event_journal_completes(&[WorkType::GossipDataColumnSidecar])
@@ -1059,7 +1063,7 @@ async fn data_column_reconstruction_at_deadline() {
     if test_spec::<E>().fulu_fork_epoch.is_none() {
         return;
     };
-    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+    if fork_name_from_env().is_some_and(types::ForkName::gloas_enabled) {
         return;
     }
 
@@ -1086,7 +1090,11 @@ async fn data_column_reconstruction_at_deadline() {
         .slot_clock
         .set_current_time(slot_start + Duration::from_secs(3));
 
-    let num_data_columns = rig.next_data_columns.as_ref().map(|c| c.len()).unwrap_or(0);
+    let num_data_columns = rig
+        .next_data_columns
+        .as_ref()
+        .map(std::vec::Vec::len)
+        .unwrap_or(0);
 
     // Enqueue all columns first. At the reconstruction deadline, reconstruction may fire
     // between gossip column processing events, so we can't assert per-column ordering.
@@ -1139,7 +1147,7 @@ async fn data_column_reconstruction_at_next_slot() {
     if test_spec::<E>().fulu_fork_epoch.is_none() {
         return;
     };
-    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+    if fork_name_from_env().is_some_and(types::ForkName::gloas_enabled) {
         return;
     }
 
@@ -1166,7 +1174,11 @@ async fn data_column_reconstruction_at_next_slot() {
         .slot_clock
         .set_current_time(slot_start + Duration::from_secs(12));
 
-    let num_data_columns = rig.next_data_columns.as_ref().map(|c| c.len()).unwrap_or(0);
+    let num_data_columns = rig
+        .next_data_columns
+        .as_ref()
+        .map(std::vec::Vec::len)
+        .unwrap_or(0);
     for i in 0..num_data_columns {
         rig.enqueue_gossip_data_columns(i);
         rig.assert_event_journal_completes(&[WorkType::GossipDataColumnSidecar])
@@ -1216,14 +1228,22 @@ async fn import_gossip_block_acceptably_early() {
     rig.assert_event_journal_completes(&[WorkType::GossipBlock])
         .await;
 
-    let num_blobs = rig.next_blobs.as_ref().map(|b| b.len()).unwrap_or(0);
+    let num_blobs = rig
+        .next_blobs
+        .as_ref()
+        .map(types::RuntimeVariableList::len)
+        .unwrap_or(0);
     for i in 0..num_blobs {
         rig.enqueue_gossip_blob(i);
         rig.assert_event_journal_completes(&[WorkType::GossipBlobSidecar])
             .await;
     }
 
-    let num_data_columns = rig.next_data_columns.as_ref().map(|c| c.len()).unwrap_or(0);
+    let num_data_columns = rig
+        .next_data_columns
+        .as_ref()
+        .map(std::vec::Vec::len)
+        .unwrap_or(0);
     for i in 0..num_data_columns {
         rig.enqueue_gossip_data_columns(i);
         rig.assert_event_journal_completes(&[WorkType::GossipDataColumnSidecar])
@@ -1296,7 +1316,7 @@ async fn accept_processed_gossip_data_columns_without_import() {
     if test_spec::<E>().fulu_fork_epoch.is_none() {
         return;
     };
-    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+    if fork_name_from_env().is_some_and(types::ForkName::gloas_enabled) {
         return;
     }
 
@@ -1364,14 +1384,22 @@ async fn import_gossip_block_at_current_slot() {
     rig.assert_event_journal_completes(&[WorkType::GossipBlock])
         .await;
 
-    let num_blobs = rig.next_blobs.as_ref().map(|b| b.len()).unwrap_or(0);
+    let num_blobs = rig
+        .next_blobs
+        .as_ref()
+        .map(types::RuntimeVariableList::len)
+        .unwrap_or(0);
     for i in 0..num_blobs {
         rig.enqueue_gossip_blob(i);
         rig.assert_event_journal_completes(&[WorkType::GossipBlobSidecar])
             .await;
     }
 
-    let num_data_columns = rig.next_data_columns.as_ref().map(|c| c.len()).unwrap_or(0);
+    let num_data_columns = rig
+        .next_data_columns
+        .as_ref()
+        .map(std::vec::Vec::len)
+        .unwrap_or(0);
     for i in 0..num_data_columns {
         rig.enqueue_gossip_data_columns(i);
         rig.assert_event_journal_completes(&[WorkType::GossipDataColumnSidecar])
@@ -1430,8 +1458,16 @@ async fn attestation_to_unknown_block_processed(import_method: BlockImportMethod
     );
 
     // Send the block and ensure that the attestation is received back and imported.
-    let num_blobs = rig.next_blobs.as_ref().map(|b| b.len()).unwrap_or(0);
-    let num_data_columns = rig.next_data_columns.as_ref().map(|c| c.len()).unwrap_or(0);
+    let num_blobs = rig
+        .next_blobs
+        .as_ref()
+        .map(types::RuntimeVariableList::len)
+        .unwrap_or(0);
+    let num_data_columns = rig
+        .next_data_columns
+        .as_ref()
+        .map(std::vec::Vec::len)
+        .unwrap_or(0);
     let mut events = vec![];
     match import_method {
         BlockImportMethod::Gossip => {
@@ -1516,8 +1552,16 @@ async fn aggregate_attestation_to_unknown_block(import_method: BlockImportMethod
     );
 
     // Send the block and ensure that the attestation is received back and imported.
-    let num_blobs = rig.next_blobs.as_ref().map(|b| b.len()).unwrap_or(0);
-    let num_data_columns = rig.next_data_columns.as_ref().map(|c| c.len()).unwrap_or(0);
+    let num_blobs = rig
+        .next_blobs
+        .as_ref()
+        .map(types::RuntimeVariableList::len)
+        .unwrap_or(0);
+    let num_data_columns = rig
+        .next_data_columns
+        .as_ref()
+        .map(std::vec::Vec::len)
+        .unwrap_or(0);
     let mut events = vec![];
     match import_method {
         BlockImportMethod::Gossip => {
@@ -1731,14 +1775,22 @@ async fn test_rpc_block_reprocessing() {
     rig.assert_event_journal_completes(&[WorkType::RpcBlock])
         .await;
 
-    let num_blobs = rig.next_blobs.as_ref().map(|b| b.len()).unwrap_or(0);
+    let num_blobs = rig
+        .next_blobs
+        .as_ref()
+        .map(types::RuntimeVariableList::len)
+        .unwrap_or(0);
     if num_blobs > 0 {
         rig.enqueue_single_lookup_rpc_blobs();
         rig.assert_event_journal_completes(&[WorkType::RpcBlobs])
             .await;
     }
 
-    let num_data_columns = rig.next_data_columns.as_ref().map(|c| c.len()).unwrap_or(0);
+    let num_data_columns = rig
+        .next_data_columns
+        .as_ref()
+        .map(std::vec::Vec::len)
+        .unwrap_or(0);
     if num_data_columns > 0 {
         rig.enqueue_single_lookup_rpc_data_columns();
         rig.assert_event_journal_completes(&[WorkType::RpcCustodyColumn])
@@ -2063,7 +2115,7 @@ async fn test_data_column_import_notifies_sync() {
     if test_spec::<E>().fulu_fork_epoch.is_none() {
         return;
     }
-    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+    if fork_name_from_env().is_some_and(types::ForkName::gloas_enabled) {
         return;
     }
 
@@ -2079,7 +2131,11 @@ async fn test_data_column_import_notifies_sync() {
         .expect("should receive sync message");
 
     // Enqueue data columns which should trigger block import when complete
-    let num_data_columns = rig.next_data_columns.as_ref().map(|c| c.len()).unwrap_or(0);
+    let num_data_columns = rig
+        .next_data_columns
+        .as_ref()
+        .map(std::vec::Vec::len)
+        .unwrap_or(0);
     if num_data_columns > 0 {
         for i in 0..num_data_columns {
             rig.enqueue_gossip_data_columns(i);
@@ -2124,7 +2180,7 @@ async fn test_data_columns_by_range_request_only_returns_requested_columns() {
     if test_spec::<E>().fulu_fork_epoch.is_none() {
         return;
     };
-    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+    if fork_name_from_env().is_some_and(types::ForkName::gloas_enabled) {
         return;
     }
 

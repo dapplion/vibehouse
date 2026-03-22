@@ -15350,7 +15350,10 @@ async fn gloas_envelope_deposit_request_processed() {
 
     let head_state = harness.chain.head_beacon_state_cloned();
     let validator_count_before = head_state.validators().len();
-    let pending_deposits_before = head_state.pending_deposits().map(|d| d.len()).unwrap_or(0);
+    let pending_deposits_before = head_state
+        .pending_deposits()
+        .map(types::List::len)
+        .unwrap_or(0);
 
     // Produce the next block and envelope
     harness.advance_slot();
@@ -15380,7 +15383,10 @@ async fn gloas_envelope_deposit_request_processed() {
     harness.chain.recompute_head_at_current_slot().await;
     let post_state = harness.chain.head_beacon_state_cloned();
     let validator_count_after = post_state.validators().len();
-    let pending_deposits_after = post_state.pending_deposits().map(|d| d.len()).unwrap_or(0);
+    let pending_deposits_after = post_state
+        .pending_deposits()
+        .map(types::List::len)
+        .unwrap_or(0);
 
     // With empty execution_requests, validator count should be unchanged
     assert_eq!(

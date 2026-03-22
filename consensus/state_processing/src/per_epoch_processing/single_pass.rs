@@ -844,7 +844,7 @@ fn initiate_validator_exit(
 }
 
 fn compute_exit_epoch_and_update_churn(
-    validator: &mut Cow<Validator>,
+    validator: &Cow<Validator>,
     state_ctxt: &StateContext,
     earliest_exit_epoch_state: &mut Epoch,
     exit_balance_to_consume_state: &mut u64,

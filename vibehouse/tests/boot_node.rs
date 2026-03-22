@@ -103,14 +103,20 @@ fn boot_nodes_flag() {
         .unwrap()
         .boot_enr
         .unwrap();
-    let default_enr: Vec<String> = default_enr.iter().map(|enr| enr.to_base64()).collect();
+    let default_enr: Vec<String> = default_enr
+        .iter()
+        .map(vibehouse_network::discv5::enr::Enr::to_base64)
+        .collect();
 
     // Nodes passed via `--boot-nodes` are added to the local routing table.
     let extra_nodes = "enr:-IS4QHCYrYZbAKWCBRlAy5zzaDZXJBGkcnh4MHcBFZntXNFrdvJjX04jRzjzCBOonrkTfj499SZuOh8R33Ls8RRcy5wBgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQPKY0yuDUmstAHYpMa2_oxVtw0RW_QAdpzBQA8yWM0xOIN1ZHCCdl8,enr:-LK4QFOFWca5ABQzxiCRcy37G7wy1K6zD4qMYBSN5ozzanwze_XVvXVhCk9JvF0cHXOBZrHK1E4vU7Gn-a0bHVczoDU6h2F0dG5ldHOIAAAAAAAAAACEZXRoMpA7CIeVAAAgCf__________gmlkgnY0gmlwhNIy-4iJc2VjcDI1NmsxoQJA3AXQJ6M3NpBWtJS3HPtbXG14t7qHjXuIaL6IOz89T4N0Y3CCIyiDdWRwgiMo";
     let extra_enr: Vec<&str> = extra_nodes.split(",").collect();
 
     // Construct vector of enr expected in config.
-    let default_enr_str: Vec<&str> = default_enr.iter().map(|s| s.as_str()).collect();
+    let default_enr_str: Vec<&str> = default_enr
+        .iter()
+        .map(std::string::String::as_str)
+        .collect();
     let mut expect_enr = Vec::new();
     expect_enr.extend_from_slice(&default_enr_str);
     expect_enr.extend_from_slice(&extra_enr);

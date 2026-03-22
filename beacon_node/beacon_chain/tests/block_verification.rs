@@ -430,7 +430,7 @@ async fn chain_segment_varying_chunk_size() {
             // Check if any blocks in this chunk have envelopes (Gloas blocks).
             let has_envelopes = envelopes[chunk_start..chunk_end]
                 .iter()
-                .any(|e| e.is_some());
+                .any(std::option::Option::is_some);
 
             if has_envelopes {
                 // Import one at a time with envelope processing between blocks.
@@ -1556,7 +1556,7 @@ async fn verify_block_for_gossip_doppelganger_detection() {
         .message()
         .body()
         .attestations()
-        .map(|att| att.clone_as_attestation())
+        .map(types::AttestationRef::clone_as_attestation)
         .collect::<Vec<_>>();
     let verified_block = harness.chain.verify_block_for_gossip(block).await.unwrap();
     harness

@@ -52,7 +52,7 @@ type E = MainnetEthSpec;
 /// Gloas ePBS uses a fundamentally different builder path (execution bids in the block body,
 /// payloads in envelopes). Tests for the pre-Gloas external builder MEV flow should be skipped.
 fn skip_if_gloas() -> bool {
-    beacon_chain::test_utils::fork_name_from_env().is_some_and(|f| f.gloas_enabled())
+    beacon_chain::test_utils::fork_name_from_env().is_some_and(types::ForkName::gloas_enabled)
 }
 
 const SECONDS_PER_SLOT: u64 = 12;
@@ -1246,7 +1246,7 @@ impl ApiTester {
                 .ok()
                 .map(|(state, _execution_optimistic, _finalized)| state);
 
-            let epoch_opt = state_opt.as_ref().map(|state| state.current_epoch());
+            let epoch_opt = state_opt.as_ref().map(types::BeaconState::current_epoch);
             let results = self
                 .client
                 .get_beacon_states_committees(state_id.0, None, None, epoch_opt)
@@ -1293,7 +1293,7 @@ impl ApiTester {
                 .ok()
                 .map(|(state, _execution_optimistic, _finalized)| state);
 
-            let epoch_opt = state_opt.as_ref().map(|state| state.current_epoch());
+            let epoch_opt = state_opt.as_ref().map(types::BeaconState::current_epoch);
             let result = self
                 .client
                 .get_beacon_states_randao(state_id.0, epoch_opt)
@@ -1738,7 +1738,7 @@ impl ApiTester {
                 .unwrap();
             assert_eq!(
                 ssz_result.as_ref(),
-                expected.as_ref().map(|b| b.as_ref()),
+                expected.as_ref().map(std::convert::AsRef::as_ref),
                 "{:?}",
                 block_id
             );
@@ -1908,7 +1908,7 @@ impl ApiTester {
                     .blob_kzg_commitments()
                     .unwrap()
                     .iter()
-                    .map(|commitment| commitment.calculate_versioned_hash())
+                    .map(types::KzgCommitment::calculate_versioned_hash)
                     .collect(),
             )
         } else {
@@ -1945,7 +1945,7 @@ impl ApiTester {
                     .blob_kzg_commitments()
                     .unwrap()
                     .iter()
-                    .map(|commitment| commitment.calculate_versioned_hash())
+                    .map(types::KzgCommitment::calculate_versioned_hash)
                     .collect(),
             )
         } else {
@@ -2059,7 +2059,7 @@ impl ApiTester {
                 .get_beacon_blocks_attestations_v2(block_id.0)
                 .await
                 .unwrap()
-                .map(|res| res.into_data());
+                .map(types::BeaconResponse::into_data);
 
             let expected = block_id.full_block(&self.chain).await.ok().map(
                 |(block, _execution_optimistic, _finalized)| {
@@ -2067,7 +2067,7 @@ impl ApiTester {
                         .message()
                         .body()
                         .attestations()
-                        .map(|att| att.clone_as_attestation())
+                        .map(types::AttestationRef::clone_as_attestation)
                         .collect::<Vec<_>>()
                 },
             );
@@ -2394,7 +2394,7 @@ impl ApiTester {
             .get_beacon_light_client_optimistic_update::<E>()
             .await
         {
-            Ok(result) => result.map(|res| res.into_data()),
+            Ok(result) => result.map(types::BeaconResponse::into_data),
             Err(e) => panic!("query failed incorrectly: {e:?}"),
         };
 
@@ -2413,7 +2413,7 @@ impl ApiTester {
             .get_beacon_light_client_finality_update::<E>()
             .await
         {
-            Ok(result) => result.map(|res| res.into_data()),
+            Ok(result) => result.map(types::BeaconResponse::into_data),
             Err(e) => panic!("query failed incorrectly: {e:?}"),
         };
 
@@ -2968,7 +2968,7 @@ impl ApiTester {
                 .state(&self.chain)
                 .ok()
                 .map(|(state, _execution_optimistic, _finalized)| state);
-            expected.as_mut().map(|state| state.drop_all_caches());
+            expected.as_mut().map(types::BeaconState::drop_all_caches);
 
             if let (Some(json), Some(expected)) = (&result_json, &expected) {
                 assert_eq!(json.data(), expected, "{:?}", state_id);
@@ -3077,7 +3077,7 @@ impl ApiTester {
                     execution_block_hash: node
                         .execution_status
                         .block_hash()
-                        .map(|block_hash| block_hash.into_root()),
+                        .map(types::ExecutionBlockHash::into_root),
                 }
             })
             .collect();

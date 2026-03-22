@@ -22,7 +22,7 @@ type E = MainnetEthSpec;
 /// phantom-type no-op for Gloas, and the blinded publish endpoint lacks envelope handling.
 /// Skip blinded broadcast validation tests when running under Gloas fork.
 fn skip_if_gloas() -> bool {
-    beacon_chain::test_utils::fork_name_from_env().is_some_and(|f| f.gloas_enabled())
+    beacon_chain::test_utils::fork_name_from_env().is_some_and(types::ForkName::gloas_enabled)
 }
 
 /*
