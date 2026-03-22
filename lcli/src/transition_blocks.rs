@@ -97,7 +97,7 @@ struct Config {
     exclude_post_block_thc: bool,
 }
 
-pub fn run<E: EthSpec>(
+pub(crate) fn run<E: EthSpec>(
     env: Environment<E>,
     network_config: Eth2NetworkConfig,
     matches: &ArgMatches,
@@ -412,7 +412,7 @@ fn do_transition<E: EthSpec>(
     Ok(pre_state)
 }
 
-pub fn load_from_ssz_with<T>(
+pub(crate) fn load_from_ssz_with<T>(
     path: &Path,
     spec: &ChainSpec,
     decoder: impl FnOnce(&[u8], &ChainSpec) -> Result<T, ssz::DecodeError>,

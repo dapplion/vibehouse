@@ -12,7 +12,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use types::EthSpec;
 
-pub fn run<E: EthSpec>(mut env: Environment<E>, matches: &ArgMatches) -> Result<(), String> {
+pub(crate) fn run<E: EthSpec>(mut env: Environment<E>, matches: &ArgMatches) -> Result<(), String> {
     let jwt_path: PathBuf = parse_required(matches, "jwt-output-path")?;
     let listen_addr: Ipv4Addr = parse_required(matches, "listen-address")?;
     let listen_port: u16 = parse_required(matches, "listen-port")?;

@@ -771,11 +771,6 @@ pub mod tests {
             self.output_dir.path().join(VALIDATORS_FILENAME)
         }
 
-        pub fn validators(&self) -> Vec<ValidatorSpecification> {
-            let contents = fs::read_to_string(self.validators_file_path()).unwrap();
-            serde_json::from_str(&contents).unwrap()
-        }
-
         fn assert_ok(self) {
             assert_eq!(self.result, Ok(()));
         }

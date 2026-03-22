@@ -14,12 +14,6 @@ pub const VC_URL_FLAG: &str = "vc-url";
 pub const VC_TOKEN_FLAG: &str = "vc-token";
 pub const VALIDATOR_FLAG: &str = "validators";
 
-#[derive(Debug)]
-pub enum DeleteError {
-    InvalidPublicKey,
-    DeleteFailed(eth2::Error),
-}
-
 pub fn cli_app() -> Command {
     Command::new(CMD)
         .about("Deletes one or more validators from a validator client using the HTTP API.")

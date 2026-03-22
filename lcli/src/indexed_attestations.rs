@@ -15,7 +15,7 @@ fn read_file_bytes(filename: &Path) -> Result<Vec<u8>, String> {
     Ok(bytes)
 }
 
-pub fn run<E: EthSpec>(matches: &ArgMatches) -> Result<(), String> {
+pub(crate) fn run<E: EthSpec>(matches: &ArgMatches) -> Result<(), String> {
     let spec = &E::default_spec();
 
     let state_file: PathBuf = parse_required(matches, "state")?;

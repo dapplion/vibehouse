@@ -3,7 +3,7 @@ use clap_utils::{parse_required, parse_ssz_required};
 use deposit_contract::{DEPOSIT_DATA_LEN, decode_eth1_tx_data};
 use tree_hash::TreeHash;
 
-pub fn run(matches: &ArgMatches) -> Result<(), String> {
+pub(crate) fn run(matches: &ArgMatches) -> Result<(), String> {
     let rlp_bytes = parse_ssz_required::<Vec<u8>>(matches, "deposit-data")?;
     let amount = parse_required(matches, "deposit-amount")?;
 

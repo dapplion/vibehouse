@@ -12,7 +12,7 @@ use vibehouse_network::{
     discv5::{self, Discv5, enr::NodeId},
 };
 
-pub async fn run<E: EthSpec>(
+pub(crate) async fn run<E: EthSpec>(
     lh_matches: &ArgMatches,
     bn_matches: &ArgMatches,
     eth2_network_config: &Eth2NetworkConfig,

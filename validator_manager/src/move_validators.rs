@@ -23,9 +23,6 @@ use tokio::time::sleep;
 use types::{Address, PublicKeyBytes};
 use zeroize::Zeroizing;
 
-pub const MOVE_DIR_NAME: &str = "vibehouse-validator-move";
-pub const VALIDATOR_SPECIFICATION_FILE: &str = "validator-specification.json";
-
 pub const CMD: &str = "move";
 pub const SRC_VC_URL_FLAG: &str = "src-vc-url";
 pub const SRC_VC_TOKEN_FLAG: &str = "src-vc-token";

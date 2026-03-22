@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use validator_dir::Builder as ValidatorBuilder;
 
 /// Generates validator directories with keys derived from the given mnemonic.
-pub fn generate_validator_dirs(
+pub(crate) fn generate_validator_dirs(
     indices: &[usize],
     mnemonic_phrase: &str,
     validators_dir: PathBuf,
@@ -69,7 +69,7 @@ pub fn generate_validator_dirs(
     Ok(())
 }
 
-pub fn run(matches: &ArgMatches) -> Result<(), String> {
+pub(crate) fn run(matches: &ArgMatches) -> Result<(), String> {
     let validator_count: usize = clap_utils::parse_required(matches, "count")?;
     let base_dir: PathBuf = clap_utils::parse_required(matches, "base-dir")?;
     let node_count: Option<usize> = clap_utils::parse_optional(matches, "node-count")?;

@@ -18,7 +18,7 @@ use types::EthSpec;
 const HTTP_TIMEOUT: Duration = Duration::from_secs(3600);
 const DEFAULT_CACHE_DIR: &str = "./cache";
 
-pub fn run<T: EthSpec>(
+pub(crate) fn run<T: EthSpec>(
     env: Environment<T>,
     network_config: Eth2NetworkConfig,
     matches: &ArgMatches,
@@ -30,7 +30,7 @@ pub fn run<T: EthSpec>(
         .block_on(async move { run_async::<T>(network_config, matches).await })
 }
 
-pub async fn run_async<T: EthSpec>(
+pub(crate) async fn run_async<T: EthSpec>(
     network_config: Eth2NetworkConfig,
     matches: &ArgMatches,
 ) -> Result<(), String> {

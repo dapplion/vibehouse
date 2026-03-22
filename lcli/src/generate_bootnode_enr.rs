@@ -11,7 +11,7 @@ use vibehouse_network::{
     libp2p::identity::secp256k1,
 };
 
-pub fn run<E: EthSpec>(matches: &ArgMatches, spec: &ChainSpec) -> Result<(), String> {
+pub(crate) fn run<E: EthSpec>(matches: &ArgMatches, spec: &ChainSpec) -> Result<(), String> {
     let ip: Ipv4Addr = clap_utils::parse_required(matches, "ip")?;
     let udp_port: NonZeroU16 = clap_utils::parse_required(matches, "udp-port")?;
     let tcp_port: NonZeroU16 = clap_utils::parse_required(matches, "tcp-port")?;

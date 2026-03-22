@@ -33,7 +33,7 @@ impl FromStr for OutputFormat {
     }
 }
 
-pub fn run_parse_ssz<E: EthSpec>(
+pub(crate) fn run_parse_ssz<E: EthSpec>(
     network_config: Eth2NetworkConfig,
     matches: &ArgMatches,
 ) -> Result<(), String> {

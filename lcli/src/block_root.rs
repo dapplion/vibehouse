@@ -39,7 +39,7 @@ use types::{EthSpec, FullPayload, SignedBeaconBlock};
 
 const HTTP_TIMEOUT: Duration = Duration::from_secs(5);
 
-pub fn run<E: EthSpec>(
+pub(crate) fn run<E: EthSpec>(
     env: Environment<E>,
     network_config: Eth2NetworkConfig,
     matches: &ArgMatches,

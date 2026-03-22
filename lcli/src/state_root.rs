@@ -11,7 +11,7 @@ use types::{BeaconState, EthSpec};
 
 const HTTP_TIMEOUT: Duration = Duration::from_secs(10);
 
-pub fn run<E: EthSpec>(
+pub(crate) fn run<E: EthSpec>(
     env: Environment<E>,
     network_config: Eth2NetworkConfig,
     matches: &ArgMatches,
