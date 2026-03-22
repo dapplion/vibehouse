@@ -10,7 +10,8 @@ pub const DEFAULT_NETWORK_DIR: &str = "network";
 pub const DEFAULT_VALIDATOR_DIR: &str = "validators";
 pub const DEFAULT_SECRET_DIR: &str = "secrets";
 pub const DEFAULT_WALLET_DIR: &str = "wallets";
-pub const DEFAULT_TRACING_DIR: &str = "tracing";
+#[allow(dead_code)]
+const DEFAULT_TRACING_DIR: &str = "tracing";
 
 /// Base directory name for unnamed testnets passed through the --testnet-dir flag
 const CUSTOM_TESTNET_DIR: &str = "custom";

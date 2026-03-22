@@ -513,7 +513,7 @@ struct SignalFuture {
 
 #[cfg(target_family = "unix")]
 impl SignalFuture {
-    pub fn new(signal: Signal, message: &'static str) -> SignalFuture {
+    fn new(signal: Signal, message: &'static str) -> SignalFuture {
         SignalFuture { signal, message }
     }
 }

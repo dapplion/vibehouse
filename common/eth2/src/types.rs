@@ -638,7 +638,7 @@ pub struct ExpectedWithdrawalsQuery {
 
 #[derive(Clone, PartialEq, Eq, Debug, Deserialize)]
 #[serde(try_from = "String", bound = "T: FromStr")]
-pub struct QueryVec<T: FromStr> {
+pub(crate) struct QueryVec<T: FromStr> {
     values: Vec<T>,
 }
 
@@ -3431,7 +3431,7 @@ pub enum FullBlockContents<E: EthSpec> {
     Block(BeaconBlock<E>),
 }
 
-pub type BlockContentsTuple<E> = (BeaconBlock<E>, Option<(KzgProofs<E>, BlobsList<E>)>);
+pub(crate) type BlockContentsTuple<E> = (BeaconBlock<E>, Option<(KzgProofs<E>, BlobsList<E>)>);
 
 // This value should never be used
 fn dummy_consensus_version() -> ForkName {
@@ -3469,7 +3469,7 @@ impl<E: EthSpec> FullBlockContents<E> {
     }
 
     /// Set the unsigned execution payload envelope (gloas ePBS self-build).
-    pub fn set_execution_payload_envelope(&mut self, envelope: ExecutionPayloadEnvelope<E>) {
+    pub(crate) fn set_execution_payload_envelope(&mut self, envelope: ExecutionPayloadEnvelope<E>) {
         if let Self::BlockContents(contents) = self {
             contents.execution_payload_envelope = Some(envelope);
         }

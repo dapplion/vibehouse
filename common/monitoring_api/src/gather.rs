@@ -9,7 +9,7 @@ use std::sync::LazyLock;
 /// Represents a metric that needs to be fetched from vibehouse metrics registry
 /// and sent to the remote monitoring service.
 #[derive(Debug, Clone)]
-pub struct JsonMetric {
+struct JsonMetric {
     /// Name of the metric as used in Vibehouse metrics.
     vibehouse_metric_name: &'static str,
     /// Json key for the metric that we send to the remote monitoring endpoint.
@@ -122,20 +122,20 @@ const VALIDATOR_PROCESS_METRICS: &[JsonMetric] = &[
 
 /// Represents the type for the JSON output.
 #[derive(Debug, Clone)]
-pub enum JsonType {
+enum JsonType {
     Integer,
     Boolean,
 }
 
 /// HashMap representing the `BEACON_PROCESS_METRICS`.
-pub static BEACON_METRICS_MAP: LazyLock<HashMap<String, JsonMetric>> = LazyLock::new(|| {
+static BEACON_METRICS_MAP: LazyLock<HashMap<String, JsonMetric>> = LazyLock::new(|| {
     BEACON_PROCESS_METRICS
         .iter()
         .map(|metric| (metric.vibehouse_metric_name.to_string(), metric.clone()))
         .collect()
 });
 /// HashMap representing the `VALIDATOR_PROCESS_METRICS`.
-pub static VALIDATOR_METRICS_MAP: LazyLock<HashMap<String, JsonMetric>> = LazyLock::new(|| {
+static VALIDATOR_METRICS_MAP: LazyLock<HashMap<String, JsonMetric>> = LazyLock::new(|| {
     VALIDATOR_PROCESS_METRICS
         .iter()
         .map(|metric| (metric.vibehouse_metric_name.to_string(), metric.clone()))
@@ -155,7 +155,7 @@ fn get_value(mf: &MetricFamily) -> Option<i64> {
 
 /// Collects all metrics and returns a `serde_json::Value` object with the required metrics
 /// from the metrics hashmap.
-pub fn gather_metrics(metrics_map: &HashMap<String, JsonMetric>) -> Option<serde_json::Value> {
+fn gather_metrics(metrics_map: &HashMap<String, JsonMetric>) -> Option<serde_json::Value> {
     let metric_families = metrics::gather();
     let mut res = serde_json::Map::with_capacity(metrics_map.len());
     for mf in &metric_families {
@@ -181,7 +181,7 @@ pub fn gather_metrics(metrics_map: &HashMap<String, JsonMetric>) -> Option<serde
 }
 
 /// Gathers and returns the vibehouse beacon metrics.
-pub fn gather_beacon_metrics(
+pub(crate) fn gather_beacon_metrics(
     db_path: &Path,
     freezer_db_path: &Path,
 ) -> Result<BeaconProcessMetrics, String> {
@@ -199,7 +199,7 @@ pub fn gather_beacon_metrics(
 }
 
 /// Gathers and returns the vibehouse validator metrics.
-pub fn gather_validator_metrics() -> Result<ValidatorProcessMetrics, String> {
+pub(crate) fn gather_validator_metrics() -> Result<ValidatorProcessMetrics, String> {
     let validator_metrics = gather_metrics(&VALIDATOR_METRICS_MAP)
         .ok_or_else(|| "Failed to gather validator metrics".to_string())?;
 
