@@ -86,48 +86,48 @@ impl GossipCacheBuilder {
         self
     }
     /// Timeout for blocks.
-    pub fn beacon_block_timeout(mut self, timeout: Duration) -> Self {
+    pub(super) fn beacon_block_timeout(mut self, timeout: Duration) -> Self {
         self.beacon_block = Some(timeout);
         self
     }
 
     /// Timeout for aggregate attestations.
-    pub fn aggregates_timeout(mut self, timeout: Duration) -> Self {
+    pub(super) fn aggregates_timeout(mut self, timeout: Duration) -> Self {
         self.aggregates = Some(timeout);
         self
     }
 
     /// Timeout for attestations.
-    pub fn attestation_timeout(mut self, timeout: Duration) -> Self {
+    pub(super) fn attestation_timeout(mut self, timeout: Duration) -> Self {
         self.attestation = Some(timeout);
         self
     }
 
     /// Timeout for voluntary exits.
-    pub fn voluntary_exit_timeout(mut self, timeout: Duration) -> Self {
+    pub(super) fn voluntary_exit_timeout(mut self, timeout: Duration) -> Self {
         self.voluntary_exit = Some(timeout);
         self
     }
 
     /// Timeout for proposer slashings.
-    pub fn proposer_slashing_timeout(mut self, timeout: Duration) -> Self {
+    pub(super) fn proposer_slashing_timeout(mut self, timeout: Duration) -> Self {
         self.proposer_slashing = Some(timeout);
         self
     }
 
     /// Timeout for attester slashings.
-    pub fn attester_slashing_timeout(mut self, timeout: Duration) -> Self {
+    pub(super) fn attester_slashing_timeout(mut self, timeout: Duration) -> Self {
         self.attester_slashing = Some(timeout);
         self
     }
 
     /// Timeout for BLS to execution change messages.
-    pub fn bls_to_execution_change_timeout(mut self, timeout: Duration) -> Self {
+    pub(super) fn bls_to_execution_change_timeout(mut self, timeout: Duration) -> Self {
         self.bls_to_execution_change = Some(timeout);
         self
     }
 
-    pub fn build(self) -> GossipCache {
+    pub(super) fn build(self) -> GossipCache {
         let GossipCacheBuilder {
             default_timeout,
             beacon_block,
@@ -167,12 +167,12 @@ impl GossipCacheBuilder {
 impl GossipCache {
     /// Get a builder of a `GossipCache`. Topic kinds for which no timeout is defined will be
     /// ignored if added in `insert`.
-    pub fn builder() -> GossipCacheBuilder {
+    pub(super) fn builder() -> GossipCacheBuilder {
         GossipCacheBuilder::default()
     }
 
     // Insert a message to be sent later.
-    pub fn insert(&mut self, topic: GossipTopic, data: Vec<u8>) {
+    pub(super) fn insert(&mut self, topic: GossipTopic, data: Vec<u8>) {
         let expire_timeout = match topic.kind() {
             GossipKind::BeaconBlock => self.beacon_block,
             GossipKind::BlobSidecar(_) => self.blob_sidecar,
@@ -212,7 +212,10 @@ impl GossipCache {
     }
 
     // Get the registered messages for this topic.
-    pub fn retrieve(&mut self, topic: &GossipTopic) -> Option<impl Iterator<Item = Vec<u8>> + '_> {
+    pub(super) fn retrieve(
+        &mut self,
+        topic: &GossipTopic,
+    ) -> Option<impl Iterator<Item = Vec<u8>> + '_> {
         if let Some(msgs) = self.topic_msgs.remove(topic) {
             for key in msgs.values() {
                 self.expirations.remove(key);

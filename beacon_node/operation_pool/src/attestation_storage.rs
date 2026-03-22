@@ -493,7 +493,7 @@ impl<E: EthSpec> AttestationMap<E> {
 }
 
 impl<E: EthSpec> AttestationDataMap<E> {
-    pub fn iter<'a>(
+    pub(crate) fn iter<'a>(
         &'a self,
         checkpoint_key: &'a CheckpointKey,
     ) -> impl Iterator<Item = CompactAttestationRef<'a, E>> + 'a {
@@ -506,7 +506,7 @@ impl<E: EthSpec> AttestationDataMap<E> {
         })
     }
 
-    pub fn stats(&self) -> AttestationStats {
+    pub(crate) fn stats(&self) -> AttestationStats {
         let mut stats = AttestationStats::default();
 
         for aggregates in self.attestations.values() {

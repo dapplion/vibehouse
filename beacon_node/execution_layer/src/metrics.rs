@@ -1,4 +1,4 @@
-pub use metrics::*;
+pub(crate) use metrics::*;
 use std::sync::LazyLock;
 
 pub(crate) const HIT: &str = "hit";

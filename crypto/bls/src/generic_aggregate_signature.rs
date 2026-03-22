@@ -14,7 +14,8 @@ use std::marker::PhantomData;
 use tree_hash::TreeHash;
 
 /// The compressed bytes used to represent `GenericAggregateSignature::empty()`.
-pub const EMPTY_SIGNATURE_SERIALIZATION: [u8; SIGNATURE_BYTES_LEN] = [0; SIGNATURE_BYTES_LEN];
+pub(crate) const EMPTY_SIGNATURE_SERIALIZATION: [u8; SIGNATURE_BYTES_LEN] =
+    [0; SIGNATURE_BYTES_LEN];
 
 /// Implemented on some struct from a BLS library so it may be used as the `point` in an
 /// `GenericAggregateSignature`.

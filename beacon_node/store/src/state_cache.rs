@@ -18,20 +18,20 @@ const CULL_EXEMPT_DENOMINATOR: usize = 10;
 const EPOCH_FINALIZATION_LIMIT: u64 = 4;
 
 #[derive(Debug)]
-pub struct FinalizedState<E: EthSpec> {
+pub(crate) struct FinalizedState<E: EthSpec> {
     state_root: Hash256,
     state: BeaconState<E>,
 }
 
 /// Map from block_root -> slot -> state_root.
 #[derive(Debug, Default)]
-pub struct BlockMap {
+pub(crate) struct BlockMap {
     blocks: HashMap<Hash256, SlotMap>,
 }
 
 /// Map from slot -> state_root.
 #[derive(Debug, Default)]
-pub struct SlotMap {
+pub(crate) struct SlotMap {
     slots: BTreeMap<Slot, Hash256>,
 }
 
@@ -440,13 +440,13 @@ impl BlockMap {
 }
 
 impl HotHDiffBufferCache {
-    pub fn new(capacity: NonZeroUsize) -> Self {
+    pub(crate) fn new(capacity: NonZeroUsize) -> Self {
         Self {
             hdiff_buffers: LruCache::new(capacity),
         }
     }
 
-    pub fn get(&mut self, state_root: &Hash256) -> Option<HDiffBuffer> {
+    pub(crate) fn get(&mut self, state_root: &Hash256) -> Option<HDiffBuffer> {
         self.hdiff_buffers
             .get(state_root)
             .map(|(_, buffer)| buffer.clone())
@@ -455,7 +455,7 @@ impl HotHDiffBufferCache {
     /// Put a value in the cache, making room for it if necessary.
     ///
     /// If the value was inserted then `true` is returned.
-    pub fn put(&mut self, state_root: Hash256, slot: Slot, buffer: HDiffBuffer) -> bool {
+    pub(crate) fn put(&mut self, state_root: Hash256, slot: Slot, buffer: HDiffBuffer) -> bool {
         // If the cache is not full, simply insert the value.
         if self.hdiff_buffers.len() != self.hdiff_buffers.cap().get() {
             self.hdiff_buffers.put(state_root, (slot, buffer));
@@ -499,15 +499,15 @@ impl HotHDiffBufferCache {
         }
     }
 
-    pub fn cap(&self) -> NonZeroUsize {
+    pub(crate) fn cap(&self) -> NonZeroUsize {
         self.hdiff_buffers.cap()
     }
 
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.hdiff_buffers.len()
     }
 
-    pub fn mem_usage(&self) -> usize {
+    pub(crate) fn mem_usage(&self) -> usize {
         self.hdiff_buffers
             .iter()
             .map(|(_, (_, buffer))| buffer.size())

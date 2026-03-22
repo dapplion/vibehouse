@@ -74,7 +74,7 @@ pub(crate) struct Auth {
 }
 
 impl Auth {
-    pub fn new(secret: JwtKey, id: Option<String>, clv: Option<String>) -> Self {
+    pub(crate) fn new(secret: JwtKey, id: Option<String>, clv: Option<String>) -> Self {
         Self {
             key: EncodingKey::from_secret(secret.as_bytes()),
             id,
@@ -106,7 +106,7 @@ impl Auth {
     }
 
     /// Generate a JWT token with `claims.iat` set to current time.
-    pub fn generate_token(&self) -> Result<String, Error> {
+    pub(crate) fn generate_token(&self) -> Result<String, Error> {
         let claims = self.generate_claims_at_timestamp();
         self.generate_token_with_claims(&claims)
     }
@@ -127,7 +127,7 @@ impl Auth {
     }
 
     /// Validate a JWT token given the secret key and return the originally signed `TokenData`.
-    pub fn validate_token(
+    pub(crate) fn validate_token(
         token: &str,
         secret: &JwtKey,
     ) -> Result<jsonwebtoken::TokenData<Claims>, Error> {

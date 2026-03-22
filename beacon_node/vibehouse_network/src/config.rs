@@ -17,13 +17,13 @@ use std::sync::Arc;
 use std::time::Duration;
 use types::ForkContext;
 
-pub const DEFAULT_IPV4_ADDRESS: Ipv4Addr = Ipv4Addr::UNSPECIFIED;
-pub const DEFAULT_TCP_PORT: u16 = 9000u16;
-pub const DEFAULT_DISC_PORT: u16 = 9000u16;
-pub const DEFAULT_QUIC_PORT: u16 = 9001u16;
-pub const DEFAULT_IDONTWANT_MESSAGE_SIZE_THRESHOLD: usize = 1000usize;
+pub(crate) const DEFAULT_IPV4_ADDRESS: Ipv4Addr = Ipv4Addr::UNSPECIFIED;
+pub(crate) const DEFAULT_TCP_PORT: u16 = 9000u16;
+pub(crate) const DEFAULT_DISC_PORT: u16 = 9000u16;
+pub(crate) const DEFAULT_QUIC_PORT: u16 = 9001u16;
+pub(crate) const DEFAULT_IDONTWANT_MESSAGE_SIZE_THRESHOLD: usize = 1000usize;
 
-pub struct GossipsubConfigParams {
+pub(crate) struct GossipsubConfigParams {
     pub message_domain_valid_snappy: [u8; 4],
     pub gossipsub_max_transmit_size: usize,
 }
@@ -377,7 +377,7 @@ impl Default for Config {
 }
 
 /// Controls sizes of gossipsub meshes to tune a Vibehouse node's bandwidth/performance.
-pub struct NetworkLoad {
+pub(crate) struct NetworkLoad {
     pub name: &'static str,
     pub mesh_n_low: usize,
     pub outbound_min: usize,
@@ -447,7 +447,7 @@ impl From<u8> for NetworkLoad {
 }
 
 /// Return a Vibehouse specific `GossipsubConfig` where the `message_id_fn` depends on the current fork.
-pub fn gossipsub_config(
+pub(crate) fn gossipsub_config(
     network_load: u8,
     fork_context: Arc<ForkContext>,
     gossipsub_config_params: GossipsubConfigParams,
@@ -586,7 +586,7 @@ fn is_global_ipv4(addr: &Ipv4Addr) -> bool {
 /// - Unicast addresses with link-local scope (is_unicast_link_local)
 // Note: could replace with `Ipv6Addr::is_global()` (stable since Rust 1.84) but
 // it is not a `const fn` yet, so we keep this custom implementation.
-pub const fn is_global_ipv6(addr: &Ipv6Addr) -> bool {
+pub(crate) const fn is_global_ipv6(addr: &Ipv6Addr) -> bool {
     const fn is_documentation(addr: &Ipv6Addr) -> bool {
         (addr.segments()[0] == 0x2001) && (addr.segments()[1] == 0xdb8)
     }

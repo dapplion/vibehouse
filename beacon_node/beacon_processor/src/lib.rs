@@ -299,7 +299,7 @@ struct FifoQueue<T> {
 
 impl<T> FifoQueue<T> {
     /// Create a new, empty queue with the given length.
-    pub fn new(max_length: usize) -> Self {
+    pub(crate) fn new(max_length: usize) -> Self {
         Self {
             queue: VecDeque::default(),
             max_length,
@@ -309,7 +309,7 @@ impl<T> FifoQueue<T> {
     /// Add a new item to the queue.
     ///
     /// Drops `item` if the queue is full.
-    pub fn push(&mut self, item: T, item_desc: &str) {
+    pub(crate) fn push(&mut self, item: T, item_desc: &str) {
         if self.queue.len() == self.max_length {
             error!(
                 msg = "the system has insufficient resources for load",
@@ -323,12 +323,12 @@ impl<T> FifoQueue<T> {
     }
 
     /// Remove the next item from the queue.
-    pub fn pop(&mut self) -> Option<T> {
+    pub(crate) fn pop(&mut self) -> Option<T> {
         self.queue.pop_front()
     }
 
     /// Returns the current length of the queue.
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.queue.len()
     }
 }
@@ -341,7 +341,7 @@ struct LifoQueue<T> {
 
 impl<T> LifoQueue<T> {
     /// Create a new, empty queue with the given length.
-    pub fn new(max_length: usize) -> Self {
+    pub(crate) fn new(max_length: usize) -> Self {
         Self {
             queue: VecDeque::default(),
             max_length,
@@ -351,7 +351,7 @@ impl<T> LifoQueue<T> {
     /// Add a new item to the front of the queue.
     ///
     /// If the queue is full, the item at the back of the queue is dropped.
-    pub fn push(&mut self, item: T) {
+    pub(crate) fn push(&mut self, item: T) {
         if self.queue.len() == self.max_length {
             self.queue.pop_back();
         }
@@ -359,17 +359,17 @@ impl<T> LifoQueue<T> {
     }
 
     /// Remove the next item from the queue.
-    pub fn pop(&mut self) -> Option<T> {
+    pub(crate) fn pop(&mut self) -> Option<T> {
         self.queue.pop_front()
     }
 
     /// Returns `true` if the queue is full.
-    pub fn is_full(&self) -> bool {
+    pub(crate) fn is_full(&self) -> bool {
         self.queue.len() >= self.max_length
     }
 
     /// Returns the current length of the queue.
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.queue.len()
     }
 }

@@ -1038,7 +1038,10 @@ pub(crate) mod serde_logs_bloom {
     use serde_utils::hex::PrefixedHexVisitor;
     use types::Unsigned;
 
-    pub fn serialize<S, U>(bytes: &FixedVector<u8, U>, serializer: S) -> Result<S::Ok, S::Error>
+    pub(crate) fn serialize<S, U>(
+        bytes: &FixedVector<u8, U>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
         U: Unsigned,
@@ -1049,7 +1052,7 @@ pub(crate) mod serde_logs_bloom {
         serializer.serialize_str(&hex_string)
     }
 
-    pub fn deserialize<'de, D, U>(deserializer: D) -> Result<FixedVector<u8, U>, D::Error>
+    pub(crate) fn deserialize<'de, D, U>(deserializer: D) -> Result<FixedVector<u8, U>, D::Error>
     where
         D: Deserializer<'de>,
         U: Unsigned,

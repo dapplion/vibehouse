@@ -1,4 +1,4 @@
-pub mod interface;
+pub(crate) mod interface;
 mod lmdb_impl;
 mod mdbx_impl;
 mod redb_impl;

@@ -105,7 +105,7 @@ struct SubnetQuery {
 
 impl SubnetQuery {
     /// Returns true if this query has expired.
-    pub fn expired(&self) -> bool {
+    pub(crate) fn expired(&self) -> bool {
         if let Some(ttl) = self.min_ttl {
             ttl < Instant::now()
         }

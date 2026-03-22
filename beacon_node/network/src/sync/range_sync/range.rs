@@ -82,7 +82,7 @@ impl<T: BeaconChainTypes> RangeSync<T>
 where
     T: BeaconChainTypes,
 {
-    pub fn new(beacon_chain: Arc<BeaconChain<T>>) -> Self {
+    pub(crate) fn new(beacon_chain: Arc<BeaconChain<T>>) -> Self {
         RangeSync {
             beacon_chain: beacon_chain.clone(),
             chains: ChainCollection::new(beacon_chain),
@@ -98,7 +98,7 @@ where
         self.failed_chains.keys().copied().collect()
     }
 
-    pub fn state(&self) -> SyncChainStatus {
+    pub(crate) fn state(&self) -> SyncChainStatus {
         self.chains.state()
     }
 
@@ -107,7 +107,7 @@ where
     /// may need to be synced as a result. A new peer, may increase the peer pool of a finalized
     /// chain, this may result in a different finalized chain from syncing as finalized chains are
     /// prioritised by peer-pool size.
-    pub fn add_peer(
+    pub(crate) fn add_peer(
         &mut self,
         network: &mut SyncNetworkContext<T>,
         local_info: SyncInfo,
@@ -201,7 +201,7 @@ where
     ///
     /// This function finds the chain that made this request. Once found, processes the result.
     /// This request could complete a chain or simply add to its progress.
-    pub fn blocks_by_range_response(
+    pub(crate) fn blocks_by_range_response(
         &mut self,
         network: &mut SyncNetworkContext<T>,
         peer_group: PeerGroup,
@@ -231,7 +231,7 @@ where
         }
     }
 
-    pub fn handle_block_process_result(
+    pub(crate) fn handle_block_process_result(
         &mut self,
         network: &mut SyncNetworkContext<T>,
         chain_id: ChainId,
@@ -263,7 +263,11 @@ where
 
     /// A peer has disconnected. This removes the peer from any ongoing chains and mappings. A
     /// disconnected peer could remove a chain
-    pub fn peer_disconnect(&mut self, network: &mut SyncNetworkContext<T>, peer_id: &PeerId) {
+    pub(crate) fn peer_disconnect(
+        &mut self,
+        network: &mut SyncNetworkContext<T>,
+        peer_id: &PeerId,
+    ) {
         // if the peer is in the awaiting head mapping, remove it
         self.awaiting_head_peers.remove(peer_id);
 
@@ -293,7 +297,7 @@ where
     ///
     /// Check to see if the request corresponds to a pending batch. If so, re-request it if possible, if there have
     /// been too many failed attempts for the batch, remove the chain.
-    pub fn inject_error(
+    pub(crate) fn inject_error(
         &mut self,
         network: &mut SyncNetworkContext<T>,
         peer_id: PeerId,
@@ -374,12 +378,12 @@ where
             .update(network, &local, &mut self.awaiting_head_peers);
     }
 
-    pub fn register_metrics(&self) {
+    pub(crate) fn register_metrics(&self) {
         self.chains.register_metrics();
     }
 
     /// Kickstarts sync.
-    pub fn resume(&mut self, network: &mut SyncNetworkContext<T>) {
+    pub(crate) fn resume(&mut self, network: &mut SyncNetworkContext<T>) {
         for (removed_chain, sync_type, remove_reason) in
             self.chains.call_all(|chain| chain.resume(network))
         {

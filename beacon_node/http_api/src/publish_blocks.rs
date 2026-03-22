@@ -37,7 +37,7 @@ use types::{
 use vibehouse_network::PubsubMessage;
 use vibehouse_tracing::SPAN_PUBLISH_BLOCK;
 
-pub type UnverifiedBlobs<T> = Option<(
+pub(crate) type UnverifiedBlobs<T> = Option<(
     KzgProofs<<T as BeaconChainTypes>::EthSpec>,
     BlobsList<<T as BeaconChainTypes>::EthSpec>,
 )>;

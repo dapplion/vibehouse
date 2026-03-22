@@ -112,7 +112,11 @@ impl<T: BeaconChainTypes> SubnetService<T> {
     /* Public functions */
 
     /// Establish the service based on the passed configuration.
-    pub fn new(beacon_chain: Arc<BeaconChain<T>>, node_id: NodeId, config: &NetworkConfig) -> Self {
+    pub(crate) fn new(
+        beacon_chain: Arc<BeaconChain<T>>,
+        node_id: NodeId,
+        config: &NetworkConfig,
+    ) -> Self {
         let slot_duration = beacon_chain.slot_clock.slot_duration();
 
         if config.subscribe_all_subnets {
@@ -221,7 +225,10 @@ impl<T: BeaconChainTypes> SubnetService<T> {
     ///
     /// This returns a result simply for the ergonomics of using ?. The result can be
     /// safely dropped.
-    pub fn validator_subscriptions(&mut self, subscriptions: impl Iterator<Item = Subscription>) {
+    pub(crate) fn validator_subscriptions(
+        &mut self,
+        subscriptions: impl Iterator<Item = Subscription>,
+    ) {
         // If the node is in a proposer-only state, we ignore all subnet subscriptions.
         if self.proposer_only {
             return;
@@ -355,7 +362,7 @@ impl<T: BeaconChainTypes> SubnetService<T> {
 
     /// Checks if we have subscribed aggregate validators for the subnet. If not, checks the gossip
     /// verification, re-propagates and returns false.
-    pub fn should_process_attestation(
+    pub(crate) fn should_process_attestation(
         &self,
         subnet: Subnet,
         attestation_data: &AttestationData,

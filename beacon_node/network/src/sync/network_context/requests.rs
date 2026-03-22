@@ -62,14 +62,14 @@ enum State<T> {
 }
 
 impl<K: Copy + Eq + Hash + std::fmt::Display, T: ActiveRequestItems> ActiveRequests<K, T> {
-    pub fn new(name: &'static str) -> Self {
+    pub(super) fn new(name: &'static str) -> Self {
         Self {
             requests: <_>::default(),
             name,
         }
     }
 
-    pub fn insert(
+    pub(super) fn insert(
         &mut self,
         id: K,
         peer_id: PeerId,
@@ -104,7 +104,7 @@ impl<K: Copy + Eq + Hash + std::fmt::Display, T: ActiveRequestItems> ActiveReque
     /// - `Some` if the request has either completed or errored, and needs to be actioned by the
     ///   caller.
     /// - `None` if no further action is currently needed.
-    pub fn on_response(
+    pub(super) fn on_response(
         &mut self,
         id: K,
         rpc_event: RpcEvent<T::Item>,
@@ -225,7 +225,7 @@ impl<K: Copy + Eq + Hash + std::fmt::Display, T: ActiveRequestItems> ActiveReque
         })
     }
 
-    pub fn active_requests_of_peer(&self, peer_id: &PeerId) -> Vec<&K> {
+    pub(super) fn active_requests_of_peer(&self, peer_id: &PeerId) -> Vec<&K> {
         self.requests
             .iter()
             .filter(|(_, request)| &request.peer_id == peer_id)
@@ -233,11 +233,11 @@ impl<K: Copy + Eq + Hash + std::fmt::Display, T: ActiveRequestItems> ActiveReque
             .collect()
     }
 
-    pub fn iter_request_peers(&self) -> impl Iterator<Item = PeerId> + '_ {
+    pub(super) fn iter_request_peers(&self) -> impl Iterator<Item = PeerId> + '_ {
         self.requests.values().map(|request| request.peer_id)
     }
 
-    pub fn len(&self) -> usize {
+    pub(super) fn len(&self) -> usize {
         self.requests.len()
     }
 }

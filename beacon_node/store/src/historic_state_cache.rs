@@ -12,27 +12,30 @@ use types::{BeaconState, ChainSpec, EthSpec, Slot};
 /// An example use: when requesting state data for consecutive slots, this cache allows the node to
 /// apply diffs once on the first request, and latter just apply blocks one at a time.
 #[derive(Debug)]
-pub struct HistoricStateCache<E: EthSpec> {
+pub(crate) struct HistoricStateCache<E: EthSpec> {
     hdiff_buffers: LruCache<Slot, HDiffBuffer>,
     states: LruCache<Slot, BeaconState<E>>,
 }
 
 #[derive(Debug, Default)]
-pub struct Metrics {
+pub(crate) struct Metrics {
     pub num_hdiff: usize,
     pub num_state: usize,
     pub hdiff_byte_size: usize,
 }
 
 impl<E: EthSpec> HistoricStateCache<E> {
-    pub fn new(hdiff_buffer_cache_size: NonZeroUsize, state_cache_size: NonZeroUsize) -> Self {
+    pub(crate) fn new(
+        hdiff_buffer_cache_size: NonZeroUsize,
+        state_cache_size: NonZeroUsize,
+    ) -> Self {
         Self {
             hdiff_buffers: LruCache::new(hdiff_buffer_cache_size),
             states: LruCache::new(state_cache_size),
         }
     }
 
-    pub fn get_hdiff_buffer(&mut self, slot: Slot) -> Option<HDiffBuffer> {
+    pub(crate) fn get_hdiff_buffer(&mut self, slot: Slot) -> Option<HDiffBuffer> {
         if let Some(buffer_ref) = self.hdiff_buffers.get(&slot) {
             let _timer = metrics::start_timer_vec(
                 &metrics::BEACON_HDIFF_BUFFER_CLONE_TIME,
@@ -54,7 +57,7 @@ impl<E: EthSpec> HistoricStateCache<E> {
         }
     }
 
-    pub fn get_state(
+    pub(crate) fn get_state(
         &mut self,
         slot: Slot,
         spec: &ChainSpec,
@@ -70,20 +73,20 @@ impl<E: EthSpec> HistoricStateCache<E> {
         }
     }
 
-    pub fn put_state(&mut self, slot: Slot, state: BeaconState<E>) {
+    pub(crate) fn put_state(&mut self, slot: Slot, state: BeaconState<E>) {
         self.states.put(slot, state);
     }
 
-    pub fn put_hdiff_buffer(&mut self, slot: Slot, buffer: HDiffBuffer) {
+    pub(crate) fn put_hdiff_buffer(&mut self, slot: Slot, buffer: HDiffBuffer) {
         self.hdiff_buffers.put(slot, buffer);
     }
 
-    pub fn put_both(&mut self, slot: Slot, state: BeaconState<E>, buffer: HDiffBuffer) {
+    pub(crate) fn put_both(&mut self, slot: Slot, state: BeaconState<E>, buffer: HDiffBuffer) {
         self.put_state(slot, state);
         self.put_hdiff_buffer(slot, buffer);
     }
 
-    pub fn metrics(&self) -> Metrics {
+    pub(crate) fn metrics(&self) -> Metrics {
         let hdiff_byte_size = self
             .hdiff_buffers
             .iter()

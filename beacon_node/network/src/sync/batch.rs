@@ -153,12 +153,12 @@ pub(crate) enum BatchState<D: Hash> {
 
 impl<D: Hash> BatchState<D> {
     /// Helper function for poisoning a state.
-    pub fn poison(&mut self) -> BatchState<D> {
+    pub(super) fn poison(&mut self) -> BatchState<D> {
         std::mem::replace(self, BatchState::Poisoned)
     }
 
     /// Returns the metrics state for this batch.
-    pub fn metrics_state(&self) -> BatchMetricsState {
+    pub(super) fn metrics_state(&self) -> BatchMetricsState {
         match self {
             BatchState::AwaitingDownload => BatchMetricsState::AwaitingDownload,
             BatchState::Downloading(_) => BatchMetricsState::Downloading,
@@ -184,7 +184,11 @@ impl<E: EthSpec, B: BatchConfig, D: Hash> BatchInfo<E, B, D> {
     /// fork boundary will be of mixed type (all blocks and one last blockblob), and I don't want to
     /// deal with this for now.
     /// This means finalization might be slower in deneb
-    pub fn new(start_epoch: &Epoch, num_of_epochs: u64, batch_type: ByRangeRequestType) -> Self {
+    pub(super) fn new(
+        start_epoch: &Epoch,
+        num_of_epochs: u64,
+        batch_type: ByRangeRequestType,
+    ) -> Self {
         let start_slot = start_epoch.start_slot(E::slots_per_epoch());
         let end_slot = start_slot + num_of_epochs * E::slots_per_epoch();
         Self {
@@ -201,7 +205,7 @@ impl<E: EthSpec, B: BatchConfig, D: Hash> BatchInfo<E, B, D> {
 
     /// Gives a list of peers from which this batch has had a failed download or processing
     /// attempt.
-    pub fn failed_peers(&self) -> HashSet<PeerId> {
+    pub(super) fn failed_peers(&self) -> HashSet<PeerId> {
         let mut peers = HashSet::with_capacity(
             self.failed_processing_attempts.len() + self.failed_download_attempts.len(),
         );
@@ -220,7 +224,7 @@ impl<E: EthSpec, B: BatchConfig, D: Hash> BatchInfo<E, B, D> {
     }
 
     /// Verifies if an incoming request id to this batch.
-    pub fn is_expecting_request_id(&self, request_id: &Id) -> bool {
+    pub(super) fn is_expecting_request_id(&self, request_id: &Id) -> bool {
         if let BatchState::Downloading(expected_id) = &self.state {
             return expected_id == request_id;
         }
@@ -228,7 +232,7 @@ impl<E: EthSpec, B: BatchConfig, D: Hash> BatchInfo<E, B, D> {
     }
 
     /// Returns the peers that contributed to the current batch download.
-    pub fn processing_peers(&self) -> Option<&PeerGroup> {
+    pub(super) fn processing_peers(&self) -> Option<&PeerGroup> {
         match &self.state {
             BatchState::AwaitingDownload | BatchState::Failed | BatchState::Downloading(..) => None,
             BatchState::AwaitingProcessing(peer_group, _, _)
@@ -241,7 +245,7 @@ impl<E: EthSpec, B: BatchConfig, D: Hash> BatchInfo<E, B, D> {
     /// After different operations over a batch, this could be in a state that allows it to
     /// continue, or in failed state. When the batch has failed, we check if it did mainly due to
     /// processing failures. In this case the batch is considered failed and faulty.
-    pub fn outcome(&self) -> BatchOperationOutcome {
+    pub(super) fn outcome(&self) -> BatchOperationOutcome {
         match self.state {
             BatchState::Poisoned => unreachable!("Poisoned batch"),
             BatchState::Failed => BatchOperationOutcome::Failed {
@@ -252,18 +256,18 @@ impl<E: EthSpec, B: BatchConfig, D: Hash> BatchInfo<E, B, D> {
         }
     }
 
-    pub fn state(&self) -> &BatchState<D> {
+    pub(super) fn state(&self) -> &BatchState<D> {
         &self.state
     }
 
-    pub fn attempts(&self) -> &[Attempt<D>] {
+    pub(super) fn attempts(&self) -> &[Attempt<D>] {
         &self.failed_processing_attempts
     }
 
     /// Marks the batch as ready to be processed if the data columns are in the range. The number of
     /// received columns is returned, or the wrong batch end on failure
     #[must_use = "Batch may have failed"]
-    pub fn download_completed(
+    pub(super) fn download_completed(
         &mut self,
         data_columns: D,
         peer_group: PeerGroup,
@@ -291,7 +295,7 @@ impl<E: EthSpec, B: BatchConfig, D: Hash> BatchInfo<E, B, D> {
     /// The `peer` parameter, when set to None, does not increment the failed attempts of
     /// this batch and register the peer, rather attempts a re-download.
     #[must_use = "Batch may have failed"]
-    pub fn download_failed(
+    pub(super) fn download_failed(
         &mut self,
         peer: Option<PeerId>,
     ) -> Result<BatchOperationOutcome, WrongState> {
@@ -327,7 +331,7 @@ impl<E: EthSpec, B: BatchConfig, D: Hash> BatchInfo<E, B, D> {
     /// Note: must use this cautiously with some level of retry protection
     /// as not registering a failed attempt could lead to requesting in a loop.
     #[must_use = "Batch may have failed"]
-    pub fn downloading_to_awaiting_download(
+    pub(super) fn downloading_to_awaiting_download(
         &mut self,
     ) -> Result<BatchOperationOutcome, WrongState> {
         match self.state.poison() {
@@ -346,7 +350,7 @@ impl<E: EthSpec, B: BatchConfig, D: Hash> BatchInfo<E, B, D> {
         }
     }
 
-    pub fn start_downloading(&mut self, request_id: Id) -> Result<(), WrongState> {
+    pub(super) fn start_downloading(&mut self, request_id: Id) -> Result<(), WrongState> {
         match self.state.poison() {
             BatchState::AwaitingDownload => {
                 self.state = BatchState::Downloading(request_id);
@@ -363,7 +367,7 @@ impl<E: EthSpec, B: BatchConfig, D: Hash> BatchInfo<E, B, D> {
         }
     }
 
-    pub fn start_processing(&mut self) -> Result<(D, Duration), WrongState> {
+    pub(super) fn start_processing(&mut self) -> Result<(D, Duration), WrongState> {
         match self.state.poison() {
             BatchState::AwaitingProcessing(peer_group, data_columns, start_instant) => {
                 self.state = BatchState::Processing(Attempt::new::<B>(peer_group, &data_columns));
@@ -380,7 +384,7 @@ impl<E: EthSpec, B: BatchConfig, D: Hash> BatchInfo<E, B, D> {
         }
     }
 
-    pub fn processing_completed(
+    pub(super) fn processing_completed(
         &mut self,
         processing_result: BatchProcessingResult,
     ) -> Result<BatchOperationOutcome, WrongState> {
@@ -421,7 +425,7 @@ impl<E: EthSpec, B: BatchConfig, D: Hash> BatchInfo<E, B, D> {
     }
 
     #[must_use = "Batch may have failed"]
-    pub fn validation_failed(&mut self) -> Result<BatchOperationOutcome, WrongState> {
+    pub(super) fn validation_failed(&mut self) -> Result<BatchOperationOutcome, WrongState> {
         match self.state.poison() {
             BatchState::AwaitingValidation(attempt) => {
                 self.failed_processing_attempts.push(attempt);
@@ -448,7 +452,7 @@ impl<E: EthSpec, B: BatchConfig, D: Hash> BatchInfo<E, B, D> {
     }
 
     // Visualizes the state of this batch using state::visualize()
-    pub fn visualize(&self) -> char {
+    pub(super) fn visualize(&self) -> char {
         self.state.visualize()
     }
 }
@@ -456,7 +460,7 @@ impl<E: EthSpec, B: BatchConfig, D: Hash> BatchInfo<E, B, D> {
 // BatchInfo implementations for RangeSync
 impl<E: EthSpec, B: BatchConfig> BatchInfo<E, B, Vec<RpcBlock<E>>> {
     /// Returns a BlocksByRange request associated with the batch.
-    pub fn to_blocks_by_range_request(&self) -> (BlocksByRangeRequest, ByRangeRequestType) {
+    pub(super) fn to_blocks_by_range_request(&self) -> (BlocksByRangeRequest, ByRangeRequestType) {
         (
             BlocksByRangeRequest::new(
                 self.start_slot.into(),
@@ -467,7 +471,7 @@ impl<E: EthSpec, B: BatchConfig> BatchInfo<E, B, Vec<RpcBlock<E>>> {
     }
 
     /// Returns the count of stored pending blocks if in awaiting processing state
-    pub fn pending_blocks(&self) -> usize {
+    pub(super) fn pending_blocks(&self) -> usize {
         match &self.state {
             BatchState::AwaitingProcessing(_, blocks, _) => blocks.len(),
             BatchState::AwaitingDownload
@@ -483,7 +487,7 @@ impl<E: EthSpec, B: BatchConfig> BatchInfo<E, B, Vec<RpcBlock<E>>> {
 // BatchInfo implementation for CustodyBackFillSync
 impl<E: EthSpec, B: BatchConfig> BatchInfo<E, B, DataColumnSidecarList<E>> {
     /// Returns a DataColumnsByRange request associated with the batch.
-    pub fn to_data_columns_by_range_request(
+    pub(super) fn to_data_columns_by_range_request(
         &self,
     ) -> Result<DataColumnsByRangeRequest, WrongState> {
         match &self.batch_type {

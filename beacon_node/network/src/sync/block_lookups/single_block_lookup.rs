@@ -86,7 +86,7 @@ pub(crate) enum ComponentRequests<E: EthSpec> {
 }
 
 impl<T: BeaconChainTypes> SingleBlockLookup<T> {
-    pub fn new(
+    pub(crate) fn new(
         requested_block_root: Hash256,
         peers: &[PeerId],
         id: Id,
@@ -111,7 +111,7 @@ impl<T: BeaconChainTypes> SingleBlockLookup<T> {
     }
 
     /// Return the slot of this lookup's block if it's currently cached as `AwaitingProcessing`
-    pub fn peek_downloaded_block_slot(&self) -> Option<Slot> {
+    pub(crate) fn peek_downloaded_block_slot(&self) -> Option<Slot> {
         self.block_request_state
             .state
             .peek_downloaded_data()
@@ -119,33 +119,36 @@ impl<T: BeaconChainTypes> SingleBlockLookup<T> {
     }
 
     /// Get the block root that is being requested.
-    pub fn block_root(&self) -> Hash256 {
+    pub(crate) fn block_root(&self) -> Hash256 {
         self.block_root
     }
 
-    pub fn awaiting_parent(&self) -> Option<Hash256> {
+    pub(crate) fn awaiting_parent(&self) -> Option<Hash256> {
         self.awaiting_parent
     }
 
     /// Mark this lookup as awaiting a parent lookup from being processed. Meanwhile don't send
     /// components for processing.
-    pub fn set_awaiting_parent(&mut self, parent_root: Hash256) {
+    pub(crate) fn set_awaiting_parent(&mut self, parent_root: Hash256) {
         self.awaiting_parent = Some(parent_root);
     }
 
     /// Mark this lookup as no longer awaiting a parent lookup. Components can be sent for
     /// processing.
-    pub fn resolve_awaiting_parent(&mut self) {
+    pub(crate) fn resolve_awaiting_parent(&mut self) {
         self.awaiting_parent = None;
     }
 
     /// Returns the time elapsed since this lookup was created
-    pub fn elapsed_since_created(&self) -> Duration {
+    pub(crate) fn elapsed_since_created(&self) -> Duration {
         self.created.elapsed()
     }
 
     /// Maybe insert a verified response into this lookup. Returns true if imported
-    pub fn add_child_components(&mut self, block_component: BlockComponent<T::EthSpec>) -> bool {
+    pub(crate) fn add_child_components(
+        &mut self,
+        block_component: BlockComponent<T::EthSpec>,
+    ) -> bool {
         match block_component {
             BlockComponent::Block(block) => self
                 .block_request_state
@@ -162,12 +165,12 @@ impl<T: BeaconChainTypes> SingleBlockLookup<T> {
     }
 
     /// Check the block root matches the requested block root.
-    pub fn is_for_block(&self, block_root: Hash256) -> bool {
+    pub(crate) fn is_for_block(&self, block_root: Hash256) -> bool {
         self.block_root() == block_root
     }
 
     /// Returns true if the block has already been downloaded.
-    pub fn all_components_processed(&self) -> bool {
+    pub(crate) fn all_components_processed(&self) -> bool {
         self.block_request_state.state.is_processed()
             && match &self.component_requests {
                 ComponentRequests::WaitingForBlock => false,
@@ -178,7 +181,7 @@ impl<T: BeaconChainTypes> SingleBlockLookup<T> {
     }
 
     /// Returns true if this request is expecting some event to make progress
-    pub fn is_awaiting_event(&self) -> bool {
+    pub(crate) fn is_awaiting_event(&self) -> bool {
         self.awaiting_parent.is_some()
             || self.block_request_state.state.is_awaiting_event()
             || match &self.component_requests {
@@ -197,7 +200,7 @@ impl<T: BeaconChainTypes> SingleBlockLookup<T> {
 
     /// Makes progress on all requests of this lookup. Any error is not recoverable and must result
     /// in dropping the lookup. May mark the lookup as completed.
-    pub fn continue_requests(
+    pub(crate) fn continue_requests(
         &mut self,
         cx: &mut SyncNetworkContext<T>,
     ) -> Result<LookupResult, LookupRequestError> {
@@ -347,23 +350,23 @@ impl<T: BeaconChainTypes> SingleBlockLookup<T> {
     }
 
     /// Get all unique peers that claim to have imported this set of block components
-    pub fn all_peers(&self) -> Vec<PeerId> {
+    pub(crate) fn all_peers(&self) -> Vec<PeerId> {
         self.peers.read().iter().copied().collect()
     }
 
     /// Add peer to all request states. The peer must be able to serve this request.
     /// Returns true if the peer was newly inserted into some request state.
-    pub fn add_peer(&mut self, peer_id: PeerId) -> bool {
+    pub(crate) fn add_peer(&mut self, peer_id: PeerId) -> bool {
         self.peers.write().insert(peer_id)
     }
 
     /// Remove peer from available peers.
-    pub fn remove_peer(&mut self, peer_id: &PeerId) {
+    pub(crate) fn remove_peer(&mut self, peer_id: &PeerId) {
         self.peers.write().remove(peer_id);
     }
 
     /// Returns true if this lookup has zero peers
-    pub fn has_no_peers(&self) -> bool {
+    pub(crate) fn has_no_peers(&self) -> bool {
         self.peers.read().is_empty()
     }
 }
@@ -378,7 +381,7 @@ pub(crate) struct BlobRequestState<E: EthSpec> {
 }
 
 impl<E: EthSpec> BlobRequestState<E> {
-    pub fn new(block_root: Hash256) -> Self {
+    pub(crate) fn new(block_root: Hash256) -> Self {
         Self {
             block_root,
             state: SingleLookupRequestState::new(),
@@ -396,7 +399,7 @@ pub(crate) struct CustodyRequestState<E: EthSpec> {
 }
 
 impl<E: EthSpec> CustodyRequestState<E> {
-    pub fn new(block_root: Hash256) -> Self {
+    pub(crate) fn new(block_root: Hash256) -> Self {
         Self {
             block_root,
             state: SingleLookupRequestState::new(),
@@ -414,7 +417,7 @@ pub(crate) struct BlockRequestState<E: EthSpec> {
 }
 
 impl<E: EthSpec> BlockRequestState<E> {
-    pub fn new(block_root: Hash256) -> Self {
+    pub(crate) fn new(block_root: Hash256) -> Self {
         Self {
             requested_block_root: block_root,
             state: SingleLookupRequestState::new(),
@@ -453,7 +456,7 @@ pub(crate) struct SingleLookupRequestState<T: Clone> {
 }
 
 impl<T: Clone> SingleLookupRequestState<T> {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             state: State::AwaitingDownload("not started"),
             failed_processing: 0,
@@ -461,7 +464,7 @@ impl<T: Clone> SingleLookupRequestState<T> {
         }
     }
 
-    pub fn is_awaiting_download(&self) -> bool {
+    pub(crate) fn is_awaiting_download(&self) -> bool {
         match self.state {
             State::AwaitingDownload { .. } => true,
             State::Downloading { .. }
@@ -471,7 +474,7 @@ impl<T: Clone> SingleLookupRequestState<T> {
         }
     }
 
-    pub fn is_processed(&self) -> bool {
+    pub(crate) fn is_processed(&self) -> bool {
         match self.state {
             State::AwaitingDownload { .. }
             | State::Downloading { .. }
@@ -483,7 +486,7 @@ impl<T: Clone> SingleLookupRequestState<T> {
 
     /// Returns true if we can expect some future event to progress this block component request
     /// specifically.
-    pub fn is_awaiting_event(&self) -> bool {
+    pub(crate) fn is_awaiting_event(&self) -> bool {
         match self.state {
             // No event will progress this request specifically, but the request may be put on hold
             // due to some external event
@@ -496,7 +499,7 @@ impl<T: Clone> SingleLookupRequestState<T> {
         }
     }
 
-    pub fn peek_downloaded_data(&self) -> Option<&T> {
+    pub(crate) fn peek_downloaded_data(&self) -> Option<&T> {
         match &self.state {
             State::AwaitingDownload { .. }
             | State::Downloading { .. }
@@ -507,7 +510,7 @@ impl<T: Clone> SingleLookupRequestState<T> {
 
     /// Switch to `AwaitingProcessing` if the request is in `AwaitingDownload` state, otherwise
     /// ignore.
-    pub fn insert_verified_response(&mut self, result: DownloadResult<T>) -> bool {
+    pub(crate) fn insert_verified_response(&mut self, result: DownloadResult<T>) -> bool {
         if let State::AwaitingDownload { .. } = &self.state {
             self.state = State::AwaitingProcess(result);
             true
@@ -518,14 +521,14 @@ impl<T: Clone> SingleLookupRequestState<T> {
 
     /// Append metadata on why this request is in AwaitingDownload status. Very helpful to debug
     /// stuck lookups. Not fallible as it's purely informational.
-    pub fn update_awaiting_download_status(&mut self, new_status: &'static str) {
+    pub(crate) fn update_awaiting_download_status(&mut self, new_status: &'static str) {
         if let State::AwaitingDownload(status) = &mut self.state {
             *status = new_status;
         }
     }
 
     /// Switch to `Downloading` if the request is in `AwaitingDownload` state, otherwise returns None.
-    pub fn on_download_start(&mut self, req_id: ReqId) -> Result<(), LookupRequestError> {
+    pub(crate) fn on_download_start(&mut self, req_id: ReqId) -> Result<(), LookupRequestError> {
         match &self.state {
             State::AwaitingDownload { .. } => {
                 self.state = State::Downloading(req_id);
@@ -539,7 +542,7 @@ impl<T: Clone> SingleLookupRequestState<T> {
 
     /// Registers a failure in downloading a block. This might be a peer disconnection or a wrong
     /// block.
-    pub fn on_download_failure(&mut self, req_id: ReqId) -> Result<(), LookupRequestError> {
+    pub(crate) fn on_download_failure(&mut self, req_id: ReqId) -> Result<(), LookupRequestError> {
         match &self.state {
             State::Downloading(expected_req_id) => {
                 if req_id != *expected_req_id {
@@ -558,7 +561,7 @@ impl<T: Clone> SingleLookupRequestState<T> {
         }
     }
 
-    pub fn on_download_success(
+    pub(crate) fn on_download_success(
         &mut self,
         req_id: ReqId,
         result: DownloadResult<T>,
@@ -581,7 +584,7 @@ impl<T: Clone> SingleLookupRequestState<T> {
     }
 
     /// Switch to `Processing` if the request is in `AwaitingProcess` state, otherwise returns None.
-    pub fn maybe_start_processing(&mut self) -> Option<DownloadResult<T>> {
+    pub(crate) fn maybe_start_processing(&mut self) -> Option<DownloadResult<T>> {
         // For 2 lines replace state with placeholder to gain ownership of `result`
         match &self.state {
             State::AwaitingProcess(result) => {
@@ -595,7 +598,7 @@ impl<T: Clone> SingleLookupRequestState<T> {
 
     /// Revert into `AwaitingProcessing`, if the payload if not invalid and can be submitted for
     /// processing latter.
-    pub fn revert_to_awaiting_processing(&mut self) -> Result<(), LookupRequestError> {
+    pub(crate) fn revert_to_awaiting_processing(&mut self) -> Result<(), LookupRequestError> {
         match &self.state {
             State::Processing(result) => {
                 self.state = State::AwaitingProcess(result.clone());
@@ -608,7 +611,7 @@ impl<T: Clone> SingleLookupRequestState<T> {
     }
 
     /// Registers a failure in processing a block.
-    pub fn on_processing_failure(&mut self) -> Result<PeerGroup, LookupRequestError> {
+    pub(crate) fn on_processing_failure(&mut self) -> Result<PeerGroup, LookupRequestError> {
         match &self.state {
             State::Processing(result) => {
                 let peers_source = result.peer_group.clone();
@@ -622,7 +625,7 @@ impl<T: Clone> SingleLookupRequestState<T> {
         }
     }
 
-    pub fn on_processing_success(&mut self) -> Result<(), LookupRequestError> {
+    pub(crate) fn on_processing_success(&mut self) -> Result<(), LookupRequestError> {
         match &self.state {
             State::Processing(_) => {
                 self.state = State::Processed("processing success");
@@ -635,7 +638,10 @@ impl<T: Clone> SingleLookupRequestState<T> {
     }
 
     /// Mark a request as complete without any download or processing
-    pub fn on_completed_request(&mut self, reason: &'static str) -> Result<(), LookupRequestError> {
+    pub(crate) fn on_completed_request(
+        &mut self,
+        reason: &'static str,
+    ) -> Result<(), LookupRequestError> {
         match &self.state {
             State::AwaitingDownload { .. } => {
                 self.state = State::Processed(reason);
@@ -648,11 +654,11 @@ impl<T: Clone> SingleLookupRequestState<T> {
     }
 
     /// The total number of failures, whether it be processing or downloading.
-    pub fn failed_attempts(&self) -> u8 {
+    pub(crate) fn failed_attempts(&self) -> u8 {
         self.failed_processing + self.failed_downloading
     }
 
-    pub fn more_failed_processing_attempts(&self) -> bool {
+    pub(crate) fn more_failed_processing_attempts(&self) -> bool {
         self.failed_processing >= self.failed_downloading
     }
 }

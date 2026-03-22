@@ -80,7 +80,7 @@ impl Quota {
 }
 
 /// Manages rate limiting of requests per peer, with differentiated rates per protocol.
-pub struct RPCRateLimiter {
+pub(super) struct RPCRateLimiter {
     /// Interval to prune peers for which their timer ran out.
     prune_interval: Interval,
     /// Creation time of the rate limiter.
@@ -120,7 +120,7 @@ pub struct RPCRateLimiter {
 
 /// Error type for non conformant requests
 #[derive(Debug)]
-pub enum RateLimitedErr {
+pub(super) enum RateLimitedErr {
     /// Required tokens for this request exceed the maximum
     TooLarge,
     /// Request does not fit in the quota. Gives the earliest time the request could be accepted.
@@ -129,7 +129,7 @@ pub enum RateLimitedErr {
 
 /// User-friendly builder of a `RPCRateLimiter`
 #[derive(Default, Clone)]
-pub struct RPCRateLimiterBuilder {
+pub(super) struct RPCRateLimiterBuilder {
     /// Quota for the Goodbye protocol.
     goodbye_quota: Option<Quota>,
     /// Quota for the Ping protocol.
@@ -164,7 +164,7 @@ pub struct RPCRateLimiterBuilder {
 
 impl RPCRateLimiterBuilder {
     /// Set a quota for a protocol.
-    pub fn set_quota(mut self, protocol: Protocol, quota: Quota) -> Self {
+    pub(super) fn set_quota(mut self, protocol: Protocol, quota: Quota) -> Self {
         let q = Some(quota);
         match protocol {
             Protocol::Ping => self.ping_quota = q,
@@ -186,7 +186,10 @@ impl RPCRateLimiterBuilder {
         self
     }
 
-    pub fn build(self, fork_context: Arc<ForkContext>) -> Result<RPCRateLimiter, &'static str> {
+    pub(super) fn build(
+        self,
+        fork_context: Arc<ForkContext>,
+    ) -> Result<RPCRateLimiter, &'static str> {
         // get our quotas
         let ping_quota = self.ping_quota.ok_or("Ping quota not specified")?;
         let metadata_quota = self.metadata_quota.ok_or("MetaData quota not specified")?;
@@ -276,7 +279,7 @@ impl RPCRateLimiterBuilder {
     }
 }
 
-pub trait RateLimiterItem {
+pub(super) trait RateLimiterItem {
     fn protocol(&self) -> Protocol;
     fn max_responses(&self, digest_epoch: Epoch, spec: &ChainSpec) -> u64;
 }
@@ -303,7 +306,7 @@ impl<E: EthSpec> RateLimiterItem for (super::RpcResponse<E>, Protocol) {
 }
 
 impl RPCRateLimiter {
-    pub fn new_with_config(
+    pub(super) fn new_with_config(
         config: RateLimiterConfig,
         fork_context: Arc<ForkContext>,
     ) -> Result<Self, &'static str> {
@@ -358,11 +361,11 @@ impl RPCRateLimiter {
     }
 
     /// Get a builder instance.
-    pub fn builder() -> RPCRateLimiterBuilder {
+    pub(super) fn builder() -> RPCRateLimiterBuilder {
         RPCRateLimiterBuilder::default()
     }
 
-    pub fn allows<Item: RateLimiterItem>(
+    pub(super) fn allows<Item: RateLimiterItem>(
         &mut self,
         peer_id: &PeerId,
         request: &Item,
@@ -397,7 +400,7 @@ impl RPCRateLimiter {
         check(limiter)
     }
 
-    pub fn prune(&mut self) {
+    pub(super) fn prune(&mut self) {
         let time_since_start = self.init_time.elapsed();
 
         let Self {
@@ -453,7 +456,7 @@ impl Future for RPCRateLimiter {
 
 /// Per key rate limiter using the token bucket / leaky bucket as a meter rate limiting algorithm,
 /// with the GCRA implementation.
-pub struct Limiter<Key: Hash + Eq + Clone> {
+pub(super) struct Limiter<Key: Hash + Eq + Clone> {
     /// After how long is the bucket considered full via replenishing 1T every `t`.
     tau: Nanosecs,
     /// How often is 1T replenished.
@@ -463,7 +466,7 @@ pub struct Limiter<Key: Hash + Eq + Clone> {
 }
 
 impl<Key: Hash + Eq + Clone> Limiter<Key> {
-    pub fn from_quota(quota: Quota) -> Result<Self, &'static str> {
+    pub(super) fn from_quota(quota: Quota) -> Result<Self, &'static str> {
         let tau = quota.replenish_all_every.as_nanos();
         if tau == 0 {
             return Err("Replenish time must be positive");
@@ -483,7 +486,7 @@ impl<Key: Hash + Eq + Clone> Limiter<Key> {
         })
     }
 
-    pub fn allows(
+    pub(super) fn allows(
         &mut self,
         time_since_start: Duration,
         key: &Key,
@@ -521,7 +524,7 @@ impl<Key: Hash + Eq + Clone> Limiter<Key> {
     }
 
     /// Removes keys for which their bucket is full by `time_limit`
-    pub fn prune(&mut self, time_limit: Duration) {
+    pub(super) fn prune(&mut self, time_limit: Duration) {
         let lim = &mut (time_limit.as_nanos() as u64);
         // remove those for which tat < lim
         self.tat_per_key.retain(|_k, tat| tat >= lim);

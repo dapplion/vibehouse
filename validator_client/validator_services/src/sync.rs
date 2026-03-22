@@ -23,7 +23,7 @@ use validator_store::{DoppelgangerStatus, Error as ValidatorStoreError, Validato
 /// 2. One-at-a-time locking. For the innermost locks on the aggregator duties, all of the functions
 ///    in this file take care to only lock one validator at a time. We never hold a lock while
 ///    trying to obtain another one (hence no lock ordering issues).
-pub struct SyncDutiesMap {
+pub(crate) struct SyncDutiesMap {
     /// Map from sync committee period to duties for members of that sync committee.
     committees: RwLock<HashMap<u64, CommitteeDuties>>,
     /// Whether we are in `distributed` mode and using reduced lookahead for aggregate pre-compute.
@@ -32,7 +32,7 @@ pub struct SyncDutiesMap {
 
 /// Duties for a single sync committee period.
 #[derive(Default)]
-pub struct CommitteeDuties {
+pub(crate) struct CommitteeDuties {
     /// Map from validator index to validator duties.
     ///
     /// A `None` value indicates that the validator index is known *not* to be a member of the sync
@@ -43,7 +43,7 @@ pub struct CommitteeDuties {
 }
 
 /// Duties for a single validator.
-pub struct ValidatorDuties {
+pub(crate) struct ValidatorDuties {
     /// The sync duty: including validator sync committee indices & pubkey.
     duty: SyncDuty,
     /// The aggregator duties: cached selection proofs for upcoming epochs.
@@ -51,7 +51,7 @@ pub struct ValidatorDuties {
 }
 
 /// Aggregator duties for a single validator.
-pub struct AggregatorDuties {
+pub(crate) struct AggregatorDuties {
     /// The slot up to which aggregation proofs have already been computed (inclusive).
     pre_compute_slot: RwLock<Option<Slot>>,
     /// Map from slot & subnet ID to proof that this validator is an aggregator.
@@ -64,7 +64,7 @@ pub struct AggregatorDuties {
 /// Duties for multiple validators, for a single slot.
 ///
 /// This type is returned to the sync service.
-pub struct SlotDuties {
+pub(crate) struct SlotDuties {
     /// List of duties for all sync committee members at this slot.
     ///
     /// Note: this is intentionally NOT split by subnet so that we only sign
@@ -76,7 +76,7 @@ pub struct SlotDuties {
 }
 
 impl SyncDutiesMap {
-    pub fn new(selection_proof_config: SelectionProofConfig) -> Self {
+    pub(crate) fn new(selection_proof_config: SelectionProofConfig) -> Self {
         Self {
             committees: RwLock::new(HashMap::new()),
             selection_proof_config,
@@ -171,7 +171,7 @@ impl SyncDutiesMap {
     /// Get duties for all validators for the given `wall_clock_slot`.
     ///
     /// This is the entry-point for the sync committee service.
-    pub fn get_duties_for_slot<E: EthSpec>(
+    pub(crate) fn get_duties_for_slot<E: EthSpec>(
         &self,
         wall_clock_slot: Slot,
         spec: &ChainSpec,
@@ -268,7 +268,10 @@ fn last_slot_of_period<E: EthSpec>(sync_committee_period: u64, spec: &ChainSpec)
     first_slot_of_period::<E>(sync_committee_period + 1, spec) - 1
 }
 
-pub async fn poll_sync_committee_duties<S: ValidatorStore + 'static, T: SlotClock + 'static>(
+pub(crate) async fn poll_sync_committee_duties<
+    S: ValidatorStore + 'static,
+    T: SlotClock + 'static,
+>(
     duties_service: &Arc<DutiesService<S, T>>,
 ) -> Result<(), Error<S::Error>> {
     let sync_duties = &duties_service.sync_duties;
@@ -399,7 +402,10 @@ pub async fn poll_sync_committee_duties<S: ValidatorStore + 'static, T: SlotCloc
     Ok(())
 }
 
-pub async fn poll_sync_committee_duties_for_period<S: ValidatorStore, T: SlotClock + 'static>(
+pub(crate) async fn poll_sync_committee_duties_for_period<
+    S: ValidatorStore,
+    T: SlotClock + 'static,
+>(
     duties_service: &Arc<DutiesService<S, T>>,
     local_indices: &[u64],
     sync_committee_period: u64,
@@ -487,7 +493,7 @@ pub async fn poll_sync_committee_duties_for_period<S: ValidatorStore, T: SlotClo
 }
 
 // Create a helper function here to reduce code duplication for normal and distributed mode
-pub async fn make_sync_selection_proof<S: ValidatorStore, T: SlotClock>(
+pub(crate) async fn make_sync_selection_proof<S: ValidatorStore, T: SlotClock>(
     duties_service: &Arc<DutiesService<S, T>>,
     duty: &SyncDuty,
     proof_slot: Slot,
@@ -594,7 +600,7 @@ pub async fn make_sync_selection_proof<S: ValidatorStore, T: SlotClock>(
     }
 }
 
-pub async fn fill_in_aggregation_proofs<S: ValidatorStore, T: SlotClock + 'static>(
+pub(crate) async fn fill_in_aggregation_proofs<S: ValidatorStore, T: SlotClock + 'static>(
     duties_service: Arc<DutiesService<S, T>>,
     pre_compute_duties: &[(Slot, SyncDuty)],
     sync_committee_period: u64,

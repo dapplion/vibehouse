@@ -10,7 +10,7 @@ use tree_hash_derive::TreeHash;
 use types::{AggregateSignature, EthSpec, Hash256, IndexedAttestation, VariableList};
 
 #[derive(Debug, Clone, Copy)]
-pub struct AttesterRecord {
+pub(crate) struct AttesterRecord {
     /// The hash of the attestation data, for de-duplication.
     pub attestation_data_hash: Hash256,
     /// The hash of the indexed attestation, so it can be loaded.
@@ -52,14 +52,14 @@ impl CompactAttesterRecord {
 ///
 /// This struct gets `Arc`d and passed around between each stage of queueing and processing.
 #[derive(Debug)]
-pub struct IndexedAttesterRecord<E: EthSpec> {
+pub(crate) struct IndexedAttesterRecord<E: EthSpec> {
     pub indexed: IndexedAttestation<E>,
     pub record: AttesterRecord,
     pub indexed_attestation_id: AtomicU64,
 }
 
 impl<E: EthSpec> IndexedAttesterRecord<E> {
-    pub fn new(indexed: IndexedAttestation<E>, record: AttesterRecord) -> Arc<Self> {
+    pub(crate) fn new(indexed: IndexedAttestation<E>, record: AttesterRecord) -> Arc<Self> {
         Arc::new(IndexedAttesterRecord {
             indexed,
             record,
@@ -67,13 +67,13 @@ impl<E: EthSpec> IndexedAttesterRecord<E> {
         })
     }
 
-    pub fn set_id(&self, id: u64) {
+    pub(crate) fn set_id(&self, id: u64) {
         self.indexed_attestation_id
             .compare_exchange(0, id, Ordering::Relaxed, Ordering::Relaxed)
             .expect("IDs should only be initialized once");
     }
 
-    pub fn get_id(&self) -> u64 {
+    pub(crate) fn get_id(&self) -> u64 {
         self.indexed_attestation_id.load(Ordering::Relaxed)
     }
 }

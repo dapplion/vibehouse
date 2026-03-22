@@ -11,7 +11,7 @@ pub(crate) struct DataColumnsByRangeRequestItems<E: EthSpec> {
 }
 
 impl<E: EthSpec> DataColumnsByRangeRequestItems<E> {
-    pub fn new(request: DataColumnsByRangeRequest) -> Self {
+    pub(crate) fn new(request: DataColumnsByRangeRequest) -> Self {
         Self {
             request,
             items: vec![],

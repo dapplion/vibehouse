@@ -11,7 +11,7 @@ pub(crate) struct BlobsByRootSingleBlockRequest {
 }
 
 impl BlobsByRootSingleBlockRequest {
-    pub fn into_request(self, spec: &ForkContext) -> Result<BlobsByRootRequest, String> {
+    pub(crate) fn into_request(self, spec: &ForkContext) -> Result<BlobsByRootRequest, String> {
         BlobsByRootRequest::new(
             self.indices
                 .into_iter()
@@ -31,7 +31,7 @@ pub(crate) struct BlobsByRootRequestItems<E: EthSpec> {
 }
 
 impl<E: EthSpec> BlobsByRootRequestItems<E> {
-    pub fn new(request: BlobsByRootSingleBlockRequest) -> Self {
+    pub(crate) fn new(request: BlobsByRootSingleBlockRequest) -> Self {
         Self {
             request,
             items: vec![],

@@ -38,7 +38,7 @@ pub(super) struct ResponseLimiter<E: EthSpec> {
 
 impl<E: EthSpec> ResponseLimiter<E> {
     /// Creates a new [`ResponseLimiter`] based on configuration values.
-    pub fn new(
+    pub(super) fn new(
         config: InboundRateLimiterConfig,
         fork_context: Arc<ForkContext>,
     ) -> Result<Self, &'static str> {
@@ -51,7 +51,7 @@ impl<E: EthSpec> ResponseLimiter<E> {
 
     /// Checks if the rate limiter allows the response. When not allowed, the response is delayed
     /// until it can be sent.
-    pub fn allows(
+    pub(super) fn allows(
         &mut self,
         peer_id: PeerId,
         protocol: Protocol,
@@ -123,14 +123,14 @@ impl<E: EthSpec> ResponseLimiter<E> {
     }
 
     /// Informs the limiter that a peer has disconnected. This removes any pending responses.
-    pub fn peer_disconnected(&mut self, peer_id: PeerId) {
+    pub(super) fn peer_disconnected(&mut self, peer_id: PeerId) {
         self.delayed_responses
             .retain(|(map_peer_id, _protocol), _queue| map_peer_id != &peer_id);
     }
 
     /// When a peer and protocol are allowed to send a next response, this function checks the
     /// queued responses and attempts marking as ready as many as the limiter allows.
-    pub fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Vec<QueuedResponse<E>>> {
+    pub(super) fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Vec<QueuedResponse<E>>> {
         let mut responses = vec![];
         while let Poll::Ready(Some(expired)) = self.next_response.poll_expired(cx) {
             let (peer_id, protocol) = expired.into_inner();

@@ -9,18 +9,18 @@ use types::{EthSpec, Hash256, IndexedAttestation};
 /// Attestations are not grouped by validator index at this stage so that they can be easily
 /// filtered for timeliness.
 #[derive(Debug, Default)]
-pub struct AttestationQueue<E: EthSpec> {
+pub(crate) struct AttestationQueue<E: EthSpec> {
     pub queue: Mutex<SimpleBatch<E>>,
 }
 
-pub type SimpleBatch<E> = Vec<Arc<IndexedAttesterRecord<E>>>;
+pub(crate) type SimpleBatch<E> = Vec<Arc<IndexedAttesterRecord<E>>>;
 
 /// Attestations dequeued from the queue and in preparation for processing.
 ///
 /// This struct is responsible for mapping validator indices to attestations and performing
 /// de-duplication to remove redundant attestations.
 #[derive(Debug, Default)]
-pub struct AttestationBatch<E: EthSpec> {
+pub(crate) struct AttestationBatch<E: EthSpec> {
     /// Map from (`validator_index`, `attestation_data_hash`) to indexed attester record.
     ///
     /// This mapping is used for de-duplication.
@@ -35,13 +35,13 @@ pub struct AttestationBatch<E: EthSpec> {
 
 /// Attestations grouped by validator index range.
 #[derive(Debug)]
-pub struct GroupedAttestations<E: EthSpec> {
+pub(crate) struct GroupedAttestations<E: EthSpec> {
     pub subqueues: Vec<SimpleBatch<E>>,
 }
 
 impl<E: EthSpec> AttestationBatch<E> {
     /// Add an attestation to the queue.
-    pub fn queue(&mut self, indexed_record: Arc<IndexedAttesterRecord<E>>) {
+    pub(crate) fn queue(&mut self, indexed_record: Arc<IndexedAttesterRecord<E>>) {
         self.attestations.push(Arc::downgrade(&indexed_record));
 
         let attestation_data_hash = indexed_record.record.attestation_data_hash;
@@ -66,7 +66,7 @@ impl<E: EthSpec> AttestationBatch<E> {
     }
 
     /// Group the attestations by validator chunk index.
-    pub fn group_by_validator_chunk_index(self, config: &Config) -> GroupedAttestations<E> {
+    pub(crate) fn group_by_validator_chunk_index(self, config: &Config) -> GroupedAttestations<E> {
         let mut grouped_attestations = GroupedAttestations { subqueues: vec![] };
 
         for ((validator_index, _), indexed_record) in self.attesters {
@@ -86,17 +86,17 @@ impl<E: EthSpec> AttestationBatch<E> {
 }
 
 impl<E: EthSpec> AttestationQueue<E> {
-    pub fn queue(&self, attestation: IndexedAttestation<E>) {
+    pub(crate) fn queue(&self, attestation: IndexedAttestation<E>) {
         let attester_record = AttesterRecord::from(attestation.clone());
         let indexed_record = IndexedAttesterRecord::new(attestation, attester_record);
         self.queue.lock().push(indexed_record);
     }
 
-    pub fn dequeue(&self) -> SimpleBatch<E> {
+    pub(crate) fn dequeue(&self) -> SimpleBatch<E> {
         std::mem::take(&mut self.queue.lock())
     }
 
-    pub fn requeue(&self, batch: SimpleBatch<E>) {
+    pub(crate) fn requeue(&self, batch: SimpleBatch<E>) {
         self.queue.lock().extend(batch);
     }
 

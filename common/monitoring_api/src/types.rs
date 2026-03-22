@@ -3,8 +3,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use eth2::vibehouse::{ProcessHealth, SystemHealth};
 use serde::{Deserialize, Serialize};
 
-pub const VERSION: u64 = 1;
-pub const CLIENT_NAME: &str = "vibehouse";
+pub(crate) const VERSION: u64 = 1;
+pub(crate) const CLIENT_NAME: &str = "vibehouse";
 
 /// An API error serializable to JSON.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

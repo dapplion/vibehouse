@@ -11,7 +11,7 @@ pub(crate) struct BlocksByRangeRequestItems<E: EthSpec> {
 }
 
 impl<E: EthSpec> BlocksByRangeRequestItems<E> {
-    pub fn new(request: BlocksByRangeRequest) -> Self {
+    pub(crate) fn new(request: BlocksByRangeRequest) -> Self {
         Self {
             request,
             items: vec![],

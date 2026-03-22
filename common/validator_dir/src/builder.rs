@@ -19,7 +19,7 @@ const DEFAULT_PASSWORD_LEN: usize = 48;
 pub const VOTING_KEYSTORE_FILE: &str = "voting-keystore.json";
 pub const WITHDRAWAL_KEYSTORE_FILE: &str = "withdrawal-keystore.json";
 pub const ETH1_DEPOSIT_DATA_FILE: &str = "eth1-deposit-data.rlp";
-pub const ETH1_DEPOSIT_AMOUNT_FILE: &str = "eth1-deposit-gwei.txt";
+pub(crate) const ETH1_DEPOSIT_AMOUNT_FILE: &str = "eth1-deposit-gwei.txt";
 
 #[derive(Debug)]
 pub enum Error {
@@ -297,7 +297,7 @@ fn write_keystore_to_file(path: PathBuf, keystore: &Keystore) -> Result<(), Erro
 }
 
 /// Creates a file with `600 (-rw-------)` permissions.
-pub fn write_password_to_file<P: AsRef<Path>>(path: P, bytes: &[u8]) -> Result<(), Error> {
+pub(crate) fn write_password_to_file<P: AsRef<Path>>(path: P, bytes: &[u8]) -> Result<(), Error> {
     let path = path.as_ref();
 
     if path.exists() {

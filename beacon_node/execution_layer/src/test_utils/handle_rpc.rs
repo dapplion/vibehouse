@@ -6,12 +6,12 @@ use serde::{Deserialize, de::DeserializeOwned};
 use serde_json::Value as JsonValue;
 use std::sync::Arc;
 
-pub const GENERIC_ERROR_CODE: i64 = -1234;
-pub const BAD_PARAMS_ERROR_CODE: i64 = -32602;
-pub const UNKNOWN_PAYLOAD_ERROR_CODE: i64 = -38001;
-pub const FORK_REQUEST_MISMATCH_ERROR_CODE: i64 = -32000;
+pub(super) const GENERIC_ERROR_CODE: i64 = -1234;
+pub(super) const BAD_PARAMS_ERROR_CODE: i64 = -32602;
+pub(super) const UNKNOWN_PAYLOAD_ERROR_CODE: i64 = -38001;
+pub(super) const FORK_REQUEST_MISMATCH_ERROR_CODE: i64 = -32000;
 
-pub async fn handle_rpc<E: EthSpec>(
+pub(super) async fn handle_rpc<E: EthSpec>(
     body: JsonValue,
     ctx: Arc<Context<E>>,
 ) -> Result<JsonValue, (String, i64)> {

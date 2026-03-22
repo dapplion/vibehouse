@@ -27,7 +27,7 @@ impl From<WriteOptions> for redb::Durability {
 }
 
 impl<E: EthSpec> Redb<E> {
-    pub fn open(path: &Path) -> Result<Self, Error> {
+    pub(crate) fn open(path: &Path) -> Result<Self, Error> {
         std::fs::create_dir_all(path).map_err(|e| Error::DBError {
             message: format!("Failed to create directory {}: {e}", path.display()),
         })?;
@@ -51,17 +51,17 @@ impl<E: EthSpec> Redb<E> {
         tx.commit().map_err(Into::into)
     }
 
-    pub fn write_options(&self) -> WriteOptions {
+    pub(crate) fn write_options(&self) -> WriteOptions {
         WriteOptions::new()
     }
 
-    pub fn write_options_sync(&self) -> WriteOptions {
+    pub(crate) fn write_options_sync(&self) -> WriteOptions {
         let mut opts = WriteOptions::new();
         opts.sync = true;
         opts
     }
 
-    pub fn put_bytes_with_options(
+    pub(crate) fn put_bytes_with_options(
         &self,
         col: DBColumn,
         key: &[u8],
@@ -89,16 +89,21 @@ impl<E: EthSpec> Redb<E> {
         tx.commit().map_err(Into::into)
     }
 
-    pub fn put_bytes_sync(&self, col: DBColumn, key: &[u8], val: &[u8]) -> Result<(), Error> {
+    pub(crate) fn put_bytes_sync(
+        &self,
+        col: DBColumn,
+        key: &[u8],
+        val: &[u8],
+    ) -> Result<(), Error> {
         self.put_bytes_with_options(col, key, val, self.write_options_sync())
     }
 
-    pub fn sync(&self) -> Result<(), Error> {
+    pub(crate) fn sync(&self) -> Result<(), Error> {
         self.put_bytes_sync(DBColumn::Dummy, b"sync", b"sync")
     }
 
     // Retrieve some bytes in `column` with `key`.
-    pub fn get_bytes(&self, col: DBColumn, key: &[u8]) -> Result<Option<Vec<u8>>, Error> {
+    pub(crate) fn get_bytes(&self, col: DBColumn, key: &[u8]) -> Result<Option<Vec<u8>>, Error> {
         metrics::inc_counter_vec(&metrics::DISK_DB_READ_COUNT, &[col.into()]);
         let timer = metrics::start_timer(&metrics::DISK_DB_READ_TIMES);
 
@@ -125,7 +130,7 @@ impl<E: EthSpec> Redb<E> {
     }
 
     /// Return `true` if `key` exists in `column`.
-    pub fn key_exists(&self, col: DBColumn, key: &[u8]) -> Result<bool, Error> {
+    pub(crate) fn key_exists(&self, col: DBColumn, key: &[u8]) -> Result<bool, Error> {
         metrics::inc_counter_vec(&metrics::DISK_DB_EXISTS_COUNT, &[col.into()]);
 
         let table_definition: TableDefinition<'_, &[u8], &[u8]> = TableDefinition::new(col.into());
@@ -140,7 +145,7 @@ impl<E: EthSpec> Redb<E> {
     }
 
     /// Removes `key` from `column`.
-    pub fn key_delete(&self, col: DBColumn, key: &[u8]) -> Result<(), Error> {
+    pub(crate) fn key_delete(&self, col: DBColumn, key: &[u8]) -> Result<(), Error> {
         let table_definition: TableDefinition<'_, &[u8], &[u8]> = TableDefinition::new(col.into());
         let open_db = self.db.read();
         let tx = open_db.begin_write()?;
@@ -152,7 +157,7 @@ impl<E: EthSpec> Redb<E> {
         tx.commit().map_err(Into::into)
     }
 
-    pub fn do_atomically(&self, ops_batch: Vec<KeyValueStoreOp>) -> Result<(), Error> {
+    pub(crate) fn do_atomically(&self, ops_batch: Vec<KeyValueStoreOp>) -> Result<(), Error> {
         let open_db = self.db.read();
         let mut tx = open_db.begin_write()?;
         tx.set_durability(self.write_options().into())?;
@@ -195,7 +200,7 @@ impl<E: EthSpec> Redb<E> {
     ///
     /// In redb 3.x, compaction fails if any read transactions are active. This is best-effort:
     /// if compaction can't proceed due to active transactions, we skip it silently.
-    pub fn compact(&self) -> Result<(), Error> {
+    pub(crate) fn compact(&self) -> Result<(), Error> {
         let _timer = metrics::start_timer(&metrics::DISK_DB_COMPACT_TIMES);
         let mut open_db = self.db.write();
         let mut_db = open_db.borrow_mut();
@@ -205,7 +210,7 @@ impl<E: EthSpec> Redb<E> {
         }
     }
 
-    pub fn iter_column_keys_from<K: Key>(
+    pub(crate) fn iter_column_keys_from<K: Key>(
         &self,
         column: DBColumn,
         from: &[u8],
@@ -237,11 +242,15 @@ impl<E: EthSpec> Redb<E> {
     }
 
     /// Iterate through all keys and values in a particular column.
-    pub fn iter_column_keys<K: Key>(&self, column: DBColumn) -> ColumnKeyIter<'_, K> {
+    pub(crate) fn iter_column_keys<K: Key>(&self, column: DBColumn) -> ColumnKeyIter<'_, K> {
         self.iter_column_keys_from(column, &vec![0; column.key_size()])
     }
 
-    pub fn iter_column_from<K: Key>(&self, column: DBColumn, from: &[u8]) -> ColumnIter<'_, K> {
+    pub(crate) fn iter_column_from<K: Key>(
+        &self,
+        column: DBColumn,
+        from: &[u8],
+    ) -> ColumnIter<'_, K> {
         let table_definition: TableDefinition<'_, &[u8], &[u8]> =
             TableDefinition::new(column.into());
 
@@ -274,7 +283,7 @@ impl<E: EthSpec> Redb<E> {
         }
     }
 
-    pub fn delete_batch(&self, col: DBColumn, ops: HashSet<&[u8]>) -> Result<(), Error> {
+    pub(crate) fn delete_batch(&self, col: DBColumn, ops: HashSet<&[u8]>) -> Result<(), Error> {
         let open_db = self.db.read();
         let mut tx = open_db.begin_write()?;
 
@@ -290,7 +299,7 @@ impl<E: EthSpec> Redb<E> {
         Ok(())
     }
 
-    pub fn delete_if(
+    pub(crate) fn delete_if(
         &self,
         column: DBColumn,
         mut f: impl FnMut(&[u8]) -> Result<bool, Error>,

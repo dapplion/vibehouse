@@ -49,7 +49,7 @@ pub(crate) struct SelfRateLimiter<Id: ReqId, E: EthSpec> {
 
 /// Error returned when the rate limiter does not accept a request.
 // NOTE: this is currently not used, but might be useful for debugging.
-pub enum Error {
+pub(super) enum Error {
     /// There are queued requests for this same peer and protocol.
     PendingRequests,
     /// Request was tried but rate limited.
@@ -58,7 +58,7 @@ pub enum Error {
 
 impl<Id: ReqId, E: EthSpec> SelfRateLimiter<Id, E> {
     /// Creates a new [`SelfRateLimiter`] based on configuration values.
-    pub fn new(
+    pub(super) fn new(
         config: Option<OutboundRateLimiterConfig>,
         fork_context: Arc<ForkContext>,
     ) -> Result<Self, &'static str> {
@@ -81,7 +81,7 @@ impl<Id: ReqId, E: EthSpec> SelfRateLimiter<Id, E> {
     /// Checks if the rate limiter allows the request. If it's allowed, returns the
     /// [`ToSwarm`] that should be emitted. When not allowed, the request is delayed
     /// until it can be sent.
-    pub fn allows(
+    pub(super) fn allows(
         &mut self,
         peer_id: PeerId,
         request_id: Id,
@@ -231,7 +231,7 @@ impl<Id: ReqId, E: EthSpec> SelfRateLimiter<Id, E> {
 
     /// Informs the limiter that a peer has disconnected. This removes any pending requests and
     /// returns their IDs.
-    pub fn peer_disconnected(&mut self, peer_id: PeerId) -> Vec<(Id, Protocol)> {
+    pub(super) fn peer_disconnected(&mut self, peer_id: PeerId) -> Vec<(Id, Protocol)> {
         self.active_requests.remove(&peer_id);
 
         // It's not ideal to iterate this map, but the key is (PeerId, Protocol) and this map
@@ -256,7 +256,7 @@ impl<Id: ReqId, E: EthSpec> SelfRateLimiter<Id, E> {
     }
 
     /// Informs the limiter that a response has been received.
-    pub fn request_completed(&mut self, peer_id: &PeerId, protocol: Protocol) {
+    pub(super) fn request_completed(&mut self, peer_id: &PeerId, protocol: Protocol) {
         if let Some(active_requests) = self.active_requests.get_mut(peer_id)
             && let Entry::Occupied(mut entry) = active_requests.entry(protocol)
         {
@@ -268,7 +268,7 @@ impl<Id: ReqId, E: EthSpec> SelfRateLimiter<Id, E> {
         }
     }
 
-    pub fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<BehaviourAction<Id, E>> {
+    pub(super) fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<BehaviourAction<Id, E>> {
         // First check the requests that were self rate limited, since those might add events to
         // the queue. Also do this before rate limiter pruning to avoid removing and
         // immediately adding rate limiting keys.
@@ -300,7 +300,7 @@ impl<Id: ReqId, E: EthSpec> SelfRateLimiter<Id, E> {
 }
 
 /// Returns the duration since the unix epoch.
-pub fn timestamp_now() -> Duration {
+pub(super) fn timestamp_now() -> Duration {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_else(|_| Duration::from_secs(0))

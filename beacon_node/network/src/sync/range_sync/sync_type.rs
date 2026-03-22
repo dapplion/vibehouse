@@ -16,7 +16,7 @@ pub(crate) enum RangeSyncType {
 impl RangeSyncType {
     /// Determines the type of sync given our local `PeerSyncInfo` and the remote's
     /// `PeerSyncInfo`.
-    pub fn new<T: BeaconChainTypes>(
+    pub(crate) fn new<T: BeaconChainTypes>(
         chain: &BeaconChain<T>,
         local_info: &SyncInfo,
         remote_info: &SyncInfo,
@@ -37,7 +37,7 @@ impl RangeSyncType {
     }
 
     /// Get a `str` representation of the `RangeSyncType`.
-    pub fn as_str(&self) -> &'static str {
+    pub(crate) fn as_str(&self) -> &'static str {
         match self {
             RangeSyncType::Finalized => "Finalized",
             RangeSyncType::Head => "Head",

@@ -148,18 +148,18 @@ enum FailedAtt<E: EthSpec> {
 }
 
 impl<E: EthSpec> FailedAtt<E> {
-    pub fn beacon_block_root(&self) -> &Hash256 {
+    pub(crate) fn beacon_block_root(&self) -> &Hash256 {
         &self.attestation_data().beacon_block_root
     }
 
-    pub fn kind(&self) -> &'static str {
+    pub(crate) fn kind(&self) -> &'static str {
         match self {
             FailedAtt::Unaggregate { .. } => "unaggregated",
             FailedAtt::Aggregate { .. } => "aggregated",
         }
     }
 
-    pub fn attestation_data(&self) -> &AttestationData {
+    pub(crate) fn attestation_data(&self) -> &AttestationData {
         match self {
             FailedAtt::Unaggregate { attestation, .. } => &attestation.data,
             FailedAtt::Aggregate { attestation, .. } => attestation.message().aggregate().data(),
@@ -209,7 +209,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     ///
     /// Raises a log if there are errors.
     #[allow(clippy::too_many_arguments)]
-    pub fn process_gossip_attestation(
+    pub(crate) fn process_gossip_attestation(
         self: Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -245,7 +245,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         );
     }
 
-    pub fn process_gossip_attestation_batch(
+    pub(crate) fn process_gossip_attestation_batch(
         self: Arc<Self>,
         packages: GossipAttestationBatch,
         allow_reprocess: bool,
@@ -431,7 +431,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     /// - Attempt to add it to the block inclusion pool.
     ///
     /// Raises a log if there are errors.
-    pub fn process_gossip_aggregate(
+    pub(crate) fn process_gossip_aggregate(
         self: Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -465,7 +465,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         );
     }
 
-    pub fn process_gossip_aggregate_batch(
+    pub(crate) fn process_gossip_aggregate_batch(
         self: Arc<Self>,
         packages: Vec<GossipAggregatePackage<T::EthSpec>>,
         allow_reprocess: bool,
@@ -635,7 +635,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         skip_all,
         fields(slot = %column_sidecar.slot(), block_root = ?column_sidecar.block_root(), index = column_sidecar.index()),
     )]
-    pub async fn process_gossip_data_column_sidecar(
+    pub(crate) async fn process_gossip_data_column_sidecar(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -838,7 +838,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             block_root = ?blob_sidecar.block_root(),
             index = blob_sidecar.index),
     )]
-    pub async fn process_gossip_blob(
+    pub(crate) async fn process_gossip_blob(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -1215,7 +1215,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         skip_all,
         fields(block_root = tracing::field::Empty),
     )]
-    pub async fn process_gossip_block(
+    pub(crate) async fn process_gossip_block(
         self: Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -1739,7 +1739,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         });
     }
 
-    pub fn process_gossip_voluntary_exit(
+    pub(crate) fn process_gossip_voluntary_exit(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -1795,7 +1795,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         metrics::inc_counter(&metrics::BEACON_PROCESSOR_EXIT_IMPORTED_TOTAL);
     }
 
-    pub fn process_gossip_proposer_slashing(
+    pub(crate) fn process_gossip_proposer_slashing(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -1855,7 +1855,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         metrics::inc_counter(&metrics::BEACON_PROCESSOR_PROPOSER_SLASHING_IMPORTED_TOTAL);
     }
 
-    pub fn process_gossip_attester_slashing(
+    pub(crate) fn process_gossip_attester_slashing(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -1907,7 +1907,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         metrics::inc_counter(&metrics::BEACON_PROCESSOR_ATTESTER_SLASHING_IMPORTED_TOTAL);
     }
 
-    pub fn process_gossip_bls_to_execution_change(
+    pub(crate) fn process_gossip_bls_to_execution_change(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -1987,7 +1987,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     /// - Attempt to add it to the naive aggregation pool.
     ///
     /// Raises a log if there are errors.
-    pub fn process_gossip_sync_committee_signature(
+    pub(crate) fn process_gossip_sync_committee_signature(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -2049,7 +2049,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     /// - Attempt to add it to the block inclusion pool.
     ///
     /// Raises a log if there are errors.
-    pub fn process_sync_committee_contribution(
+    pub(crate) fn process_sync_committee_contribution(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -2103,7 +2103,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         metrics::inc_counter(&metrics::BEACON_PROCESSOR_SYNC_CONTRIBUTION_IMPORTED_TOTAL);
     }
 
-    pub fn process_gossip_finality_update(
+    pub(crate) fn process_gossip_finality_update(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -2162,7 +2162,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         }
     }
 
-    pub fn process_gossip_optimistic_update(
+    pub(crate) fn process_gossip_optimistic_update(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -2926,7 +2926,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
 
     /// Handle an error whilst verifying a `SyncCommitteeMessage` or `SignedContributionAndProof` from the
     /// network.
-    pub fn handle_sync_committee_message_failure(
+    pub(crate) fn handle_sync_committee_message_failure(
         &self,
         peer_id: PeerId,
         message_id: MessageId,
@@ -3375,7 +3375,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Process a gossip execution bid from a builder (gloas ePBS).
-    pub fn process_gossip_execution_bid(
+    pub(crate) fn process_gossip_execution_bid(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -3612,7 +3612,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Process a gossip execution payload envelope from a builder (gloas ePBS).
-    pub async fn process_gossip_execution_payload(
+    pub(crate) async fn process_gossip_execution_payload(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -3796,7 +3796,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     /// Triggered when an index-1 attestation references a block whose envelope we haven't
     /// seen. We request the envelope via ExecutionPayloadEnvelopesByRoot and process it here.
     /// This is the same as gossip envelope processing but without gossip scoring/propagation.
-    pub async fn process_rpc_payload_envelope(
+    pub(crate) async fn process_rpc_payload_envelope(
         self: &Arc<Self>,
         peer_id: PeerId,
         envelope: std::sync::Arc<types::SignedExecutionPayloadEnvelope<T::EthSpec>>,
@@ -3888,7 +3888,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     /// Receives an individual `PayloadAttestationMessage` from the gossip network (per spec),
     /// converts it to an aggregated `PayloadAttestation` with a single bit, then verifies
     /// and imports.
-    pub async fn process_gossip_payload_attestation(
+    pub(crate) async fn process_gossip_payload_attestation(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -4093,7 +4093,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     /// - [REJECT] validator_index matches proposer_lookahead for that slot
     /// - [IGNORE] first valid message for this validator+slot
     /// - [REJECT] valid signature
-    pub fn process_gossip_proposer_preferences(
+    pub(crate) fn process_gossip_proposer_preferences(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -4266,7 +4266,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     ///
     /// Validates the proof and, if valid, imports it into the DA checker.
     /// If this proof completes the block's availability requirements, the block is imported.
-    pub async fn process_gossip_execution_proof(
+    pub(crate) async fn process_gossip_execution_proof(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,

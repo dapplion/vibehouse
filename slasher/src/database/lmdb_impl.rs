@@ -14,7 +14,7 @@ use lmdb_sys::{MDB_FIRST, MDB_GET_CURRENT, MDB_LAST, MDB_NEXT};
 use std::path::PathBuf;
 
 #[derive(Debug)]
-pub struct Environment {
+pub(crate) struct Environment {
     env: lmdb::Environment,
 }
 
@@ -35,7 +35,7 @@ pub struct Cursor<'env> {
 }
 
 impl Environment {
-    pub fn new(config: &Config) -> Result<Environment, Error> {
+    pub(crate) fn new(config: &Config) -> Result<Environment, Error> {
         let env = lmdb::Environment::new()
             .set_max_dbs(MAX_NUM_DBS as u32)
             .set_map_size(config.max_db_size_mbs * MEGABYTE)
@@ -43,7 +43,7 @@ impl Environment {
         Ok(Environment { env })
     }
 
-    pub fn create_databases(&self) -> Result<OpenDatabases<'_>, Error> {
+    pub(crate) fn create_databases(&self) -> Result<OpenDatabases<'_>, Error> {
         let indexed_attestation_db = self
             .env
             .create_db(Some(INDEXED_ATTESTATION_DB), Self::db_flags())?;
@@ -82,13 +82,13 @@ impl Environment {
         })
     }
 
-    pub fn begin_rw_txn(&self) -> Result<RwTransaction<'_>, Error> {
+    pub(crate) fn begin_rw_txn(&self) -> Result<RwTransaction<'_>, Error> {
         let txn = self.env.begin_rw_txn()?;
         Ok(RwTransaction { txn })
     }
 
     #[allow(dead_code)] // called via interface::Environment::filenames, only used on Windows
-    pub fn filenames(&self, config: &Config) -> Vec<PathBuf> {
+    pub(crate) fn filenames(&self, config: &Config) -> Vec<PathBuf> {
         vec![
             config.database_path.join("data.mdb"),
             config.database_path.join("lock.mdb"),
@@ -215,7 +215,7 @@ impl<'env> Cursor<'env> {
 }
 
 /// Mix-in trait for loading values from LMDB that may or may not exist.
-pub trait TxnOptional<T, E> {
+pub(super) trait TxnOptional<T, E> {
     fn optional(self) -> Result<Option<T>, E>;
 }
 

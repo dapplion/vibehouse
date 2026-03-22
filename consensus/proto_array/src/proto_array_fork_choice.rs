@@ -271,12 +271,12 @@ where
         }
     }
 
-    pub fn get_mut(&mut self, i: usize) -> &mut T {
+    pub(crate) fn get_mut(&mut self, i: usize) -> &mut T {
         self.ensure(i);
         &mut self.0[i]
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
+    pub(crate) fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
         self.0.iter_mut()
     }
 }

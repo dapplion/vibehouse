@@ -160,7 +160,7 @@ pub(crate) struct BackFillSync<T: BeaconChainTypes> {
 }
 
 impl<T: BeaconChainTypes> BackFillSync<T> {
-    pub fn new(
+    pub(super) fn new(
         beacon_chain: Arc<BeaconChain<T>>,
         network_globals: Arc<NetworkGlobals<T::EthSpec>>,
     ) -> Self {
@@ -200,7 +200,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
     }
 
     /// Pauses the backfill sync if it's currently syncing.
-    pub fn pause(&mut self) {
+    pub(super) fn pause(&mut self) {
         if let BackFillState::Syncing = self.state() {
             debug!(processed_epochs = %self.validated_batches, to_be_processed = %self.current_start,"Backfill sync paused");
             self.set_state(BackFillState::Paused);
@@ -211,7 +211,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
     ///
     /// If resuming is successful, reports back the current syncing metrics.
     #[must_use = "A failure here indicates the backfill sync has failed and the global sync state should be updated"]
-    pub fn start(
+    pub(super) fn start(
         &mut self,
         network: &mut SyncNetworkContext<T>,
     ) -> Result<SyncStart, BackFillError> {
@@ -288,7 +288,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
     /// A fully synced peer has joined us.
     /// If we are in a failed state, update a local variable to indicate we are able to restart
     /// the failed sync on the next attempt.
-    pub fn fully_synced_peer_joined(&mut self) {
+    pub(super) fn fully_synced_peer_joined(&mut self) {
         if matches!(self.state(), BackFillState::Failed) {
             self.restart_failed_sync = true;
         }
@@ -297,7 +297,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
     /// A peer has disconnected.
     /// If the peer has active batches, those are considered failed and re-requested.
     #[must_use = "A failure here indicates the backfill sync has failed and the global sync state should be updated"]
-    pub fn peer_disconnected(&mut self, peer_id: &PeerId) -> Result<(), BackFillError> {
+    pub(super) fn peer_disconnected(&mut self, peer_id: &PeerId) -> Result<(), BackFillError> {
         if matches!(self.state(), BackFillState::Failed) {
             return Ok(());
         }
@@ -311,7 +311,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
     ///
     /// If the batch exists it is re-requested.
     #[must_use = "A failure here indicates the backfill sync has failed and the global sync state should be updated"]
-    pub fn inject_error(
+    pub(super) fn inject_error(
         &mut self,
         network: &mut SyncNetworkContext<T>,
         batch_id: BatchId,
@@ -383,7 +383,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
     /// join the system.
     /// The sync manager should update the global sync state on failure.
     #[must_use = "A failure here indicates the backfill sync has failed and the global sync state should be updated"]
-    pub fn on_block_response(
+    pub(super) fn on_block_response(
         &mut self,
         network: &mut SyncNetworkContext<T>,
         batch_id: BatchId,
@@ -523,7 +523,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
     /// of the batch processor.
     /// If an error is returned the BackFill sync has failed.
     #[must_use = "A failure here indicates the backfill sync has failed and the global sync state should be updated"]
-    pub fn on_batch_process_result(
+    pub(super) fn on_batch_process_result(
         &mut self,
         network: &mut SyncNetworkContext<T>,
         batch_id: BatchId,
@@ -958,7 +958,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
     }
 
     /// Retries partial column requests within the batch by creating new requests for the failed columns.
-    pub fn retry_partial_batch(
+    pub(super) fn retry_partial_batch(
         &mut self,
         network: &mut SyncNetworkContext<T>,
         batch_id: BatchId,
@@ -1183,7 +1183,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
                 .epoch(T::EthSpec::slots_per_epoch())
     }
 
-    pub fn register_metrics(&self) {
+    pub(super) fn register_metrics(&self) {
         for state in BatchMetricsState::iter() {
             let count = self
                 .batches

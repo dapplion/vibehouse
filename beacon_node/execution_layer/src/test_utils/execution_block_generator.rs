@@ -781,8 +781,8 @@ impl<E: EthSpec> ExecutionBlockGenerator<E> {
     }
 }
 
-pub fn load_test_blobs_bundle_v1<E: EthSpec>() -> Result<(KzgCommitment, KzgProof, Blob<E>), String>
-{
+pub(super) fn load_test_blobs_bundle_v1<E: EthSpec>()
+-> Result<(KzgCommitment, KzgProof, Blob<E>), String> {
     let BlobsBundle::<E> {
         commitments,
         proofs,
@@ -806,7 +806,7 @@ pub fn load_test_blobs_bundle_v1<E: EthSpec>() -> Result<(KzgCommitment, KzgProo
     ))
 }
 
-pub fn load_test_blobs_bundle_v2<E: EthSpec>()
+pub(super) fn load_test_blobs_bundle_v2<E: EthSpec>()
 -> Result<(KzgCommitment, KzgProofs<E>, Blob<E>), String> {
     let BlobsBundle::<E> {
         commitments,

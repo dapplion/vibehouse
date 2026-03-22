@@ -23,7 +23,7 @@ pub(crate) struct RangeDataColumnBatchRequest<T: BeaconChainTypes> {
 }
 
 impl<T: BeaconChainTypes> RangeDataColumnBatchRequest<T> {
-    pub fn new(
+    pub(super) fn new(
         by_range_requests: Vec<(DataColumnsByRangeRequestId, Vec<ColumnIndex>)>,
         beacon_chain: Arc<BeaconChain<T>>,
         epoch: Epoch,
@@ -48,7 +48,7 @@ impl<T: BeaconChainTypes> RangeDataColumnBatchRequest<T> {
         }
     }
 
-    pub fn add_custody_columns(
+    pub(super) fn add_custody_columns(
         &mut self,
         req_id: DataColumnsByRangeRequestId,
         columns: Vec<Arc<DataColumnSidecar<T::EthSpec>>>,
@@ -60,7 +60,7 @@ impl<T: BeaconChainTypes> RangeDataColumnBatchRequest<T> {
         req.finish(req_id, columns)
     }
 
-    pub fn responses(
+    pub(super) fn responses(
         &mut self,
     ) -> Option<Result<DataColumnSidecarList<T::EthSpec>, CouplingError>> {
         let mut received_columns_for_slot: HashMap<Slot, DataColumnSidecarList<T::EthSpec>> =

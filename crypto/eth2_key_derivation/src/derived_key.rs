@@ -5,24 +5,25 @@ use sha2::{Digest, Sha256};
 use zeroize::Zeroize;
 
 /// The byte size of a SHA256 hash.
-pub const HASH_SIZE: usize = 32;
+pub(crate) const HASH_SIZE: usize = 32;
 
 /// The size of the lamport array.
 ///
 /// Indirectly defined in EIP-2333.
-pub const LAMPORT_ARRAY_SIZE: u8 = 255;
+pub(crate) const LAMPORT_ARRAY_SIZE: u8 = 255;
 
 /// The order of the BLS 12-381 curve.
 ///
 /// Defined in EIP-2333.
-pub const R: &str = "52435875175126190479447740508185965837690552500527637822603658699938581184513";
+pub(crate) const R: &str =
+    "52435875175126190479447740508185965837690552500527637822603658699938581184513";
 
 /// The `L` value used in the `hdkf_mod_r` function.
 ///
 /// In EIP-2333 this value is defined as:
 ///
 /// `ceil((3 * ceil(log2(r))) / 16)`
-pub const MOD_R_L: usize = 48;
+pub(crate) const MOD_R_L: usize = 48;
 
 /// A BLS secret key that is derived from some `seed`, or generated as a child from some other
 /// `DerivedKey`.

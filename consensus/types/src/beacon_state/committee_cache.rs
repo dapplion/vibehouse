@@ -359,7 +359,7 @@ pub fn epoch_committee_count(committees_per_slot: usize, slots_per_epoch: usize)
 /// `epoch`.
 ///
 /// Spec v0.12.1
-pub fn get_active_validator_indices<'a, V, I>(validators: V, epoch: Epoch) -> Vec<usize>
+pub(super) fn get_active_validator_indices<'a, V, I>(validators: V, epoch: Epoch) -> Vec<usize>
 where
     V: IntoIterator<Item = &'a Validator, IntoIter = I>,
     I: ExactSizeIterator + Iterator<Item = &'a Validator>,

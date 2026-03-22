@@ -14,7 +14,7 @@ pub(crate) struct DataColumnsByRootSingleBlockRequest {
 }
 
 impl DataColumnsByRootSingleBlockRequest {
-    pub fn try_into_request<E: EthSpec>(
+    pub(crate) fn try_into_request<E: EthSpec>(
         self,
         fork_name: ForkName,
         spec: &ChainSpec,
@@ -37,7 +37,7 @@ pub(crate) struct DataColumnsByRootRequestItems<E: EthSpec> {
 }
 
 impl<E: EthSpec> DataColumnsByRootRequestItems<E> {
-    pub fn new(request: DataColumnsByRootSingleBlockRequest) -> Self {
+    pub(crate) fn new(request: DataColumnsByRootSingleBlockRequest) -> Self {
         Self {
             request,
             items: vec![],

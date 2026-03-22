@@ -57,7 +57,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     ///
     /// This separate function was required to prevent a cycle during compiler
     /// type checking.
-    pub fn generate_rpc_beacon_block_process_fn(
+    pub(crate) fn generate_rpc_beacon_block_process_fn(
         self: Arc<Self>,
         block_root: Hash256,
         block: RpcBlock<T::EthSpec>,
@@ -79,7 +79,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Returns the `process_fn` and `ignore_fn` required when requeuing an RPC block.
-    pub fn generate_rpc_beacon_block_fns(
+    pub(crate) fn generate_rpc_beacon_block_fns(
         self: Arc<Self>,
         block_root: Hash256,
         block: RpcBlock<T::EthSpec>,
@@ -113,7 +113,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         skip_all,
         fields(?block_root),
     )]
-    pub async fn process_rpc_block(
+    pub(crate) async fn process_rpc_block(
         self: Arc<NetworkBeaconProcessor<T>>,
         block_root: Hash256,
         block: RpcBlock<T::EthSpec>,
@@ -244,7 +244,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     ///
     /// This separate function was required to prevent a cycle during compiler
     /// type checking.
-    pub fn generate_rpc_blobs_process_fn(
+    pub(crate) fn generate_rpc_blobs_process_fn(
         self: Arc<Self>,
         block_root: Hash256,
         blobs: FixedBlobSidecarList<T::EthSpec>,
@@ -267,7 +267,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         skip_all,
         fields(?block_root),
     )]
-    pub async fn process_rpc_blobs(
+    pub(crate) async fn process_rpc_blobs(
         self: Arc<NetworkBeaconProcessor<T>>,
         block_root: Hash256,
         blobs: FixedBlobSidecarList<T::EthSpec>,
@@ -355,7 +355,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         skip_all,
         fields(?block_root),
     )]
-    pub async fn process_rpc_custody_columns(
+    pub(crate) async fn process_rpc_custody_columns(
         self: Arc<NetworkBeaconProcessor<T>>,
         block_root: Hash256,
         custody_columns: DataColumnSidecarList<T::EthSpec>,
@@ -425,7 +425,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         });
     }
 
-    pub fn process_historic_data_columns(
+    pub(crate) fn process_historic_data_columns(
         &self,
         batch_id: CustodyBackfillBatchId,
         downloaded_columns: DataColumnSidecarList<T::EthSpec>,
@@ -529,7 +529,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         skip_all,
         fields(process_id = ?process_id, downloaded_blocks = downloaded_blocks.len())
     )]
-    pub async fn process_chain_segment(
+    pub(crate) async fn process_chain_segment(
         &self,
         process_id: ChainSegmentProcessId,
         downloaded_blocks: Vec<RpcBlock<T::EthSpec>>,
@@ -610,7 +610,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         skip_all,
         fields(downloaded_blocks = downloaded_blocks.len())
     )]
-    pub fn process_chain_segment_backfill(
+    pub(crate) fn process_chain_segment_backfill(
         &self,
         process_id: ChainSegmentProcessId,
         downloaded_blocks: Vec<RpcBlock<T::EthSpec>>,

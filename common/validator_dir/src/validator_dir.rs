@@ -204,7 +204,7 @@ impl ValidatorDir {
 }
 
 /// Attempts to load and decrypt a Keypair given path to the keystore.
-pub fn unlock_keypair<P: AsRef<Path>>(
+pub(crate) fn unlock_keypair<P: AsRef<Path>>(
     keystore_path: &Path,
     password_dir: P,
 ) -> Result<Keypair, Error> {

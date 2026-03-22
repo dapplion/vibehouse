@@ -54,7 +54,7 @@ pub(crate) struct ValidatorSpecification {
 
 impl ValidatorSpecification {
     /// Upload the validator to a validator client via HTTP.
-    pub async fn upload(
+    pub(crate) async fn upload(
         self,
         http_client: &ValidatorClientHttpClient,
         ignore_duplicates: bool,
@@ -180,7 +180,7 @@ pub(crate) struct StandardDepositDataJson {
 }
 
 impl StandardDepositDataJson {
-    pub fn new(
+    pub(crate) fn new(
         keypair: &Keypair,
         withdrawal_credentials: Hash256,
         amount: u64,
@@ -279,7 +279,7 @@ mod bytes_4_without_0x_prefix {
 
     const BYTES_LEN: usize = 4;
 
-    pub fn serialize<S>(bytes: &[u8; BYTES_LEN], serializer: S) -> Result<S::Ok, S::Error>
+    pub(super) fn serialize<S>(bytes: &[u8; BYTES_LEN], serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
@@ -287,7 +287,7 @@ mod bytes_4_without_0x_prefix {
         serializer.serialize_str(hex_string)
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<[u8; BYTES_LEN], D::Error>
+    pub(super) fn deserialize<'de, D>(deserializer: D) -> Result<[u8; BYTES_LEN], D::Error>
     where
         D: serde::Deserializer<'de>,
     {

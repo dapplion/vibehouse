@@ -91,7 +91,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
     /// * `blobs_req_id` - Optional request ID for blobs (pre-Fulu fork)
     /// * `data_columns` - Optional tuple of (request_id->column_indices pairs, expected_custody_columns) for Fulu fork
     #[allow(clippy::type_complexity)]
-    pub fn new(
+    pub(super) fn new(
         blocks_req_id: BlocksByRangeRequestId,
         blobs_req_id: Option<BlobsByRangeRequestId>,
         data_columns: Option<(
@@ -133,7 +133,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
     }
 
     /// Returns true if this request has deferred columns (columns needed but not yet requested).
-    pub fn has_deferred_columns(&self) -> bool {
+    pub(super) fn has_deferred_columns(&self) -> bool {
         matches!(
             self.block_data_request,
             RangeBlockDataRequest::DeferredColumns { .. }
@@ -141,7 +141,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
     }
 
     /// Returns the expected custody columns and request parameters if this request has deferred columns.
-    pub fn deferred_column_info(&self) -> Option<(&[ColumnIndex], u64, u64)> {
+    pub(super) fn deferred_column_info(&self) -> Option<(&[ColumnIndex], u64, u64)> {
         match &self.block_data_request {
             RangeBlockDataRequest::DeferredColumns {
                 expected_custody_columns,
@@ -153,7 +153,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
     }
 
     /// Activates deferred columns by transitioning to the DataColumns state with actual requests.
-    pub fn activate_deferred_columns(
+    pub(super) fn activate_deferred_columns(
         &mut self,
         column_requests: Vec<(DataColumnsByRangeRequestId, Vec<ColumnIndex>)>,
     ) {
@@ -178,7 +178,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
 
     /// Modifies `self` by inserting a new `DataColumnsByRangeRequestId` for a formerly failed
     /// request for some columns.
-    pub fn reinsert_failed_column_requests(
+    pub(super) fn reinsert_failed_column_requests(
         &mut self,
         failed_column_requests: Vec<(DataColumnsByRangeRequestId, Vec<u64>)>,
     ) -> Result<(), String> {
@@ -201,19 +201,19 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
 
     /// Record a peer that contributed to this batch's download.
     /// `index` convention: 0 = blocks, 1 = blobs, column_index + 2 = data columns.
-    pub fn record_peer(&mut self, peer_id: PeerId, indices: Vec<usize>) {
+    pub(super) fn record_peer(&mut self, peer_id: PeerId, indices: Vec<usize>) {
         self.peers.entry(peer_id).or_default().extend(indices);
     }
 
     /// Build a PeerGroup from all recorded peers.
-    pub fn peer_group(&self) -> PeerGroup {
+    pub(super) fn peer_group(&self) -> PeerGroup {
         PeerGroup::from_set(self.peers.clone())
     }
 
     /// Adds received blocks to the request.
     ///
     /// Returns an error if the request ID doesn't match the expected blocks request.
-    pub fn add_blocks(
+    pub(super) fn add_blocks(
         &mut self,
         req_id: BlocksByRangeRequestId,
         blocks: Vec<Arc<SignedBeaconBlock<E>>>,
@@ -225,7 +225,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
     ///
     /// Returns an error if this request expects data columns instead of blobs,
     /// or if the request ID doesn't match.
-    pub fn add_blobs(
+    pub(super) fn add_blobs(
         &mut self,
         req_id: BlobsByRangeRequestId,
         blobs: Vec<Arc<BlobSidecar<E>>>,
@@ -245,7 +245,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
     ///
     /// Returns an error if this request expects blobs instead of data columns,
     /// or if the request ID is unknown.
-    pub fn add_custody_columns(
+    pub(super) fn add_custody_columns(
         &mut self,
         req_id: DataColumnsByRangeRequestId,
         columns: Vec<Arc<DataColumnSidecar<E>>>,
@@ -271,7 +271,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
     /// Returns `None` if not all expected requests have completed.
     /// Returns `Some(Ok(_))` with valid RPC blocks if all data is present and valid.
     /// Returns `Some(Err(_))` if there are issues coupling blocks with their data.
-    pub fn responses(&mut self, spec: &ChainSpec) -> Option<CouplingResult<E>> {
+    pub(super) fn responses(&mut self, spec: &ChainSpec) -> Option<CouplingResult<E>> {
         let blocks = self.blocks_request.to_finished()?;
         let peer_group = self.peer_group();
 
@@ -511,7 +511,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
 }
 
 impl<I: PartialEq + std::fmt::Display, T> ByRangeRequest<I, T> {
-    pub fn finish(&mut self, id: I, data: T) -> Result<(), String> {
+    pub(super) fn finish(&mut self, id: I, data: T) -> Result<(), String> {
         match self {
             Self::Active(expected_id) => {
                 if expected_id != &id {
@@ -524,7 +524,7 @@ impl<I: PartialEq + std::fmt::Display, T> ByRangeRequest<I, T> {
         }
     }
 
-    pub fn to_finished(&self) -> Option<&T> {
+    pub(super) fn to_finished(&self) -> Option<&T> {
         match self {
             Self::Active(_) => None,
             Self::Complete(data) => Some(data),

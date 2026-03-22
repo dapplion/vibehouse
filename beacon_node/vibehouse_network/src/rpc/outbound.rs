@@ -39,7 +39,7 @@ impl<E: EthSpec> UpgradeInfo for OutboundRequestContainer<E> {
 
 /* Outbound upgrades */
 
-pub type OutboundFramed<TSocket, E> = Framed<Compat<TSocket>, SSZSnappyOutboundCodec<E>>;
+pub(super) type OutboundFramed<TSocket, E> = Framed<Compat<TSocket>, SSZSnappyOutboundCodec<E>>;
 
 impl<TSocket, E> OutboundUpgrade<TSocket> for OutboundRequestContainer<E>
 where

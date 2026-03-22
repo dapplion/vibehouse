@@ -9,7 +9,10 @@ use super::{ActiveRequestItems, LookupVerifyError};
 pub(crate) struct BlocksByRootSingleRequest(pub Hash256);
 
 impl BlocksByRootSingleRequest {
-    pub fn into_request(self, fork_context: &ForkContext) -> Result<BlocksByRootRequest, String> {
+    pub(crate) fn into_request(
+        self,
+        fork_context: &ForkContext,
+    ) -> Result<BlocksByRootRequest, String> {
         // This should always succeed (single block root), but we return a `Result` for safety.
         BlocksByRootRequest::new(vec![self.0], fork_context)
     }
@@ -21,7 +24,7 @@ pub(crate) struct BlocksByRootRequestItems<E: EthSpec> {
 }
 
 impl<E: EthSpec> BlocksByRootRequestItems<E> {
-    pub fn new(request: BlocksByRootSingleRequest) -> Self {
+    pub(crate) fn new(request: BlocksByRootSingleRequest) -> Self {
         Self {
             request,
             items: vec![],

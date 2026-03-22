@@ -175,7 +175,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
             chain_type = ?chain_type,
         )
     )]
-    pub fn new(
+    pub(super) fn new(
         id: Id,
         start_epoch: Epoch,
         target_head_slot: Slot,
@@ -203,39 +203,43 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
     }
 
     /// Returns true if this chain has the same target
-    pub fn has_same_target(&self, target_head_slot: Slot, target_head_root: Hash256) -> bool {
+    pub(super) fn has_same_target(
+        &self,
+        target_head_slot: Slot,
+        target_head_root: Hash256,
+    ) -> bool {
         self.target_head_slot == target_head_slot && self.target_head_root == target_head_root
     }
 
     /// Check if the chain has peers from which to process batches.
-    pub fn available_peers(&self) -> usize {
+    pub(super) fn available_peers(&self) -> usize {
         self.peers.len()
     }
 
     /// Get the chain's id.
-    pub fn id(&self) -> ChainId {
+    pub(super) fn id(&self) -> ChainId {
         self.id
     }
 
     /// Peers currently syncing this chain.
-    pub fn peers(&self) -> impl Iterator<Item = PeerId> + '_ {
+    pub(super) fn peers(&self) -> impl Iterator<Item = PeerId> + '_ {
         self.peers.iter().copied()
     }
 
     /// Progress in epochs made by the chain
-    pub fn processed_epochs(&self) -> u64 {
+    pub(super) fn processed_epochs(&self) -> u64 {
         self.processing_target
             .saturating_sub(self.start_epoch)
             .into()
     }
 
     /// Returns the total count of pending blocks in all the batches of this chain
-    pub fn pending_blocks(&self) -> usize {
+    pub(super) fn pending_blocks(&self) -> usize {
         self.batches.values().map(BatchInfo::pending_blocks).sum()
     }
 
     /// Returns the number of batches in the given metrics state.
-    pub fn count_batches_in_state(&self, state: BatchMetricsState) -> usize {
+    pub(super) fn count_batches_in_state(&self, state: BatchMetricsState) -> usize {
         self.batches
             .values()
             .filter(|b| b.state().metrics_state() == state)
@@ -244,7 +248,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
 
     /// Removes a peer from the chain.
     /// If the peer has active batches, those are considered failed and re-requested.
-    pub fn remove_peer(&mut self, peer_id: &PeerId) -> ProcessingResult {
+    pub(super) fn remove_peer(&mut self, peer_id: &PeerId) -> ProcessingResult {
         let _guard = self.span.clone().entered();
         debug!(peer = %peer_id, "Removing peer from chain");
         self.peers.remove(peer_id);
@@ -266,7 +270,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
 
     /// A block has been received for a batch on this chain.
     /// If the block correctly completes the batch it will be processed if possible.
-    pub fn on_block_response(
+    pub(super) fn on_block_response(
         &mut self,
         network: &mut SyncNetworkContext<T>,
         batch_id: BatchId,
@@ -471,7 +475,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
 
     /// The block processor has completed processing a batch. This function handles the result
     /// of the batch processor.
-    pub fn on_batch_process_result(
+    pub(super) fn on_batch_process_result(
         &mut self,
         network: &mut SyncNetworkContext<T>,
         batch_id: BatchId,
@@ -817,7 +821,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
         self.attempt_send_awaiting_download_batches(network, "handle_invalid_batch")
     }
 
-    pub fn stop_syncing(&mut self) {
+    pub(super) fn stop_syncing(&mut self) {
         debug!(parent: &self.span, "Stopping syncing");
         self.state = ChainSyncingState::Stopped;
     }
@@ -826,7 +830,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
     /// This chain has been requested to start syncing.
     ///
     /// This could be new chain, or an old chain that is being resumed.
-    pub fn start_syncing(
+    pub(super) fn start_syncing(
         &mut self,
         network: &mut SyncNetworkContext<T>,
         local_finalized_epoch: Epoch,
@@ -873,7 +877,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
     /// Add a peer to the chain.
     ///
     /// If the chain is active, this starts requesting batches from this peer.
-    pub fn add_peer(
+    pub(super) fn add_peer(
         &mut self,
         network: &mut SyncNetworkContext<T>,
         peer_id: PeerId,
@@ -889,7 +893,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
     /// An RPC error has occurred.
     ///
     /// If the batch exists it is re-requested.
-    pub fn inject_error(
+    pub(super) fn inject_error(
         &mut self,
         network: &mut SyncNetworkContext<T>,
         batch_id: BatchId,
@@ -1000,7 +1004,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
     ///
     /// Batches might get stuck in `AwaitingDownload` post peerdas because of lack of peers
     /// in required subnets. We need to progress them if peers are available at a later point.
-    pub fn attempt_send_awaiting_download_batches(
+    pub(super) fn attempt_send_awaiting_download_batches(
         &mut self,
         network: &mut SyncNetworkContext<T>,
         src: &str,
@@ -1026,7 +1030,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
     }
 
     /// Requests the batch assigned to the given id from a given peer.
-    pub fn send_batch(
+    pub(super) fn send_batch(
         &mut self,
         network: &mut SyncNetworkContext<T>,
         batch_id: BatchId,
@@ -1176,7 +1180,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
     }
 
     /// Returns true if this chain is currently syncing.
-    pub fn is_syncing(&self) -> bool {
+    pub(super) fn is_syncing(&self) -> bool {
         match self.state {
             ChainSyncingState::Syncing => true,
             ChainSyncingState::Stopped => false,
@@ -1185,7 +1189,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
 
     /// Kickstarts the chain by sending for processing batches that are ready and requesting more
     /// batches if needed.
-    pub fn resume(
+    pub(super) fn resume(
         &mut self,
         network: &mut SyncNetworkContext<T>,
     ) -> Result<KeepChain, RemoveChain> {
@@ -1341,7 +1345,7 @@ impl From<WrongBatchState> for RemoveChain {
 }
 
 impl RemoveChain {
-    pub fn is_critical(&self) -> bool {
+    pub(super) fn is_critical(&self) -> bool {
         matches!(
             self,
             RemoveChain::WrongBatchState(..) | RemoveChain::WrongChainState(..)

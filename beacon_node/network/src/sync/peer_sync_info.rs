@@ -14,7 +14,7 @@ pub(crate) enum PeerSyncType {
 }
 
 impl PeerSyncType {
-    pub fn as_sync_status(&self, info: &SyncInfo) -> PeerSyncStatus {
+    pub(super) fn as_sync_status(&self, info: &SyncInfo) -> PeerSyncStatus {
         match self {
             PeerSyncType::FullySynced => PeerSyncStatus::Synced { info: info.clone() },
             PeerSyncType::Behind => PeerSyncStatus::Behind { info: info.clone() },

@@ -224,7 +224,7 @@ async fn make_selection_proof<S: ValidatorStore + 'static, T: SlotClock>(
 
 impl DutyAndProof {
     /// Create a new `DutyAndProof` with the selection proof waiting to be filled in.
-    pub fn new_without_selection_proof(duty: AttesterData, current_slot: Slot) -> Self {
+    pub(crate) fn new_without_selection_proof(duty: AttesterData, current_slot: Slot) -> Self {
         let subscription_slots = SubscriptionSlots::new(duty.slot, current_slot);
         Self {
             duty,

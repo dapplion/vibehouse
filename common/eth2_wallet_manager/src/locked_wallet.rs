@@ -6,7 +6,7 @@ use eth2_wallet::{Uuid, ValidatorKeystores, Wallet};
 use lockfile::Lockfile;
 use std::path::{Path, PathBuf};
 
-pub const LOCK_FILE: &str = ".lock";
+pub(crate) const LOCK_FILE: &str = ".lock";
 
 /// Represents a `Wallet` in a `wallet_dir`.
 ///

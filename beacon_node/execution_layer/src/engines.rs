@@ -83,7 +83,7 @@ impl Default for State {
 
 impl State {
     // Updates the state and notifies all watchers if the state has changed.
-    pub fn update(&mut self, new_state: EngineStateInternal) {
+    pub(crate) fn update(&mut self, new_state: EngineStateInternal) {
         self.state = new_state;
         self.notifier.send_if_modified(|last_state| {
             let changed = *last_state != new_state.into(); // notify conditionally
@@ -95,7 +95,7 @@ impl State {
     /// Gives access to a channel containing whether the last state is online.
     ///
     /// This can be called several times.
-    pub fn watch(&self) -> WatchStream<EngineState> {
+    pub(crate) fn watch(&self) -> WatchStream<EngineState> {
         self.notifier.subscribe().into()
     }
 }
@@ -132,7 +132,7 @@ pub(crate) struct Engine {
 
 impl Engine {
     /// Creates a new, offline engine.
-    pub fn new(api: HttpJsonRpc, executor: TaskExecutor) -> Self {
+    pub(crate) fn new(api: HttpJsonRpc, executor: TaskExecutor) -> Self {
         Self {
             api,
             payload_id_cache: Mutex::new(LruCache::new(PAYLOAD_ID_LRU_CACHE_SIZE)),
@@ -145,11 +145,11 @@ impl Engine {
     /// Gives access to a channel containing the last engine state.
     ///
     /// This can be called several times.
-    pub async fn watch_state(&self) -> WatchStream<EngineState> {
+    pub(crate) async fn watch_state(&self) -> WatchStream<EngineState> {
         self.state.read().await.watch()
     }
 
-    pub async fn get_payload_id(
+    pub(crate) async fn get_payload_id(
         &self,
         head_block_hash: &ExecutionBlockHash,
         payload_attributes: &PayloadAttributes,
@@ -161,7 +161,7 @@ impl Engine {
             .copied()
     }
 
-    pub async fn notify_forkchoice_updated(
+    pub(crate) async fn notify_forkchoice_updated(
         &self,
         forkchoice_state: ForkchoiceState,
         payload_attributes: Option<PayloadAttributes>,
@@ -188,7 +188,7 @@ impl Engine {
         *self.latest_forkchoice_state.read().await
     }
 
-    pub async fn set_latest_forkchoice_state(&self, state: ForkchoiceState) {
+    pub(crate) async fn set_latest_forkchoice_state(&self, state: ForkchoiceState) {
         *self.latest_forkchoice_state.write().await = Some(state);
     }
 
@@ -220,18 +220,18 @@ impl Engine {
     }
 
     /// Returns `true` if the engine has a "synced" status.
-    pub async fn is_synced(&self) -> bool {
+    pub(crate) async fn is_synced(&self) -> bool {
         **self.state.read().await == EngineStateInternal::Synced
     }
 
     /// Returns `true` if the engine has a status other than synced or syncing.
-    pub async fn is_offline(&self) -> bool {
+    pub(crate) async fn is_offline(&self) -> bool {
         EngineState::from(**self.state.read().await) == EngineState::Offline
     }
 
     /// Run the `EngineApi::upcheck` function if the node's last known state is not synced. This
     /// might be used to recover the node if offline.
-    pub async fn upcheck(&self) {
+    pub(crate) async fn upcheck(&self) {
         let (state, cache_action) = match self.api.upcheck().await {
             Ok(()) => {
                 let mut state = self.state.write().await;
@@ -314,7 +314,7 @@ impl Engine {
     ///
     /// Set `age_limit` to `None` to always return the cached result
     /// Set `age_limit` to `Some(Duration::ZERO)` to force fetching from EE
-    pub async fn get_engine_capabilities(
+    pub(crate) async fn get_engine_capabilities(
         &self,
         age_limit: Option<Duration>,
     ) -> Result<EngineCapabilities, EngineApiError> {
@@ -330,7 +330,7 @@ impl Engine {
     ///
     /// Set `age_limit` to `None` to always return the cached result
     /// Set `age_limit` to `Some(Duration::ZERO)` to force fetching from EE
-    pub async fn get_engine_version(
+    pub(crate) async fn get_engine_version(
         &self,
         age_limit: Option<Duration>,
     ) -> Result<Vec<ClientVersionV1>, EngineApiError> {
@@ -343,7 +343,7 @@ impl Engine {
     ///
     /// This function takes locks on `self.state`, holding a conflicting lock might cause a
     /// deadlock.
-    pub async fn request<'a, F, G, H>(self: &'a Arc<Self>, func: F) -> Result<H, EngineError>
+    pub(crate) async fn request<'a, F, G, H>(self: &'a Arc<Self>, func: F) -> Result<H, EngineError>
     where
         F: FnOnce(&'a Engine) -> G,
         G: Future<Output = Result<H, EngineApiError>>,

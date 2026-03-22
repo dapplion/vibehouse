@@ -36,7 +36,7 @@ pub const INFINITY_SIGNATURE_UNCOMPRESSED: [u8; SIGNATURE_UNCOMPRESSED_BYTES_LEN
 ];
 
 /// The compressed bytes used to represent `GenericSignature::empty()`.
-pub const NONE_SIGNATURE: [u8; SIGNATURE_BYTES_LEN] = [0; SIGNATURE_BYTES_LEN];
+pub(crate) const NONE_SIGNATURE: [u8; SIGNATURE_BYTES_LEN] = [0; SIGNATURE_BYTES_LEN];
 
 /// Implemented on some struct from a BLS library so it may be used as the `point` in an
 /// `GenericSignature`.

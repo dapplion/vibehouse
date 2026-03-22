@@ -157,14 +157,17 @@ pub struct Context<T: BeaconChainTypes> {
 mod serde_axum_status_code {
     use serde::{Deserialize, Serialize, de::Error};
 
-    pub fn serialize<S>(status_code: &axum::http::StatusCode, ser: S) -> Result<S::Ok, S::Error>
+    pub(crate) fn serialize<S>(
+        status_code: &axum::http::StatusCode,
+        ser: S,
+    ) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
         status_code.as_u16().serialize(ser)
     }
 
-    pub fn deserialize<'de, D>(de: D) -> Result<axum::http::StatusCode, D::Error>
+    pub(crate) fn deserialize<'de, D>(de: D) -> Result<axum::http::StatusCode, D::Error>
     where
         D: serde::de::Deserializer<'de>,
     {

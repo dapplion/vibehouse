@@ -12,7 +12,7 @@ use crate::database::redb_impl;
 
 #[derive(Debug)]
 #[allow(dead_code)] // Disabled variant is reachable at runtime via DatabaseBackend::Disabled
-pub enum Environment {
+pub(crate) enum Environment {
     #[cfg(feature = "mdbx")]
     Mdbx(mdbx_impl::Environment),
     #[cfg(feature = "lmdb")]
@@ -45,7 +45,7 @@ pub enum Database<'env> {
 }
 
 #[derive(Debug)]
-pub struct OpenDatabases<'env> {
+pub(crate) struct OpenDatabases<'env> {
     pub indexed_attestation_db: Database<'env>,
     pub indexed_attestation_id_db: Database<'env>,
     pub attesters_db: Database<'env>,
@@ -68,11 +68,11 @@ pub enum Cursor<'env> {
     Disabled(PhantomData<&'env ()>),
 }
 
-pub type Key<'a> = Cow<'a, [u8]>;
-pub type Value<'a> = Cow<'a, [u8]>;
+pub(crate) type Key<'a> = Cow<'a, [u8]>;
+pub(crate) type Value<'a> = Cow<'a, [u8]>;
 
 impl Environment {
-    pub fn new(config: &Config) -> Result<Environment, Error> {
+    pub(crate) fn new(config: &Config) -> Result<Environment, Error> {
         match config.backend {
             #[cfg(feature = "mdbx")]
             DatabaseBackend::Mdbx => mdbx_impl::Environment::new(config).map(Environment::Mdbx),
@@ -84,7 +84,7 @@ impl Environment {
         }
     }
 
-    pub fn create_databases(&self) -> Result<OpenDatabases<'_>, Error> {
+    pub(crate) fn create_databases(&self) -> Result<OpenDatabases<'_>, Error> {
         match self {
             #[cfg(feature = "mdbx")]
             Self::Mdbx(env) => env.create_databases(),
@@ -96,7 +96,7 @@ impl Environment {
         }
     }
 
-    pub fn begin_rw_txn(&self) -> Result<RwTransaction<'_>, Error> {
+    pub(crate) fn begin_rw_txn(&self) -> Result<RwTransaction<'_>, Error> {
         match self {
             #[cfg(feature = "mdbx")]
             Self::Mdbx(env) => env.begin_rw_txn().map(RwTransaction::Mdbx),
@@ -110,7 +110,7 @@ impl Environment {
 
     /// List of all files used by the database.
     #[allow(dead_code)] // only used on Windows (cfg(windows) in database.rs)
-    pub fn filenames(&self, config: &Config) -> Vec<PathBuf> {
+    pub(crate) fn filenames(&self, config: &Config) -> Vec<PathBuf> {
         match self {
             #[cfg(feature = "mdbx")]
             Self::Mdbx(env) => env.filenames(config),

@@ -90,7 +90,7 @@ pub(crate) struct WriteOptions {
 }
 
 impl WriteOptions {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         WriteOptions { sync: false }
     }
 }

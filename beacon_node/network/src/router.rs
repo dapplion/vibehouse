@@ -82,7 +82,7 @@ pub(crate) enum RouterMessage<E: EthSpec> {
 impl<T: BeaconChainTypes> Router<T> {
     /// Initializes and runs the Router.
     #[allow(clippy::too_many_arguments)]
-    pub fn spawn(
+    pub(crate) fn spawn(
         beacon_chain: Arc<BeaconChain<T>>,
         network_globals: Arc<NetworkGlobals<T::EthSpec>>,
         network_send: mpsc::UnboundedSender<NetworkMessage<T::EthSpec>>,
@@ -555,7 +555,12 @@ impl<T: BeaconChainTypes> Router<T> {
 
     /// An error occurred during an RPC request. The state is maintained by the sync manager, so
     /// this function notifies the sync manager of the error.
-    pub fn on_rpc_error(&mut self, peer_id: PeerId, app_request_id: AppRequestId, error: RPCError) {
+    pub(crate) fn on_rpc_error(
+        &mut self,
+        peer_id: PeerId,
+        app_request_id: AppRequestId,
+        error: RPCError,
+    ) {
         // Check if the failed RPC belongs to sync
         if let AppRequestId::Sync(sync_request_id) = app_request_id {
             self.send_to_sync(SyncMessage::RpcError {
@@ -569,7 +574,7 @@ impl<T: BeaconChainTypes> Router<T> {
     /// Handle a `Status` request.
     ///
     /// Processes the `Status` from the remote peer and sends back our `Status`.
-    pub fn on_status_request(
+    pub(crate) fn on_status_request(
         &mut self,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId, // Use ResponseId here
@@ -592,7 +597,7 @@ impl<T: BeaconChainTypes> Router<T> {
 
     /// Handle a `BlocksByRange` response from the peer.
     /// A `beacon_block` behaves as a stream which is terminated on a `None` response.
-    pub fn on_blocks_by_range_response(
+    pub(crate) fn on_blocks_by_range_response(
         &mut self,
         peer_id: PeerId,
         app_request_id: AppRequestId,
@@ -627,7 +632,7 @@ impl<T: BeaconChainTypes> Router<T> {
         });
     }
 
-    pub fn on_blobs_by_range_response(
+    pub(crate) fn on_blobs_by_range_response(
         &mut self,
         peer_id: PeerId,
         app_request_id: AppRequestId,
@@ -651,7 +656,7 @@ impl<T: BeaconChainTypes> Router<T> {
     }
 
     /// Handle a `BlocksByRoot` response from the peer.
-    pub fn on_blocks_by_root_response(
+    pub(crate) fn on_blocks_by_root_response(
         &mut self,
         peer_id: PeerId,
         app_request_id: AppRequestId,
@@ -685,7 +690,7 @@ impl<T: BeaconChainTypes> Router<T> {
     }
 
     /// Handle a `BlobsByRoot` response from the peer.
-    pub fn on_blobs_by_root_response(
+    pub(crate) fn on_blobs_by_root_response(
         &mut self,
         peer_id: PeerId,
         app_request_id: AppRequestId,
@@ -719,7 +724,7 @@ impl<T: BeaconChainTypes> Router<T> {
     }
 
     /// Handle a `DataColumnsByRoot` response from the peer.
-    pub fn on_data_columns_by_root_response(
+    pub(crate) fn on_data_columns_by_root_response(
         &mut self,
         peer_id: PeerId,
         app_request_id: AppRequestId,
@@ -752,7 +757,7 @@ impl<T: BeaconChainTypes> Router<T> {
         });
     }
 
-    pub fn on_data_columns_by_range_response(
+    pub(crate) fn on_data_columns_by_range_response(
         &mut self,
         peer_id: PeerId,
         app_request_id: AppRequestId,
@@ -836,7 +841,7 @@ pub(crate) struct HandlerNetworkContext<E: EthSpec> {
 }
 
 impl<E: EthSpec> HandlerNetworkContext<E> {
-    pub fn new(network_send: mpsc::UnboundedSender<NetworkMessage<E>>) -> Self {
+    pub(crate) fn new(network_send: mpsc::UnboundedSender<NetworkMessage<E>>) -> Self {
         Self { network_send }
     }
 
@@ -848,7 +853,7 @@ impl<E: EthSpec> HandlerNetworkContext<E> {
     }
 
     /// Sends a request to the network task.
-    pub fn send_processor_request(&mut self, peer_id: PeerId, request: RequestType<E>) {
+    pub(crate) fn send_processor_request(&mut self, peer_id: PeerId, request: RequestType<E>) {
         self.inform_network(NetworkMessage::SendRequest {
             peer_id,
             app_request_id: AppRequestId::Router,
@@ -857,7 +862,7 @@ impl<E: EthSpec> HandlerNetworkContext<E> {
     }
 
     /// Sends a response to the network task.
-    pub fn send_response(
+    pub(crate) fn send_response(
         &mut self,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,

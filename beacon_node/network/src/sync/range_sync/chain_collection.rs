@@ -56,7 +56,7 @@ pub(crate) struct ChainCollection<T: BeaconChainTypes> {
 }
 
 impl<T: BeaconChainTypes> ChainCollection<T> {
-    pub fn new(beacon_chain: Arc<BeaconChain<T>>) -> Self {
+    pub(super) fn new(beacon_chain: Arc<BeaconChain<T>>) -> Self {
         ChainCollection {
             beacon_chain,
             finalized_chains: FnvHashMap::default(),
@@ -118,7 +118,10 @@ impl<T: BeaconChainTypes> ChainCollection<T> {
     /// Calls `func` on every chain of the collection. If the result is
     /// `ProcessingResult::RemoveChain`, the chain is removed and returned.
     /// NOTE: `func` must not change the syncing state of a chain.
-    pub fn call_all<F>(&mut self, mut func: F) -> Vec<(SyncingChain<T>, RangeSyncType, RemoveChain)>
+    pub(super) fn call_all<F>(
+        &mut self,
+        mut func: F,
+    ) -> Vec<(SyncingChain<T>, RangeSyncType, RemoveChain)>
     where
         F: FnMut(&mut SyncingChain<T>) -> ProcessingResult,
     {
@@ -155,7 +158,7 @@ impl<T: BeaconChainTypes> ChainCollection<T> {
     /// If the chain is found, its syncing type is returned, or an error otherwise.
     /// NOTE: `func` should not change the sync state of a chain.
     #[allow(clippy::type_complexity)]
-    pub fn call_by_id<F>(
+    pub(super) fn call_by_id<F>(
         &mut self,
         id: ChainId,
         func: F,
@@ -192,7 +195,7 @@ impl<T: BeaconChainTypes> ChainCollection<T> {
     /// This removes any out-dated chains, swaps to any higher priority finalized chains and
     /// updates the state of the collection. This starts head chains syncing if any are required to
     /// do so.
-    pub fn update(
+    pub(super) fn update(
         &mut self,
         network: &mut SyncNetworkContext<T>,
         local: &SyncInfo,
@@ -216,7 +219,7 @@ impl<T: BeaconChainTypes> ChainCollection<T> {
         }
     }
 
-    pub fn state(&self) -> SyncChainStatus {
+    pub(super) fn state(&self) -> SyncChainStatus {
         match self.state {
             RangeSyncState::Finalized(ref syncing_id) => {
                 let chain = self
@@ -390,14 +393,14 @@ impl<T: BeaconChainTypes> ChainCollection<T> {
     }
 
     /// Returns if `true` if any finalized chains exist, `false` otherwise.
-    pub fn is_finalizing_sync(&self) -> bool {
+    pub(super) fn is_finalizing_sync(&self) -> bool {
         !self.finalized_chains.is_empty()
     }
 
     /// Removes any outdated finalized or head chains.
     /// This removes chains with no peers, or chains whose start block slot is less than our current
     /// finalized block slot. Peers that would create outdated chains are removed too.
-    pub fn purge_outdated_chains(
+    pub(super) fn purge_outdated_chains(
         &mut self,
         local_info: &SyncInfo,
         awaiting_head_peers: &mut HashMap<PeerId, SyncInfo>,
@@ -456,7 +459,7 @@ impl<T: BeaconChainTypes> ChainCollection<T> {
     /// Adds a peer to a chain with the given target, or creates a new syncing chain if it doesn't
     /// exists.
     #[allow(clippy::too_many_arguments)]
-    pub fn add_peer_or_create_chain(
+    pub(super) fn add_peer_or_create_chain(
         &mut self,
         start_epoch: Epoch,
         target_head_root: Hash256,
@@ -515,7 +518,7 @@ impl<T: BeaconChainTypes> ChainCollection<T> {
         }
     }
 
-    pub fn register_metrics(&self) {
+    pub(super) fn register_metrics(&self) {
         for (sync_type, chains) in [
             ("range_finalized", &self.finalized_chains),
             ("range_head", &self.head_chains),

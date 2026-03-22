@@ -49,7 +49,7 @@ impl Default for RayonPoolProvider {
 impl RayonPoolProvider {
     /// Get a scoped thread pool by priority level.
     /// For critical/highest priority tasks, use the global pool instead.
-    pub fn get_thread_pool(&self, rayon_pool_type: RayonPoolType) -> Arc<ThreadPool> {
+    pub(crate) fn get_thread_pool(&self, rayon_pool_type: RayonPoolType) -> Arc<ThreadPool> {
         match rayon_pool_type {
             RayonPoolType::HighPriority => self.high_priority_thread_pool.clone(),
             RayonPoolType::LowPriority => self.low_priority_thread_pool.clone(),

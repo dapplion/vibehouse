@@ -12,7 +12,7 @@ use types::{
 };
 
 /// Slash the validator with index `slashed_index`.
-pub fn slash_validator<E: EthSpec>(
+pub(crate) fn slash_validator<E: EthSpec>(
     state: &mut BeaconState<E>,
     slashed_index: usize,
     opt_whistleblower_index: Option<usize>,

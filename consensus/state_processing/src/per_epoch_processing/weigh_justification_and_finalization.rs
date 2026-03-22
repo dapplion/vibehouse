@@ -5,7 +5,7 @@ use types::{Checkpoint, EthSpec};
 
 /// Update the justified and finalized checkpoints for matching target attestations.
 #[allow(clippy::if_same_then_else)] // For readability and consistency with spec.
-pub fn weigh_justification_and_finalization<E: EthSpec>(
+pub(crate) fn weigh_justification_and_finalization<E: EthSpec>(
     mut state: JustificationAndFinalizationState<E>,
     total_active_balance: u64,
     previous_target_balance: u64,

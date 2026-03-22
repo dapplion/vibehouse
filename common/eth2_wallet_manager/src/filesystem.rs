@@ -21,7 +21,7 @@ pub enum Error {
 }
 
 /// Read a wallet with the given `uuid` from the `wallet_dir`.
-pub fn read<P: AsRef<Path>>(wallet_dir: P, uuid: &Uuid) -> Result<Wallet, Error> {
+pub(crate) fn read<P: AsRef<Path>>(wallet_dir: P, uuid: &Uuid) -> Result<Wallet, Error> {
     let json_path = wallet_json_path(wallet_dir, uuid);
 
     if json_path.exists() {
@@ -43,7 +43,7 @@ pub fn read<P: AsRef<Path>>(wallet_dir: P, uuid: &Uuid) -> Result<Wallet, Error>
 /// 1. Copy the current JSON file to a backup file.
 /// 2. Over-write the existing JSON file.
 /// 3. Delete the backup file.
-pub fn update<P: AsRef<Path>>(wallet_dir: P, wallet: &Wallet) -> Result<(), Error> {
+pub(crate) fn update<P: AsRef<Path>>(wallet_dir: P, wallet: &Wallet) -> Result<(), Error> {
     let wallet_dir = wallet_dir.as_ref();
 
     let json_path = wallet_json_path(wallet_dir, wallet.uuid());
@@ -73,7 +73,7 @@ pub fn update<P: AsRef<Path>>(wallet_dir: P, wallet: &Wallet) -> Result<(), Erro
 }
 
 /// Writes the `wallet` into the `wallet_dir`, returning an error if it already exists.
-pub fn create<P: AsRef<Path>>(wallet_dir: P, wallet: &Wallet) -> Result<(), Error> {
+pub(crate) fn create<P: AsRef<Path>>(wallet_dir: P, wallet: &Wallet) -> Result<(), Error> {
     let json_path = wallet_json_path(wallet_dir, wallet.uuid());
 
     if json_path.exists() {

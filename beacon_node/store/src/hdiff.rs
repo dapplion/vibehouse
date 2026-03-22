@@ -321,11 +321,11 @@ impl StoreItem for HDiff {
 }
 
 impl BytesDiff {
-    pub fn compute(source: &[u8], target: &[u8]) -> Result<Self, Error> {
+    pub(crate) fn compute(source: &[u8], target: &[u8]) -> Result<Self, Error> {
         Self::compute_xdelta(source, target)
     }
 
-    pub fn compute_xdelta(source_bytes: &[u8], target_bytes: &[u8]) -> Result<Self, Error> {
+    pub(crate) fn compute_xdelta(source_bytes: &[u8], target_bytes: &[u8]) -> Result<Self, Error> {
         // Start with a conservative estimate: diffs between similar beacon states are typically
         // much smaller than the states themselves. Use 1/4 of total size as initial guess,
         // with a minimum of 1024 bytes to handle tiny inputs.
@@ -353,7 +353,7 @@ impl BytesDiff {
         }
     }
 
-    pub fn apply(&self, source: &[u8], target: &mut Vec<u8>) -> Result<(), Error> {
+    pub(crate) fn apply(&self, source: &[u8], target: &mut Vec<u8>) -> Result<(), Error> {
         self.apply_xdelta(source, target)
     }
 
@@ -387,13 +387,13 @@ impl BytesDiff {
     }
 
     /// Byte size of this instance
-    pub fn size(&self) -> usize {
+    pub(crate) fn size(&self) -> usize {
         self.bytes.len()
     }
 }
 
 impl CompressedU64Diff {
-    pub fn compute(xs: &[u64], ys: &[u64], config: &StoreConfig) -> Result<Self, Error> {
+    pub(crate) fn compute(xs: &[u64], ys: &[u64], config: &StoreConfig) -> Result<Self, Error> {
         if xs.len() > ys.len() {
             return Err(Error::DiffDeletionsNotSupported);
         }
@@ -415,7 +415,7 @@ impl CompressedU64Diff {
         })
     }
 
-    pub fn apply(&self, xs: &mut Vec<u64>, config: &StoreConfig) -> Result<(), Error> {
+    pub(crate) fn apply(&self, xs: &mut Vec<u64>, config: &StoreConfig) -> Result<(), Error> {
         // Decompress balances diff.
         let balances_diff_bytes = config
             .decompress_bytes(&self.bytes)
@@ -441,13 +441,13 @@ impl CompressedU64Diff {
     }
 
     /// Byte size of this instance
-    pub fn size(&self) -> usize {
+    pub(crate) fn size(&self) -> usize {
         self.bytes.len()
     }
 }
 
 impl ValidatorsDiff {
-    pub fn compute(
+    pub(crate) fn compute(
         xs: &[Validator],
         ys: &[Validator],
         config: &StoreConfig,
@@ -540,7 +540,7 @@ impl ValidatorsDiff {
         })
     }
 
-    pub fn apply(&self, xs: &mut Vec<Validator>, config: &StoreConfig) -> Result<(), Error> {
+    pub(crate) fn apply(&self, xs: &mut Vec<Validator>, config: &StoreConfig) -> Result<(), Error> {
         let validator_diff_bytes = config
             .decompress_bytes(&self.bytes)
             .map_err(Error::Compression)?;
@@ -592,7 +592,7 @@ impl ValidatorsDiff {
     }
 
     /// Byte size of this instance
-    pub fn size(&self) -> usize {
+    pub(crate) fn size(&self) -> usize {
         self.bytes.len()
     }
 }
@@ -604,7 +604,7 @@ struct ValidatorDiffEntry {
 }
 
 impl<T: Decode + Encode + Copy> AppendOnlyDiff<T> {
-    pub fn compute(xs: &[T], ys: &[T]) -> Result<Self, Error> {
+    pub(crate) fn compute(xs: &[T], ys: &[T]) -> Result<Self, Error> {
         match xs.len().cmp(&ys.len()) {
             Ordering::Less => Ok(Self {
                 values: ys.iter().skip(xs.len()).copied().collect(),
@@ -615,12 +615,12 @@ impl<T: Decode + Encode + Copy> AppendOnlyDiff<T> {
         }
     }
 
-    pub fn apply(&self, xs: &mut Vec<T>) {
+    pub(crate) fn apply(&self, xs: &mut Vec<T>) {
         xs.extend(self.values.iter().copied());
     }
 
     /// Byte size of this instance
-    pub fn size(&self) -> usize {
+    pub(crate) fn size(&self) -> usize {
         self.values.len() * size_of::<T>()
     }
 }

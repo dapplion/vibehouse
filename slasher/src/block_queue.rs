@@ -3,16 +3,16 @@ use std::collections::HashSet;
 use types::SignedBeaconBlockHeader;
 
 #[derive(Debug, Default)]
-pub struct BlockQueue {
+pub(crate) struct BlockQueue {
     blocks: Mutex<HashSet<SignedBeaconBlockHeader>>,
 }
 
 impl BlockQueue {
-    pub fn queue(&self, block_header: SignedBeaconBlockHeader) {
+    pub(crate) fn queue(&self, block_header: SignedBeaconBlockHeader) {
         self.blocks.lock().insert(block_header);
     }
 
-    pub fn dequeue(&self) -> HashSet<SignedBeaconBlockHeader> {
+    pub(crate) fn dequeue(&self) -> HashSet<SignedBeaconBlockHeader> {
         let mut blocks = self.blocks.lock();
         std::mem::take(&mut *blocks)
     }

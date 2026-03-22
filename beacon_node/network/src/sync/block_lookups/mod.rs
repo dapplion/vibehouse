@@ -130,7 +130,7 @@ use vibehouse_network::service::api_types::Id;
 pub(crate) type BlockLookupSummary = (Id, Hash256, Option<Hash256>, Vec<PeerId>);
 
 impl<T: BeaconChainTypes> BlockLookups<T> {
-    pub fn new() -> Self {
+    pub(super) fn new() -> Self {
         Self {
             ignored_chains: LRUTimeCache::new(Duration::from_secs(
                 IGNORED_CHAINS_CACHE_EXPIRY_SECONDS,
@@ -175,7 +175,7 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
     ///
     /// Returns true if the lookup is created or already exists
     #[must_use = "only reference the new lookup if returns true"]
-    pub fn search_child_and_parent(
+    pub(super) fn search_child_and_parent(
         &mut self,
         block_root: Hash256,
         block_component: BlockComponent<T::EthSpec>,
@@ -208,7 +208,7 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
     ///
     /// Returns true if the lookup is created or already exists
     #[must_use = "only reference the new lookup if returns true"]
-    pub fn search_unknown_block(
+    pub(super) fn search_unknown_block(
         &mut self,
         block_root: Hash256,
         peer_source: &[PeerId],
@@ -224,7 +224,7 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
     ///
     /// Returns true if the lookup is created or already exists
     #[must_use = "only reference the new lookup if returns true"]
-    pub fn search_parent_of_child(
+    pub(super) fn search_parent_of_child(
         &mut self,
         block_root_to_search: Hash256,
         child_block_root_trigger: Hash256,
@@ -424,7 +424,7 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
     /* Lookup responses */
 
     /// Process a block or blob response received from a single lookup request.
-    pub fn on_download_response<R: RequestState<T>>(
+    pub(super) fn on_download_response<R: RequestState<T>>(
         &mut self,
         id: SingleLookupReqId,
         response: Result<(R::VerifiedResponseType, PeerGroup, Duration), RpcResponseError>,
@@ -435,7 +435,7 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
     }
 
     /// Process a block or blob response received from a single lookup request.
-    pub fn on_download_response_inner<R: RequestState<T>>(
+    pub(super) fn on_download_response_inner<R: RequestState<T>>(
         &mut self,
         id: SingleLookupReqId,
         response: Result<(R::VerifiedResponseType, PeerGroup, Duration), RpcResponseError>,
@@ -509,7 +509,7 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
 
     /* Error responses */
 
-    pub fn peer_disconnected(&mut self, peer_id: &PeerId) {
+    pub(super) fn peer_disconnected(&mut self, peer_id: &PeerId) {
         for lookup in self.single_block_lookups.values_mut() {
             lookup.remove_peer(peer_id);
         }
@@ -517,7 +517,7 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
 
     /* Processing responses */
 
-    pub fn on_processing_result(
+    pub(super) fn on_processing_result(
         &mut self,
         process_type: BlockProcessType,
         result: BlockProcessingResult,
@@ -537,7 +537,7 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
         self.on_lookup_result(process_type.id(), lookup_result, "processing_result", cx);
     }
 
-    pub fn on_processing_result_inner<R: RequestState<T>>(
+    pub(super) fn on_processing_result_inner<R: RequestState<T>>(
         &mut self,
         lookup_id: SingleLookupId,
         result: BlockProcessingResult,
@@ -724,7 +724,7 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
         }
     }
 
-    pub fn on_external_processing_result(
+    pub(super) fn on_external_processing_result(
         &mut self,
         block_root: Hash256,
         imported: bool,
@@ -749,7 +749,11 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
     }
 
     /// Makes progress on the immediate children of `block_root`
-    pub fn continue_child_lookups(&mut self, block_root: Hash256, cx: &mut SyncNetworkContext<T>) {
+    pub(super) fn continue_child_lookups(
+        &mut self,
+        block_root: Hash256,
+        cx: &mut SyncNetworkContext<T>,
+    ) {
         let mut lookup_results = vec![]; // < need to buffer lookup results to not re-borrow &mut self
 
         for (id, lookup) in &mut self.single_block_lookups {
@@ -774,7 +778,7 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
     /// Drops `dropped_id` lookup and all its children recursively. Lookups awaiting a parent need
     /// the parent to make progress to resolve, therefore we must drop them if the parent is
     /// dropped.
-    pub fn drop_lookup_and_children(&mut self, dropped_id: SingleLookupId) {
+    pub(super) fn drop_lookup_and_children(&mut self, dropped_id: SingleLookupId) {
         if let Some(dropped_lookup) = self.single_block_lookups.remove(&dropped_id) {
             debug!(
                 id = ?dropped_id,
@@ -835,13 +839,13 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
     /* Helper functions */
 
     /// Drops all the single block requests and returns how many requests were dropped.
-    pub fn drop_single_block_requests(&mut self) -> usize {
+    pub(super) fn drop_single_block_requests(&mut self) -> usize {
         let requests_to_drop = self.single_block_lookups.len();
         self.single_block_lookups.clear();
         requests_to_drop
     }
 
-    pub fn update_metrics(&self) {
+    pub(super) fn update_metrics(&self) {
         metrics::set_gauge(
             &metrics::SYNC_SINGLE_BLOCK_LOOKUPS,
             self.single_block_lookups.len() as i64,
@@ -849,7 +853,7 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
     }
 
     /// Perform some prune operations on lookups on some interval
-    pub fn prune_lookups(&mut self) {
+    pub(super) fn prune_lookups(&mut self) {
         self.drop_lookups_without_peers();
         self.drop_stuck_lookups();
     }

@@ -95,7 +95,7 @@ impl<E: EthSpec> PeerScoreSettings<E> {
         }
     }
 
-    pub fn get_peer_score_params(
+    pub(crate) fn get_peer_score_params(
         &self,
         active_validators: usize,
         thresholds: &PeerScoreThresholds,
@@ -239,7 +239,7 @@ impl<E: EthSpec> PeerScoreSettings<E> {
         Ok(params)
     }
 
-    pub fn get_dynamic_topic_params(
+    pub(crate) fn get_dynamic_topic_params(
         &self,
         active_validators: usize,
         current_slot: Slot,
@@ -300,7 +300,7 @@ impl<E: EthSpec> PeerScoreSettings<E> {
         ))
     }
 
-    pub fn attestation_subnet_count(&self) -> u64 {
+    pub(crate) fn attestation_subnet_count(&self) -> u64 {
         self.attestation_subnet_count
     }
 

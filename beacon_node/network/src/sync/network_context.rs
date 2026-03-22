@@ -83,7 +83,7 @@ pub(crate) enum RpcEvent<T> {
 }
 
 impl<T> RpcEvent<T> {
-    pub fn from_chunk(chunk: Option<T>, seen_timestamp: Duration) -> Self {
+    pub(super) fn from_chunk(chunk: Option<T>, seen_timestamp: Duration) -> Self {
         match chunk {
             Some(item) => RpcEvent::Response(item, seen_timestamp),
             None => RpcEvent::StreamTermination,
@@ -151,18 +151,18 @@ pub(crate) struct PeerGroup {
 impl PeerGroup {
     /// Return a peer group where a single peer returned all parts of a block component. For
     /// example, a block has a single component (the block = index 0/1).
-    pub fn from_single(peer: PeerId) -> Self {
+    pub(crate) fn from_single(peer: PeerId) -> Self {
         Self {
             peers: HashMap::from_iter([(peer, vec![0])]),
         }
     }
-    pub fn from_set(peers: HashMap<PeerId, Vec<usize>>) -> Self {
+    pub(crate) fn from_set(peers: HashMap<PeerId, Vec<usize>>) -> Self {
         Self { peers }
     }
-    pub fn all(&self) -> impl Iterator<Item = &PeerId> + '_ {
+    pub(crate) fn all(&self) -> impl Iterator<Item = &PeerId> + '_ {
         self.peers.keys()
     }
-    pub fn of_index(&self, index: usize) -> impl Iterator<Item = &PeerId> + '_ {
+    pub(crate) fn of_index(&self, index: usize) -> impl Iterator<Item = &PeerId> + '_ {
         self.peers.iter().filter_map(move |(peer, indices)| {
             if indices.contains(&index) {
                 Some(peer)
@@ -305,7 +305,7 @@ impl<E: EthSpec> SyncNetworkContext<TestBeaconChainType<E>> {
 }
 
 impl<T: BeaconChainTypes> SyncNetworkContext<T> {
-    pub fn new(
+    pub(super) fn new(
         network_send: mpsc::UnboundedSender<NetworkMessage<T::EthSpec>>,
         network_beacon_processor: Arc<NetworkBeaconProcessor<T>>,
         chain: Arc<BeaconChain<T>>,
@@ -331,13 +331,13 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
         }
     }
 
-    pub fn send_sync_message(&mut self, sync_message: SyncMessage<T::EthSpec>) {
+    pub(super) fn send_sync_message(&mut self, sync_message: SyncMessage<T::EthSpec>) {
         self.network_beacon_processor
             .send_sync_message(sync_message);
     }
 
     /// Returns the ids of all the requests made to the given peer_id.
-    pub fn peer_disconnected(&mut self, peer_id: &PeerId) -> Vec<SyncRequestId> {
+    pub(super) fn peer_disconnected(&mut self, peer_id: &PeerId) -> Vec<SyncRequestId> {
         // Note: using destructuring pattern without a default case to make sure we don't forget to
         // add new request types to this function. Otherwise, lookup sync can break and lookups
         // will get stuck if a peer disconnects during an active requests.
@@ -395,17 +395,17 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
             .collect()
     }
 
-    pub fn get_custodial_peers(&self, column_index: ColumnIndex) -> Vec<PeerId> {
+    pub(super) fn get_custodial_peers(&self, column_index: ColumnIndex) -> Vec<PeerId> {
         self.network_globals()
             .custody_peers_for_column(column_index)
     }
 
-    pub fn network_globals(&self) -> &NetworkGlobals<T::EthSpec> {
+    pub(super) fn network_globals(&self) -> &NetworkGlobals<T::EthSpec> {
         &self.network_beacon_processor.network_globals
     }
 
     /// Returns the Client type of the peer if known
-    pub fn client_type(&self, peer_id: &PeerId) -> Client {
+    pub(super) fn client_type(&self, peer_id: &PeerId) -> Client {
         self.network_globals()
             .peers
             .read()
@@ -414,7 +414,11 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
             .unwrap_or_default()
     }
 
-    pub fn status_peers<C: ToStatusMessage>(&self, chain: &C, peers: impl Iterator<Item = PeerId>) {
+    pub(super) fn status_peers<C: ToStatusMessage>(
+        &self,
+        chain: &C,
+        peers: impl Iterator<Item = PeerId>,
+    ) {
         let status_message = chain.status_message();
         for peer_id in peers {
             debug!(
@@ -482,7 +486,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
     ///
     /// Note: This function doesn't retry the whole batch, but retries specific requests within
     /// the batch.
-    pub fn retry_columns_by_range(
+    pub(super) fn retry_columns_by_range(
         &mut self,
         id: Id,
         peers: &HashSet<PeerId>,
@@ -575,7 +579,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
     /// have deferred columns. Called when new peers become available.
     ///
     /// Returns the number of deferred requests that were successfully activated.
-    pub fn send_deferred_columns(
+    pub(super) fn send_deferred_columns(
         &mut self,
         column_peers: &HashSet<PeerId>,
         peers_to_deprioritize: &HashSet<PeerId>,
@@ -657,7 +661,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
     /// Removes all `components_by_range_requests` entries belonging to a range sync chain.
     ///
     /// Called when a chain is removed so that its outstanding meta-requests do not leak.
-    pub fn remove_range_components_by_chain_id(&mut self, chain_id: Id) {
+    pub(super) fn remove_range_components_by_chain_id(&mut self, chain_id: Id) {
         self.components_by_range_requests.retain(|key, _| {
             !matches!(key.requester, RangeRequestId::RangeSync { chain_id: cid, .. } if cid == chain_id)
         });
@@ -666,13 +670,13 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
     /// Removes all `components_by_range_requests` entries belonging to the backfill sync.
     ///
     /// Called when the backfill sync fails so that its outstanding meta-requests do not leak.
-    pub fn remove_backfill_range_components(&mut self) {
+    pub(super) fn remove_backfill_range_components(&mut self) {
         self.components_by_range_requests
             .retain(|key, _| !matches!(key.requester, RangeRequestId::BackfillSync { .. }));
     }
 
     /// A blocks by range request sent by the range sync algorithm
-    pub fn block_components_by_range_request(
+    pub(super) fn block_components_by_range_request(
         &mut self,
         batch_type: ByRangeRequestType,
         request: BlocksByRangeRequest,
@@ -883,7 +887,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
     /// Received a blocks by range or blobs by range response for a request that couples blocks
     /// and blobs.
     #[allow(clippy::type_complexity)]
-    pub fn range_block_component_response(
+    pub(super) fn range_block_component_response(
         &mut self,
         id: ComponentsByRangeRequestId,
         peer_id: PeerId,
@@ -1136,7 +1140,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
     /// - If the da_checker has a pending block from gossip or a previous request
     ///
     /// Returns false if no request was made, because the block is already imported
-    pub fn block_lookup_request(
+    pub(super) fn block_lookup_request(
         &mut self,
         lookup_id: SingleLookupId,
         lookup_peers: Arc<RwLock<HashSet<PeerId>>>,
@@ -1257,7 +1261,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
     /// - If the da_checker has pending blobs from gossip
     ///
     /// Returns false if no request was made, because we don't need to import (more) blobs.
-    pub fn blob_lookup_request(
+    pub(super) fn blob_lookup_request(
         &mut self,
         lookup_id: SingleLookupId,
         lookup_peers: Arc<RwLock<HashSet<PeerId>>>,
@@ -1354,7 +1358,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
     }
 
     /// Request to send a single `data_columns_by_root` request to the network.
-    pub fn data_column_lookup_request(
+    pub(super) fn data_column_lookup_request(
         &mut self,
         requester: CustodyId,
         peer_id: PeerId,
@@ -1403,7 +1407,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
     /// any request to the network if no columns have to be fetched based on the import state of the
     /// node. A custody request is a "super request" that may trigger 0 or more `data_columns_by_root`
     /// requests.
-    pub fn custody_lookup_request(
+    pub(super) fn custody_lookup_request(
         &mut self,
         lookup_id: SingleLookupId,
         block_root: Hash256,
@@ -1611,17 +1615,17 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
         Ok((id, requested_columns))
     }
 
-    pub fn is_execution_engine_online(&self) -> bool {
+    pub(super) fn is_execution_engine_online(&self) -> bool {
         self.execution_engine_state == EngineState::Online
     }
 
-    pub fn update_execution_engine_state(&mut self, engine_state: EngineState) {
+    pub(super) fn update_execution_engine_state(&mut self, engine_state: EngineState) {
         debug!(past_state = ?self.execution_engine_state, new_state = ?engine_state, "Sync's view on execution engine state updated");
         self.execution_engine_state = engine_state;
     }
 
     /// Terminates the connection with the peer and bans them.
-    pub fn goodbye_peer(&mut self, peer_id: PeerId, reason: GoodbyeReason) {
+    pub(super) fn goodbye_peer(&mut self, peer_id: PeerId, reason: GoodbyeReason) {
         self.network_send
             .send(NetworkMessage::GoodbyePeer {
                 peer_id,
@@ -1634,7 +1638,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
     }
 
     /// Reports to the scoring algorithm the behaviour of a peer.
-    pub fn report_peer(&self, peer_id: PeerId, action: PeerAction, msg: &'static str) {
+    pub(super) fn report_peer(&self, peer_id: PeerId, action: PeerAction, msg: &'static str) {
         debug!(%peer_id, %action, %msg, "Sync reporting peer");
         self.network_send
             .send(NetworkMessage::ReportPeer {
@@ -1649,7 +1653,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
     }
 
     /// Subscribes to core topics.
-    pub fn subscribe_core_topics(&self) {
+    pub(super) fn subscribe_core_topics(&self) {
         self.network_send
             .send(NetworkMessage::SubscribeCoreTopics)
             .unwrap_or_else(|e| {
@@ -1665,16 +1669,16 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
         })
     }
 
-    pub fn beacon_processor_if_enabled(&self) -> Option<&Arc<NetworkBeaconProcessor<T>>> {
+    pub(super) fn beacon_processor_if_enabled(&self) -> Option<&Arc<NetworkBeaconProcessor<T>>> {
         self.is_execution_engine_online()
             .then_some(&self.network_beacon_processor)
     }
 
-    pub fn beacon_processor(&self) -> &Arc<NetworkBeaconProcessor<T>> {
+    pub(super) fn beacon_processor(&self) -> &Arc<NetworkBeaconProcessor<T>> {
         &self.network_beacon_processor
     }
 
-    pub fn next_id(&mut self) -> Id {
+    pub(super) fn next_id(&mut self) -> Id {
         let id = self.request_id;
         self.request_id += 1;
         id
@@ -1682,7 +1686,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
 
     /// Check whether a batch for this epoch (and only this epoch) should request just blocks or
     /// blocks and blobs.
-    pub fn batch_type(&self, epoch: types::Epoch) -> ByRangeRequestType {
+    pub(super) fn batch_type(&self, epoch: types::Epoch) -> ByRangeRequestType {
         // Induces a compile time panic if this doesn't hold true.
         #[allow(clippy::assertions_on_constants)]
         const _: () = assert!(
@@ -1712,7 +1716,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
     /// for custody peers. Returns a Vec of results as zero or more requests may fail in this
     /// attempt.
     #[allow(clippy::needless_collect)] // collect required to re-borrow self in the loop
-    pub fn continue_custody_by_root_requests(
+    pub(super) fn continue_custody_by_root_requests(
         &mut self,
     ) -> Vec<(CustodyRequester, CustodyByRootResult<T::EthSpec>)> {
         let ids = self
@@ -1854,7 +1858,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
     /// - `Some`: Request completed, won't make more progress. Expect requester to act on the result.
     /// - `None`: Request still active, requester should do no action
     #[allow(clippy::type_complexity)]
-    pub fn on_custody_by_root_response(
+    pub(super) fn on_custody_by_root_response(
         &mut self,
         id: CustodyId,
         req_id: DataColumnsByRootRequestId,
@@ -1898,7 +1902,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
         result
     }
 
-    pub fn send_block_for_processing(
+    pub(super) fn send_block_for_processing(
         &self,
         id: Id,
         block_root: Hash256,
@@ -1930,7 +1934,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
             })
     }
 
-    pub fn send_blobs_for_processing(
+    pub(super) fn send_blobs_for_processing(
         &self,
         id: Id,
         block_root: Hash256,
@@ -1960,7 +1964,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
             })
     }
 
-    pub fn send_custody_columns_for_processing(
+    pub(super) fn send_custody_columns_for_processing(
         &self,
         _id: Id,
         block_root: Hash256,
@@ -1990,7 +1994,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
     }
 
     /// data column by range requests sent by the custody sync algorithm
-    pub fn custody_backfill_data_columns_batch_request(
+    pub(super) fn custody_backfill_data_columns_batch_request(
         &mut self,
         request: DataColumnsByRangeRequest,
         batch_id: CustodyBackfillBatchId,
@@ -2044,7 +2048,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
     }
 
     /// Received a data columns by range response from a custody sync request which batches them.
-    pub fn custody_backfill_data_columns_response(
+    pub(super) fn custody_backfill_data_columns_response(
         &mut self,
         // Identifies the custody backfill request for all data columns on this epoch
         custody_sync_request_id: CustodyBackFillBatchRequestId,

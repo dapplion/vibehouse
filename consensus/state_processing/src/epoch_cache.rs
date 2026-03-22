@@ -17,7 +17,7 @@ pub(crate) struct PreEpochCache {
 }
 
 impl PreEpochCache {
-    pub fn new_for_next_epoch<E: EthSpec>(
+    pub(crate) fn new_for_next_epoch<E: EthSpec>(
         state: &mut BeaconState<E>,
     ) -> Result<Self, EpochCacheError> {
         // The decision block root for the next epoch is the latest block root from this epoch.
@@ -45,7 +45,7 @@ impl PreEpochCache {
         })
     }
 
-    pub fn update_effective_balance(
+    pub(crate) fn update_effective_balance(
         &mut self,
         validator_index: usize,
         effective_balance: u64,
@@ -75,11 +75,11 @@ impl PreEpochCache {
         }
     }
 
-    pub fn get_total_active_balance(&self) -> u64 {
+    pub(crate) fn get_total_active_balance(&self) -> u64 {
         self.total_active_balance
     }
 
-    pub fn into_epoch_cache(
+    pub(crate) fn into_epoch_cache(
         self,
         activation_queue: ActivationQueue,
         spec: &ChainSpec,

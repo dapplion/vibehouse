@@ -203,7 +203,7 @@ enum InboundState<E: EthSpec> {
 }
 
 /// State of an outbound substream. Either waiting for a response, or in the process of sending.
-pub enum OutboundSubstreamState<E: EthSpec> {
+pub(super) enum OutboundSubstreamState<E: EthSpec> {
     /// A request has been sent, and we are awaiting a response. This future is driven in the
     /// handler because GOODBYE requests can be handled and responses dropped instantly.
     RequestPendingResponse {

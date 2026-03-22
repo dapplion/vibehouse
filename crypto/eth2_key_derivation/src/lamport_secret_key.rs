@@ -6,11 +6,11 @@ use zeroize::Zeroize;
 /// Implements `Zeroize` on `Drop`.
 #[derive(Zeroize)]
 #[zeroize(drop)]
-pub struct LamportSecretKey(Vec<[u8; HASH_SIZE]>);
+pub(crate) struct LamportSecretKey(Vec<[u8; HASH_SIZE]>);
 
 impl LamportSecretKey {
     /// Instantiates `Self` with all chunks set to zero.
-    pub fn zero() -> Self {
+    pub(crate) fn zero() -> Self {
         Self(vec![[0; HASH_SIZE]; LAMPORT_ARRAY_SIZE as usize])
     }
 
@@ -19,7 +19,7 @@ impl LamportSecretKey {
     /// ## Panics
     ///
     /// If an incorrect number of bytes is supplied.
-    pub fn from_bytes(bytes: &[u8]) -> Self {
+    pub(crate) fn from_bytes(bytes: &[u8]) -> Self {
         assert_eq!(
             bytes.len(),
             HASH_SIZE * LAMPORT_ARRAY_SIZE as usize,
@@ -38,12 +38,12 @@ impl LamportSecretKey {
     }
 
     /// Returns a reference to the `i`th `HASH_SIZE` chunk of `self`.
-    pub fn get_mut_chunk(&mut self, i: u8) -> &mut [u8] {
+    pub(crate) fn get_mut_chunk(&mut self, i: u8) -> &mut [u8] {
         &mut self.0[i as usize]
     }
 
     /// Returns an iterator over `LAMPORT_ARRAY_SIZE` chunks of `HASH_SIZE` bytes.
-    pub fn iter_chunks(&self) -> impl Iterator<Item = &[u8; HASH_SIZE]> {
+    pub(crate) fn iter_chunks(&self) -> impl Iterator<Item = &[u8; HASH_SIZE]> {
         self.0.iter()
     }
 }

@@ -40,9 +40,9 @@ use types::{
 };
 use types::{ExecutionBlockHash, SecretKey};
 
-pub const DEFAULT_FEE_RECIPIENT: Address = Address::repeat_byte(42);
-pub const DEFAULT_GAS_LIMIT: u64 = 60_000_000;
-pub const DEFAULT_BUILDER_PRIVATE_KEY: &str =
+pub(super) const DEFAULT_FEE_RECIPIENT: Address = Address::repeat_byte(42);
+pub(super) const DEFAULT_GAS_LIMIT: u64 = 60_000_000;
+pub(super) const DEFAULT_BUILDER_PRIVATE_KEY: &str =
     "607a11b45a7219cc61a3d9c5fd08c7eebd602a6a19a977f8d3771d5711a550f2";
 
 #[derive(Clone)]
@@ -92,7 +92,7 @@ impl From<String> for ApiError {
 }
 
 // contains functions we need for BuilderBids.. not sure what to call this
-pub trait BidStuff<E: EthSpec> {
+pub(super) trait BidStuff<E: EthSpec> {
     fn set_fee_recipient(&mut self, fee_recipient_address: Address);
     fn set_gas_limit(&mut self, gas_limit: u64);
     fn set_value(&mut self, value: Uint256);
@@ -313,7 +313,7 @@ impl<E: EthSpec> BidStuff<E> for BuilderBid<E> {
 
 // Non referenced version of `PayloadParameters`
 #[derive(Clone)]
-pub struct PayloadParametersCloned {
+pub(super) struct PayloadParametersCloned {
     pub parent_hash: ExecutionBlockHash,
     pub parent_gas_limit: u64,
     pub proposer_gas_limit: Option<u64>,
@@ -1208,7 +1208,7 @@ async fn blinded_blocks_dispatch<E: EthSpec>(
 }
 
 /// Serve the builder API using axum.
-pub fn serve<E: EthSpec>(
+pub(super) fn serve<E: EthSpec>(
     listen_addr: Ipv4Addr,
     listen_port: u16,
     builder: MockBuilder<E>,

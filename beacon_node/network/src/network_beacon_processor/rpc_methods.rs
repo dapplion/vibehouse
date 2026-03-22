@@ -35,7 +35,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     /* Auxiliary functions */
 
     /// Disconnects and ban's a peer, sending a Goodbye request with the associated reason.
-    pub fn goodbye_peer(&self, peer_id: PeerId, reason: GoodbyeReason) {
+    pub(crate) fn goodbye_peer(&self, peer_id: PeerId, reason: GoodbyeReason) {
         self.send_network_message(NetworkMessage::GoodbyePeer {
             peer_id,
             reason,
@@ -43,7 +43,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         });
     }
 
-    pub fn send_response(
+    pub(crate) fn send_response(
         &self,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,
@@ -56,7 +56,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         });
     }
 
-    pub fn send_error_response(
+    pub(crate) fn send_error_response(
         &self,
         peer_id: PeerId,
         error: RpcErrorResponse,
@@ -142,7 +142,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         Ok(irrelevant_reason)
     }
 
-    pub fn process_status(&self, peer_id: PeerId, status: StatusMessage) {
+    pub(crate) fn process_status(&self, peer_id: PeerId, status: StatusMessage) {
         match self.check_peer_relevance(&status) {
             Ok(Some(irrelevant_reason)) => {
                 debug!(%peer_id, reason = irrelevant_reason, "Handshake Failure");
@@ -174,7 +174,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         skip_all,
         fields(peer_id = %peer_id, client = tracing::field::Empty)
     )]
-    pub async fn handle_blocks_by_root_request(
+    pub(crate) async fn handle_blocks_by_root_request(
         self: Arc<Self>,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,
@@ -274,7 +274,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         skip_all,
         fields(peer_id = %peer_id, client = tracing::field::Empty)
     )]
-    pub fn handle_blobs_by_root_request(
+    pub(crate) fn handle_blobs_by_root_request(
         self: Arc<Self>,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,
@@ -407,7 +407,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             non_custody_indices = tracing::field::Empty,
         )
     )]
-    pub fn handle_data_columns_by_root_request(
+    pub(crate) fn handle_data_columns_by_root_request(
         self: Arc<Self>,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,
@@ -568,7 +568,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         skip_all,
         fields(peer_id = %peer_id, client = tracing::field::Empty)
     )]
-    pub fn handle_light_client_updates_by_range(
+    pub(crate) fn handle_light_client_updates_by_range(
         self: &Arc<Self>,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,
@@ -669,7 +669,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         skip_all,
         fields(peer_id = %peer_id, client = tracing::field::Empty)
     )]
-    pub fn handle_light_client_bootstrap(
+    pub(crate) fn handle_light_client_bootstrap(
         self: &Arc<Self>,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,
@@ -709,7 +709,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         skip_all,
         fields(peer_id = %peer_id, client = tracing::field::Empty)
     )]
-    pub fn handle_light_client_optimistic_update(
+    pub(crate) fn handle_light_client_optimistic_update(
         self: &Arc<Self>,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,
@@ -743,7 +743,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         skip_all,
         fields(peer_id = %peer_id, client = tracing::field::Empty)
     )]
-    pub fn handle_light_client_finality_update(
+    pub(crate) fn handle_light_client_finality_update(
         self: &Arc<Self>,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,
@@ -777,7 +777,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         skip_all,
         fields(peer_id = %peer_id, client = tracing::field::Empty)
     )]
-    pub async fn handle_blocks_by_range_request(
+    pub(crate) async fn handle_blocks_by_range_request(
         self: Arc<Self>,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,
@@ -1073,7 +1073,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         level = "debug",
         fields(peer_id = %peer_id, client = tracing::field::Empty)
     )]
-    pub fn handle_blobs_by_range_request(
+    pub(crate) fn handle_blobs_by_range_request(
         self: Arc<Self>,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,
@@ -1238,7 +1238,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         level = "debug",
         fields(peer_id = %peer_id, non_custody_indices = tracing::field::Empty, client = tracing::field::Empty)
     )]
-    pub fn handle_data_columns_by_range_request(
+    pub(crate) fn handle_data_columns_by_range_request(
         &self,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,

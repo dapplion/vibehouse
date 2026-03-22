@@ -79,7 +79,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new `Work` event for some unaggregated attestation.
-    pub fn send_unaggregated_attestation(
+    pub(crate) fn send_unaggregated_attestation(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -125,7 +125,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new `Work` event for some aggregated attestation.
-    pub fn send_aggregated_attestation(
+    pub(crate) fn send_aggregated_attestation(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -167,7 +167,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new `Work` event for some block.
-    pub fn send_gossip_beacon_block(
+    pub(crate) fn send_gossip_beacon_block(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -199,7 +199,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new `Work` event for some blob sidecar.
-    pub fn send_gossip_blob_sidecar(
+    pub(crate) fn send_gossip_blob_sidecar(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -229,7 +229,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new `Work` event for some data column sidecar.
-    pub fn send_gossip_data_column_sidecar(
+    pub(crate) fn send_gossip_data_column_sidecar(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -257,7 +257,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new `Work` event for some sync committee signature.
-    pub fn send_gossip_sync_signature(
+    pub(crate) fn send_gossip_sync_signature(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -283,7 +283,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new `Work` event for some sync committee contribution.
-    pub fn send_gossip_sync_contribution(
+    pub(crate) fn send_gossip_sync_contribution(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -307,7 +307,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new `Work` event for a gloas execution bid (ePBS).
-    pub fn send_gossip_execution_bid(
+    pub(crate) fn send_gossip_execution_bid(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -343,7 +343,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new `Work` event for gloas proposer preferences (ePBS).
-    pub fn send_gossip_proposer_preferences(
+    pub(crate) fn send_gossip_proposer_preferences(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -361,7 +361,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new `Work` event for an execution proof (ZK stateless validation).
-    pub fn send_gossip_execution_proof(
+    pub(crate) fn send_gossip_execution_proof(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -389,7 +389,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new `Work` event for a gloas execution payload reveal (ePBS).
-    pub fn send_gossip_execution_payload(
+    pub(crate) fn send_gossip_execution_payload(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -429,7 +429,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new `Work` event for some exit.
-    pub fn send_gossip_voluntary_exit(
+    pub(crate) fn send_gossip_voluntary_exit(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -446,7 +446,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new `Work` event for some proposer slashing.
-    pub fn send_gossip_proposer_slashing(
+    pub(crate) fn send_gossip_proposer_slashing(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -464,7 +464,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new `Work` event for some light client finality update.
-    pub fn send_gossip_light_client_finality_update(
+    pub(crate) fn send_gossip_light_client_finality_update(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -488,7 +488,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new `Work` event for some light client optimistic update.
-    pub fn send_gossip_light_client_optimistic_update(
+    pub(crate) fn send_gossip_light_client_optimistic_update(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -513,7 +513,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new `Work` event for some attester slashing.
-    pub fn send_gossip_attester_slashing(
+    pub(crate) fn send_gossip_attester_slashing(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -531,7 +531,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new `Work` event for some BLS to execution change.
-    pub fn send_gossip_bls_to_execution_change(
+    pub(crate) fn send_gossip_bls_to_execution_change(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -554,7 +554,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
 
     /// Create a new `Work` event for some block, where the result from computation (if any) is
     /// sent to the other side of `result_tx`.
-    pub fn send_rpc_beacon_block(
+    pub(crate) fn send_rpc_beacon_block(
         self: &Arc<Self>,
         block_root: Hash256,
         block: RpcBlock<T::EthSpec>,
@@ -575,7 +575,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
 
     /// Create a new `Work` event for some blobs, where the result from computation (if any) is
     /// sent to the other side of `result_tx`.
-    pub fn send_rpc_blobs(
+    pub(crate) fn send_rpc_blobs(
         self: &Arc<Self>,
         block_root: Hash256,
         blobs: FixedBlobSidecarList<T::EthSpec>,
@@ -600,7 +600,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
 
     /// Create a new `Work` event for some custody columns. `process_rpc_custody_columns` reports
     /// the result back to sync.
-    pub fn send_rpc_custody_columns(
+    pub(crate) fn send_rpc_custody_columns(
         self: &Arc<Self>,
         block_root: Hash256,
         custody_columns: DataColumnSidecarList<T::EthSpec>,
@@ -622,7 +622,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         })
     }
 
-    pub fn send_historic_data_columns(
+    pub(crate) fn send_historic_data_columns(
         self: &Arc<Self>,
         batch_id: CustodyBackfillBatchId,
         data_columns: DataColumnSidecarList<T::EthSpec>,
@@ -641,7 +641,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new work event to import `blocks` as a beacon chain segment.
-    pub fn send_chain_segment(
+    pub(crate) fn send_chain_segment(
         self: &Arc<Self>,
         process_id: ChainSegmentProcessId,
         blocks: Vec<RpcBlock<T::EthSpec>>,
@@ -672,7 +672,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new work event to process `StatusMessage`s from the RPC network.
-    pub fn send_status_message(
+    pub(crate) fn send_status_message(
         self: &Arc<Self>,
         peer_id: PeerId,
         message: StatusMessage,
@@ -687,7 +687,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new work event to process `BlocksByRangeRequest`s from the RPC network.
-    pub fn send_blocks_by_range_request(
+    pub(crate) fn send_blocks_by_range_request(
         self: &Arc<Self>,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId, // Use ResponseId here
@@ -707,7 +707,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new work event to process `BlocksByRootRequest`s from the RPC network.
-    pub fn send_blocks_by_roots_request(
+    pub(crate) fn send_blocks_by_roots_request(
         self: &Arc<Self>,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId, // Use ResponseId here
@@ -727,7 +727,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new work event to process `BlobsByRangeRequest`s from the RPC network.
-    pub fn send_blobs_by_range_request(
+    pub(crate) fn send_blobs_by_range_request(
         self: &Arc<Self>,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,
@@ -744,7 +744,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new work event to process `BlobsByRootRequest`s from the RPC network.
-    pub fn send_blobs_by_roots_request(
+    pub(crate) fn send_blobs_by_roots_request(
         self: &Arc<Self>,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,
@@ -783,7 +783,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new work event to process `DataColumnsByRootRequest`s from the RPC network.
-    pub fn send_data_columns_by_roots_request(
+    pub(crate) fn send_data_columns_by_roots_request(
         self: &Arc<Self>,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,
@@ -801,7 +801,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new work event to process `DataColumnsByRange`s from the RPC network.
-    pub fn send_data_columns_by_range_request(
+    pub(crate) fn send_data_columns_by_range_request(
         self: &Arc<Self>,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,
@@ -819,7 +819,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new work event to process `LightClientBootstrap`s from the RPC network.
-    pub fn send_light_client_bootstrap_request(
+    pub(crate) fn send_light_client_bootstrap_request(
         self: &Arc<Self>,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,
@@ -836,7 +836,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new work event to process a `LightClientOptimisticUpdate` request from the RPC network.
-    pub fn send_light_client_optimistic_update_request(
+    pub(crate) fn send_light_client_optimistic_update_request(
         self: &Arc<Self>,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,
@@ -852,7 +852,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new work event to process a `LightClientFinalityUpdate` request from the RPC network.
-    pub fn send_light_client_finality_update_request(
+    pub(crate) fn send_light_client_finality_update_request(
         self: &Arc<Self>,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,
@@ -868,7 +868,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new work event to process a `LightClientUpdatesByRange` request from the RPC network.
-    pub fn send_light_client_updates_by_range_request(
+    pub(crate) fn send_light_client_updates_by_range_request(
         self: &Arc<Self>,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,
@@ -903,7 +903,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         });
     }
 
-    pub async fn fetch_engine_blobs_and_publish(
+    pub(crate) async fn fetch_engine_blobs_and_publish(
         self: &Arc<Self>,
         block: Arc<SignedBeaconBlock<T::EthSpec, FullPayload<T::EthSpec>>>,
         block_root: Hash256,

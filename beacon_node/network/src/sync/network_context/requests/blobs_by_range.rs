@@ -12,7 +12,7 @@ pub(crate) struct BlobsByRangeRequestItems<E: EthSpec> {
 }
 
 impl<E: EthSpec> BlobsByRangeRequestItems<E> {
-    pub fn new(request: BlobsByRangeRequest, max_blobs_per_block: u64) -> Self {
+    pub(crate) fn new(request: BlobsByRangeRequest, max_blobs_per_block: u64) -> Self {
         Self {
             request,
             items: vec![],

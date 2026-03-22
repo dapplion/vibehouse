@@ -128,7 +128,7 @@ pub(crate) struct CustodyBackFillSync<T: BeaconChainTypes> {
 }
 
 impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
-    pub fn new(
+    pub(super) fn new(
         beacon_chain: Arc<BeaconChain<T>>,
         network_globals: Arc<NetworkGlobals<T::EthSpec>>,
     ) -> Self {
@@ -150,7 +150,7 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
     }
 
     /// Pauses the custody sync if it's currently syncing.
-    pub fn pause(&mut self, reason: String) {
+    pub(super) fn pause(&mut self, reason: String) {
         if let CustodyBackFillState::Syncing = self.state() {
             debug!(processed_epochs = %self.validated_batches, to_be_processed = %self.current_start,"Custody backfill sync paused");
             self.set_state(CustodyBackFillState::Pending(reason));
@@ -162,7 +162,7 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
     /// The criteria to start custody sync is:
     /// - The earliest data column epoch's custodied columns != previous epoch's custodied columns
     /// - The earliest data column epoch is a finalied epoch
-    pub fn should_start_custody_backfill_sync(&mut self) -> bool {
+    pub(super) fn should_start_custody_backfill_sync(&mut self) -> bool {
         let Some(da_boundary_epoch) = self.beacon_chain.get_column_da_boundary() else {
             return false;
         };
@@ -235,7 +235,7 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
 
     /// Starts syncing.
     #[must_use = "A failure here indicates custody backfill sync has failed and the global sync state should be updated"]
-    pub fn start(
+    pub(super) fn start(
         &mut self,
         network: &mut SyncNetworkContext<T>,
     ) -> Result<SyncStart, CustodyBackfillError> {
@@ -533,7 +533,7 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
     /// join the system.
     /// The sync manager should update the global sync state on failure.
     #[must_use = "A failure here indicates custody backfill sync has failed and the global sync state should be updated"]
-    pub fn on_data_column_response(
+    pub(super) fn on_data_column_response(
         &mut self,
         network: &mut SyncNetworkContext<T>,
         req_id: CustodyBackFillBatchRequestId,
@@ -634,7 +634,7 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
     /// of the batch processor.
     /// If an error is returned custody backfill sync has failed.
     #[must_use = "A failure here indicates custody backfill sync has failed and the global sync state should be updated"]
-    pub fn on_batch_process_result(
+    pub(super) fn on_batch_process_result(
         &mut self,
         network: &mut SyncNetworkContext<T>,
         custody_batch_id: CustodyBackfillBatchId,
@@ -1094,16 +1094,16 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
         Err(error)
     }
 
-    pub fn state(&self) -> CustodyBackFillState {
+    pub(super) fn state(&self) -> CustodyBackFillState {
         self.network_globals.custody_sync_state.read().clone()
     }
 
     /// Updates the global network state indicating the current state of a backfill sync.
-    pub fn set_state(&self, state: CustodyBackFillState) {
+    pub(super) fn set_state(&self, state: CustodyBackFillState) {
         *self.network_globals.custody_sync_state.write() = state;
     }
 
-    pub fn register_metrics(&self) {
+    pub(super) fn register_metrics(&self) {
         for state in BatchMetricsState::iter() {
             let count = self
                 .batches
@@ -1121,7 +1121,7 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
     /// A fully synced peer has joined us.
     /// If we are in a failed state, update a local variable to indicate we are able to restart
     /// the failed sync on the next attempt.
-    pub fn fully_synced_peer_joined(&mut self) {
+    pub(super) fn fully_synced_peer_joined(&mut self) {
         if matches!(self.state(), CustodyBackFillState::Pending(_)) {
             self.restart_failed_sync = true;
         }

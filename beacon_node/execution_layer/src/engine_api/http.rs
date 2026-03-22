@@ -123,23 +123,23 @@ pub(crate) struct CachedResponse<T: Clone> {
 }
 
 impl<T: Clone> CachedResponse<T> {
-    pub fn new(data: T) -> Self {
+    pub(crate) fn new(data: T) -> Self {
         Self {
             data,
             fetch_time: Instant::now(),
         }
     }
 
-    pub fn data(&self) -> T {
+    pub(crate) fn data(&self) -> T {
         self.data.clone()
     }
 
-    pub fn age(&self) -> Duration {
+    pub(crate) fn age(&self) -> Duration {
         Instant::now().duration_since(self.fetch_time)
     }
 
     /// returns `true` if the entry's age is >= age_limit
-    pub fn older_than(&self, age_limit: Option<Duration>) -> bool {
+    pub(crate) fn older_than(&self, age_limit: Option<Duration>) -> bool {
         age_limit.is_some_and(|limit| self.age() >= limit)
     }
 }
@@ -169,7 +169,7 @@ impl HttpJsonRpc {
         })
     }
 
-    pub fn new_with_auth(
+    pub(crate) fn new_with_auth(
         url: SensitiveUrl,
         auth: Auth,
         execution_timeout_multiplier: Option<u32>,
@@ -184,7 +184,7 @@ impl HttpJsonRpc {
         })
     }
 
-    pub async fn rpc_request<D: DeserializeOwned>(
+    pub(crate) async fn rpc_request<D: DeserializeOwned>(
         &self,
         method: &str,
         params: serde_json::Value,
@@ -234,7 +234,7 @@ impl std::fmt::Display for HttpJsonRpc {
 }
 
 impl HttpJsonRpc {
-    pub async fn upcheck(&self) -> Result<(), Error> {
+    pub(crate) async fn upcheck(&self) -> Result<(), Error> {
         let result: serde_json::Value = self
             .rpc_request(
                 ETH_SYNCING,
@@ -249,7 +249,7 @@ impl HttpJsonRpc {
         }
     }
 
-    pub async fn get_blobs_v1<E: EthSpec>(
+    pub(crate) async fn get_blobs_v1<E: EthSpec>(
         &self,
         versioned_hashes: Vec<Hash256>,
     ) -> Result<Vec<Option<BlobAndProofV1<E>>>, Error> {
@@ -263,7 +263,7 @@ impl HttpJsonRpc {
         .await
     }
 
-    pub async fn get_blobs_v2<E: EthSpec>(
+    pub(crate) async fn get_blobs_v2<E: EthSpec>(
         &self,
         versioned_hashes: Vec<Hash256>,
     ) -> Result<Option<Vec<BlobAndProofV2<E>>>, Error> {
@@ -277,7 +277,7 @@ impl HttpJsonRpc {
         .await
     }
 
-    pub async fn get_block_by_number(
+    pub(crate) async fn get_block_by_number(
         &self,
         query: BlockByNumberQuery<'_>,
     ) -> Result<Option<ExecutionBlock>, Error> {
@@ -291,7 +291,7 @@ impl HttpJsonRpc {
         .await
     }
 
-    pub async fn get_block_by_hash(
+    pub(crate) async fn get_block_by_hash(
         &self,
         block_hash: ExecutionBlockHash,
     ) -> Result<Option<ExecutionBlock>, Error> {
@@ -305,7 +305,7 @@ impl HttpJsonRpc {
         .await
     }
 
-    pub async fn new_payload_v1<E: EthSpec>(
+    pub(crate) async fn new_payload_v1<E: EthSpec>(
         &self,
         execution_payload: ExecutionPayload<E>,
     ) -> Result<PayloadStatusV1, Error> {
@@ -322,7 +322,7 @@ impl HttpJsonRpc {
         Ok(response.into())
     }
 
-    pub async fn new_payload_v2<E: EthSpec>(
+    pub(crate) async fn new_payload_v2<E: EthSpec>(
         &self,
         execution_payload: ExecutionPayload<E>,
     ) -> Result<PayloadStatusV1, Error> {
@@ -339,7 +339,7 @@ impl HttpJsonRpc {
         Ok(response.into())
     }
 
-    pub async fn new_payload_v3_deneb<E: EthSpec>(
+    pub(crate) async fn new_payload_v3_deneb<E: EthSpec>(
         &self,
         new_payload_request_deneb: NewPayloadRequestDeneb<'_, E>,
     ) -> Result<PayloadStatusV1, Error> {
@@ -360,7 +360,7 @@ impl HttpJsonRpc {
         Ok(response.into())
     }
 
-    pub async fn new_payload_v4_electra<E: EthSpec>(
+    pub(crate) async fn new_payload_v4_electra<E: EthSpec>(
         &self,
         new_payload_request_electra: NewPayloadRequestElectra<'_, E>,
     ) -> Result<PayloadStatusV1, Error> {
@@ -386,7 +386,7 @@ impl HttpJsonRpc {
         Ok(response.into())
     }
 
-    pub async fn new_payload_v4_fulu<E: EthSpec>(
+    pub(crate) async fn new_payload_v4_fulu<E: EthSpec>(
         &self,
         new_payload_request_fulu: NewPayloadRequestFulu<'_, E>,
     ) -> Result<PayloadStatusV1, Error> {
@@ -410,7 +410,7 @@ impl HttpJsonRpc {
         Ok(response.into())
     }
 
-    pub async fn new_payload_v5_gloas<E: EthSpec>(
+    pub(crate) async fn new_payload_v5_gloas<E: EthSpec>(
         &self,
         new_payload_request_gloas: NewPayloadRequestGloas<'_, E>,
     ) -> Result<PayloadStatusV1, Error> {
@@ -434,7 +434,7 @@ impl HttpJsonRpc {
         Ok(response.into())
     }
 
-    pub async fn get_payload_v1<E: EthSpec>(
+    pub(crate) async fn get_payload_v1<E: EthSpec>(
         &self,
         payload_id: PayloadId,
     ) -> Result<GetPayloadResponse<E>, Error> {
@@ -457,7 +457,7 @@ impl HttpJsonRpc {
         }))
     }
 
-    pub async fn get_payload_v2<E: EthSpec>(
+    pub(crate) async fn get_payload_v2<E: EthSpec>(
         &self,
         fork_name: ForkName,
         payload_id: PayloadId,
@@ -495,7 +495,7 @@ impl HttpJsonRpc {
         }
     }
 
-    pub async fn get_payload_v3<E: EthSpec>(
+    pub(crate) async fn get_payload_v3<E: EthSpec>(
         &self,
         fork_name: ForkName,
         payload_id: PayloadId,
@@ -521,7 +521,7 @@ impl HttpJsonRpc {
         }
     }
 
-    pub async fn get_payload_v4<E: EthSpec>(
+    pub(crate) async fn get_payload_v4<E: EthSpec>(
         &self,
         fork_name: ForkName,
         payload_id: PayloadId,
@@ -547,7 +547,7 @@ impl HttpJsonRpc {
         }
     }
 
-    pub async fn get_payload_v5<E: EthSpec>(
+    pub(crate) async fn get_payload_v5<E: EthSpec>(
         &self,
         fork_name: ForkName,
         payload_id: PayloadId,
@@ -585,7 +585,7 @@ impl HttpJsonRpc {
         }
     }
 
-    pub async fn forkchoice_updated_v1(
+    pub(crate) async fn forkchoice_updated_v1(
         &self,
         forkchoice_state: ForkchoiceState,
         payload_attributes: Option<PayloadAttributes>,
@@ -606,7 +606,7 @@ impl HttpJsonRpc {
         Ok(response.into())
     }
 
-    pub async fn forkchoice_updated_v2(
+    pub(crate) async fn forkchoice_updated_v2(
         &self,
         forkchoice_state: ForkchoiceState,
         payload_attributes: Option<PayloadAttributes>,
@@ -627,7 +627,7 @@ impl HttpJsonRpc {
         Ok(response.into())
     }
 
-    pub async fn forkchoice_updated_v3(
+    pub(crate) async fn forkchoice_updated_v3(
         &self,
         forkchoice_state: ForkchoiceState,
         payload_attributes: Option<PayloadAttributes>,
@@ -648,7 +648,7 @@ impl HttpJsonRpc {
         Ok(response.into())
     }
 
-    pub async fn get_payload_bodies_by_hash_v1<E: EthSpec>(
+    pub(crate) async fn get_payload_bodies_by_hash_v1<E: EthSpec>(
         &self,
         block_hashes: Vec<ExecutionBlockHash>,
     ) -> Result<Vec<Option<ExecutionPayloadBodyV1<E>>>, Error> {
@@ -668,7 +668,7 @@ impl HttpJsonRpc {
             .collect())
     }
 
-    pub async fn get_payload_bodies_by_range_v1<E: EthSpec>(
+    pub(crate) async fn get_payload_bodies_by_range_v1<E: EthSpec>(
         &self,
         start: u64,
         count: u64,
@@ -692,7 +692,7 @@ impl HttpJsonRpc {
             .collect())
     }
 
-    pub async fn exchange_capabilities(&self) -> Result<EngineCapabilities, Error> {
+    pub(crate) async fn exchange_capabilities(&self) -> Result<EngineCapabilities, Error> {
         let params = json!([VIBEHOUSE_CAPABILITIES]);
 
         let capabilities: HashSet<String> = self
@@ -727,7 +727,7 @@ impl HttpJsonRpc {
         })
     }
 
-    pub async fn clear_exchange_capabilties_cache(&self) {
+    pub(crate) async fn clear_exchange_capabilties_cache(&self) {
         *self.engine_capabilities_cache.lock().await = None;
     }
 
@@ -740,7 +740,7 @@ impl HttpJsonRpc {
     ///
     /// Set `age_limit` to `None` to always return the cached result
     /// Set `age_limit` to `Some(Duration::ZERO)` to force fetching from EE
-    pub async fn get_engine_capabilities(
+    pub(crate) async fn get_engine_capabilities(
         &self,
         age_limit: Option<Duration>,
     ) -> Result<EngineCapabilities, Error> {
@@ -762,7 +762,7 @@ impl HttpJsonRpc {
     /// any caches or storing the result in the cache. It is better to use
     /// `get_engine_version(Some(Duration::ZERO))` if you want to force
     /// fetching from the EE as this will cache the result.
-    pub async fn get_client_version_v1(&self) -> Result<Vec<ClientVersionV1>, Error> {
+    pub(crate) async fn get_client_version_v1(&self) -> Result<Vec<ClientVersionV1>, Error> {
         let params = json!([*VIBEHOUSE_JSON_CLIENT_VERSION]);
 
         let response: Vec<JsonClientVersionV1> = self
@@ -780,7 +780,7 @@ impl HttpJsonRpc {
             .map_err(Error::InvalidClientVersion)
     }
 
-    pub async fn clear_engine_version_cache(&self) {
+    pub(crate) async fn clear_engine_version_cache(&self) {
         *self.engine_version_cache.lock().await = None;
     }
 
@@ -793,7 +793,7 @@ impl HttpJsonRpc {
     ///
     /// Set `age_limit` to `None` to always return the cached result
     /// Set `age_limit` to `Some(Duration::ZERO)` to force fetching from EE
-    pub async fn get_engine_version(
+    pub(crate) async fn get_engine_version(
         &self,
         age_limit: Option<Duration>,
     ) -> Result<Vec<ClientVersionV1>, Error> {
@@ -824,7 +824,7 @@ impl HttpJsonRpc {
 
     // automatically selects the latest version of
     // new_payload that the execution engine supports
-    pub async fn new_payload<E: EthSpec>(
+    pub(crate) async fn new_payload<E: EthSpec>(
         &self,
         new_payload_request: NewPayloadRequest<'_, E>,
     ) -> Result<PayloadStatusV1, Error> {
@@ -875,7 +875,7 @@ impl HttpJsonRpc {
 
     // automatically selects the latest version of
     // get_payload that the execution engine supports
-    pub async fn get_payload<E: EthSpec>(
+    pub(crate) async fn get_payload<E: EthSpec>(
         &self,
         fork_name: ForkName,
         payload_id: PayloadId,
@@ -920,7 +920,7 @@ impl HttpJsonRpc {
 
     // automatically selects the latest version of
     // forkchoice_updated that the execution engine supports
-    pub async fn forkchoice_updated(
+    pub(crate) async fn forkchoice_updated(
         &self,
         forkchoice_state: ForkchoiceState,
         maybe_payload_attributes: Option<PayloadAttributes>,

@@ -124,7 +124,10 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> Clone for RootsIterator<
 }
 
 impl<'a, E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> RootsIterator<'a, E, Hot, Cold> {
-    pub fn new(store: &'a HotColdDB<E, Hot, Cold>, beacon_state: &'a BeaconState<E>) -> Self {
+    pub(crate) fn new(
+        store: &'a HotColdDB<E, Hot, Cold>,
+        beacon_state: &'a BeaconState<E>,
+    ) -> Self {
         Self {
             store,
             slot: beacon_state.slot(),
@@ -132,7 +135,7 @@ impl<'a, E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> RootsIterator<'a, E,
         }
     }
 
-    pub fn owned(store: &'a HotColdDB<E, Hot, Cold>, beacon_state: BeaconState<E>) -> Self {
+    pub(crate) fn owned(store: &'a HotColdDB<E, Hot, Cold>, beacon_state: BeaconState<E>) -> Self {
         Self {
             store,
             slot: beacon_state.slot(),
@@ -140,7 +143,7 @@ impl<'a, E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> RootsIterator<'a, E,
         }
     }
 
-    pub fn from_block(
+    pub(crate) fn from_block(
         store: &'a HotColdDB<E, Hot, Cold>,
         block_hash: Hash256,
     ) -> Result<Self, Error> {

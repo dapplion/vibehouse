@@ -12,7 +12,7 @@ use validator_store::{DoppelgangerStatus, ValidatorStore};
 ///
 /// This is the PTC equivalent of `SyncDutiesMap`. It stores duties fetched from the BN
 /// and is read by the `PayloadAttestationService` at 3/4 of each slot.
-pub struct PtcDutiesMap {
+pub(crate) struct PtcDutiesMap {
     /// Map from epoch to the list of PTC duties for local validators in that epoch.
     duties: RwLock<HashMap<Epoch, Vec<PtcDutyData>>>,
 }
@@ -24,14 +24,14 @@ impl Default for PtcDutiesMap {
 }
 
 impl PtcDutiesMap {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             duties: RwLock::new(HashMap::new()),
         }
     }
 
     /// Get PTC duties for the given slot.
-    pub fn duties_for_slot(&self, slot: Slot, slots_per_epoch: u64) -> Vec<PtcDutyData> {
+    pub(crate) fn duties_for_slot(&self, slot: Slot, slots_per_epoch: u64) -> Vec<PtcDutyData> {
         let epoch = slot.epoch(slots_per_epoch);
         self.duties
             .read()
@@ -41,7 +41,7 @@ impl PtcDutiesMap {
     }
 
     /// Count PTC duties for the given epoch.
-    pub fn duty_count(
+    pub(crate) fn duty_count(
         &self,
         epoch: Epoch,
         signing_pubkeys: &std::collections::HashSet<PublicKeyBytes>,
@@ -76,7 +76,7 @@ impl PtcDutiesMap {
 ///
 /// This follows the same pattern as `poll_sync_committee_duties` but is much simpler
 /// since PTC has no aggregation proofs or selection proofs.
-pub async fn poll_ptc_duties<S: ValidatorStore + 'static, T: SlotClock + 'static>(
+pub(crate) async fn poll_ptc_duties<S: ValidatorStore + 'static, T: SlotClock + 'static>(
     duties_service: &Arc<DutiesService<S, T>>,
 ) -> Result<(), Error<S::Error>> {
     let spec = &duties_service.spec;

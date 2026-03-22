@@ -283,15 +283,15 @@ pub(crate) struct GetPayloadResponse<E: EthSpec> {
 }
 
 impl<E: EthSpec> GetPayloadResponse<E> {
-    pub fn fee_recipient(&self) -> Address {
+    pub(crate) fn fee_recipient(&self) -> Address {
         ExecutionPayloadRef::from(self.to_ref()).fee_recipient()
     }
 
-    pub fn block_hash(&self) -> ExecutionBlockHash {
+    pub(crate) fn block_hash(&self) -> ExecutionBlockHash {
         ExecutionPayloadRef::from(self.to_ref()).block_hash()
     }
 
-    pub fn block_number(&self) -> u64 {
+    pub(crate) fn block_number(&self) -> u64 {
         ExecutionPayloadRef::from(self.to_ref()).block_number()
     }
 }
@@ -369,7 +369,7 @@ pub(crate) enum GetPayloadResponseType<E: EthSpec> {
 }
 
 impl<E: EthSpec> GetPayloadResponse<E> {
-    pub fn execution_payload_ref(&self) -> ExecutionPayloadRef<'_, E> {
+    pub(crate) fn execution_payload_ref(&self) -> ExecutionPayloadRef<'_, E> {
         self.to_ref().into()
     }
 }

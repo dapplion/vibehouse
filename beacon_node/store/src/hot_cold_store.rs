@@ -101,7 +101,7 @@ struct BlockCache<E: EthSpec> {
 }
 
 impl<E: EthSpec> BlockCache<E> {
-    pub fn new(size: NonZeroUsize) -> Self {
+    pub(crate) fn new(size: NonZeroUsize) -> Self {
         Self {
             block_cache: LruCache::new(size),
             blob_cache: LruCache::new(size),
@@ -109,32 +109,42 @@ impl<E: EthSpec> BlockCache<E> {
             data_column_custody_info_cache: None,
         }
     }
-    pub fn put_block(&mut self, block_root: Hash256, block: SignedBeaconBlock<E>) {
+    pub(crate) fn put_block(&mut self, block_root: Hash256, block: SignedBeaconBlock<E>) {
         self.block_cache.put(block_root, block);
     }
-    pub fn put_blobs(&mut self, block_root: Hash256, blobs: BlobSidecarList<E>) {
+    pub(crate) fn put_blobs(&mut self, block_root: Hash256, blobs: BlobSidecarList<E>) {
         self.blob_cache.put(block_root, blobs);
     }
-    pub fn put_data_column(&mut self, block_root: Hash256, data_column: Arc<DataColumnSidecar<E>>) {
+    pub(crate) fn put_data_column(
+        &mut self,
+        block_root: Hash256,
+        data_column: Arc<DataColumnSidecar<E>>,
+    ) {
         self.data_column_cache
             .get_or_insert_mut(block_root, Default::default)
             .insert(data_column.index(), data_column);
     }
-    pub fn put_data_column_custody_info(
+    pub(crate) fn put_data_column_custody_info(
         &mut self,
         data_column_custody_info: Option<DataColumnCustodyInfo>,
     ) {
         self.data_column_custody_info_cache = data_column_custody_info;
     }
-    pub fn get_block<'a>(&'a mut self, block_root: &Hash256) -> Option<&'a SignedBeaconBlock<E>> {
+    pub(crate) fn get_block<'a>(
+        &'a mut self,
+        block_root: &Hash256,
+    ) -> Option<&'a SignedBeaconBlock<E>> {
         self.block_cache.get(block_root)
     }
-    pub fn get_blobs<'a>(&'a mut self, block_root: &Hash256) -> Option<&'a BlobSidecarList<E>> {
+    pub(crate) fn get_blobs<'a>(
+        &'a mut self,
+        block_root: &Hash256,
+    ) -> Option<&'a BlobSidecarList<E>> {
         self.blob_cache.get(block_root)
     }
     // Note: data columns are all individually cached, hence there's no guarantee that
     // `data_column_cache.get(block_root)` will return all custody columns.
-    pub fn get_data_column(
+    pub(crate) fn get_data_column(
         &mut self,
         block_root: &Hash256,
         column_index: &ColumnIndex,
@@ -143,19 +153,19 @@ impl<E: EthSpec> BlockCache<E> {
             .get(block_root)
             .and_then(|map| map.get(column_index).cloned())
     }
-    pub fn get_data_column_custody_info(&self) -> Option<DataColumnCustodyInfo> {
+    pub(crate) fn get_data_column_custody_info(&self) -> Option<DataColumnCustodyInfo> {
         self.data_column_custody_info_cache.clone()
     }
-    pub fn delete_block(&mut self, block_root: &Hash256) {
+    pub(crate) fn delete_block(&mut self, block_root: &Hash256) {
         let _ = self.block_cache.pop(block_root);
     }
-    pub fn delete_blobs(&mut self, block_root: &Hash256) {
+    pub(crate) fn delete_blobs(&mut self, block_root: &Hash256) {
         let _ = self.blob_cache.pop(block_root);
     }
-    pub fn delete_data_columns(&mut self, block_root: &Hash256) {
+    pub(crate) fn delete_data_columns(&mut self, block_root: &Hash256) {
         let _ = self.data_column_cache.pop(block_root);
     }
-    pub fn delete(&mut self, block_root: &Hash256) {
+    pub(crate) fn delete(&mut self, block_root: &Hash256) {
         self.delete_block(block_root);
         self.delete_blobs(block_root);
         self.delete_data_columns(block_root);

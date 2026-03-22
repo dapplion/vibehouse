@@ -31,7 +31,7 @@ use types::{
 
 // Note: Hardcoding the `EthSpec` type for `SignedBeaconBlock` as min/max values is
 // same across different `EthSpec` implementations.
-pub static SIGNED_BEACON_BLOCK_BASE_MIN: LazyLock<usize> = LazyLock::new(|| {
+pub(super) static SIGNED_BEACON_BLOCK_BASE_MIN: LazyLock<usize> = LazyLock::new(|| {
     SignedBeaconBlock::<MainnetEthSpec>::from_block(
         BeaconBlock::Base(BeaconBlockBase::<MainnetEthSpec>::empty(
             &MainnetEthSpec::default_spec(),
@@ -41,7 +41,7 @@ pub static SIGNED_BEACON_BLOCK_BASE_MIN: LazyLock<usize> = LazyLock::new(|| {
     .as_ssz_bytes()
     .len()
 });
-pub static SIGNED_BEACON_BLOCK_BASE_MAX: LazyLock<usize> = LazyLock::new(|| {
+pub(super) static SIGNED_BEACON_BLOCK_BASE_MAX: LazyLock<usize> = LazyLock::new(|| {
     SignedBeaconBlock::<MainnetEthSpec>::from_block(
         BeaconBlock::Base(BeaconBlockBase::full(&MainnetEthSpec::default_spec())),
         Signature::empty(),
@@ -50,7 +50,7 @@ pub static SIGNED_BEACON_BLOCK_BASE_MAX: LazyLock<usize> = LazyLock::new(|| {
     .len()
 });
 
-pub static SIGNED_BEACON_BLOCK_ALTAIR_MAX: LazyLock<usize> = LazyLock::new(|| {
+pub(super) static SIGNED_BEACON_BLOCK_ALTAIR_MAX: LazyLock<usize> = LazyLock::new(|| {
     SignedBeaconBlock::<MainnetEthSpec>::from_block(
         BeaconBlock::Altair(BeaconBlockAltair::full(&MainnetEthSpec::default_spec())),
         Signature::empty(),
@@ -63,67 +63,69 @@ pub static SIGNED_BEACON_BLOCK_ALTAIR_MAX: LazyLock<usize> = LazyLock::new(|| {
 /// We calculate the value from its fields instead of constructing the block and checking the length.
 /// Note: This is only the theoretical upper bound. We further bound the max size we receive over the network
 /// with `max_payload_size`.
-pub static SIGNED_BEACON_BLOCK_BELLATRIX_MAX: LazyLock<usize> =
+pub(super) static SIGNED_BEACON_BLOCK_BELLATRIX_MAX: LazyLock<usize> =
     LazyLock::new(||     // Size of a full altair block
     *SIGNED_BEACON_BLOCK_ALTAIR_MAX
     + types::ExecutionPayload::<MainnetEthSpec>::max_execution_payload_bellatrix_size() // adding max size of execution payload (~16gb)
     + ssz::BYTES_PER_LENGTH_OFFSET); // Adding the additional ssz offset for the `ExecutionPayload` field
 
-pub static BLOB_SIDECAR_SIZE: LazyLock<usize> =
+pub(super) static BLOB_SIDECAR_SIZE: LazyLock<usize> =
     LazyLock::new(BlobSidecar::<MainnetEthSpec>::max_size);
 
-pub static SIGNED_EXECUTION_PAYLOAD_ENVELOPE_MAX: LazyLock<usize> = LazyLock::new(|| {
+pub(super) static SIGNED_EXECUTION_PAYLOAD_ENVELOPE_MAX: LazyLock<usize> = LazyLock::new(|| {
     // Use the same upper bound as bellatrix blocks since both contain a full execution payload.
     *SIGNED_BEACON_BLOCK_BELLATRIX_MAX
 });
 
-pub static BLOB_SIDECAR_SIZE_MINIMAL: LazyLock<usize> =
+pub(super) static BLOB_SIDECAR_SIZE_MINIMAL: LazyLock<usize> =
     LazyLock::new(BlobSidecar::<MinimalEthSpec>::max_size);
 
-pub static ERROR_TYPE_MIN: LazyLock<usize> = LazyLock::new(|| {
+pub(super) static ERROR_TYPE_MIN: LazyLock<usize> = LazyLock::new(|| {
     VariableList::<u8, MaxErrorLen>::from(Vec::<u8>::new())
         .as_ssz_bytes()
         .len()
 });
 
-pub static ERROR_TYPE_MAX: LazyLock<usize> = LazyLock::new(|| {
+pub(super) static ERROR_TYPE_MAX: LazyLock<usize> = LazyLock::new(|| {
     VariableList::<u8, MaxErrorLen>::from(vec![0u8; MAX_ERROR_LEN as usize])
         .as_ssz_bytes()
         .len()
 });
 
-pub static LIGHT_CLIENT_FINALITY_UPDATE_CAPELLA_MAX: LazyLock<usize> = LazyLock::new(|| {
+pub(super) static LIGHT_CLIENT_FINALITY_UPDATE_CAPELLA_MAX: LazyLock<usize> = LazyLock::new(|| {
     LightClientFinalityUpdate::<MainnetEthSpec>::ssz_max_len_for_fork(ForkName::Capella)
 });
-pub static LIGHT_CLIENT_FINALITY_UPDATE_DENEB_MAX: LazyLock<usize> = LazyLock::new(|| {
+pub(super) static LIGHT_CLIENT_FINALITY_UPDATE_DENEB_MAX: LazyLock<usize> = LazyLock::new(|| {
     LightClientFinalityUpdate::<MainnetEthSpec>::ssz_max_len_for_fork(ForkName::Deneb)
 });
-pub static LIGHT_CLIENT_FINALITY_UPDATE_ELECTRA_MAX: LazyLock<usize> = LazyLock::new(|| {
+pub(super) static LIGHT_CLIENT_FINALITY_UPDATE_ELECTRA_MAX: LazyLock<usize> = LazyLock::new(|| {
     LightClientFinalityUpdate::<MainnetEthSpec>::ssz_max_len_for_fork(ForkName::Electra)
 });
-pub static LIGHT_CLIENT_OPTIMISTIC_UPDATE_CAPELLA_MAX: LazyLock<usize> = LazyLock::new(|| {
-    LightClientOptimisticUpdate::<MainnetEthSpec>::ssz_max_len_for_fork(ForkName::Capella)
-});
-pub static LIGHT_CLIENT_OPTIMISTIC_UPDATE_DENEB_MAX: LazyLock<usize> = LazyLock::new(|| {
+pub(super) static LIGHT_CLIENT_OPTIMISTIC_UPDATE_CAPELLA_MAX: LazyLock<usize> =
+    LazyLock::new(|| {
+        LightClientOptimisticUpdate::<MainnetEthSpec>::ssz_max_len_for_fork(ForkName::Capella)
+    });
+pub(super) static LIGHT_CLIENT_OPTIMISTIC_UPDATE_DENEB_MAX: LazyLock<usize> = LazyLock::new(|| {
     LightClientOptimisticUpdate::<MainnetEthSpec>::ssz_max_len_for_fork(ForkName::Deneb)
 });
-pub static LIGHT_CLIENT_OPTIMISTIC_UPDATE_ELECTRA_MAX: LazyLock<usize> = LazyLock::new(|| {
-    LightClientOptimisticUpdate::<MainnetEthSpec>::ssz_max_len_for_fork(ForkName::Electra)
-});
-pub static LIGHT_CLIENT_BOOTSTRAP_CAPELLA_MAX: LazyLock<usize> = LazyLock::new(|| {
+pub(super) static LIGHT_CLIENT_OPTIMISTIC_UPDATE_ELECTRA_MAX: LazyLock<usize> =
+    LazyLock::new(|| {
+        LightClientOptimisticUpdate::<MainnetEthSpec>::ssz_max_len_for_fork(ForkName::Electra)
+    });
+pub(super) static LIGHT_CLIENT_BOOTSTRAP_CAPELLA_MAX: LazyLock<usize> = LazyLock::new(|| {
     LightClientBootstrap::<MainnetEthSpec>::ssz_max_len_for_fork(ForkName::Capella)
 });
-pub static LIGHT_CLIENT_BOOTSTRAP_DENEB_MAX: LazyLock<usize> =
+pub(super) static LIGHT_CLIENT_BOOTSTRAP_DENEB_MAX: LazyLock<usize> =
     LazyLock::new(|| LightClientBootstrap::<MainnetEthSpec>::ssz_max_len_for_fork(ForkName::Deneb));
-pub static LIGHT_CLIENT_BOOTSTRAP_ELECTRA_MAX: LazyLock<usize> = LazyLock::new(|| {
+pub(super) static LIGHT_CLIENT_BOOTSTRAP_ELECTRA_MAX: LazyLock<usize> = LazyLock::new(|| {
     LightClientBootstrap::<MainnetEthSpec>::ssz_max_len_for_fork(ForkName::Electra)
 });
 
-pub static LIGHT_CLIENT_UPDATES_BY_RANGE_CAPELLA_MAX: LazyLock<usize> =
+pub(super) static LIGHT_CLIENT_UPDATES_BY_RANGE_CAPELLA_MAX: LazyLock<usize> =
     LazyLock::new(|| LightClientUpdate::<MainnetEthSpec>::ssz_max_len_for_fork(ForkName::Capella));
-pub static LIGHT_CLIENT_UPDATES_BY_RANGE_DENEB_MAX: LazyLock<usize> =
+pub(super) static LIGHT_CLIENT_UPDATES_BY_RANGE_DENEB_MAX: LazyLock<usize> =
     LazyLock::new(|| LightClientUpdate::<MainnetEthSpec>::ssz_max_len_for_fork(ForkName::Deneb));
-pub static LIGHT_CLIENT_UPDATES_BY_RANGE_ELECTRA_MAX: LazyLock<usize> =
+pub(super) static LIGHT_CLIENT_UPDATES_BY_RANGE_ELECTRA_MAX: LazyLock<usize> =
     LazyLock::new(|| LightClientUpdate::<MainnetEthSpec>::ssz_max_len_for_fork(ForkName::Electra));
 
 /// The protocol prefix the RPC protocol id.
@@ -681,8 +683,8 @@ pub(crate) fn rpc_data_column_limits<E: EthSpec>(
 // The inbound protocol reads the request, decodes it and returns the stream to the protocol
 // handler to respond to once ready.
 
-pub type InboundOutput<TSocket, E> = (RequestType<E>, InboundFramed<TSocket, E>);
-pub type InboundFramed<TSocket, E> =
+pub(super) type InboundOutput<TSocket, E> = (RequestType<E>, InboundFramed<TSocket, E>);
+pub(super) type InboundFramed<TSocket, E> =
     Framed<std::pin::Pin<Box<Compat<TSocket>>>, SSZSnappyInboundCodec<E>>;
 
 impl<TSocket, E> InboundUpgrade<TSocket> for RPCProtocol<E>
