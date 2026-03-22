@@ -27,6 +27,7 @@ use state_processing::signature_sets::{
 use std::borrow::Cow;
 use std::sync::Arc;
 use strum::AsRefStr;
+use tracing::debug;
 use tree_hash::TreeHash;
 use types::{
     Address, BeaconStateError, BuilderIndex, EthSpec, ExecutionBlockHash, Hash256,
@@ -517,7 +518,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         let signature_set =
             execution_payload_bid_signature_set(state, get_builder_pubkey, &bid, &self.spec)
-                .map_err(|_| ExecutionBidError::InvalidSignature)?;
+                .map_err(|e| {
+                    debug!(error = ?e, "bid signature set construction failed");
+                    ExecutionBidError::InvalidSignature
+                })?;
 
         if !signature_set.verify() {
             return Err(ExecutionBidError::InvalidSignature);
@@ -644,8 +648,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             attestation_slot,
             &self.spec,
         )
-        .map_err(|_| PayloadAttestationError::PtcCommitteeError {
-            slot: attestation_slot,
+        .map_err(|e| {
+            debug!(error = ?e, slot = %attestation_slot, "PTC committee lookup failed");
+            PayloadAttestationError::PtcCommitteeError {
+                slot: attestation_slot,
+            }
         })?;
 
         // Convert aggregation bits to attesting indices
@@ -715,7 +722,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             &indexed_attestation_indices,
             &self.spec,
         )
-        .map_err(|_| PayloadAttestationError::InvalidSignature)?;
+        .map_err(|e| {
+            debug!(error = ?e, "payload attestation signature set construction failed");
+            PayloadAttestationError::InvalidSignature
+        })?;
 
         if !signature_set.verify() {
             return Err(PayloadAttestationError::InvalidSignature);
@@ -881,7 +891,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 &self.spec.fork_at_epoch(envelope_epoch),
                 &self.spec,
             )
-            .map_err(|_| PayloadEnvelopeError::InvalidSignature)?;
+            .map_err(|e| {
+                debug!(error = ?e, "envelope signature set construction failed");
+                PayloadEnvelopeError::InvalidSignature
+            })?;
 
             if !signature_set.verify() {
                 return Err(PayloadEnvelopeError::InvalidSignature);

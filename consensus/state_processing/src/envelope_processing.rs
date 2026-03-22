@@ -84,6 +84,96 @@ pub enum EnvelopeProcessingError {
     BuilderPaymentIndexOutOfBounds(usize),
 }
 
+impl std::fmt::Display for EnvelopeProcessingError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::BadSignature => write!(f, "invalid envelope signature"),
+            Self::BeaconStateError(e) => write!(f, "beacon state error: {e:?}"),
+            Self::BlockProcessingError(e) => write!(f, "block processing error: {e:?}"),
+            Self::ArithError(e) => write!(f, "arithmetic error: {e:?}"),
+            Self::LatestBlockHeaderMismatch {
+                envelope_root,
+                block_header_root,
+            } => {
+                write!(
+                    f,
+                    "envelope beacon_block_root {envelope_root:?} does not match latest block header {block_header_root:?}"
+                )
+            }
+            Self::SlotMismatch {
+                envelope_slot,
+                parent_state_slot,
+            } => {
+                write!(
+                    f,
+                    "envelope slot {envelope_slot} does not match parent state slot {parent_state_slot}"
+                )
+            }
+            Self::WithdrawalsRootMismatch { state, payload } => {
+                write!(
+                    f,
+                    "withdrawals root mismatch: state {state:?}, payload {payload:?}"
+                )
+            }
+            Self::BuilderIndexMismatch {
+                committed_bid,
+                envelope,
+            } => {
+                write!(
+                    f,
+                    "builder index mismatch: committed bid {committed_bid}, envelope {envelope}"
+                )
+            }
+            Self::GasLimitMismatch {
+                committed_bid,
+                envelope,
+            } => {
+                write!(
+                    f,
+                    "gas limit mismatch: committed bid {committed_bid}, envelope {envelope}"
+                )
+            }
+            Self::BlockHashMismatch {
+                committed_bid,
+                envelope,
+            } => {
+                write!(
+                    f,
+                    "block hash mismatch: committed bid {committed_bid:?}, envelope {envelope:?}"
+                )
+            }
+            Self::ParentHashMismatch { state, envelope } => {
+                write!(
+                    f,
+                    "parent hash mismatch: state {state:?}, envelope {envelope:?}"
+                )
+            }
+            Self::PrevRandaoMismatch {
+                committed_bid,
+                envelope,
+            } => {
+                write!(
+                    f,
+                    "prev randao mismatch: committed bid {committed_bid:?}, envelope {envelope:?}"
+                )
+            }
+            Self::TimestampMismatch { state, envelope } => {
+                write!(f, "timestamp mismatch: state {state}, envelope {envelope}")
+            }
+            Self::InvalidStateRoot { state, envelope } => {
+                write!(
+                    f,
+                    "invalid state root: computed {state:?}, envelope {envelope:?}"
+                )
+            }
+            Self::BitFieldError(e) => write!(f, "bitfield error: {e:?}"),
+            Self::BuilderPaymentIndexOutOfBounds(i) => {
+                write!(f, "builder payment index out of bounds: {i}")
+            }
+        }
+    }
+}
+
 impl From<BeaconStateError> for EnvelopeProcessingError {
     fn from(e: BeaconStateError) -> Self {
         EnvelopeProcessingError::BeaconStateError(e)

@@ -3400,10 +3400,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             // the EL returns SYNCING (unknown block). Without explicitly updating here,
             // the head stays Optimistic and block production is disabled.
             if el_valid && let Err(e) = fc.on_valid_execution_payload(beacon_block_root) {
-                warn!(
+                error!(
                     ?beacon_block_root,
                     error = ?e,
-                    "Failed to mark self-build envelope payload as valid in fork choice"
+                    "Failed to mark self-build envelope payload as valid in fork choice, \
+                     head may remain optimistic and block production may be disabled"
                 );
             }
         }
