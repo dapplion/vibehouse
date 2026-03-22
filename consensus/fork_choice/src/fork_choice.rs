@@ -808,11 +808,11 @@ where
         // Spec: `update_proposer_boost_root` / `record_block_timeliness`
         //
         // Spec: record_block_timeliness — block_timeliness[ATTESTATION_TIMELINESS_INDEX]
-        // is true when the block arrives before the attestation deadline.
+        // is true when the block arrives at or before the attestation deadline.
         // Uses spec's get_attestation_due_ms which varies by epoch (pre/post-Gloas).
         let block_epoch = block.slot().epoch(E::slots_per_epoch());
         let attestation_due_ms = spec.get_attestation_due_ms(block_epoch);
-        let is_before_attesting_interval = block_delay < Duration::from_millis(attestation_due_ms);
+        let is_before_attesting_interval = block_delay <= Duration::from_millis(attestation_due_ms);
 
         let is_first_block = self.fc_store.proposer_boost_root().is_zero();
         if current_slot == block.slot() && is_before_attesting_interval && is_first_block {
