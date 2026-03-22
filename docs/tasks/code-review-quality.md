@@ -4434,3 +4434,17 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - **Test fix**: `attestation_duplicate_same_value_still_passes` → `_rejected`, `attestation_mixed_duplicate_and_new_passes` → `_rejected` (both now expect rejection). Fixed `test_gloas_gossip_payload_attestation_accumulates_ptc_weight` which revealed that PTC_SIZE=512 with VALIDATOR_COUNT=32 causes all PTC positions to map to the same validator — test now skips when insufficient unique validators.
   - **Other findings verified clean**: self-build bids correctly never go through gossip (false alarm from agent), equivocation detection order is correct (sig verify before observation), DoS protection adequate, peer scoring appropriate.
 - **Tests**: 999/999 beacon_chain, 204/204 network, 61/61 gloas_verification. `make lint-full` clean.
+
+### Run 2207
+
+**Comprehensive subsystem audits: operation pool, store, sync, validator client**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since #5008/#4902 (March 22). All open Gloas PRs (#5022, #5023, #5020, #4979, #4992, #4962, #4960, #4939, #4932, #4843, #4840) remain unmerged. No new EF test fixtures.
+- **Operation pool audit**: Payload attestation aggregation logic is sound — bitfield union and BLS signature aggregation correct. Equivocation detection robust. Pool pruning bounds memory. Recent fixes (duplicate attestation rejection in run 2206, state_root verification in run 2205) verified integrated correctly. No issues found.
+- **Store/database layer audit**: Two-state model (pre-envelope/post-envelope) correctly handled. Envelope storage atomic with payload. Cold DB migration stores both state roots. Fork boundary edge cases handled (zero bid genesis, pre-Gloas payload pruning). No unwrap in production paths. Crash recovery via pre-envelope root fallback. No issues found.
+- **Sync subsystem audit**: Range sync properly downloads envelopes via ExecutionPayloadEnvelopesByRoot RPC after block download. Missing envelopes degrade gracefully (blocks proceed, may fail state root check triggering retry). RPC errors/timeouts properly clean up pending batches (manager.rs line 534-544 delivers batch without envelopes on error). Fork boundary handled per-block via slot-based fork detection. Single envelope requests for attestation-triggered lookups working correctly. No deadlock risks — all async, no lock ordering issues. No issues found.
+- **Validator client audit**: PTC duty discovery correct (per-epoch from BN, cached, pruned). Payload attestation timing correct (75% slot = 9s for 12s slots). Bid selection correct (highest value, parent_root filtered, re-org safe). Self-build vs external builder flow correct. Signing domains correct (PTC_ATTESTER for attestations, BEACON_BUILDER for envelopes). Doppelganger correctly bypassed for non-slashable attestations. Error handling robust throughout. No issues found.
+- **Build**: Zero warnings on `cargo check --workspace`.
+- **Tests**: 4991/4999 workspace tests pass (8 web3signer infrastructure-dependent). 74/74 operation_pool (Gloas). CI: 4/6 jobs passed, 2 in progress, no failures.
+- **Nightly CI**: March 22 failure was pre-existing nextest version pin issue (fixed in run 2203). Tonight's nightly should pass.
+- **Conclusion**: No code changes needed. Five major subsystems audited clean. Codebase in excellent shape.
