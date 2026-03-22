@@ -360,7 +360,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
             // sending an error /timeout) if the peer is removed from the chain for other
             // reasons. Peer_id matching was removed as the node may request a different
             // peer for data columns — just check the request_id.
-            if !batch.is_expecting_request_id(&request_id) {
+            if !batch.is_expecting_request_id(request_id) {
                 return Ok(());
             }
             debug!(batch_epoch = %batch_id, error = ?err, "Batch download failed");
@@ -404,7 +404,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
         // sending an error /timeout) if the peer is removed from the chain for other
         // reasons. Check that this block belongs to the expected peer, and that the
         // request_id matches
-        if !batch.is_expecting_request_id(&request_id) {
+        if !batch.is_expecting_request_id(request_id) {
             return Ok(ProcessResult::Successful);
         }
         let received = blocks.len();
@@ -1101,7 +1101,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
             Entry::Vacant(entry) => {
                 let batch_type = network.batch_type(batch_id);
                 entry.insert(BatchInfo::new(
-                    &batch_id,
+                    batch_id,
                     BACKFILL_EPOCHS_PER_BATCH,
                     batch_type,
                 ));

@@ -147,11 +147,11 @@ impl<E: EthSpec> BlockCache<E> {
     pub(crate) fn get_data_column(
         &mut self,
         block_root: &Hash256,
-        column_index: &ColumnIndex,
+        column_index: ColumnIndex,
     ) -> Option<Arc<DataColumnSidecar<E>>> {
         self.data_column_cache
             .get(block_root)
-            .and_then(|map| map.get(column_index).cloned())
+            .and_then(|map| map.get(&column_index).cloned())
     }
     pub(crate) fn get_data_column_custody_info(&self) -> Option<DataColumnCustodyInfo> {
         self.data_column_custody_info_cache.clone()
@@ -1007,7 +1007,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     ) {
         ops.push(KeyValueStoreOp::PutKeyValue(
             DBColumn::BeaconDataColumn,
-            get_data_column_key(block_root, &data_column.index()),
+            get_data_column_key(block_root, data_column.index()),
             data_column.as_ssz_bytes(),
         ));
     }
@@ -1040,7 +1040,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         for data_column in data_columns {
             self.blobs_db.put_bytes(
                 DBColumn::BeaconDataColumn,
-                &get_data_column_key(block_root, &data_column.index()),
+                &get_data_column_key(block_root, data_column.index()),
                 &data_column.as_ssz_bytes(),
             )?;
             self.block_cache
@@ -1059,7 +1059,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         for data_column in data_columns {
             ops.push(KeyValueStoreOp::PutKeyValue(
                 DBColumn::BeaconDataColumn,
-                get_data_column_key(block_root, &data_column.index()),
+                get_data_column_key(block_root, data_column.index()),
                 data_column.as_ssz_bytes(),
             ));
         }
@@ -1413,7 +1413,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
 
                 StoreOp::DeleteDataColumns(block_root, column_indices) => {
                     for index in column_indices {
-                        let key = get_data_column_key(&block_root, &index);
+                        let key = get_data_column_key(&block_root, index);
                         key_value_batch
                             .push(KeyValueStoreOp::DeleteKey(DBColumn::BeaconDataColumn, key));
                     }
@@ -1530,7 +1530,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                 StoreOp::DeleteDataColumns(block_root, indices) => {
                     match indices
                         .iter()
-                        .map(|index| self.get_data_column(block_root, index))
+                        .map(|&index| self.get_data_column(block_root, index))
                         .collect::<Result<Vec<_>, _>>()
                     {
                         Ok(data_column_sidecar_list_opt) => {
@@ -2659,7 +2659,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
 
         let columns: DataColumnSidecarList<E> = column_indices
             .into_iter()
-            .filter_map(|col_index| self.get_data_column(block_root, &col_index).transpose())
+            .filter_map(|col_index| self.get_data_column(block_root, col_index).transpose())
             .collect::<Result<_, _>>()?;
 
         Ok((!columns.is_empty()).then_some(columns))
@@ -2724,7 +2724,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     /// due to the node's custody requirements many just store a subset.
     pub(crate) fn get_all_data_column_keys(&self, block_root: Hash256) -> Vec<Vec<u8>> {
         (0..E::number_of_columns() as u64)
-            .map(|column_index| get_data_column_key(&block_root, &column_index))
+            .map(|column_index| get_data_column_key(&block_root, column_index))
             .collect()
     }
 
@@ -2732,7 +2732,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     pub fn get_data_column(
         &self,
         block_root: &Hash256,
-        column_index: &ColumnIndex,
+        column_index: ColumnIndex,
     ) -> Result<Option<Arc<DataColumnSidecar<E>>>, Error> {
         // Check the cache.
         if let Some(data_column) = self

@@ -338,7 +338,7 @@ pub enum SupportedProtocol {
 }
 
 impl SupportedProtocol {
-    pub fn version_string(&self) -> &'static str {
+    pub fn version_string(self) -> &'static str {
         match self {
             SupportedProtocol::StatusV1
             | SupportedProtocol::GoodbyeV1
@@ -363,7 +363,7 @@ impl SupportedProtocol {
         }
     }
 
-    pub fn protocol(&self) -> Protocol {
+    pub fn protocol(self) -> Protocol {
         match self {
             SupportedProtocol::StatusV1 | SupportedProtocol::StatusV2 => Protocol::Status,
             SupportedProtocol::GoodbyeV1 => Protocol::Goodbye,

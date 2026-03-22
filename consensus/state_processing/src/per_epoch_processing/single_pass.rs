@@ -284,7 +284,7 @@ pub fn process_epoch_single_pass<E: EthSpec>(
             if conf.rewards_and_penalties {
                 process_single_reward_and_penalty(
                     &mut balance,
-                    &inactivity_score,
+                    *inactivity_score,
                     validator_info,
                     rewards_ctxt,
                     state_ctxt,
@@ -561,7 +561,7 @@ fn process_single_inactivity_update(
 
 fn process_single_reward_and_penalty(
     balance: &mut Cow<u64>,
-    inactivity_score: &u64,
+    inactivity_score: u64,
     validator_info: &ValidatorInfo,
     rewards_ctxt: &RewardsAndPenaltiesContext,
     state_ctxt: &StateContext,
@@ -640,14 +640,14 @@ fn get_flag_weight(flag_index: usize) -> Result<u64, Error> {
 fn get_inactivity_penalty_delta(
     delta: &mut Delta,
     validator_info: &ValidatorInfo,
-    inactivity_score: &u64,
+    inactivity_score: u64,
     state_ctxt: &StateContext,
     spec: &ChainSpec,
 ) -> Result<(), Error> {
     if !validator_info.is_unslashed_participating_index(TIMELY_TARGET_FLAG_INDEX)? {
         let penalty_numerator = validator_info
             .effective_balance
-            .safe_mul(*inactivity_score)?;
+            .safe_mul(inactivity_score)?;
         let penalty_denominator = spec
             .inactivity_score_bias
             .safe_mul(spec.inactivity_penalty_quotient_for_fork(state_ctxt.fork_name))?;

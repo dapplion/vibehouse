@@ -37,7 +37,7 @@ impl RangeSyncType {
     }
 
     /// Get a `str` representation of the `RangeSyncType`.
-    pub(crate) fn as_str(&self) -> &'static str {
+    pub(crate) fn as_str(self) -> &'static str {
         match self {
             RangeSyncType::Finalized => "Finalized",
             RangeSyncType::Head => "Head",

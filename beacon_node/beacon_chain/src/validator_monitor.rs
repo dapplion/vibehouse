@@ -307,9 +307,9 @@ impl MonitoredValidator {
     ///
     /// Note: this value may be different from the one obtained from epoch summary
     /// as the value recorded by the validator monitor ignores skip slots.
-    fn min_inclusion_distance(&self, epoch: &Epoch) -> Option<u64> {
+    fn min_inclusion_distance(&self, epoch: Epoch) -> Option<u64> {
         let summaries = self.summaries.read();
-        summaries.get(epoch).and_then(|summary| {
+        summaries.get(&epoch).and_then(|summary| {
             summary
                 .attestation_min_block_inclusion_distance
                 .map(Into::into)
@@ -930,7 +930,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
                 // and the epoch summary inclusion distance.
                 // The inclusion data is not retained in the epoch summary post Altair.
                 let min_inclusion_distance = min_opt(
-                    monitored_validator.min_inclusion_distance(&prev_epoch),
+                    monitored_validator.min_inclusion_distance(prev_epoch),
                     summary
                         .previous_epoch_inclusion_info(i)
                         .map(|info| info.delay),

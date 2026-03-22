@@ -1053,7 +1053,7 @@ async fn poll_beacon_attesters_for_epoch<S: ValidatorStore + 'static, T: SlotClo
     // determine whether validator duties need to be updated. This is to ensure that we don't
     // request for extra data unless necessary in order to save on network bandwidth.
     let uninitialized_validators =
-        get_uninitialized_validators(duties_service, &epoch, local_pubkeys);
+        get_uninitialized_validators(duties_service, epoch, local_pubkeys);
     let initial_indices_to_request = if uninitialized_validators.is_empty() {
         &local_indices[0..min(INITIAL_DUTIES_QUERY_SIZE, local_indices.len())]
     } else {
@@ -1190,7 +1190,7 @@ async fn poll_beacon_attesters_for_epoch<S: ValidatorStore + 'static, T: SlotClo
 /// Get a filtered list of local validators for which we don't already know their duties for that epoch
 fn get_uninitialized_validators<S: ValidatorStore, T: SlotClock + 'static>(
     duties_service: &Arc<DutiesService<S, T>>,
-    epoch: &Epoch,
+    epoch: Epoch,
     local_pubkeys: &HashSet<PublicKeyBytes>,
 ) -> Vec<u64> {
     let attesters = duties_service.attesters.read();
@@ -1199,7 +1199,7 @@ fn get_uninitialized_validators<S: ValidatorStore, T: SlotClock + 'static>(
         .filter(|pubkey| {
             attesters
                 .get(pubkey)
-                .is_none_or(|duties| !duties.contains_key(epoch))
+                .is_none_or(|duties| !duties.contains_key(&epoch))
         })
         .filter_map(|pubkey| duties_service.validator_store.validator_index(pubkey))
         .collect::<Vec<_>>()

@@ -264,6 +264,7 @@ lint:
 		-D clippy::redundant_else \
 		-D clippy::inefficient_to_string \
 		-D clippy::items_after_statements \
+		-D clippy::trivially_copy_pass_by_ref \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.

@@ -746,7 +746,7 @@ impl<E: EthSpec> RpcResponse<E> {
 }
 
 impl RpcErrorResponse {
-    fn as_u8(&self) -> u8 {
+    fn as_u8(self) -> u8 {
         match self {
             RpcErrorResponse::InvalidRequest => 1,
             RpcErrorResponse::ServerError => 2,

@@ -39,7 +39,7 @@ impl CompactAttesterRecord {
         Ok(Self::new(IndexedAttestationId::new(id)))
     }
 
-    pub fn is_null(&self) -> bool {
+    pub fn is_null(self) -> bool {
         self.indexed_attestation_id.is_null()
     }
 

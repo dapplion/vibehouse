@@ -1164,7 +1164,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         } else {
             indices
                 .iter()
-                .filter_map(|index| self.get_data_column(&block_root, index).transpose())
+                .filter_map(|&index| self.get_data_column(&block_root, index).transpose())
                 .collect::<Result<_, _>>()
         }
     }
@@ -1375,7 +1375,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     pub fn get_data_column(
         &self,
         block_root: &Hash256,
-        column_index: &ColumnIndex,
+        column_index: ColumnIndex,
     ) -> Result<Option<Arc<DataColumnSidecar<T::EthSpec>>>, Error> {
         Ok(self.store.get_data_column(block_root, column_index)?)
     }

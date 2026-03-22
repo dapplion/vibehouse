@@ -185,7 +185,7 @@ impl<E: EthSpec, B: BatchConfig, D: Hash> BatchInfo<E, B, D> {
     /// deal with this for now.
     /// This means finalization might be slower in deneb
     pub(super) fn new(
-        start_epoch: &Epoch,
+        start_epoch: Epoch,
         num_of_epochs: u64,
         batch_type: ByRangeRequestType,
     ) -> Self {
@@ -224,9 +224,9 @@ impl<E: EthSpec, B: BatchConfig, D: Hash> BatchInfo<E, B, D> {
     }
 
     /// Verifies if an incoming request id to this batch.
-    pub(super) fn is_expecting_request_id(&self, request_id: &Id) -> bool {
+    pub(super) fn is_expecting_request_id(&self, request_id: Id) -> bool {
         if let BatchState::Downloading(expected_id) = &self.state {
-            return expected_id == request_id;
+            return *expected_id == request_id;
         }
         false
     }
@@ -595,11 +595,11 @@ mod tests {
     type RpcBatch = BatchInfo<E, TestBatchConfig, Vec<RpcBlock<E>>>;
 
     fn make_batch() -> SimpleBatch {
-        BatchInfo::new(&Epoch::new(0), 1, ByRangeRequestType::Blocks)
+        BatchInfo::new(Epoch::new(0), 1, ByRangeRequestType::Blocks)
     }
 
     fn make_rpc_batch() -> RpcBatch {
-        BatchInfo::new(&Epoch::new(0), 1, ByRangeRequestType::Blocks)
+        BatchInfo::new(Epoch::new(0), 1, ByRangeRequestType::Blocks)
     }
 
     fn peer(id: u8) -> PeerId {
@@ -625,7 +625,7 @@ mod tests {
 
     #[test]
     fn new_batch_has_correct_slot_range() {
-        let batch: RpcBatch = BatchInfo::new(&Epoch::new(2), 1, ByRangeRequestType::Blocks);
+        let batch: RpcBatch = BatchInfo::new(Epoch::new(2), 1, ByRangeRequestType::Blocks);
         // MinimalEthSpec: 8 slots per epoch
         // start_slot = 2 * 8 = 16, end_slot = 16 + 8 = 24
         let (req, _) = batch.to_blocks_by_range_request();
@@ -635,7 +635,7 @@ mod tests {
 
     #[test]
     fn new_batch_multi_epoch() {
-        let batch: RpcBatch = BatchInfo::new(&Epoch::new(0), 3, ByRangeRequestType::Blocks);
+        let batch: RpcBatch = BatchInfo::new(Epoch::new(0), 3, ByRangeRequestType::Blocks);
         let (req, _) = batch.to_blocks_by_range_request();
         assert_eq!(*req.start_slot(), 0);
         assert_eq!(*req.count(), 24); // 3 * 8
@@ -658,8 +658,8 @@ mod tests {
         batch.start_downloading(42).unwrap();
         assert!(matches!(batch.state(), BatchState::Downloading(42)));
         assert_eq!(batch.visualize(), 'D');
-        assert!(batch.is_expecting_request_id(&42));
-        assert!(!batch.is_expecting_request_id(&99));
+        assert!(batch.is_expecting_request_id(42));
+        assert!(!batch.is_expecting_request_id(99));
 
         // Complete download
         batch.download_completed(vec![1, 2, 3], pg).unwrap();
@@ -917,7 +917,7 @@ mod tests {
     #[test]
     fn not_expecting_when_not_downloading() {
         let batch = make_batch();
-        assert!(!batch.is_expecting_request_id(&1));
+        assert!(!batch.is_expecting_request_id(1));
     }
 
     // ── pending_blocks ──

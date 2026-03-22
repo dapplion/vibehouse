@@ -269,7 +269,7 @@ impl BlockId {
         let data_column_sidecars = if let Some(indices) = query.indices {
             indices
                 .iter()
-                .filter_map(|index| chain.get_data_column(&root, index).transpose())
+                .filter_map(|&index| chain.get_data_column(&root, index).transpose())
                 .collect::<Result<DataColumnSidecarList<T::EthSpec>, _>>()
                 .map_err(ApiError::unhandled_error)?
         } else {
@@ -432,7 +432,7 @@ impl BlockId {
             let data_columns = column_indices
                 .into_iter()
                 .filter_map(
-                    |column_index| match chain.get_data_column(&root, &column_index) {
+                    |column_index| match chain.get_data_column(&root, column_index) {
                         Ok(Some(data_column)) => Some(Ok(data_column)),
                         Ok(None) => None,
                         Err(e) => Some(Err(ApiError::unhandled_error(e))),

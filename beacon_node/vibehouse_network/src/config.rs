@@ -166,7 +166,7 @@ impl Config {
             tcp_port,
         });
         self.discv5_config.listen_config = discv5::ListenConfig::from_ip(addr.into(), disc_port);
-        self.discv5_config.table_filter = |enr| enr.ip4().as_ref().is_some_and(is_global_ipv4);
+        self.discv5_config.table_filter = |enr| enr.ip4().is_some_and(is_global_ipv4);
     }
 
     /// Sets the listening address to use an ipv6 address. The discv5 ip_mode and table filter is
@@ -226,8 +226,8 @@ impl Config {
         self.discv5_config.table_filter = |enr| match (&enr.ip4(), &enr.ip6()) {
             (None, None) => false,
             (None, Some(ip6)) => is_global_ipv6(ip6),
-            (Some(ip4), None) => is_global_ipv4(ip4),
-            (Some(ip4), Some(ip6)) => is_global_ipv4(ip4) && is_global_ipv6(ip6),
+            (Some(ip4), None) => is_global_ipv4(*ip4),
+            (Some(ip4), Some(ip6)) => is_global_ipv4(*ip4) && is_global_ipv6(ip6),
         };
     }
 
@@ -329,7 +329,7 @@ impl Default for Config {
             .filter_rate_limiter(filter_rate_limiter)
             .filter_max_bans_per_ip(Some(5))
             .filter_max_nodes_per_ip(Some(10))
-            .table_filter(|enr| enr.ip4().is_some_and(|ip| is_global_ipv4(&ip))) // Filter non-global IPs
+            .table_filter(|enr| enr.ip4().is_some_and(is_global_ipv4)) // Filter non-global IPs
             .ban_duration(Some(Duration::from_secs(3600)))
             .ping_interval(Duration::from_secs(300))
             .build();
@@ -522,7 +522,7 @@ pub(crate) fn gossipsub_config(
 
 /// Helper function to determine if the IpAddr is a global address or not. The `is_global()`
 /// function is not yet stable on IpAddr.
-fn is_global_ipv4(addr: &Ipv4Addr) -> bool {
+fn is_global_ipv4(addr: Ipv4Addr) -> bool {
     // check if this address is 192.0.0.9 or 192.0.0.10. These addresses are the only two
     // globally routable addresses in the 192.0.0.0/24 range.
     if u32::from_be_bytes(addr.octets()) == 0xc000_0009
@@ -631,74 +631,74 @@ mod tests {
 
     #[test]
     fn ipv4_global_public_address() {
-        assert!(is_global_ipv4(&Ipv4Addr::new(8, 8, 8, 8)));
-        assert!(is_global_ipv4(&Ipv4Addr::new(1, 1, 1, 1)));
-        assert!(is_global_ipv4(&Ipv4Addr::new(142, 250, 80, 14)));
+        assert!(is_global_ipv4(Ipv4Addr::new(8, 8, 8, 8)));
+        assert!(is_global_ipv4(Ipv4Addr::new(1, 1, 1, 1)));
+        assert!(is_global_ipv4(Ipv4Addr::new(142, 250, 80, 14)));
     }
 
     #[test]
     fn ipv4_not_global_private() {
-        assert!(!is_global_ipv4(&Ipv4Addr::new(10, 0, 0, 1)));
-        assert!(!is_global_ipv4(&Ipv4Addr::new(172, 16, 0, 1)));
-        assert!(!is_global_ipv4(&Ipv4Addr::new(192, 168, 1, 1)));
+        assert!(!is_global_ipv4(Ipv4Addr::new(10, 0, 0, 1)));
+        assert!(!is_global_ipv4(Ipv4Addr::new(172, 16, 0, 1)));
+        assert!(!is_global_ipv4(Ipv4Addr::new(192, 168, 1, 1)));
     }
 
     #[test]
     fn ipv4_not_global_loopback() {
-        assert!(!is_global_ipv4(&Ipv4Addr::LOCALHOST));
+        assert!(!is_global_ipv4(Ipv4Addr::LOCALHOST));
     }
 
     #[test]
     fn ipv4_not_global_link_local() {
-        assert!(!is_global_ipv4(&Ipv4Addr::new(169, 254, 0, 1)));
+        assert!(!is_global_ipv4(Ipv4Addr::new(169, 254, 0, 1)));
     }
 
     #[test]
     fn ipv4_not_global_broadcast() {
-        assert!(!is_global_ipv4(&Ipv4Addr::BROADCAST));
+        assert!(!is_global_ipv4(Ipv4Addr::BROADCAST));
     }
 
     #[test]
     fn ipv4_not_global_documentation() {
         // 192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24 are documentation
-        assert!(!is_global_ipv4(&Ipv4Addr::new(192, 0, 2, 1)));
-        assert!(!is_global_ipv4(&Ipv4Addr::new(198, 51, 100, 1)));
+        assert!(!is_global_ipv4(Ipv4Addr::new(192, 0, 2, 1)));
+        assert!(!is_global_ipv4(Ipv4Addr::new(198, 51, 100, 1)));
     }
 
     #[test]
     fn ipv4_not_global_shared_address_space() {
         // 100.64.0.0/10
-        assert!(!is_global_ipv4(&Ipv4Addr::new(100, 64, 0, 1)));
-        assert!(!is_global_ipv4(&Ipv4Addr::new(100, 127, 255, 254)));
+        assert!(!is_global_ipv4(Ipv4Addr::new(100, 64, 0, 1)));
+        assert!(!is_global_ipv4(Ipv4Addr::new(100, 127, 255, 254)));
     }
 
     #[test]
     fn ipv4_not_global_reserved() {
         // 192.0.0.0/24
-        assert!(!is_global_ipv4(&Ipv4Addr::new(192, 0, 0, 1)));
+        assert!(!is_global_ipv4(Ipv4Addr::new(192, 0, 0, 1)));
     }
 
     #[test]
     fn ipv4_not_global_zero_network() {
-        assert!(!is_global_ipv4(&Ipv4Addr::UNSPECIFIED));
-        assert!(!is_global_ipv4(&Ipv4Addr::new(0, 1, 2, 3)));
+        assert!(!is_global_ipv4(Ipv4Addr::UNSPECIFIED));
+        assert!(!is_global_ipv4(Ipv4Addr::new(0, 1, 2, 3)));
     }
 
     #[test]
     fn ipv4_special_globally_routable_in_192_0_0() {
         // 192.0.0.9 and 192.0.0.10 are special globally routable addresses
-        assert!(is_global_ipv4(&Ipv4Addr::new(192, 0, 0, 9)));
-        assert!(is_global_ipv4(&Ipv4Addr::new(192, 0, 0, 10)));
+        assert!(is_global_ipv4(Ipv4Addr::new(192, 0, 0, 9)));
+        assert!(is_global_ipv4(Ipv4Addr::new(192, 0, 0, 10)));
         // But not other 192.0.0.x
-        assert!(!is_global_ipv4(&Ipv4Addr::new(192, 0, 0, 8)));
-        assert!(!is_global_ipv4(&Ipv4Addr::new(192, 0, 0, 11)));
+        assert!(!is_global_ipv4(Ipv4Addr::new(192, 0, 0, 8)));
+        assert!(!is_global_ipv4(Ipv4Addr::new(192, 0, 0, 11)));
     }
 
     #[test]
     fn ipv4_not_global_future_protocol() {
         // 240.0.0.0/4 (excluding broadcast)
-        assert!(!is_global_ipv4(&Ipv4Addr::new(240, 0, 0, 1)));
-        assert!(!is_global_ipv4(&Ipv4Addr::new(250, 0, 0, 1)));
+        assert!(!is_global_ipv4(Ipv4Addr::new(240, 0, 0, 1)));
+        assert!(!is_global_ipv4(Ipv4Addr::new(250, 0, 0, 1)));
     }
 
     // --- is_global_ipv6 ---

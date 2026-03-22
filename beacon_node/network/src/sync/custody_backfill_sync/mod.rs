@@ -445,7 +445,7 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
             Entry::Vacant(entry) => {
                 let missing_columns = self.beacon_chain.get_missing_columns_for_epoch(batch_id);
                 entry.insert(BatchInfo::new(
-                    &batch_id,
+                    batch_id,
                     CUSTODY_BACKFILL_EPOCHS_PER_BATCH,
                     ByRangeRequestType::Columns(missing_columns),
                 ));
@@ -559,7 +559,7 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
         // sending an error /timeout) if the peer is removed for other
         // reasons. Check that this column belongs to the expected peer, and that the
         // request_id matches
-        if !batch.is_expecting_request_id(&req_id.id) {
+        if !batch.is_expecting_request_id(req_id.id) {
             return Ok(ProcessResult::Successful);
         }
 

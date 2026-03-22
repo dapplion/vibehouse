@@ -143,7 +143,7 @@ pub(crate) fn get_col_from_key(key: &[u8]) -> Option<String> {
     String::from_utf8(key[0..3].to_vec()).ok()
 }
 
-pub(crate) fn get_data_column_key(block_root: &Hash256, column_index: &ColumnIndex) -> Vec<u8> {
+pub(crate) fn get_data_column_key(block_root: &Hash256, column_index: ColumnIndex) -> Vec<u8> {
     let mut result = block_root.as_slice().to_vec();
     result.extend_from_slice(&column_index.to_le_bytes());
     result
@@ -862,7 +862,7 @@ mod tests {
     fn get_data_column_key_roundtrip() {
         let block_root = Hash256::repeat_byte(0xab);
         let column_index: ColumnIndex = 42;
-        let key = get_data_column_key(&block_root, &column_index);
+        let key = get_data_column_key(&block_root, column_index);
         assert_eq!(key.len(), DATA_COLUMN_DB_KEY_SIZE);
 
         let (parsed_root, parsed_index) = parse_data_column_key(key).unwrap();
@@ -874,7 +874,7 @@ mod tests {
     fn get_data_column_key_zero_values() {
         let block_root = Hash256::zero();
         let column_index: ColumnIndex = 0;
-        let key = get_data_column_key(&block_root, &column_index);
+        let key = get_data_column_key(&block_root, column_index);
 
         let (parsed_root, parsed_index) = parse_data_column_key(key).unwrap();
         assert_eq!(parsed_root, block_root);
@@ -885,7 +885,7 @@ mod tests {
     fn get_data_column_key_max_column_index() {
         let block_root = Hash256::repeat_byte(0xff);
         let column_index: ColumnIndex = u64::MAX;
-        let key = get_data_column_key(&block_root, &column_index);
+        let key = get_data_column_key(&block_root, column_index);
 
         let (parsed_root, parsed_index) = parse_data_column_key(key).unwrap();
         assert_eq!(parsed_root, block_root);

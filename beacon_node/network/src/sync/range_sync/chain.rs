@@ -291,7 +291,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
                 // sending an error /timeout) if the peer is removed from the chain for other
                 // reasons. Peer_id matching was removed as the node may request a different
                 // peer for data columns — just check the request_id.
-                if !batch.is_expecting_request_id(&request_id) {
+                if !batch.is_expecting_request_id(request_id) {
                     return Ok(KeepChain);
                 }
                 batch
@@ -956,7 +956,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
             // A batch could be retried without the peer failing the request (disconnecting/
             // sending an error /timeout) if the peer is removed from the chain for other
             // reasons. Check that this block belongs to the expected peer
-            if !batch.is_expecting_request_id(&request_id) {
+            if !batch.is_expecting_request_id(request_id) {
                 debug!(
                     batch_epoch = %batch_id,
                     batch_state = ?batch.state(),
@@ -1220,7 +1220,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
             // Block requests proceed even without custody column peers — columns are deferred.
             if let Entry::Vacant(entry) = self.batches.entry(epoch) {
                 let batch_type = network.batch_type(epoch);
-                let optimistic_batch = BatchInfo::new(&epoch, EPOCHS_PER_BATCH, batch_type);
+                let optimistic_batch = BatchInfo::new(epoch, EPOCHS_PER_BATCH, batch_type);
                 entry.insert(optimistic_batch);
                 self.send_batch(network, epoch)?;
             } else {
@@ -1289,7 +1289,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
             }
             Entry::Vacant(entry) => {
                 let batch_type = network.batch_type(next_batch_id);
-                entry.insert(BatchInfo::new(&next_batch_id, EPOCHS_PER_BATCH, batch_type));
+                entry.insert(BatchInfo::new(next_batch_id, EPOCHS_PER_BATCH, batch_type));
                 self.to_be_downloaded += EPOCHS_PER_BATCH;
                 Some(next_batch_id)
             }

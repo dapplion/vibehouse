@@ -94,7 +94,7 @@ where
                 .message
                 .as_bytes()
                 .iter()
-                .map(|c| if is_ascii_control(c) { b'_' } else { *c })
+                .map(|&c| if is_ascii_control(c) { b'_' } else { c })
                 .collect::<Vec<u8>>();
             visitor.message = String::from_utf8(filtered).unwrap_or_default();
         }

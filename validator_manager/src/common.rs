@@ -279,6 +279,7 @@ mod bytes_4_without_0x_prefix {
 
     const BYTES_LEN: usize = 4;
 
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     pub(super) fn serialize<S>(bytes: &[u8; BYTES_LEN], serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,

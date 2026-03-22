@@ -20,7 +20,7 @@ impl<E: EthSpec> LoadCase for LightClientVerifyIsBetterUpdate<E> {
         for index in 0..metadata.updates_count {
             let light_client_update = ssz_decode_light_client_update(
                 &path.join(format!("updates_{index}.ssz_snappy")),
-                &fork_name,
+                fork_name,
             )?;
             light_client_updates.push(light_client_update);
         }

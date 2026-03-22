@@ -225,11 +225,11 @@ impl IndexedAttestationId {
         Self::new(0)
     }
 
-    pub fn is_null(&self) -> bool {
+    pub fn is_null(self) -> bool {
         self.id == [0, 0, 0, 0, 0, 0]
     }
 
-    pub fn as_u64(&self) -> u64 {
+    pub fn as_u64(self) -> u64 {
         BigEndian::read_uint(&self.id, INDEXED_ATTESTATION_ID_SIZE)
     }
 }

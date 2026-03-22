@@ -157,6 +157,7 @@ pub struct Context<T: BeaconChainTypes> {
 mod serde_axum_status_code {
     use serde::{Deserialize, Serialize, de::Error};
 
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     pub(crate) fn serialize<S>(
         status_code: &axum::http::StatusCode,
         ser: S,

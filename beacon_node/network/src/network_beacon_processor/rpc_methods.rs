@@ -1346,7 +1346,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             .collect::<Vec<_>>();
 
         for root in block_roots {
-            for index in &indices_to_retrieve {
+            for &index in &indices_to_retrieve {
                 match self.chain.get_data_column(&root, index) {
                     Ok(Some(data_column_sidecar)) => {
                         // Due to skip slots, data columns could be out of the range, we ensure they

@@ -66,13 +66,13 @@ impl<T: BeaconChainTypes> ChainCollection<T> {
     }
 
     /// Updates the Syncing state of the collection after a chain is removed.
-    fn on_chain_removed(&mut self, id: &ChainId, was_syncing: bool, sync_type: RangeSyncType) {
+    fn on_chain_removed(&mut self, id: ChainId, was_syncing: bool, sync_type: RangeSyncType) {
         metrics::inc_counter_vec(&metrics::SYNCING_CHAINS_REMOVED, &[sync_type.as_str()]);
         self.update_metrics();
 
         match self.state {
             RangeSyncState::Finalized(ref syncing_id) => {
-                if syncing_id == id {
+                if *syncing_id == id {
                     // the finalized chain that was syncing was removed
                     debug_assert!(was_syncing && sync_type == RangeSyncType::Finalized);
                     let syncing_head_ids: SmallVec<[Id; PARALLEL_HEAD_CHAINS]> = self
@@ -95,7 +95,7 @@ impl<T: BeaconChainTypes> ChainCollection<T> {
                 if let Some(index) = syncing_head_ids
                     .iter()
                     .enumerate()
-                    .find(|&(_, &chain_id)| &chain_id == id)
+                    .find(|&(_, &chain_id)| chain_id == id)
                     .map(|(i, _)| i)
                 {
                     // a syncing head chain was removed
@@ -146,7 +146,7 @@ impl<T: BeaconChainTypes> ChainCollection<T> {
                 RangeSyncType::Head => self.head_chains.remove(&id),
             };
             let chain = chain.expect("Chain exists");
-            self.on_chain_removed(&id, chain.is_syncing(), sync_type);
+            self.on_chain_removed(id, chain.is_syncing(), sync_type);
             results.push((chain, sync_type, reason));
         }
         results
@@ -170,7 +170,7 @@ impl<T: BeaconChainTypes> ChainCollection<T> {
             // Search in our finalized chains first
             if let Err(remove_reason) = func(entry.get_mut()) {
                 let chain = entry.remove();
-                self.on_chain_removed(&id, chain.is_syncing(), RangeSyncType::Finalized);
+                self.on_chain_removed(id, chain.is_syncing(), RangeSyncType::Finalized);
                 Ok((Some((chain, remove_reason)), RangeSyncType::Finalized))
             } else {
                 Ok((None, RangeSyncType::Finalized))
@@ -179,7 +179,7 @@ impl<T: BeaconChainTypes> ChainCollection<T> {
             // Search in our head chains next
             if let Err(remove_reason) = func(entry.get_mut()) {
                 let chain = entry.remove();
-                self.on_chain_removed(&id, chain.is_syncing(), RangeSyncType::Head);
+                self.on_chain_removed(id, chain.is_syncing(), RangeSyncType::Head);
                 Ok((Some((chain, remove_reason)), RangeSyncType::Head))
             } else {
                 Ok((None, RangeSyncType::Head))
@@ -317,7 +317,7 @@ impl<T: BeaconChainTypes> ChainCollection<T> {
                     error!(chain = new_id, reason = ?remove_reason, "Chain removed while switching chains");
                 }
                 self.finalized_chains.remove(&new_id);
-                self.on_chain_removed(&new_id, true, RangeSyncType::Finalized);
+                self.on_chain_removed(new_id, true, RangeSyncType::Finalized);
             }
         }
     }
@@ -452,7 +452,7 @@ impl<T: BeaconChainTypes> ChainCollection<T> {
                 RangeSyncType::Finalized => self.finalized_chains.remove(&id),
                 RangeSyncType::Head => self.head_chains.remove(&id),
             };
-            self.on_chain_removed(&id, was_syncing, sync_type);
+            self.on_chain_removed(id, was_syncing, sync_type);
         }
     }
 
@@ -489,7 +489,7 @@ impl<T: BeaconChainTypes> ChainCollection<T> {
                 }
                 let is_syncing = chain.is_syncing();
                 collection.remove(&id);
-                self.on_chain_removed(&id, is_syncing, sync_type);
+                self.on_chain_removed(id, is_syncing, sync_type);
             }
         } else {
             let peer_rpr = peer.to_string();

@@ -17,7 +17,7 @@ pub(crate) enum Priority {
 
 impl Priority {
     /// Wrap `self` in a `WorkEvent` with an appropriate priority.
-    fn work_event<E: EthSpec>(&self, process_fn: BlockingOrAsync) -> WorkEvent<E> {
+    fn work_event<E: EthSpec>(self, process_fn: BlockingOrAsync) -> WorkEvent<E> {
         let work = match self {
             Priority::P0 => Work::ApiRequestP0(process_fn),
             Priority::P1 => Work::ApiRequestP1(process_fn),
