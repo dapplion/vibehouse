@@ -108,7 +108,7 @@ impl ConfigAndPreset {
 }
 
 /// Get a hashmap of constants to add to the `PresetAndConfig`
-pub fn get_extra_fields(spec: &ChainSpec) -> HashMap<String, Value> {
+pub(crate) fn get_extra_fields(spec: &ChainSpec) -> HashMap<String, Value> {
     let hex_string = |value: &[u8]| format!("0x{}", hex::encode(value)).into();
     let u32_hex = |v: u32| hex_string(&v.to_le_bytes());
     let u8_hex = |v: u8| hex_string(&v.to_le_bytes());

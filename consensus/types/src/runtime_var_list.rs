@@ -263,7 +263,7 @@ impl<T: TreeHash> TreeHash for RuntimeVariableList<T> {
 }
 
 // We can delete this once the upstream `vec_tree_hash_root` is modified to use a runtime max len.
-pub fn runtime_vec_tree_hash_root<T>(vec: &[T], max_len: usize) -> Hash256
+pub(crate) fn runtime_vec_tree_hash_root<T>(vec: &[T], max_len: usize) -> Hash256
 where
     T: TreeHash,
 {

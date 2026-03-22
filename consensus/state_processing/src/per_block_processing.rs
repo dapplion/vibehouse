@@ -6,7 +6,7 @@ use crate::consensus_context::ConsensusContext;
 pub use altair::sync_committee::process_sync_aggregate;
 pub use block_signature_verifier::{BlockSignatureVerifier, ParallelSignatureSets};
 use errors::{BlockOperationError, BlockProcessingError, HeaderInvalid};
-pub use is_valid_indexed_attestation::is_valid_indexed_attestation;
+pub(crate) use is_valid_indexed_attestation::is_valid_indexed_attestation;
 pub use process_operations::process_operations;
 use safe_arith::{ArithError, SafeArith, SafeArithIter};
 use signature_sets::{block_proposal_signature_set, get_pubkey_from_state, randao_signature_set};

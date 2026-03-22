@@ -301,7 +301,7 @@ impl Default for Validator {
     }
 }
 
-pub fn is_compounding_withdrawal_credential(
+pub(crate) fn is_compounding_withdrawal_credential(
     withdrawal_credentials: Hash256,
     spec: &ChainSpec,
 ) -> bool {
