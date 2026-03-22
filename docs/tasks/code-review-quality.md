@@ -4159,3 +4159,30 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - Kept `pub`: `from_config_and_db`, `into_reset_db` (used by integration tests)
 - **Crates audited with no changes needed**: http_metrics (all pub items used by client crate), timer (all pub items used by client crate), store (all pub items used externally), filesystem (all pub items used externally), lockfile (all pub items used externally), sensitive_url (all pub items used externally), doppelganger_service (all pub items used externally), graffiti_file (all pub items used externally), validator_metrics (all pub statics used externally), vibehouse_version (all pub items used externally), slasher_service (all pub items used by client crate), operation_pool (attestation_storage module pub needed by http_api tests)
 - **Tests**: 305/305 affected crate tests pass. Workspace clippy clean, zero warnings.
+
+### Run 2193
+
+**Pub visibility downgrades in types, state_processing, beacon_chain; audit of http_api + network**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs releases.
+- **Changes — types/runtime_var_list.rs** (1 function downgraded):
+  - `runtime_vec_tree_hash_root()` → `pub(crate)` (only used within TreeHash impl in same file)
+- **Changes — types/config_and_preset.rs** (1 function downgraded):
+  - `get_extra_fields()` → `pub(crate)` (only used within config_and_preset.rs)
+- **Changes — types/subnet_id.rs** (1 function downgraded):
+  - `subnet_id_to_string()` → private (only used in `AsRef<str>` impl in same file)
+- **Changes — types/sync_subnet_id.rs** (1 function downgraded):
+  - `sync_subnet_id_to_string()` → private (only used in `AsRef<str>` impl in same file)
+- **Changes — types/validator.rs** (1 function downgraded):
+  - `is_compounding_withdrawal_credential()` → `pub(crate)` (only used within validator.rs)
+- **Changes — state_processing/per_block_processing/is_valid_indexed_attestation.rs** (1 function downgraded):
+  - `is_valid_indexed_attestation()` → `pub(crate)` (only used within state_processing; re-export in per_block_processing.rs also downgraded)
+- **Changes — beacon_chain/lib.rs** (4 modules downgraded):
+  - `attestation_rewards` → `pub(crate) mod` (no items used externally; methods accessed via pub BeaconChain struct)
+  - `beacon_block_reward` → `pub(crate) mod` (same)
+  - `block_reward` → `pub(crate) mod` (same)
+  - `sync_committee_rewards` → `pub(crate) mod` (same)
+- **Crates audited with no changes needed**:
+  - **network**: all pub items in test modules are `#[cfg(test)]` (don't leak); main API surface all used by client/http_api
+  - **http_api**: `BlockId`, `StateId`, `ProvenancedBlock`, `publish_block`, `publish_blinded_block`, `reconstruct_block`, `test_utils`, `api_error` all used by integration tests (separate crate targets) — can't downgrade
+- **Tests**: 1085/1085 types tests pass, 1026/1026 state_processing tests pass. Clippy clean, zero warnings. All downstream crates (http_api, network) compile.
