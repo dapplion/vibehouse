@@ -3486,3 +3486,19 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - **metrics.rs**: `pub fn gather_prometheus_metrics` → `pub(crate) fn` (only called from lib.rs within crate)
 - **Preserved as `pub`**: `ClientBuilder`, `ClientConfig`, `ClientGenesis` (re-exported from lib.rs, used by beacon_node), `Client` struct + methods (used by beacon_node and tests), `BuilderHttpClient` + public methods (used by execution_layer), `Error` re-export (used by execution_layer), http_metrics `Error`/`Context`/`Config`/`serve` (used by client crate)
 - **Tests**: 26/26 tests pass (client + builder_client + http_metrics). Full workspace clippy zero warnings. `make lint-full` passes.
+
+### Run 2163 (2026-03-22)
+
+**Visibility downgrades in beacon_processor, slasher, state_processing crates**
+
+- **Code changes — beacon_processor crate** (17 items downgraded):
+  - **metrics.rs**: `pub use` → `pub(crate) use` (metrics re-exports), 16 `pub static` → `pub(crate) static` (all metrics constants — module is already private `mod metrics`)
+- **Code changes — slasher crate** (28 items downgraded):
+  - **array.rs**: `pub const MAX_DISTANCE` → `pub(crate) const`, `pub struct Chunk` → `pub(crate) struct`, 4 Chunk methods → `pub(crate)`, `pub struct MinTargetChunk` → `pub(crate)`, `pub struct MaxTargetChunk` → `pub(crate)`, `pub trait TargetArrayChunk` → `pub(crate)`, 5 free functions → `pub(crate)` (`get_chunk_for_update`, `apply_attestation_for_validator`, `update`, `epoch_update_for_validator`, `update_array`)
+  - **database.rs**: `pub const CURRENT_SCHEMA_VERSION` → `pub(crate) const`
+  - **metrics.rs**: 10 `pub static` → `pub(crate) static` (all except `SLASHER_DATABASE_SIZE` and `SLASHER_RUN_TIME` which are used by slasher_service)
+- **Code changes — state_processing crate** (10 items downgraded):
+  - **metrics.rs**: `pub use` → `pub(crate) use` (metrics re-exports), 9 `pub static` → `pub(crate) static` (all metrics constants — module is already private `mod metrics`)
+- **Preserved as `pub`**: `slasher::metrics` module (used by slasher_service), `SLASHER_DATABASE_SIZE` + `SLASHER_RUN_TIME` (used by slasher_service), `pub use metrics::*` in slasher metrics (for `start_timer`/`set_gauge` access), all re-exported types (`Error`, `SlasherDB`, `IndexedAttestationId`, etc.)
+- **Spec**: v1.7.0-alpha.3 still latest. No new merges since March 15. All tracked Gloas PRs remain open.
+- **Tests**: 105/105 slasher tests pass, 1034/1034 beacon_processor+state_processing tests pass. Full workspace clippy zero warnings. `make lint-full` passes.
