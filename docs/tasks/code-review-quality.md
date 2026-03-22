@@ -4674,3 +4674,35 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Also checked** (zero warnings): `trivially_copy_pass_by_ref` (22 warnings — deferred, changes function signatures), `wildcard_imports` (85), `needless_pass_by_value` (305), `doc_markdown` (1009). These have too many inherited warnings for zero-regression enforcement.
 - **Makefile lint target**: now 19 extra `-D` lints enforced (was 13).
 - **Tests**: 1085/1085 types, 7/7 shuffling_cache. `make lint-full` clean. Pre-push hook passed, pushed successfully.
+
+### Run 2221 (2026-03-23)
+
+**Enforce `trivially_copy_pass_by_ref` lint and fix all warnings**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs releases.
+- **CI**: Run from run 2220 in progress; nightly failure (Mar 22) was transient cargo-nextest 404, already fixed by unpinning in run 2219.
+- **New lint enforced**: Added `-D clippy::trivially_copy_pass_by_ref` to Makefile lint target (now 20 extra `-D` lints). Fixed 22 warnings across 28 files:
+  - **Parameter changes** (`&T` → `T` for small Copy types):
+    - `single_pass.rs`: 2× `inactivity_score: &u64` → `u64`
+    - `utils.rs`: `character: &u8` → `u8` (+ all test call sites + tracing_logging_layer caller)
+    - `hot_cold_store.rs`: 2× `column_index: &ColumnIndex` → `ColumnIndex` (cache + public methods)
+    - `lib.rs` (store): `column_index: &ColumnIndex` → `ColumnIndex` in `get_data_column_key`
+    - `beacon_chain.rs`: `column_index: &ColumnIndex` → `ColumnIndex` in `get_data_column`
+    - `validator_monitor.rs`: `epoch: &Epoch` → `Epoch` in `min_inclusion_distance`
+    - `config.rs`: `addr: &Ipv4Addr` → `Ipv4Addr` in `is_global_ipv4`
+    - `batch.rs`: `start_epoch: &Epoch` → `Epoch`, `request_id: &Id` → `Id`
+    - `chain_collection.rs`: `id: &ChainId` → `ChainId` in `on_chain_removed`
+    - `duties_service.rs`: `epoch: &Epoch` → `Epoch` in `get_uninitialized_validators`
+    - `decode.rs`: `fork_name: &ForkName` → `ForkName` in `ssz_decode_light_client_update`
+  - **Method receiver changes** (`&self` → `self` on small Copy types):
+    - `attester_record.rs`: `CompactAttesterRecord::is_null(&self)` → `is_null(self)` (6 bytes, Copy)
+    - `database.rs`: `IndexedAttestationId::is_null(&self)` + `as_u64(&self)` → `self` (6 bytes, Copy)
+    - `methods.rs`: `RpcErrorResponse::as_u8(&self)` → `as_u8(self)` (1 byte enum)
+    - `protocol.rs`: `SupportedProtocol::version_string(&self)` + `protocol(&self)` → `self` (1 byte enum)
+    - `sync_type.rs`: `RangeSyncType::as_str(&self)` → `as_str(self)` (1 byte enum)
+    - `task_spawner.rs`: `Priority::work_event(&self)` → `work_event(self)` (1 byte enum)
+  - **Serde exceptions** (must take `&T` per serde API):
+    - `http_api/lib.rs`: `#[allow(clippy::trivially_copy_pass_by_ref)]` on `serde_axum_status_code::serialize`
+    - `validator_manager/common.rs`: `#[allow(clippy::trivially_copy_pass_by_ref)]` on `bytes_4_without_0x_prefix::serialize`
+- **Tests**: 1026/1026 state_processing, 772/772 vibehouse_network+slasher+store+logging, 43/43 validator_manager, 102/102 ef_tests subset, 37/37 batch tests. `make lint-full` clean.
+- **CI**: Pre-push hook passed with new lint enforcement, push succeeded.
