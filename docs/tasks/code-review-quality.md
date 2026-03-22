@@ -4568,3 +4568,27 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - `http_api/src/block_rewards.rs` + `sync_committee_rewards.rs`: 2× `[Ok(...)].into_iter()` → `std::iter::once(Ok(...))` (iter_on_single_items)
 - **Additional lints checked** (zero warnings): `redundant_clone`, `cloned_instead_of_copied`, `implicit_clone`, `flat_map_option`, `match_bool`, `bool_to_int_with_if`, `unnecessary_map_or`. Codebase is very clean.
 - **Tests**: 1085/1085 types tests pass. `make lint-full` clean. Pre-push hook passed.
+
+### Run 2216
+
+**Enforce derive_partial_eq_without_eq lint, remove all stale clippy allows**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. Recently merged PRs checked: #5002 (p2p doc wording, no code change), #4940 (Python test generators for Gloas fork choice, not published fixtures yet). No action needed.
+- **CI**: Run 23411985994 (from run 2215) — check+clippy+fmt, ef-tests, network+op_pool all passed; unit-tests, beacon_chain, http_api still running. Nightly failure (March 22) was transient `cargo-nextest-0.9.132` binary 404 during GitHub release publication — binary is back, no workflow change needed.
+- **Removed all 4 stale clippy `-A` allows** from Makefile lint target:
+  - `-A clippy::uninlined-format-args` — zero warnings (all format strings already use inline args)
+  - `-A clippy::vec-init-then-push` — zero warnings
+  - `-A clippy::enum_variant_names` — zero warnings
+  - `-A clippy::upper-case-acronyms` — zero warnings
+- **Promoted `derive_partial_eq_without_eq` from allow to deny** and added `Eq` derives across 15 files:
+  - `types/`: BeaconResponse, EpochTotalBalances, Domain, SignedVoluntaryExit, SignedValidatorRegistrationData
+  - `proto_array/`: ProtoArrayForkChoice
+  - `state_processing/`: ValidatorInfo
+  - `signing_method/`: Error, ForkInfo
+  - `account_utils/`: ValidatorDefinition
+  - `eth2/`: VC types (6 structs in vibehouse_vc/)
+  - `monitoring_api/`: MonitoringError
+  - `light_client_header.rs`: added `#[allow(clippy::derive_partial_eq_without_eq)]` — Eq would cascade through ExecutionPayloadHeader superstruct for little benefit
+- **Makefile lint target**: now has zero `-A` flags. All defaults plus 5 extra `-D` lints enforced. Updated comment to reflect.
+- **Tests**: 1085/1085 types, 1255/1255 state_processing+proto_array+account_utils+signing_method. `make lint-full` clean.
+- **CI**: Pre-push hook passed on both commits, pushed successfully.
