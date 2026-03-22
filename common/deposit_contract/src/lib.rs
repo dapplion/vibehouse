@@ -48,7 +48,7 @@ pub fn decode_eth1_tx_data(bytes: &[u8], amount: u64) -> Result<(DepositData, Ha
     let call = depositCall::abi_decode_raw(bytes.get(4..).ok_or(Error::InadequateBytes)?)
         .map_err(Error::AlloyError)?;
 
-    let root = Hash256::from_slice(call.deposit_data_root.as_slice());
+    let root = Hash256::new(call.deposit_data_root.0);
 
     let deposit_data = DepositData {
         amount,

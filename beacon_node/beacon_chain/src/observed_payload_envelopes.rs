@@ -56,8 +56,7 @@ impl<E: EthSpec> ObservedPayloadEnvelopes<E> {
             .insertion_order
             .len()
             .saturating_sub(MAX_OBSERVED_ROOTS);
-        let removed: Vec<_> = self.insertion_order.drain(..to_remove).collect();
-        for root in removed {
+        for root in self.insertion_order.drain(..to_remove) {
             self.observed_roots.remove(&root);
         }
     }
