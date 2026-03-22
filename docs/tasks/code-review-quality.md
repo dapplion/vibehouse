@@ -3977,3 +3977,29 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - **Dead code removed**: `TransitionConfigurationV1` struct (zero usage), `JsonPayloadIdResponse` struct (zero usage)
   - Kept `pub`: `JsonWithdrawal` (field of pub `JsonPayloadAttributes`), `JsonPayloadAttributes`, `BlobAndProof`/`BlobAndProofV1`/`BlobAndProofV2` (used by beacon_chain), `JsonForkchoiceStateV1` (used externally), `JsonPayloadStatusV1Status` (used by ef_tests), `JsonPayloadStatusV1`, `TransparentJsonPayloadId`, `JsonForkchoiceUpdatedV1Response`, `JsonClientVersionV1` (all exposed via pub test_utils or pub structs)
 - **Tests**: 143/143 execution_layer tests pass. `make lint-full` clean, zero warnings.
+
+### Run 2187
+
+**Pub visibility downgrades in signing_method, validator_services, validator_http_api**
+
+- **Scope**: Full visibility audit of signing_method (web3signer.rs), validator_services (duties_service.rs), validator_http_api (api_error.rs, create_signed_voluntary_exit.rs, create_validator.rs, graffiti.rs, keystores.rs, remotekeys.rs), vibehouse_validator_store, doppelganger_service, slasher_service, initialized_validators.
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since March 13. Open PRs #4979 (PTC lookbehind) and #4992 (cached PTCs) still not merged.
+- **CI status**: Run 2186 CI in progress. Nightly failure was transient nextest 0.9.132 download 404 (not a code bug).
+- **Changes — signing_method/web3signer.rs** (5 types + 2 methods downgraded):
+  - `MessageType`, `ForkName`, `Web3SignerObject`, `SigningRequest`, `SigningResponse` → `pub(crate)` (all only used within signing_method crate via private `mod web3signer`)
+  - `Web3SignerObject::beacon_block()`, `Web3SignerObject::message_type()` → `pub(crate)`
+  - Kept `pub`: `ForkInfo` (used in `get_signature_from_root` parameter, called from vibehouse_validator_store)
+- **Changes — validator_services/duties_service.rs** (2 structs, 1 method, 9 fields downgraded):
+  - `DutyAndProof`, `SubscriptionSlots` structs → `pub(crate)` (only used within validator_services)
+  - `DutiesService::attesters()` method → `pub(crate)` (only called from attestation_service.rs)
+  - `DutiesService` fields downgraded: `attesters`, `proposers`, `sync_duties`, `ptc_duties`, `validator_store`, `unknown_validator_next_poll_slots`, `executor`, `spec`, `enable_high_validator_count_metrics`, `selection_proof_config`, `disable_attesting`, `preferences_broadcast_epochs` → `pub(crate)` (all only accessed within validator_services crate)
+  - Kept `pub`: `slot_clock`, `beacon_nodes` (accessed from validator_client/src/lib.rs and http_metrics), all builder methods, `total_validator_count()`, `proposer_count()`, `attester_count()`, `ptc_attester_count()`, `doppelganger_detecting_count()`, `block_proposers()`, `per_validator_metrics()` (used externally)
+- **Changes — validator_http_api** (1 enum + 13 functions downgraded):
+  - `ApiError` enum → `pub(crate)` (only used within http_api crate)
+  - `create_signed_voluntary_exit()` → `pub(crate)` (called only from HTTP handlers)
+  - `create_validators_mnemonic()`, `create_validators_web3signer()`, `get_voting_password_storage()` → `pub(crate)`
+  - `get_graffiti()`, `set_graffiti()`, `delete_graffiti()` → `pub(crate)`
+  - `keystores::list()`, `keystores::import()`, `keystores::delete()`, `keystores::export()` → `pub(crate)`
+  - `remotekeys::list()`, `remotekeys::import()`, `remotekeys::delete()` → `pub(crate)`
+- **Crates audited with no changes needed**: vibehouse_validator_store (all pub items used externally), doppelganger_service (all pub items used externally), slasher_service (all pub items used externally), initialized_validators (all pub items used externally)
+- **Tests**: 59/59 affected crate tests pass (58 validator_services + 1 validator_client). `make lint-full` clean, zero warnings.
