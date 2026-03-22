@@ -2740,10 +2740,20 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         )
         .map_err(Error::EnvelopeProcessingError)?;
 
-        // Update tree hash cache after envelope processing so the state is clean
-        // for caching (verify=false skips the state root check which would
-        // otherwise update the cache via canonical_root()).
-        state.update_tree_hash_cache().map_err(Error::from)?;
+        // Update tree hash cache and verify the post-envelope state root.
+        // We pass VerifySignatures::False above (BLS already checked by gossip
+        // verification), but that also skips the state root check inside
+        // process_execution_payload_envelope. Verify it here to reject envelopes
+        // with an incorrect state_root (which would corrupt cold DB state summaries
+        // during freezer migration).
+        let post_envelope_root = state.update_tree_hash_cache().map_err(Error::from)?;
+        if post_envelope_root != signed_envelope.message.state_root {
+            return Err(Error::EnvelopeError(format!(
+                "Envelope state root mismatch: computed={post_envelope_root:?}, \
+                 envelope={:?}",
+                signed_envelope.message.state_root
+            )));
+        }
 
         // Cache the post-envelope state in memory so that block verification (gossip
         // import) and block production load a state with the correct `latest_block_hash`.
@@ -3339,10 +3349,18 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         )
         .map_err(Error::EnvelopeProcessingError)?;
 
-        // Update tree hash cache after envelope processing so the state is clean
-        // for caching (verify=false skips the state root check which would
-        // otherwise update the cache via canonical_root()).
-        state.update_tree_hash_cache().map_err(Error::from)?;
+        // Update tree hash cache and verify the post-envelope state root.
+        // Same rationale as process_payload_envelope_inner: verify=false skips
+        // the state root check in process_execution_payload_envelope, so we
+        // verify it here to catch self-build envelopes with bad state roots.
+        let post_envelope_root = state.update_tree_hash_cache().map_err(Error::from)?;
+        if post_envelope_root != signed_envelope.message.state_root {
+            return Err(Error::EnvelopeError(format!(
+                "Self-build envelope state root mismatch: computed={post_envelope_root:?}, \
+                 envelope={:?}",
+                signed_envelope.message.state_root
+            )));
+        }
 
         // 3. Update fork choice: mark payload as revealed. This happens AFTER EL
         // validation and state transition succeed to avoid leaving fork choice in an

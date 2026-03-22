@@ -16879,13 +16879,41 @@ async fn gloas_external_builder_revealed_next_block_uses_builder_block_hash() {
         ..Default::default()
     };
 
+    // Compute the correct post-envelope state root by running the state transition
+    // on a cloned state (same approach as build_self_build_envelope).
+    let envelope_state_root = {
+        let tmp_envelope = SignedExecutionPayloadEnvelope {
+            message: ExecutionPayloadEnvelope::<E> {
+                payload: envelope_payload.clone(),
+                execution_requests: ExecutionRequests::default(),
+                builder_index: bid.message.builder_index,
+                beacon_block_root: ext_block_root,
+                slot: ext_slot,
+                state_root: Hash256::zero(),
+            },
+            signature: Signature::empty(),
+        };
+        let mut tmp_state = post_block_state.clone();
+        state_processing::envelope_processing::process_execution_payload_envelope(
+            &mut tmp_state,
+            Some(block_state_root),
+            &tmp_envelope,
+            state_processing::VerifySignatures::False,
+            &harness.spec,
+        )
+        .expect("envelope processing should succeed for state root computation");
+        tmp_state
+            .canonical_root()
+            .expect("should compute canonical root")
+    };
+
     let envelope_msg = ExecutionPayloadEnvelope::<E> {
         payload: envelope_payload,
         execution_requests: ExecutionRequests::default(),
         builder_index: bid.message.builder_index,
         beacon_block_root: ext_block_root,
         slot: ext_slot,
-        state_root: Hash256::zero(), // not checked with VerifySignatures::False
+        state_root: envelope_state_root,
     };
 
     let builder_keypair = &BUILDER_KEYPAIRS[bid.message.builder_index as usize];
