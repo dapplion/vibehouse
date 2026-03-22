@@ -4525,3 +4525,16 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Remaining**: 162 `unreachable_pub` warnings left, all in `testing/` crates (ef_tests, simulator, execution_engine_integration) — test infrastructure only.
 - **Tests**: 4991/4999 workspace (8 web3signer infra), 422/422 beacon_chain Gloas. Lint clean.
 - **CI**: Pre-push hook (lint-full) passed, push succeeded.
+
+### Run 2212
+
+**Complete unreachable pub → pub(crate) downgrade in testing crates + boot_node**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. New merge since last check: #5014 (EIP-8025 p2p protocol for ZK proofs — not Gloas-related, no action needed). #5008 and #4902 already handled in run 2204. All open Gloas PRs unchanged.
+- **Fixed remaining 161 of 162 `unreachable_pub` warnings**: Used `cargo fix` + manual fixes for macro-generated code across 27 files in testing/ crates (ef_tests, simulator, execution_engine_integration, state_transition_vectors) and boot_node/src/config.rs.
+  - `ef_tests/src/cases/common.rs` macro: `pub struct` → `pub(crate) struct` for `uint_wrapper!` macro output
+  - `state_transition_vectors/src/macros.rs` macro: `pub async fn vectors()` → `pub(crate) async fn vectors()`
+  - 1 remaining warning: `block_verification.rs:74` `pub use` re-export — must stay `pub` (re-exported from lib.rs)
+- **Workspace-wide unreachable_pub status**: Down from 800+ (initial) → 162 (run 2211) → 1 (unfixable re-export). Complete.
+- **Tests**: 69/69 EF SSZ static, 24/24 EF operations+fork_choice, clippy clean, workspace compiles with zero warnings.
+- **CI**: Pre-push hook (lint-full) passed, push succeeded.
