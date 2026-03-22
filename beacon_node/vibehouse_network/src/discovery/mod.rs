@@ -70,7 +70,7 @@ const MAX_SUBNETS_IN_QUERY: usize = 3;
 ///
 /// We could reduce this constant to speed up queries however at the cost of security. It will
 /// make it easier to peers to eclipse this node. Kademlia suggests a value of 16.
-pub const FIND_NODE_QUERY_CLOSEST_PEERS: usize = 16;
+pub(crate) const FIND_NODE_QUERY_CLOSEST_PEERS: usize = 16;
 /// The threshold for updating `min_ttl` on a connected peer.
 const DURATION_DIFFERENCE: Duration = Duration::from_millis(1);
 /// The capacity of the Discovery ENR cache.
@@ -85,15 +85,15 @@ pub struct DiscoveredPeers {
 
 /// Specifies which port numbers should be modified after start of the discovery service
 #[derive(Debug)]
-pub struct UpdatePorts {
+pub(crate) struct UpdatePorts {
     /// TCP port associated wih IPv4 address (if present)
-    pub tcp4: bool,
+    pub(crate) tcp4: bool,
     /// TCP port associated wih IPv6 address (if present)
-    pub tcp6: bool,
+    pub(crate) tcp6: bool,
     /// QUIC port associated wih IPv4 address (if present)
-    pub quic4: bool,
+    pub(crate) quic4: bool,
     /// QUIC port associated wih IPv6 address (if present)
-    pub quic6: bool,
+    pub(crate) quic6: bool,
 }
 
 #[derive(Clone, PartialEq)]

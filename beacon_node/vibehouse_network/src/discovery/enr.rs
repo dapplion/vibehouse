@@ -20,15 +20,15 @@ use types::{ChainSpec, EnrForkId, EthSpec};
 use vibehouse_version::{client_name, version};
 
 /// The ENR field specifying the fork id.
-pub const ETH2_ENR_KEY: &str = "eth2";
+pub(crate) const ETH2_ENR_KEY: &str = "eth2";
 /// The ENR field specifying the next fork digest.
-pub const NEXT_FORK_DIGEST_ENR_KEY: &str = "nfd";
+pub(crate) const NEXT_FORK_DIGEST_ENR_KEY: &str = "nfd";
 /// The ENR field specifying the attestation subnet bitfield.
-pub const ATTESTATION_BITFIELD_ENR_KEY: &str = "attnets";
+pub(crate) const ATTESTATION_BITFIELD_ENR_KEY: &str = "attnets";
 /// The ENR field specifying the sync committee subnet bitfield.
-pub const SYNC_COMMITTEE_BITFIELD_ENR_KEY: &str = "syncnets";
+pub(crate) const SYNC_COMMITTEE_BITFIELD_ENR_KEY: &str = "syncnets";
 /// The ENR field specifying the peerdas custody group count.
-pub const PEERDAS_CUSTODY_GROUP_COUNT_ENR_KEY: &str = "cgc";
+pub(crate) const PEERDAS_CUSTODY_GROUP_COUNT_ENR_KEY: &str = "cgc";
 
 /// Extension trait for ENR's within Eth2.
 pub trait Eth2Enr {

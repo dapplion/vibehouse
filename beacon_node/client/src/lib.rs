@@ -40,12 +40,14 @@ impl<T: BeaconChainTypes> Client<T> {
     }
 
     /// Returns the address of the client's HTTP Prometheus metrics server, if it was started.
-    pub fn http_metrics_listen_addr(&self) -> Option<SocketAddr> {
+    #[allow(dead_code)]
+    pub(crate) fn http_metrics_listen_addr(&self) -> Option<SocketAddr> {
         self.http_metrics_listen_addr
     }
 
     /// Returns the list of libp2p addresses the client is listening to.
-    pub fn libp2p_listen_addresses(&self) -> Option<Vec<Multiaddr>> {
+    #[allow(dead_code)]
+    pub(crate) fn libp2p_listen_addresses(&self) -> Option<Vec<Multiaddr>> {
         self.network_globals.as_ref().map(|n| n.listen_multiaddrs())
     }
 

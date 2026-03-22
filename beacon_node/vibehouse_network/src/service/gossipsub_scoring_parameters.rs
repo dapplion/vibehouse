@@ -28,7 +28,7 @@ const EXECUTION_PROOF_WEIGHT: f64 = 0.3;
 const MESH_MESSAGE_DELIVERIES_WINDOW: u64 = 2;
 
 // Const as this is used in the peer manager to prevent gossip from disconnecting peers.
-pub const GREYLIST_THRESHOLD: f64 = -16000.0;
+pub(crate) const GREYLIST_THRESHOLD: f64 = -16000.0;
 
 /// Builds the peer score thresholds.
 pub(crate) fn vibehouse_gossip_thresholds() -> PeerScoreThresholds {
@@ -41,7 +41,7 @@ pub(crate) fn vibehouse_gossip_thresholds() -> PeerScoreThresholds {
     }
 }
 
-pub struct PeerScoreSettings<E: EthSpec> {
+pub(crate) struct PeerScoreSettings<E: EthSpec> {
     slot: Duration,
     epoch: Duration,
 
@@ -61,7 +61,7 @@ pub struct PeerScoreSettings<E: EthSpec> {
 }
 
 impl<E: EthSpec> PeerScoreSettings<E> {
-    pub fn new(chain_spec: &ChainSpec, mesh_n: usize) -> PeerScoreSettings<E> {
+    pub(crate) fn new(chain_spec: &ChainSpec, mesh_n: usize) -> PeerScoreSettings<E> {
         let slot = Duration::from_secs(chain_spec.seconds_per_slot);
         let beacon_attestation_subnet_weight = 1.0 / chain_spec.attestation_subnet_count as f64;
         let execution_proof_subnet_weight =

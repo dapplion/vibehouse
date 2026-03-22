@@ -26,7 +26,7 @@ pub mod sync_status;
 /// Max number of disconnected nodes to remember.
 const MAX_DC_PEERS: usize = 500;
 /// The maximum number of banned nodes to remember.
-pub const MAX_BANNED_PEERS: usize = 1000;
+pub(crate) const MAX_BANNED_PEERS: usize = 1000;
 /// We ban an IP if there are more than `BANNED_PEERS_PER_IP_THRESHOLD` banned peers with this IP.
 const BANNED_PEERS_PER_IP_THRESHOLD: usize = 5;
 /// Relative factor of peers that are allowed to have a negative gossipsub score without penalizing
@@ -1309,7 +1309,7 @@ enum ScoreTransitionResult {
 }
 
 /// The type of results that can happen from executing the `report_peer` function.
-pub enum ScoreUpdateResult {
+pub(crate) enum ScoreUpdateResult {
     /// The reported peer must be banned.
     Ban(BanOperation),
     ///  The reported peer transitioned to the disconnected state and must be disconnected.
@@ -1331,7 +1331,7 @@ impl From<Option<BanOperation>> for ScoreUpdateResult {
 }
 
 /// When attempting to ban a peer provides the peer manager with the operation that must be taken.
-pub enum BanOperation {
+pub(crate) enum BanOperation {
     /// Optionally temporarily ban this peer to prevent instantaneous reconnection.
     /// The peer manager will decide if temporary banning is required.
     TemporaryBan,

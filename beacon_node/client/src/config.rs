@@ -207,7 +207,7 @@ impl Config {
     ///
     /// For backwards compatibility, we still compute the legacy path and check if it exists.  If
     /// it does exist, we use that directory rather than the modern path.
-    pub fn get_data_dir(&self) -> PathBuf {
+    pub(crate) fn get_data_dir(&self) -> PathBuf {
         let existing_legacy_dir = self.get_existing_legacy_data_dir();
 
         if let Some(legacy_dir) = existing_legacy_dir {

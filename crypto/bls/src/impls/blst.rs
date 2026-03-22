@@ -11,8 +11,8 @@ use crate::{
 pub use blst::min_pk as blst_core;
 use blst::{BLST_ERROR, blst_scalar};
 use rand::Rng;
-pub const DST: &[u8] = b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_";
-pub const RAND_BITS: usize = 64;
+const DST: &[u8] = b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_";
+const RAND_BITS: usize = 64;
 
 /// Provides the externally-facing, core BLS types.
 pub mod types {

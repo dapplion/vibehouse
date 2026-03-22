@@ -1,14 +1,14 @@
 /// The time in seconds between re-status's peers.
-pub const DEFAULT_STATUS_INTERVAL: u64 = 300;
+pub(crate) const DEFAULT_STATUS_INTERVAL: u64 = 300;
 
 /// Default ping interval for outbound connections, in seconds.
-pub const DEFAULT_PING_INTERVAL_OUTBOUND: u64 = 15;
+pub(crate) const DEFAULT_PING_INTERVAL_OUTBOUND: u64 = 15;
 
 /// Default interval for inbound connections.
-pub const DEFAULT_PING_INTERVAL_INBOUND: u64 = 20;
+pub(crate) const DEFAULT_PING_INTERVAL_INBOUND: u64 = 20;
 
 /// Default number of peers to connect to.
-pub const DEFAULT_TARGET_PEERS: usize = 200;
+pub(crate) const DEFAULT_TARGET_PEERS: usize = 200;
 
 /// Configurations for the PeerManager.
 #[derive(Debug)]
