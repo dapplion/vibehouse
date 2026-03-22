@@ -3594,3 +3594,19 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Devnet verification**: 4-node kurtosis devnet passed — finalized_epoch=8 (slot 80, epoch 10), clean Gloas fork transition at epoch 1, no stalls or errors. Run ID: 20260322-040825.
 - **CI**: Latest run (push 8b951aee8) — check/clippy/fmt ✓, network+op_pool ✓, EF tests ✓, remaining jobs (unit tests, http_api, beacon_chain) in progress.
 - **Conclusion**: Codebase is stable and healthy. All priorities 1-6 complete. No actionable work remaining beyond blocked #36 items and lowest-priority ROCQ proofs (#29).
+
+### Run 2169 (2026-03-22)
+
+**Dead code removal + visibility downgrades in validator_client, beacon_node, monitoring_api**
+
+- **Scope**: Continued dead code and pub→pub(crate) audit across remaining crates.
+- **Changes**:
+  - Removed dead `ProductionBeaconNode::new_from_cli()` (beacon_node/src/lib.rs) — never called
+  - Removed dead `ProductionValidatorClient::new_from_cli()` (validator_client/src/lib.rs) — never called
+  - Downgraded `pub mod config` → `pub(crate) mod config` in validator_client (Config is re-exported via `pub use`)
+  - Downgraded `parse_only_one_value` from `pub fn` to `fn` in beacon_node/src/config.rs (file-internal only)
+  - Downgraded 3 monitoring_api methods from `pub fn` to `fn`: `get_beacon_metrics`, `get_validator_metrics`, `get_system_metrics` (only called within same struct)
+  - Removed redundant `use validator_http_metrics;` import (caught by clippy)
+  - Removed unused `ArgMatches` and `ValidatorClient` imports from validator_client after dead code removal
+- **Spec tracking**: Checked latest consensus-specs PRs. PR #5001 (parent_block_root in bid filtering key) — already implemented. PR #5002 (wording fix) — no code change. PR #5022 (assert block known in on_payload_attestation_message) — already handled with explicit error. No new code changes needed.
+- **Verification**: 31/31 monitoring_api + validator_client tests pass. Full clippy clean (workspace + benches + tests). `make lint-full` passes.
