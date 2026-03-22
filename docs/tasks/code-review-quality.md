@@ -3399,3 +3399,16 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Preserved as `pub`**: `PersistedOperationPool` struct itself + `from_operation_pool`/`into_operation_pool` methods (used by beacon_chain), `RewardCache` struct + `update` method (used by http_api and beacon_chain), `AttMaxCover` struct + `new` method (used by beacon_chain/block_reward), `ReceivedPreCapella` enum (re-exported, used by http_api and network), `MaxCover` trait (re-exported), all `AttestationMap`/`CheckpointKey`/`SplitAttestation`/`CompactAttestationRef` types (accessed via `pub mod attestation_storage` or re-exports)
 - **Spec**: v1.7.0-alpha.3 still latest. No new merges since March 15. All 10 tracked Gloas PRs remain open (#4992, #4843, #4979, #5022, #5023, #4898, #4954, #5008, #5020, #4840). New open PRs noted: #4960 (fork choice test), #4932 (sanity/blocks tests), #4892 (remove impossible branch), #4630 (EIP-7688 SSZ), #4704 (remove old deposits in Fulu), #4747 (fast confirmation rule).
 - **Tests**: 72/72 operation_pool tests pass (FORK_NAME=gloas). Full workspace clippy zero warnings. `make lint-full` passes.
+
+### Run 2158 (2026-03-22)
+
+**Visibility downgrades in execution_layer crate**
+
+- **Code changes** — downgraded 3 modules and 1 struct in `beacon_node/execution_layer/src/`:
+  - **lib.rs**: `pub mod engines` → `pub(crate) mod engines` (no external access to module; `EngineError`, `EngineState`, `ForkchoiceState` re-exported via `pub use`)
+  - **lib.rs**: `pub mod payload_cache` → `mod payload_cache` (no external access; all items already `pub(crate)`)
+  - **lib.rs**: `pub mod versioned_hashes` → `mod versioned_hashes` (no external access; functions already `pub(crate)`)
+  - **engines.rs**: `pub struct Engine` → `pub(crate) struct Engine` (only used within crate)
+- **Preserved as `pub`**: `EngineError` (exposed in `pub enum Error` variant), `EngineState` and `ForkchoiceState` (re-exported, used by beacon_chain/network/http_api), `test_utils` module (heavily used by 17 external files), all `engine_api` sub-modules (`auth`, `http`, `json_structures` — constants and types used externally via re-exports)
+- **Spec**: v1.7.0-alpha.3 still latest. No new merges since March 15. All 10 tracked Gloas PRs remain open.
+- **Tests**: 145/145 execution_layer tests pass. Full workspace clippy zero warnings. `make lint-full` passes.
