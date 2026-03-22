@@ -9,7 +9,7 @@ mod reward_cache;
 mod sync_aggregate_id;
 
 pub use crate::bls_to_execution_changes::ReceivedPreCapella;
-pub use attestation::{AttMaxCover, PROPOSER_REWARD_DENOMINATOR, earliest_attestation_validators};
+pub use attestation::{AttMaxCover, PROPOSER_REWARD_DENOMINATOR};
 pub use attestation_storage::{CompactAttestationRef, SplitAttestation};
 pub use max_cover::MaxCover;
 pub use persistence::PersistedOperationPool;
@@ -179,7 +179,7 @@ impl<E: EthSpec> OperationPool<E> {
     }
 
     /// Remove sync contributions which are too old to be included in a block.
-    pub fn prune_sync_contributions(&self, current_slot: Slot) {
+    pub(crate) fn prune_sync_contributions(&self, current_slot: Slot) {
         // Prune sync contributions that are from before the previous slot.
         self.sync_contributions.write().retain(|_, contributions| {
             // All the contributions in this bucket have the same data, so we only need to
@@ -457,7 +457,7 @@ impl<E: EthSpec> OperationPool<E> {
 
     /// Prune proposer slashings for validators which are already slashed or exited in the finalized
     /// epoch.
-    pub fn prune_proposer_slashings(&self, finalized_state: &BeaconState<E>) {
+    pub(crate) fn prune_proposer_slashings(&self, finalized_state: &BeaconState<E>) {
         prune_validator_hash_map(
             &mut self.proposer_slashings.write(),
             |_, validator| {
@@ -469,7 +469,7 @@ impl<E: EthSpec> OperationPool<E> {
 
     /// Prune attester slashings for all slashed or withdrawn validators, or attestations on another
     /// fork.
-    pub fn prune_attester_slashings(&self, finalized_state: &BeaconState<E>) {
+    pub(crate) fn prune_attester_slashings(&self, finalized_state: &BeaconState<E>) {
         self.attester_slashings.write().retain(|slashing| {
             // Check that the attestation's signature is still valid wrt the fork version.
             // We might be a bit slower to detect signature staleness by using the finalized state
@@ -536,7 +536,7 @@ impl<E: EthSpec> OperationPool<E> {
     ///
     /// [Modified in Gloas:EIP7732] Also prunes builder exits (indices with
     /// BUILDER_INDEX_FLAG set) by checking the builder's withdrawable_epoch.
-    pub fn prune_voluntary_exits(&self, finalized_state: &BeaconState<E>, spec: &ChainSpec) {
+    pub(crate) fn prune_voluntary_exits(&self, finalized_state: &BeaconState<E>, spec: &ChainSpec) {
         use types::consts::gloas::BUILDER_INDEX_FLAG;
 
         let head_fork = spec.fork_name_at_slot::<E>(finalized_state.slot());
@@ -639,16 +639,8 @@ impl<E: EthSpec> OperationPool<E> {
         changes
     }
 
-    /// Removes `broadcasted` validators from the set of validators that should
-    /// have their BLS changes broadcast at the Capella fork boundary.
-    pub fn register_indices_broadcasted_at_capella(&self, broadcasted: &HashSet<u64>) {
-        self.bls_to_execution_changes
-            .write()
-            .register_indices_broadcasted_at_capella(broadcasted);
-    }
-
     /// Prune BLS to execution changes that have been applied to the state more than 1 block ago.
-    pub fn prune_bls_to_execution_changes<Payload: AbstractExecPayload<E>>(
+    pub(crate) fn prune_bls_to_execution_changes<Payload: AbstractExecPayload<E>>(
         &self,
         head_block: &SignedBeaconBlock<E, Payload>,
         head_state: &BeaconState<E>,

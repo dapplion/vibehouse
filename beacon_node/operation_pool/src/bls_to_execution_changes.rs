@@ -134,14 +134,4 @@ impl<E: EthSpec> BlsToExecutionChanges<E> {
             self.by_validator_index.remove(&validator_index);
         }
     }
-
-    /// Removes `broadcasted` validators from the set of validators that should
-    /// have their BLS changes broadcast at the Capella fork boundary.
-    pub(crate) fn register_indices_broadcasted_at_capella(&mut self, broadcasted: &HashSet<u64>) {
-        self.received_pre_capella_indices = self
-            .received_pre_capella_indices
-            .difference(broadcasted)
-            .copied()
-            .collect();
-    }
 }

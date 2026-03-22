@@ -190,7 +190,7 @@ impl<'a, E: EthSpec> MaxCover for AttMaxCover<'a, E> {
 /// removed from the `aggregation_bits` before returning it.
 ///
 /// This isn't optimal, but with the Altair fork this code is obsolete and not worth upgrading.
-pub fn earliest_attestation_validators<E: EthSpec>(
+pub(crate) fn earliest_attestation_validators<E: EthSpec>(
     attestation: &CompactAttestationRef<E>,
     state: &BeaconState<E>,
     base_state: &BeaconStateBase<E>,
