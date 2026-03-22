@@ -3673,3 +3673,16 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - `beacon_node_fallback`: `check_node_health` → `pub(crate)`
 - **Verified**: 58/58 slashing_protection + doppelganger_service tests pass, full workspace lint clean
 - **Also checked**: consensus arithmetic safety (all safe), unwrap() calls (all in safe contexts), spec status (no new merges since alpha.3), CI status (all green)
+
+### Run 2174
+
+**Pub visibility downgrades: store, proto_array**
+
+- **Scope**: Audit and downgrade `pub` items only used within their own crate in store and proto_array.
+- **Changes**:
+  - `store/hdiff.rs`: `BytesDiff`, `CompressedU64Diff`, `ValidatorsDiff`, `AppendOnlyDiff<T>` → `pub(crate)` (internal diff types, only used within hdiff.rs)
+  - `store/impls.rs`: `mod execution_payload`, `mod execution_payload_envelope` → `pub(crate) mod` (trait impl modules, never imported externally)
+  - `proto_array/proto_array_fork_choice.rs`: `DEFAULT_PRUNE_THRESHOLD` → `pub(crate)`, `ElasticList<T>` struct + inner field → `pub(crate)` (internal implementation details)
+- **Reverted**: `HierarchyModuli`, `StorageStrategy`, `FrozenForwardsIterator`, `SimpleForwardsIterator`, `StateSummaryIteratorError`, `OptionalDiffBaseState`, `DiffBaseState`, `BytesKey` — all exposed through public types (enum variants, struct fields, function signatures) so must remain `pub`
+- **Verified**: 206/206 proto_array tests pass, 236/236 store tests pass, full workspace lint clean
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since #5005 (Mar 15). All tracked open PRs (#5023, #5022, #5020, #5008, #4992, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4747, #4630, #4558) still OPEN. CI green, nightly green.
