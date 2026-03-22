@@ -284,7 +284,7 @@ pub fn process_block_header<E: EthSpec>(
 /// Verifies the signature of a block.
 ///
 /// Spec v0.12.1
-pub fn verify_block_signature<E: EthSpec, Payload: AbstractExecPayload<E>>(
+pub(crate) fn verify_block_signature<E: EthSpec, Payload: AbstractExecPayload<E>>(
     state: &BeaconState<E>,
     block: &SignedBeaconBlock<E, Payload>,
     ctxt: &mut ConsensusContext<E>,
@@ -355,7 +355,7 @@ pub fn process_eth1_data<E: EthSpec>(
 
 /// Returns `Ok(Some(eth1_data))` if adding the given `eth1_data` to `state.eth1_data_votes` would
 /// result in a change to `state.eth1_data`.
-pub fn get_new_eth1_data<E: EthSpec>(
+pub(crate) fn get_new_eth1_data<E: EthSpec>(
     state: &BeaconState<E>,
     eth1_data: &Eth1Data,
 ) -> Result<Option<Eth1Data>, ArithError> {

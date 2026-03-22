@@ -9,20 +9,19 @@ pub mod base;
 pub mod update_progressive_balances_cache;
 
 pub use deposit_data_tree::DepositDataTree;
-pub use get_attestation_participation::{
-    get_attestation_participation_flag_indices, is_attestation_same_slot,
-};
+pub use get_attestation_participation::get_attestation_participation_flag_indices;
+pub(crate) use get_attestation_participation::is_attestation_same_slot;
 pub use get_attesting_indices::{
     attesting_indices_base, attesting_indices_electra, get_attesting_indices_from_state,
 };
-pub use initiate_validator_exit::initiate_validator_exit;
-pub use slash_validator::slash_validator;
+pub(crate) use initiate_validator_exit::initiate_validator_exit;
+pub(crate) use slash_validator::slash_validator;
 
 use safe_arith::SafeArith;
 use types::{BeaconState, BeaconStateError, EthSpec};
 
 /// Increase the balance of a validator, erroring upon overflow, as per the spec.
-pub fn increase_balance<E: EthSpec>(
+pub(crate) fn increase_balance<E: EthSpec>(
     state: &mut BeaconState<E>,
     index: usize,
     delta: u64,
@@ -31,7 +30,7 @@ pub fn increase_balance<E: EthSpec>(
 }
 
 /// Decrease the balance of a validator, saturating upon overflow, as per the spec.
-pub fn decrease_balance<E: EthSpec>(
+pub(crate) fn decrease_balance<E: EthSpec>(
     state: &mut BeaconState<E>,
     index: usize,
     delta: u64,

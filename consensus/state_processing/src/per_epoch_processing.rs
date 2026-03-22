@@ -1,16 +1,17 @@
 #![deny(clippy::wildcard_imports)]
 
 use crate::metrics;
-pub use epoch_processing_summary::{EpochProcessingSummary, ParticipationEpochSummary};
+pub use epoch_processing_summary::EpochProcessingSummary;
+pub(crate) use epoch_processing_summary::ParticipationEpochSummary;
 use errors::EpochProcessingError as Error;
-pub use justification_and_finalization_state::JustificationAndFinalizationState;
+pub(crate) use justification_and_finalization_state::JustificationAndFinalizationState;
 use safe_arith::SafeArith;
 use tracing::instrument;
 use types::{BeaconState, ChainSpec, EthSpec};
 
 pub use registry_updates::{process_registry_updates, process_registry_updates_slow};
 pub use slashings::{process_slashings, process_slashings_slow};
-pub use weigh_justification_and_finalization::weigh_justification_and_finalization;
+pub(crate) use weigh_justification_and_finalization::weigh_justification_and_finalization;
 
 pub mod altair;
 pub mod base;
@@ -20,13 +21,13 @@ pub mod epoch_processing_summary;
 pub mod errors;
 pub mod gloas;
 pub mod historical_roots_update;
-pub mod justification_and_finalization_state;
+pub(crate) mod justification_and_finalization_state;
 pub mod registry_updates;
 pub mod resets;
 pub mod single_pass;
 pub mod slashings;
 pub mod tests;
-pub mod weigh_justification_and_finalization;
+pub(crate) mod weigh_justification_and_finalization;
 
 /// Performs per-epoch processing on some BeaconState.
 ///

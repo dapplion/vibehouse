@@ -15,7 +15,7 @@ use types::{
     SigningData, Slot, SyncAggregate, SyncAggregatorSelectionData, Unsigned,
 };
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub(crate) type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Error {
@@ -71,7 +71,7 @@ where
 }
 
 /// A signature set that is valid if a block was signed by the expected block producer.
-pub fn block_proposal_signature_set<'a, E, F, Payload: AbstractExecPayload<E>>(
+pub(crate) fn block_proposal_signature_set<'a, E, F, Payload: AbstractExecPayload<E>>(
     state: &'a BeaconState<E>,
     get_pubkey: F,
     signed_block: &'a SignedBeaconBlock<E, Payload>,
@@ -156,7 +156,7 @@ where
     ))
 }
 
-pub fn bls_execution_change_signature_set<'a, E: EthSpec>(
+pub(crate) fn bls_execution_change_signature_set<'a, E: EthSpec>(
     state: &'a BeaconState<E>,
     signed_address_change: &'a SignedBlsToExecutionChange,
     spec: &'a ChainSpec,
@@ -183,7 +183,7 @@ pub fn bls_execution_change_signature_set<'a, E: EthSpec>(
 }
 
 /// A signature set that is valid if the block proposers randao reveal signature is correct.
-pub fn randao_signature_set<'a, E, F, Payload: AbstractExecPayload<E>>(
+pub(crate) fn randao_signature_set<'a, E, F, Payload: AbstractExecPayload<E>>(
     state: &'a BeaconState<E>,
     get_pubkey: F,
     block: BeaconBlockRef<'a, E, Payload>,
@@ -220,7 +220,7 @@ where
 }
 
 /// Returns two signature sets, one for each `BlockHeader` included in the `ProposerSlashing`.
-pub fn proposer_slashing_signature_set<'a, E, F>(
+pub(crate) fn proposer_slashing_signature_set<'a, E, F>(
     state: &'a BeaconState<E>,
     get_pubkey: F,
     proposer_slashing: &'a ProposerSlashing,
@@ -268,7 +268,7 @@ fn block_header_signature_set<'a, E: EthSpec>(
 }
 
 /// Returns the signature set for the given `indexed_attestation`.
-pub fn indexed_attestation_signature_set<'a, 'b, E, F>(
+pub(crate) fn indexed_attestation_signature_set<'a, 'b, E, F>(
     state: &'a BeaconState<E>,
     get_pubkey: F,
     signature: &'a AggregateSignature,
@@ -332,7 +332,7 @@ where
 }
 
 /// Returns the signature set for the given `attester_slashing` and corresponding `pubkeys`.
-pub fn attester_slashing_signature_sets<'a, E, F>(
+pub(crate) fn attester_slashing_signature_sets<'a, E, F>(
     state: &'a BeaconState<E>,
     get_pubkey: F,
     attester_slashing: AttesterSlashingRef<'a, E>,
@@ -361,7 +361,7 @@ where
 }
 
 /// Returns the BLS values in a `Deposit`, if they're all valid. Otherwise, returns `None`.
-pub fn deposit_pubkey_signature_message(
+pub(crate) fn deposit_pubkey_signature_message(
     deposit_data: &DepositData,
     spec: &ChainSpec,
 ) -> Option<(PublicKey, Signature, Hash256)> {
@@ -374,7 +374,7 @@ pub fn deposit_pubkey_signature_message(
 
 /// Returns a signature set that is valid if the `SignedVoluntaryExit` was signed by the indicated
 /// validator.
-pub fn exit_signature_set<'a, E, F>(
+pub(crate) fn exit_signature_set<'a, E, F>(
     state: &'a BeaconState<E>,
     get_pubkey: F,
     signed_exit: &'a SignedVoluntaryExit,
@@ -604,7 +604,7 @@ where
 /// uses a separate function `eth2_fast_aggregate_verify` for this, but we can equivalently
 /// check the exceptional case eagerly and do a `fast_aggregate_verify` in the case where the
 /// check fails (by returning `Some(signature_set)`).
-pub fn sync_aggregate_signature_set<'a, E, D>(
+pub(crate) fn sync_aggregate_signature_set<'a, E, D>(
     decompressor: D,
     sync_aggregate: &'a SyncAggregate<E>,
     slot: Slot,
