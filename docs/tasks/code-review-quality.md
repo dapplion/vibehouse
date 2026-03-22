@@ -4043,3 +4043,28 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - `gather_prometheus_metrics()` → private (only called from `metrics_handler` within crate)
 - **Crates audited with no changes needed**: timer (all pub items used externally), http_metrics (all pub items used externally), deposit_contract, filesystem, lockfile, sensitive_url, system_health, vibehouse_version (all pub items used externally)
 - **Tests**: 216/216 affected crate tests pass. `make lint-full` clean, zero warnings.
+
+### Run 2189
+
+**Pub visibility downgrades in proto_array, merkle_proof; audit of fork_choice, beacon_processor, task_executor, and 8 small crates**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges.
+- **Changes — proto_array/lib.rs** (3 re-exports removed from `core` module):
+  - `ProtoNode`, `VoteTracker`, `ProposerBoost` removed from `pub mod core` re-exports (zero external usage; types remain pub within their modules for SszContainer field compatibility)
+- **Changes — proto_array/proto_array.rs** (5 methods + 1 method downgraded):
+  - `ProtoArray::apply_score_changes()` → `pub(crate)` (only called from ProtoArrayForkChoice)
+  - `ProtoArray::propagate_execution_payload_validation()` → `pub(crate)` (only called from ProtoArrayForkChoice)
+  - `ProtoArray::propagate_execution_payload_invalidation()` → `pub(crate)` (only called from ProtoArrayForkChoice)
+  - `ProtoArray::execution_block_hash_to_beacon_block_root()` → `pub(crate)` (only called from ProtoArrayForkChoice)
+  - `InvalidationOperation::invalidate_block_root()` → `pub(crate)` (only called within proto_array)
+- **Changes — proto_array/proto_array_fork_choice.rs** (1 method downgraded):
+  - `ProtoArrayForkChoice::set_prune_threshold()` → `pub(crate)` (zero external usage)
+  - `from_bytes`/`from_container` kept pub (used by fork_choice crate)
+- **Changes — merkle_proof/lib.rs** (1 method downgraded):
+  - `MerkleTree::print_node()` → `pub(crate)` + `#[allow(dead_code)]` (debug-only, zero external usage)
+- **Crates audited with no changes needed**:
+  - **fork_choice**: `InvalidExecutionBid`, `InvalidPayloadAttestation` are inside public `Error` enum — downgrading creates private_interfaces warnings. Already effectively private (private module, not re-exported).
+  - **beacon_processor**: `DuplicateCacheHandle` used by network crate; `QueuedBackfillBatch` inside public `ReprocessQueueMessage` enum — can't downgrade without private_interfaces errors.
+  - **task_executor**: `HandleProvider` used as bound on public `TaskExecutor::new()` — can't downgrade without private_bounds error.
+  - **swap_or_not_shuffle, int_to_bytes, fixed_bytes, lru_cache, oneshot_broadcast, malloc_utils**: all pub items used externally, no downgrades possible.
+- **Tests**: 347/347 affected crate tests pass. `make lint` clean, zero warnings.
