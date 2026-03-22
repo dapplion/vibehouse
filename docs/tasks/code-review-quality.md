@@ -3879,3 +3879,22 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Preserved in slasher**: `Slasher` (used by beacon_chain, client), `Config`/`DatabaseBackend`/`DatabaseBackendOverride` (used by CLI, beacon_node), `SlasherDB` (used by integration tests), `Error` (used by block_verification tests), `RwTransaction` (used by array.rs, slasher.rs), `config` module (DEFAULT_CHUNK_SIZE, MDBX_DATA_FILENAME used by tests), `test_utils` module (used by integration tests), `metrics` module (used by slasher_service)
 - **Audited but no changes**: beacon_processor (all pub items genuinely used externally by network, client, http_api), http_api main API (all pub items used externally by client, tests, validator_manager)
 - **Tests**: 105/105 slasher tests pass, 346/346 http_api tests pass. `make lint` clean, zero warnings.
+
+### Run 2183
+
+**CI fix: gloas proposer boost boundary test + pub visibility downgrades in lcli/binary crates + dead code removal**
+
+- **CI fix**: `gloas_proposer_boost_four_interval_boundary` test was asserting that proposer boost is NOT granted at 1500ms (the Gloas attestation deadline), but the recent `< → <=` timeliness fix correctly grants boost at the boundary (per spec). Fixed test: 1500ms now gets boost, added 1501ms case to verify the boundary from the other side.
+- **lcli**: All 16 pub functions downgraded to `pub(crate)` — lcli is a binary crate with no external consumers.
+- **boot_node**: `server::run` downgraded to `pub(crate)` (only called from lib.rs internally).
+- **database_manager**: Removed dead `pub use clap::{...}` re-export from cli.rs (never imported via database_manager::cli::Arg etc.).
+- **validator_manager dead code removed**:
+  - `CreateSpec` struct — defined but never constructed
+  - `DeleteError` enum — defined but never used
+  - `MOVE_DIR_NAME`, `VALIDATOR_SPECIFICATION_FILE` constants — defined but never referenced
+  - `TestResult::validators()` method — dead test helper
+  - Redundant `use serde_json` import in exit_validators.rs
+  - Unused `PathBuf` import (left over from CreateSpec removal)
+- **account_manager/validator_manager/boot_node modules**: Audited for pub(crate) downgrades but most items must stay pub because vibehouse integration tests (vibehouse/tests/*.rs) import deeply into these crates' internal modules. Only items with no external consumers were downgraded.
+- **Spec check**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since March 15.
+- **Tests**: `make lint-full` clean. Proposer boost boundary test passes. All 999 beacon_chain (gloas) tests expected to pass in CI.
