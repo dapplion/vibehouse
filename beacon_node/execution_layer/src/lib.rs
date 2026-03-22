@@ -10,6 +10,7 @@ use arc_swap::ArcSwapOption;
 use auth::{Auth, JwtKey, strip_prefix};
 use builder_client::BuilderHttpClient;
 use engine_api::Error as ApiError;
+pub(crate) use engine_api::http::HttpJsonRpc;
 pub use engine_api::{
     // Re-exported types from engine_api's own `pub use types::{...}`
     Address,
@@ -68,8 +69,6 @@ pub use engine_api::{
     Withdrawals,
     auth,
     http,
-    http::HttpJsonRpc,
-    http::deposit_methods,
     json_structures,
 };
 use engines::Engine;

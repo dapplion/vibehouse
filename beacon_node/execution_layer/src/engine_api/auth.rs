@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use jsonwebtoken::{Algorithm, EncodingKey, Header, encode, get_current_timestamp};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -9,7 +7,7 @@ use zeroize::Zeroize;
 const DEFAULT_ALGORITHM: Algorithm = Algorithm::HS256;
 
 /// JWT secret length in bytes.
-pub const JWT_SECRET_LENGTH: usize = 32;
+pub(crate) const JWT_SECRET_LENGTH: usize = 32;
 
 #[derive(Debug)]
 pub enum Error {
@@ -60,7 +58,7 @@ impl JwtKey {
     }
 }
 
-pub fn strip_prefix(s: &str) -> &str {
+pub(crate) fn strip_prefix(s: &str) -> &str {
     if let Some(stripped) = s.strip_prefix("0x") {
         stripped
     } else {
@@ -69,7 +67,7 @@ pub fn strip_prefix(s: &str) -> &str {
 }
 
 /// Contains the JWT secret and claims parameters.
-pub struct Auth {
+pub(crate) struct Auth {
     key: EncodingKey,
     id: Option<String>,
     clv: Option<String>,
@@ -86,8 +84,9 @@ impl Auth {
 
     /// Create a new `Auth` struct given the path to the file containing the hex
     /// encoded jwt key.
+    #[cfg(test)]
     pub fn new_with_path(
-        jwt_path: PathBuf,
+        jwt_path: std::path::PathBuf,
         id: Option<String>,
         clv: Option<String>,
     ) -> Result<Self, Error> {
@@ -147,7 +146,7 @@ impl Auth {
 
 /// Claims struct as defined in <https://github.com/ethereum/execution-apis/blob/main/src/engine/authentication.md#jwt-claims>
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct Claims {
+pub(crate) struct Claims {
     /// issued-at claim. Represented as seconds passed since UNIX_EPOCH.
     iat: u64,
     /// Optional unique identifier for the CL node.
