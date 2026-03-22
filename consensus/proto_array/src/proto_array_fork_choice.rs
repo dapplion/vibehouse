@@ -447,7 +447,7 @@ impl DisallowedReOrgOffsets {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub struct ProtoArrayForkChoice {
     pub(crate) proto_array: ProtoArray,
     pub(crate) votes: ElasticList<VoteTracker>,

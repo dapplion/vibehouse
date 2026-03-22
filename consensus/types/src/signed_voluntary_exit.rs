@@ -12,7 +12,7 @@ use tree_hash_derive::TreeHash;
 /// Spec v0.12.1
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[derive(
-    Debug, PartialEq, Hash, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, TestRandom,
+    Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, TestRandom,
 )]
 #[context_deserialize(ForkName)]
 pub struct SignedVoluntaryExit {

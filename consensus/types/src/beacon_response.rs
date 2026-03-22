@@ -30,7 +30,7 @@ pub struct UnversionedResponse<T, M = EmptyMetadata> {
     pub data: T,
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize)]
 #[serde(untagged)]
 pub enum BeaconResponse<T, M = EmptyMetadata> {
     ForkVersioned(ForkVersionedResponse<T, M>),

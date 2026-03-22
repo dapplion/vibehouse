@@ -37,7 +37,7 @@ pub(crate) enum ForkName {
     Gloas,
 }
 
-#[derive(Debug, PartialEq, Serialize)]
+#[derive(Debug, PartialEq, Eq, Serialize)]
 pub struct ForkInfo {
     pub fork: Fork,
     pub genesis_validators_root: Hash256,

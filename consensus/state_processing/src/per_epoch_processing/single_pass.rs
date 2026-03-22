@@ -111,7 +111,7 @@ struct EffectiveBalancesContext {
     upward_threshold: u64,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ValidatorInfo {
     pub index: usize,
     pub effective_balance: u64,

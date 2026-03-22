@@ -15,7 +15,7 @@ pub struct ErrorMessage {
     pub stacktraces: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MonitoringMetrics {
     #[serde(flatten)]
     pub metadata: Metadata,

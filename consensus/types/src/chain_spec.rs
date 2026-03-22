@@ -19,7 +19,7 @@ use std::time::Duration;
 use tree_hash::TreeHash;
 
 /// Each of the BLS signature domains.
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Domain {
     BlsToExecutionChange,
     BeaconProposer,

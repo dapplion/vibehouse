@@ -136,7 +136,7 @@ impl SigningDefinition {
 ///
 /// Presently there is only a single variant, however we expect more variants to arise (e.g.,
 /// remote signing).
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ValidatorDefinition {
     pub enabled: bool,
     pub voting_public_key: PublicKey,

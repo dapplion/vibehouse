@@ -249,12 +249,9 @@ lint:
 		-D clippy::manual_let_else \
 		-D clippy::large_stack_frames \
 		-D clippy::disallowed_methods \
+		-D clippy::derive_partial_eq_without_eq \
 		-D warnings \
-		-A clippy::derive_partial_eq_without_eq \
-		-A clippy::upper-case-acronyms \
-		-A clippy::vec-init-then-push \
-		-A clippy::uninlined-format-args \
-		-A clippy::enum_variant_names
+		-A clippy::upper-case-acronyms
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.
 lint-fix:

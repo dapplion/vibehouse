@@ -15,7 +15,7 @@ pub struct ValidatorData {
     pub voting_pubkey: PublicKeyBytes,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ValidatorRequest {
     pub enable: bool,
     pub description: String,
@@ -41,7 +41,7 @@ pub struct ValidatorRequest {
     pub deposit_gwei: u64,
 }
 
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CreateValidatorsMnemonicRequest {
     pub mnemonic: Zeroizing<String>,
     #[serde(with = "serde_utils::quoted_u32")]
@@ -49,7 +49,7 @@ pub struct CreateValidatorsMnemonicRequest {
     pub validators: Vec<ValidatorRequest>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CreatedValidator {
     pub enabled: bool,
     pub description: String,
@@ -71,13 +71,13 @@ pub struct CreatedValidator {
     pub deposit_gwei: u64,
 }
 
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PostValidatorsResponseData {
     pub mnemonic: Zeroizing<String>,
     pub validators: Vec<CreatedValidator>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ValidatorPatchRequest {
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -99,7 +99,7 @@ pub struct ValidatorPatchRequest {
     pub prefer_builder_proposals: Option<bool>,
 }
 
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KeystoreValidatorsPostRequest {
     pub password: Zeroizing<String>,
     pub enable: bool,
@@ -124,7 +124,7 @@ pub struct KeystoreValidatorsPostRequest {
     pub prefer_builder_proposals: Option<bool>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Web3SignerValidatorRequest {
     pub enable: bool,
     pub description: String,

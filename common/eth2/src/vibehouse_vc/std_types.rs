@@ -45,7 +45,7 @@ pub struct ImportKeystoresRequest {
     pub slashing_protection: Option<InterchangeJsonStr>,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct KeystoreJsonStr(#[serde(with = "serde_utils::json_str")] pub Keystore);
 

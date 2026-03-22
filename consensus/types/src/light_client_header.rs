@@ -19,6 +19,9 @@ use tree_hash_derive::TreeHash;
 #[superstruct(
     variants(Altair, Capella, Deneb, Electra, Fulu, Gloas),
     variant_attributes(
+        // Eq omitted: ExecutionPayloadHeader variants don't derive Eq, and adding it
+        // would cascade through many superstruct types for little benefit.
+        allow(clippy::derive_partial_eq_without_eq),
         derive(
             Debug,
             Clone,

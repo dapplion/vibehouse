@@ -30,7 +30,7 @@ struct Inner {
 
 /// Caches the participation values for one epoch (either the previous or current).
 #[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct EpochTotalBalances {
     /// Stores the sum of the balances for all validators in `self.unslashed_participating_indices`
     /// for all flags in `NUM_FLAG_INDICES`.
