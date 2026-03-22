@@ -4448,3 +4448,30 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Tests**: 4991/4999 workspace tests pass (8 web3signer infrastructure-dependent). 74/74 operation_pool (Gloas). CI: 4/6 jobs passed, 2 in progress, no failures.
 - **Nightly CI**: March 22 failure was pre-existing nextest version pin issue (fixed in run 2203). Tonight's nightly should pass.
 - **Conclusion**: No code changes needed. Five major subsystems audited clean. Codebase in excellent shape.
+
+### Run 2208
+
+**Deep audits: HTTP API, networking/RPC, epoch processing, slot timing — no bugs found**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since #5008/#4902 (March 22). All open Gloas PRs (#5022, #5023, #5020, #4979, #4992, #4962, #4960, #4939, #4932, #4843, #4747) remain unmerged. No new EF test fixtures.
+- **HTTP API audit** (all Gloas endpoints: PTC duties, bids, envelopes, payload attestations, proposer preferences, attestation data):
+  - POST /beacon/execution_payload_envelope returns 200 even if local `process_payload_envelope` fails after gossip broadcast. This is intentional gossip-first design (envelope already validated by `verify_payload_envelope_for_gossip` before broadcast; local EL failures don't invalidate the envelope network-wide). Not a bug.
+  - Missing explicit Gloas fork guards on pool endpoints (payload_attestations, payload_attestation_data). In practice, underlying chain methods fail gracefully pre-Gloas (no PTC committees → error returned). Nice-to-have but not a correctness issue.
+  - All other endpoints correct: proper error mapping, fork version headers, SSE events, serialization.
+- **Networking/RPC audit** (gossip validation, RPC handlers, peer scoring, beacon processor):
+  - Agent flagged envelope dedup-before-signature as "critical DoS" — **false positive**. The `is_known()` check (line 810) is read-only; `observe_envelope()` recording (line 918) only happens AFTER all validation including signature verification passes. Attacker's invalid-signature envelopes fail at sig check and never poison the cache.
+  - ExecutionPayloadEnvelopesByRoot RPC properly bounded by `max_execution_payload_envelopes_by_root_request` (128) and rate-limited via `execution_payload_envelopes_by_root_quota`.
+  - All gossip message types (bid, envelope, attestation, preferences) have correct validation ordering, peer scoring, and propagation control.
+- **Epoch processing audit** (process_builder_pending_payments, single_pass dispatch, Fulu→Gloas upgrade):
+  - Quorum calculation, payment rotation, withdrawal appending all correct with safe arithmetic.
+  - Epoch call order verified: builder_pending_payments called after consolidations, before final effective_balance cache sync.
+  - upgrade_to_gloas correctly initializes all new fields: builders=empty, payments=zero-filled, withdrawals=empty, availability=all-ones, latest_block_hash=copied.
+  - Builder onboarding from pending deposits handles signature verification, version extraction, and cache updates correctly.
+- **Slot timing audit** (4-interval system, BPS values, fork boundary, PTC timing):
+  - SlotClock correctly switches from 3 to 4 intervals at `slot >= gloas_fork_slot`.
+  - BPS values correct: attestation=2500 (25%), aggregate=5000 (50%), PTC=7500 (75%) for Gloas.
+  - Proposer boost cutoff correctly adjusted to 25% of slot (from 33.33% pre-Gloas).
+  - PTC attestation service sleeps until 75% of slot before submitting.
+  - No hard envelope deadline in gossip validation — enforced by gossip scoring (messages outside timing windows scored lower).
+- **CI**: All 6 jobs passed on latest push (c5169cf33). Green.
+- **Conclusion**: No code changes needed. Four subsystems deeply audited, all clean. Codebase remains in excellent shape.
