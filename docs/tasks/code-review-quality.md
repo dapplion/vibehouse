@@ -4622,3 +4622,28 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - `vibehouse/tests/`: `|e| e.to_base64()` → `Enr::to_base64`, `|s| s.as_str()` → `String::as_str`
 - **Tests**: 1026/1026 state_processing. `make lint-full` clean.
 - **CI**: Pre-push hook passed, pushed successfully.
+
+### Run 2219 (2026-03-22)
+
+**Enforce 7 new clippy lints + unpin cargo-nextest in CI**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since #5014 (Mar 22). All tracked open Gloas PRs (#5022, #4898, #4892, #4979, #4992, #5020, #4843, #5023, #4960, #4932, #4939, #4954) remain unmerged.
+- **CI**: Run 23413208759 (from run 2218) — check+clippy+fmt passed, other jobs building. Nightly failure (Mar 22) was transient `cargo-nextest-0.9.132` binary 404 on GitHub Releases (same issue as Mar 20).
+- **7 new lints enforced** (all had zero warnings — added for regression prevention):
+  - `cloned_instead_of_copied` — prefer `.copied()` for `Copy` types
+  - `flat_map_option` — prefer `.flatten()` over `.flat_map(|x| x)`
+  - `from_iter_instead_of_collect` — prefer `.collect()` over `FromIterator::from_iter()`
+  - `semicolon_if_nothing_returned` — enforce trailing semicolons on unit-returning blocks
+  - `inconsistent_struct_constructor` — struct fields in declaration order
+  - `needless_for_each` — prefer `for` loops over `.for_each()`
+  - `implicit_clone` — prefer `.clone()` over `.to_owned()` on Clone types
+- **Fixed 18 lint warnings** (exposed by `-C debug-assertions=no` in `lint-full`) across 6 test files:
+  - `validator_manager/move_validators.rs`: 1× `.cloned()` → `.copied()`, 3× `.for_each()` → `for` loop
+  - `http_api/tests/tests.rs`: 7× `.cloned()` → `.copied()` (u64 iterators)
+  - `http_api/tests/fork_tests.rs`: 1× `HashSet::from_iter()` → `.collect()`
+  - `beacon_chain/tests/gloas.rs`: 4× `.cloned()` → `.copied()` (Withdrawal is Copy)
+  - `beacon_chain/tests/block_verification.rs`: 1× `.cloned()` → `.copied()`
+  - `beacon_chain/tests/attestation_production.rs`: 1× `.for_each()` → `for` loop
+- **Unpin cargo-nextest in CI**: Removed `@0.9.132` version pin from `ci.yml` (5 occurrences) and `nightly-tests.yml` (6 occurrences). `taiki-e/install-action` now installs latest, avoiding recurring transient 404s on the specific 0.9.132 GitHub Release binary.
+- **Makefile lint target**: now 13 extra `-D` lints enforced (was 6).
+- **Tests**: 1085/1085 types. `make lint-full` clean. Pre-push hook passed, pushed successfully.
