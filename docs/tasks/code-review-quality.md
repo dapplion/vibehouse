@@ -3578,3 +3578,19 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - No unsafe unwraps in production consensus paths.
 - **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since March 15. Open PRs: #4979, #4843, #4954, #5022, #5008.
 - **Tests**: 88/88 envelope processing tests pass. Full workspace clippy zero warnings. `make lint-full` passes.
+
+### Run 2168 (2026-03-22)
+
+**Codebase health check + devnet verification**
+
+- **Scope**: Full health audit — CI status, spec tracking, open issues, compiler warnings, TODO hygiene, devnet verification.
+- **Findings — all green**:
+  - Zero compiler warnings (`cargo check --workspace`)
+  - All TODOs reference issue #36 (10 total, all blocked on external deps or non-critical)
+  - Spec: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since March 15. Open PRs tracked: #4979 (PTC lookbehind), #4843 (variable PTC deadline), #4954 (ms timing), #5022 (known block check — already implemented), #5008 (field rename — already correct), #5023 (comptests), #4960 (deposit fork choice test), #4962 (withdrawal interaction tests), #4898 (pending tiebreaker removal), #4892 (impossible branch removal)
+  - Nightly CI: 5 consecutive green runs
+  - Gloas code audit: zero unwraps in production, correct safe math, proper error handling
+  - Visibility audit complete: all major crates done per runs 2163-2166
+- **Devnet verification**: 4-node kurtosis devnet passed — finalized_epoch=8 (slot 80, epoch 10), clean Gloas fork transition at epoch 1, no stalls or errors. Run ID: 20260322-040825.
+- **CI**: Latest run (push 8b951aee8) — check/clippy/fmt ✓, network+op_pool ✓, EF tests ✓, remaining jobs (unit tests, http_api, beacon_chain) in progress.
+- **Conclusion**: Codebase is stable and healthy. All priorities 1-6 complete. No actionable work remaining beyond blocked #36 items and lowest-priority ROCQ proofs (#29).
