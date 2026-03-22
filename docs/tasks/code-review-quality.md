@@ -3661,3 +3661,15 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - Watched PRs: #4892 (is_supporting_vote same-slot fix) still open, #4898 (remove pending tiebreaker) still open
   - Open Gloas PRs tracked: #5023, #5022, #5020, #5008, #4992, #4979, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4747, #4630, #4558
 - **Conclusion**: Codebase remains stable and healthy. No actionable work identified. All priorities 1-6 complete.
+
+### Run 2173
+
+**Pub visibility downgrades: slashing_protection, doppelganger_service, beacon_node_fallback**
+
+- **Scope**: Audit and downgrade `pub` items only used within their own crate.
+- **Changes**:
+  - `slashing_protection`: `POOL_SIZE`, `CONNECTION_TIMEOUT`, `VALIDATORS_ENABLED_CID` → `pub(crate)`; `SigningRoot` → `pub(crate)`; `SignedBlock::signing_root`/`SignedAttestation::signing_root` fields → `pub(crate)`; `SignedBlock::new` removed (dead code); `SignedBlock::from_header`/`SignedAttestation::from_attestation` gated `#[cfg(test)]`; 5 SlashingDatabase methods + `import_interchange_record` + `validator_summary` → `pub(crate)`
+  - `doppelganger_service`: `DEFAULT_REMAINING_DETECTION_EPOCHS`, `DoppelgangerState` → `pub(crate)`
+  - `beacon_node_fallback`: `check_node_health` → `pub(crate)`
+- **Verified**: 58/58 slashing_protection + doppelganger_service tests pass, full workspace lint clean
+- **Also checked**: consensus arithmetic safety (all safe), unwrap() calls (all in safe contexts), spec status (no new merges since alpha.3), CI status (all green)
