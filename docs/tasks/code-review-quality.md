@@ -4553,3 +4553,18 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - Re-export: `#[allow(unreachable_pub)]` on `block_verification.rs` `pub use fork_choice::{...}` (re-exported from lib.rs, must stay `pub`)
 - **Tests**: 4991/4991 workspace tests pass (excluding web3signer infra-dependent). `make lint-full` clean.
 - **CI**: Pre-push hook passed with new lint enforcement, push succeeded.
+
+### Run 2214
+
+**Idiomatic clippy pattern fixes + spec/CI health check**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs releases. All open Gloas PRs remain unmerged (#5022, #5023, #5020, #4979, #4992, #4843, #4747). Reviewed #5022 (assert block known in `on_payload_attestation_message`) — already handled by our `indices.get()` check at `fork_choice.rs:1426-1432`.
+- **CI**: Run 23411534775 (from run 2213) — check+clippy+fmt passed, ef-tests passed, network+op_pool passed, remaining 3 jobs still building. Nightly failure on March 22 was transient cargo-nextest 404 (op-pool-tests capella) — fix already deployed (pinned `@v2` with `tool: cargo-nextest@0.9.132`).
+- **Dependency audit**: `cargo audit` — 1 vulnerability (rsa RUSTSEC-2023-0071, medium, no fix available), 5 unmaintained crate warnings (all pre-existing inherited deps). `cargo outdated` — only `rand_xorshift` 0.4→0.5 (minor, test-only).
+- **Clippy improvements** (6 warnings fixed across 5 files):
+  - `system_health/src/lib.rs`: 4× `.map(|g| g.get() == 1).unwrap_or_default()` → `.is_some_and(|g| g.get() == 1)` (manual_is_variant_and)
+  - `vibehouse_network/src/rpc/handler.rs`: 2× `.map(RpcResponse::close_after) == Some(false)` → `.is_some_and(|r| !r.close_after())` (manual_is_variant_and)
+  - `types/src/execution_requests.rs`: 3× `[val].into_iter().chain(...)` → `std::iter::once(val).chain(...)` (iter_on_single_items)
+  - `http_api/src/block_rewards.rs` + `sync_committee_rewards.rs`: 2× `[Ok(...)].into_iter()` → `std::iter::once(Ok(...))` (iter_on_single_items)
+- **Additional lints checked** (zero warnings): `redundant_clone`, `cloned_instead_of_copied`, `implicit_clone`, `flat_map_option`, `match_bool`, `bool_to_int_with_if`, `unnecessary_map_or`. Codebase is very clean.
+- **Tests**: 1085/1085 types tests pass. `make lint-full` clean. Pre-push hook passed.
