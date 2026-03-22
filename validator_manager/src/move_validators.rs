@@ -23,17 +23,17 @@ use tokio::time::sleep;
 use types::{Address, PublicKeyBytes};
 use zeroize::Zeroizing;
 
-pub const CMD: &str = "move";
-pub const SRC_VC_URL_FLAG: &str = "src-vc-url";
-pub const SRC_VC_TOKEN_FLAG: &str = "src-vc-token";
-pub const DEST_VC_URL_FLAG: &str = "dest-vc-url";
-pub const DEST_VC_TOKEN_FLAG: &str = "dest-vc-token";
-pub const VALIDATORS_FLAG: &str = "validators";
-pub const GAS_LIMIT_FLAG: &str = "gas-limit";
-pub const FEE_RECIPIENT_FLAG: &str = "suggested-fee-recipient";
-pub const BUILDER_PROPOSALS_FLAG: &str = "builder-proposals";
-pub const BUILDER_BOOST_FACTOR_FLAG: &str = "builder-boost-factor";
-pub const PREFER_BUILDER_PROPOSALS_FLAG: &str = "prefer-builder-proposals";
+pub(crate) const CMD: &str = "move";
+const SRC_VC_URL_FLAG: &str = "src-vc-url";
+const SRC_VC_TOKEN_FLAG: &str = "src-vc-token";
+const DEST_VC_URL_FLAG: &str = "dest-vc-url";
+const DEST_VC_TOKEN_FLAG: &str = "dest-vc-token";
+const VALIDATORS_FLAG: &str = "validators";
+const GAS_LIMIT_FLAG: &str = "gas-limit";
+const FEE_RECIPIENT_FLAG: &str = "suggested-fee-recipient";
+const BUILDER_PROPOSALS_FLAG: &str = "builder-proposals";
+const BUILDER_BOOST_FACTOR_FLAG: &str = "builder-boost-factor";
+const PREFER_BUILDER_PROPOSALS_FLAG: &str = "prefer-builder-proposals";
 
 const NO_VALIDATORS_MSG: &str = "No validators present on source validator client";
 

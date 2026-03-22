@@ -17,7 +17,7 @@ use vibehouse_network::{
 };
 
 /// A set of configuration parameters for the bootnode, established from CLI arguments.
-pub struct BootNodeConfig<E: EthSpec> {
+pub(crate) struct BootNodeConfig<E: EthSpec> {
     pub boot_nodes: Vec<Enr>,
     pub local_enr: Enr,
     pub local_key: CombinedKey,
@@ -190,7 +190,7 @@ pub struct BootNodeConfigSerialization {
 impl BootNodeConfigSerialization {
     /// Returns a `BootNodeConfigSerialization` obtained from copying resp. cloning the
     /// relevant fields of `config`
-    pub fn from_config_ref<E: EthSpec>(config: &BootNodeConfig<E>) -> Self {
+    pub(crate) fn from_config_ref<E: EthSpec>(config: &BootNodeConfig<E>) -> Self {
         let BootNodeConfig {
             boot_nodes,
             local_enr,

@@ -1,4 +1,4 @@
-pub use account_utils::STDIN_INPUTS_FLAG;
+pub(crate) use account_utils::STDIN_INPUTS_FLAG;
 use account_utils::strip_off_newlines;
 use eth2::vibehouse_vc::std_types::{InterchangeJsonStr, KeystoreJsonStr};
 use eth2::{
@@ -16,8 +16,8 @@ use tree_hash::TreeHash;
 use types::{Address, ChainSpec, DepositData, Hash256, Keypair, PublicKeyBytes, SignatureBytes};
 use zeroize::Zeroizing;
 
-pub const IGNORE_DUPLICATES_FLAG: &str = "ignore-duplicates";
-pub const COUNT_FLAG: &str = "count";
+pub(crate) const IGNORE_DUPLICATES_FLAG: &str = "ignore-duplicates";
+pub(crate) const COUNT_FLAG: &str = "count";
 
 /// When the `ethstaker-deposit-cli` tool generates deposit data JSON, it adds a
 /// `deposit_cli_version` to protect the web-based "Launchpad" tool against a breaking change that
@@ -29,7 +29,7 @@ pub const COUNT_FLAG: &str = "count";
 const VIBEHOUSE_DEPOSIT_CLI_VERSION: &str = "20.18.20";
 
 #[derive(Debug)]
-pub enum UploadError {
+pub(crate) enum UploadError {
     InvalidPublicKey,
     DuplicateValidator(PublicKeyBytes),
     FailedToListKeys(eth2::Error),
@@ -40,7 +40,7 @@ pub enum UploadError {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct ValidatorSpecification {
+pub(crate) struct ValidatorSpecification {
     pub voting_keystore: KeystoreJsonStr,
     pub voting_keystore_password: Zeroizing<String>,
     pub slashing_protection: Option<InterchangeJsonStr>,
@@ -159,7 +159,7 @@ impl ValidatorSpecification {
 ///
 /// <https://github.com/eth-educators/ethstaker-deposit-cli/blob/80d536374de838ccae142974ed0e747b46beb030/ethstaker_deposit/credentials.py#L164-L177>
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct StandardDepositDataJson {
+pub(crate) struct StandardDepositDataJson {
     #[serde(with = "public_key_bytes_without_0x_prefix")]
     pub pubkey: PublicKeyBytes,
     #[serde(with = "hash256_without_0x_prefix")]
@@ -307,7 +307,7 @@ mod bytes_4_without_0x_prefix {
     }
 }
 
-pub async fn vc_http_client<P: AsRef<Path>>(
+pub(crate) async fn vc_http_client<P: AsRef<Path>>(
     url: SensitiveUrl,
     token_path: P,
 ) -> Result<(ValidatorClientHttpClient, Vec<SingleKeystoreResponse>), String> {
@@ -338,7 +338,7 @@ pub async fn vc_http_client<P: AsRef<Path>>(
 /// Write some object to a file as JSON.
 ///
 /// The file must be created new, it must not already exist.
-pub fn write_to_json_file<P: AsRef<Path>, S: Serialize>(
+pub(crate) fn write_to_json_file<P: AsRef<Path>, S: Serialize>(
     path: P,
     contents: &S,
 ) -> Result<(), String> {

@@ -9,10 +9,10 @@ use types::PublicKeyBytes;
 
 use crate::{DumpConfig, common::vc_http_client};
 
-pub const CMD: &str = "delete";
-pub const VC_URL_FLAG: &str = "vc-url";
-pub const VC_TOKEN_FLAG: &str = "vc-token";
-pub const VALIDATOR_FLAG: &str = "validators";
+pub(crate) const CMD: &str = "delete";
+const VC_URL_FLAG: &str = "vc-url";
+const VC_TOKEN_FLAG: &str = "vc-token";
+const VALIDATOR_FLAG: &str = "validators";
 
 pub fn cli_app() -> Command {
     Command::new(CMD)

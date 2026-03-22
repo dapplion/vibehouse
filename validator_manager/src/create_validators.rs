@@ -18,24 +18,24 @@ use std::path::PathBuf;
 use std::time::Duration;
 use types::{Address, ChainSpec, EthSpec, PublicKeyBytes, WithdrawalCredentials};
 
-pub const CMD: &str = "create";
-pub const OUTPUT_PATH_FLAG: &str = "output-path";
-pub const DEPOSIT_GWEI_FLAG: &str = "deposit-gwei";
-pub const DISABLE_DEPOSITS_FLAG: &str = "disable-deposits";
-pub const FIRST_INDEX_FLAG: &str = "first-index";
-pub const MNEMONIC_FLAG: &str = "mnemonic-path";
-pub const SPECIFY_VOTING_KEYSTORE_PASSWORD_FLAG: &str = "specify-voting-keystore-password";
-pub const ETH1_WITHDRAWAL_ADDRESS_FLAG: &str = "eth1-withdrawal-address";
-pub const GAS_LIMIT_FLAG: &str = "gas-limit";
-pub const FEE_RECIPIENT_FLAG: &str = "suggested-fee-recipient";
-pub const BUILDER_PROPOSALS_FLAG: &str = "builder-proposals";
-pub const BUILDER_BOOST_FACTOR_FLAG: &str = "builder-boost-factor";
-pub const PREFER_BUILDER_PROPOSALS_FLAG: &str = "prefer-builder-proposals";
-pub const BEACON_NODE_FLAG: &str = "beacon-node";
-pub const FORCE_BLS_WITHDRAWAL_CREDENTIALS: &str = "force-bls-withdrawal-credentials";
+pub(crate) const CMD: &str = "create";
+const OUTPUT_PATH_FLAG: &str = "output-path";
+const DEPOSIT_GWEI_FLAG: &str = "deposit-gwei";
+const DISABLE_DEPOSITS_FLAG: &str = "disable-deposits";
+const FIRST_INDEX_FLAG: &str = "first-index";
+const MNEMONIC_FLAG: &str = "mnemonic-path";
+const SPECIFY_VOTING_KEYSTORE_PASSWORD_FLAG: &str = "specify-voting-keystore-password";
+const ETH1_WITHDRAWAL_ADDRESS_FLAG: &str = "eth1-withdrawal-address";
+const GAS_LIMIT_FLAG: &str = "gas-limit";
+const FEE_RECIPIENT_FLAG: &str = "suggested-fee-recipient";
+const BUILDER_PROPOSALS_FLAG: &str = "builder-proposals";
+const BUILDER_BOOST_FACTOR_FLAG: &str = "builder-boost-factor";
+const PREFER_BUILDER_PROPOSALS_FLAG: &str = "prefer-builder-proposals";
+const BEACON_NODE_FLAG: &str = "beacon-node";
+const FORCE_BLS_WITHDRAWAL_CREDENTIALS: &str = "force-bls-withdrawal-credentials";
 
-pub const VALIDATORS_FILENAME: &str = "validators.json";
-pub const DEPOSITS_FILENAME: &str = "deposits.json";
+const VALIDATORS_FILENAME: &str = "validators.json";
+const DEPOSITS_FILENAME: &str = "deposits.json";
 
 const BEACON_NODE_HTTP_TIMEOUT: Duration = Duration::from_secs(2);
 

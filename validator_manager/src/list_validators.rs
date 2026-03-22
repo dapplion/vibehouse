@@ -10,11 +10,11 @@ use types::{ChainSpec, EthSpec, PublicKeyBytes};
 use crate::exit_validators::get_current_epoch;
 use crate::{DumpConfig, common::vc_http_client};
 
-pub const CMD: &str = "list";
-pub const VC_URL_FLAG: &str = "vc-url";
-pub const VC_TOKEN_FLAG: &str = "vc-token";
-pub const BEACON_URL_FLAG: &str = "beacon-node";
-pub const VALIDATOR_FLAG: &str = "validators";
+pub(crate) const CMD: &str = "list";
+const VC_URL_FLAG: &str = "vc-url";
+const VC_TOKEN_FLAG: &str = "vc-token";
+const BEACON_URL_FLAG: &str = "beacon-node";
+const VALIDATOR_FLAG: &str = "validators";
 
 pub fn cli_app() -> Command {
     Command::new(CMD)

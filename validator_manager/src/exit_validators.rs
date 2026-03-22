@@ -11,13 +11,13 @@ use std::path::PathBuf;
 use std::time::Duration;
 use types::{ChainSpec, EthSpec, PublicKeyBytes};
 
-pub const CMD: &str = "exit";
-pub const BEACON_URL_FLAG: &str = "beacon-node";
-pub const VC_URL_FLAG: &str = "vc-url";
-pub const VC_TOKEN_FLAG: &str = "vc-token";
-pub const VALIDATOR_FLAG: &str = "validators";
-pub const EXIT_EPOCH_FLAG: &str = "exit-epoch";
-pub const PRESIGN_FLAG: &str = "presign";
+pub(crate) const CMD: &str = "exit";
+const BEACON_URL_FLAG: &str = "beacon-node";
+const VC_URL_FLAG: &str = "vc-url";
+const VC_TOKEN_FLAG: &str = "vc-token";
+const VALIDATOR_FLAG: &str = "validators";
+const EXIT_EPOCH_FLAG: &str = "exit-epoch";
+const PRESIGN_FLAG: &str = "presign";
 
 pub fn cli_app() -> Command {
     Command::new(CMD)
@@ -273,7 +273,7 @@ async fn run<E: EthSpec>(config: ExitConfig) -> Result<(), String> {
     Ok(())
 }
 
-pub fn get_current_epoch<E: EthSpec>(genesis_time: u64, spec: &ChainSpec) -> Option<Epoch> {
+pub(crate) fn get_current_epoch<E: EthSpec>(genesis_time: u64, spec: &ChainSpec) -> Option<Epoch> {
     let slot_clock = SystemTimeSlotClock::new(
         spec.genesis_slot,
         Duration::from_secs(genesis_time),

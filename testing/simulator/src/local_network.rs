@@ -20,11 +20,11 @@ use types::{ChainSpec, Epoch, EthSpec};
 const BOOTNODE_PORT: u16 = 42424;
 const QUIC_PORT: u16 = 43424;
 
-pub const EXECUTION_PORT: u16 = 4000;
+pub(crate) const EXECUTION_PORT: u16 = 4000;
 
-pub const TERMINAL_BLOCK: u64 = 0;
+pub(crate) const TERMINAL_BLOCK: u64 = 0;
 
-pub struct LocalNetworkParams {
+pub(crate) struct LocalNetworkParams {
     pub validator_count: usize,
     pub node_count: usize,
     pub proposer_nodes: usize,

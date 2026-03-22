@@ -124,10 +124,10 @@ fn unsigned_i64(x: usize) -> i64 {
 
 /// Perform all configuration routines.
 pub fn configure_glibc_malloc() -> Result<(), String> {
-    if !env_var_present(ENV_VAR_MMAP_THRESHOLD) {
-        if let Err(e) = malloc_mmap_threshold(OPTIMAL_MMAP_THRESHOLD) {
-            return Err(format!("failed (code {}) to set malloc mmap threshold", e));
-        }
+    if !env_var_present(ENV_VAR_MMAP_THRESHOLD)
+        && let Err(e) = malloc_mmap_threshold(OPTIMAL_MMAP_THRESHOLD)
+    {
+        return Err(format!("failed (code {}) to set malloc mmap threshold", e));
     }
 
     Ok(())

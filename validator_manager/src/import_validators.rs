@@ -12,20 +12,20 @@ use std::path::PathBuf;
 use types::Address;
 use zeroize::Zeroizing;
 
-pub const CMD: &str = "import";
-pub const VALIDATORS_FILE_FLAG: &str = "validators-file";
-pub const KEYSTORE_FILE_FLAG: &str = "keystore-file";
-pub const VC_URL_FLAG: &str = "vc-url";
-pub const VC_TOKEN_FLAG: &str = "vc-token";
-pub const PASSWORD: &str = "password";
-pub const FEE_RECIPIENT: &str = "suggested-fee-recipient";
-pub const GAS_LIMIT: &str = "gas-limit";
-pub const BUILDER_PROPOSALS: &str = "builder-proposals";
-pub const BUILDER_BOOST_FACTOR: &str = "builder-boost-factor";
-pub const PREFER_BUILDER_PROPOSALS: &str = "prefer-builder-proposals";
-pub const ENABLED: &str = "enabled";
+pub(crate) const CMD: &str = "import";
+const VALIDATORS_FILE_FLAG: &str = "validators-file";
+const KEYSTORE_FILE_FLAG: &str = "keystore-file";
+const VC_URL_FLAG: &str = "vc-url";
+const VC_TOKEN_FLAG: &str = "vc-token";
+const PASSWORD: &str = "password";
+const FEE_RECIPIENT: &str = "suggested-fee-recipient";
+const GAS_LIMIT: &str = "gas-limit";
+const BUILDER_PROPOSALS: &str = "builder-proposals";
+const BUILDER_BOOST_FACTOR: &str = "builder-boost-factor";
+const PREFER_BUILDER_PROPOSALS: &str = "prefer-builder-proposals";
+const ENABLED: &str = "enabled";
 
-pub const DETECTED_DUPLICATE_MESSAGE: &str = "Duplicate validator detected!";
+const DETECTED_DUPLICATE_MESSAGE: &str = "Duplicate validator detected!";
 
 pub fn cli_app() -> Command {
     Command::new(CMD)

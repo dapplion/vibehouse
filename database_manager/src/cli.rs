@@ -58,12 +58,12 @@ pub struct DatabaseManager {
     pub blobs_dir: Option<PathBuf>,
 
     #[clap(subcommand)]
-    pub subcommand: DatabaseManagerSubcommand,
+    pub(crate) subcommand: DatabaseManagerSubcommand,
 }
 
 #[derive(Parser, Clone, Deserialize, Serialize, Debug)]
 #[clap(rename_all = "kebab-case")]
-pub enum DatabaseManagerSubcommand {
+pub(crate) enum DatabaseManagerSubcommand {
     Migrate(Migrate),
     Inspect(Inspect),
     Version(Version),
@@ -75,7 +75,7 @@ pub enum DatabaseManagerSubcommand {
 
 #[derive(Parser, Clone, Deserialize, Serialize, Debug)]
 #[clap(about = "Migrate the database to a specific schema version.")]
-pub struct Migrate {
+pub(crate) struct Migrate {
     #[clap(
         long,
         value_name = "VERSION",
@@ -87,7 +87,7 @@ pub struct Migrate {
 
 #[derive(Parser, Clone, Deserialize, Serialize, Debug)]
 #[clap(about = "Inspect raw database values.")]
-pub struct Inspect {
+pub(crate) struct Inspect {
     #[clap(
         long,
         value_name = "TAG",
@@ -151,28 +151,28 @@ pub struct Inspect {
 
 #[derive(Parser, Clone, Deserialize, Serialize, Debug)]
 #[clap(about = "Display database schema version.", visible_aliases = &["v"])]
-pub struct Version {}
+pub(crate) struct Version {}
 
 #[derive(Parser, Clone, Deserialize, Serialize, Debug)]
 #[clap(
     about = "Prune finalized execution payloads.",
     alias = "prune_payloads"
 )]
-pub struct PrunePayloads {}
+pub(crate) struct PrunePayloads {}
 
 #[derive(Parser, Clone, Deserialize, Serialize, Debug)]
 #[clap(
     about = "Prune blobs older than data availability boundary.",
     alias = "prune_blobs"
 )]
-pub struct PruneBlobs {}
+pub(crate) struct PruneBlobs {}
 
 #[derive(Parser, Clone, Deserialize, Serialize, Debug)]
 #[clap(
     about = "Prune all beacon states from the freezer database.",
     alias = "prune_states"
 )]
-pub struct PruneStates {
+pub(crate) struct PruneStates {
     #[clap(
         long,
         help = "Commit to pruning states irreversably. Without this flag the command will \
@@ -184,7 +184,7 @@ pub struct PruneStates {
 
 #[derive(Parser, Clone, Deserialize, Serialize, Debug)]
 #[clap(about = "Compact database manually.")]
-pub struct Compact {
+pub(crate) struct Compact {
     #[clap(
         long,
         value_name = "TAG",
