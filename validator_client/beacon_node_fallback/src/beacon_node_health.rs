@@ -274,7 +274,7 @@ impl BeaconNodeHealth {
     }
 }
 
-pub async fn check_node_health(
+pub(crate) async fn check_node_health(
     beacon_node: &BeaconNodeHttpClient,
 ) -> Result<(Slot, bool, bool), CandidateError> {
     let resp = match beacon_node.get_node_syncing().await {

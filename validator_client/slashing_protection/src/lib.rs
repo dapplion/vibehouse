@@ -56,7 +56,7 @@ pub enum Safe {
 ///
 /// Notably `SigningRoot(0x0) != SigningRoot(0x0)`. It is `PartialEq` but not `Eq`!
 #[derive(Debug, Clone, Copy, Default)]
-pub struct SigningRoot(Hash256);
+pub(crate) struct SigningRoot(Hash256);
 
 impl PartialEq for SigningRoot {
     fn eq(&self, other: &Self) -> bool {

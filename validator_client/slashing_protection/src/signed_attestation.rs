@@ -1,12 +1,14 @@
 use crate::{SigningRoot, signing_root_from_row};
-use types::{AttestationData, Epoch, Hash256, SignedRoot};
+use types::Epoch;
+#[cfg(test)]
+use types::{AttestationData, Hash256, SignedRoot};
 
 /// An attestation that has previously been signed.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SignedAttestation {
     pub source_epoch: Epoch,
     pub target_epoch: Epoch,
-    pub signing_root: SigningRoot,
+    pub(crate) signing_root: SigningRoot,
 }
 
 /// Reasons why an attestation may be slashable (or invalid).
@@ -35,7 +37,7 @@ pub enum InvalidAttestation {
 }
 
 impl SignedAttestation {
-    pub fn new(source_epoch: Epoch, target_epoch: Epoch, signing_root: SigningRoot) -> Self {
+    pub(crate) fn new(source_epoch: Epoch, target_epoch: Epoch, signing_root: SigningRoot) -> Self {
         Self {
             source_epoch,
             target_epoch,
@@ -44,7 +46,8 @@ impl SignedAttestation {
     }
 
     /// Create a `SignedAttestation` from attestation data and a domain.
-    pub fn from_attestation(attestation: &AttestationData, domain: Hash256) -> Self {
+    #[cfg(test)]
+    pub(crate) fn from_attestation(attestation: &AttestationData, domain: Hash256) -> Self {
         Self {
             source_epoch: attestation.source.epoch,
             target_epoch: attestation.target.epoch,
@@ -53,7 +56,7 @@ impl SignedAttestation {
     }
 
     /// Create a `SignedAttestation` from an SQLite row of `(source, target, signing_root)`.
-    pub fn from_row(row: &rusqlite::Row) -> rusqlite::Result<Self> {
+    pub(crate) fn from_row(row: &rusqlite::Row) -> rusqlite::Result<Self> {
         let source = row.get(0)?;
         let target = row.get(1)?;
         let signing_root = signing_root_from_row(2, row)?;

@@ -19,17 +19,17 @@ type Pool = r2d2::Pool<SqliteConnectionManager>;
 ///
 /// This is perhaps overkill in the presence of exclusive transactions, but has
 /// the added bonus of preventing other processes from trying to use our slashing database.
-pub const POOL_SIZE: u32 = 1;
+pub(crate) const POOL_SIZE: u32 = 1;
 #[cfg(not(test))]
-pub const CONNECTION_TIMEOUT: Duration = Duration::from_secs(5);
+pub(crate) const CONNECTION_TIMEOUT: Duration = Duration::from_secs(5);
 #[cfg(test)]
-pub const CONNECTION_TIMEOUT: Duration = Duration::from_secs(1);
+pub(crate) const CONNECTION_TIMEOUT: Duration = Duration::from_secs(1);
 
 /// Supported version of the interchange format.
 pub const SUPPORTED_INTERCHANGE_FORMAT_VERSION: u64 = 5;
 
 /// Column ID of the `validators.enabled` column.
-pub const VALIDATORS_ENABLED_CID: i64 = 2;
+pub(crate) const VALIDATORS_ENABLED_CID: i64 = 2;
 
 #[derive(Debug, Clone)]
 pub struct SlashingDatabase {
@@ -563,7 +563,7 @@ impl SlashingDatabase {
     }
 
     /// As for `check_and_insert_block_proposal` but without requiring the whole `BeaconBlockHeader`.
-    pub fn check_and_insert_block_signing_root(
+    pub(crate) fn check_and_insert_block_signing_root(
         &self,
         validator_pubkey: &PublicKeyBytes,
         slot: Slot,
@@ -582,7 +582,7 @@ impl SlashingDatabase {
     }
 
     /// Transactional variant of `check_and_insert_block_signing_root`.
-    pub fn check_and_insert_block_signing_root_txn(
+    pub(crate) fn check_and_insert_block_signing_root_txn(
         &self,
         validator_pubkey: &PublicKeyBytes,
         slot: Slot,
@@ -620,7 +620,7 @@ impl SlashingDatabase {
     /// As for `preliminary_check_block_proposal` but without requiring the whole `BeaconBlockHeader`.
     ///
     /// DO NOT USE THIS FUNCTION TO DECIDE IF A BLOCK IS SAFE TO SIGN!
-    pub fn preliminary_check_block_signing_root(
+    pub(crate) fn preliminary_check_block_signing_root(
         &self,
         validator_pubkey: &PublicKeyBytes,
         slot: Slot,
@@ -653,7 +653,7 @@ impl SlashingDatabase {
     }
 
     /// As for `check_and_insert_attestation` but without requiring the whole `AttestationData`.
-    pub fn check_and_insert_attestation_signing_root(
+    pub(crate) fn check_and_insert_attestation_signing_root(
         &self,
         validator_pubkey: &PublicKeyBytes,
         att_source_epoch: Epoch,
@@ -727,7 +727,7 @@ impl SlashingDatabase {
     /// As for `preliminary_check_attestation` but without requiring the whole `AttestationData`.
     ///
     /// DO NOT USE THIS FUNCTION TO DECIDE IF AN ATTESTATION IS SAFE TO SIGN!
-    pub fn preliminary_check_attestation_signing_root(
+    pub(crate) fn preliminary_check_attestation_signing_root(
         &self,
         validator_pubkey: &PublicKeyBytes,
         att_source_epoch: Epoch,
@@ -795,7 +795,7 @@ impl SlashingDatabase {
         }
     }
 
-    pub fn import_interchange_record(
+    pub(crate) fn import_interchange_record(
         &self,
         record: InterchangeData,
         txn: &Transaction,
@@ -1097,7 +1097,7 @@ impl SlashingDatabase {
     }
 
     /// Get a summary of a validator's slashing protection data including minimums and maximums.
-    pub fn validator_summary(
+    pub(crate) fn validator_summary(
         &self,
         public_key: &PublicKeyBytes,
         txn: &Transaction,

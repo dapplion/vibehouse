@@ -51,11 +51,11 @@ struct LivenessResponses {
 
 /// The number of epochs that must be checked before we assume that there are no other duplicate
 /// validators on the network.
-pub const DEFAULT_REMAINING_DETECTION_EPOCHS: u64 = 1;
+pub(crate) const DEFAULT_REMAINING_DETECTION_EPOCHS: u64 = 1;
 
 /// Store the per-validator status of doppelganger checking.
 #[derive(Debug, PartialEq, Eq)]
-pub struct DoppelgangerState {
+pub(crate) struct DoppelgangerState {
     /// The next epoch for which the validator should be checked for liveness.
     ///
     /// Whilst `self.remaining_epochs > 0`, if a validator is found to be live in this epoch or any
