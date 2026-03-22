@@ -4268,3 +4268,35 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - **lcli**: binary crate, no pub items (all functions and modules are already private)
   - **simulator**: `Inner<E>` must remain pub — used as `Deref::Target` for pub `LocalNetwork`. `LocalNetwork` methods used across modules.
 - **Tests**: 116/116 affected crate tests pass. `make lint-full` clean, zero warnings.
+
+### Run 2197
+
+**Final pub visibility audit: validator_http_api, task_executor, genesis + 30 remaining crates**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since March 15. Open PRs: #5022 (on_payload_attestation_message block check), #5023 (block root filenames + comptests), #4979/#4992/#5020 (PTC lookbehind/cached PTCs), #4843 (variable PTC deadline) — all unmerged.
+- **Changes — validator_http_api/api_secret.rs** (1 constant downgraded):
+  - `PK_LEN` → private (only used within api_secret.rs)
+- **Changes — task_executor/rayon_pool_provider.rs** (1 struct downgraded):
+  - `RayonPoolProvider` → `pub(crate)` (only used within task_executor crate; `RayonPoolType` stays pub — re-exported in lib.rs, used by beacon_processor)
+- **Changes — genesis/common.rs** (1 function downgraded):
+  - `genesis_deposits()` → `pub(crate)` (only called from interop.rs within genesis crate)
+- **Crates audited with no changes needed (30 total)**:
+  - **validator_client**: `ProductionValidatorClient`, `Config`, `ValidatorClient` all used by vibehouse main, node_test_rig
+  - **validator_services**: ptc module already `pub(crate)` — `PtcDutiesMap`/`poll_ptc_duties` pub is effectively crate-limited
+  - **vibehouse_validator_store**: all pub items used externally (http_api, validator_services)
+  - **slashing_protection**: all pub items used by validator_store, account_manager
+  - **beacon_node_fallback**: all pub items used across validator services
+  - **builder_client**: all pub items are client API surface used by execution_layer
+  - **clap_utils**: `parse_path_with_default_in_home_dir` used by directory crate; `check_dump_configs` used by vibehouse main + boot_node
+  - **logging**: all pub items used externally (beacon_processor, vibehouse/environment, network)
+  - **lru_cache**: `LRUTimeCache` used by network, vibehouse_network
+  - **merkle_proof**: all types used across consensus crates
+  - **swap_or_not_shuffle**: both functions used by types, ef_tests
+  - **int_to_bytes**: all functions used across consensus crates
+  - **fixed_bytes**: core types used throughout codebase
+  - **oneshot_broadcast**: channel primitives used externally
+  - **eth2_config**: all items used by eth2_network_config, environment
+  - **eth2_network_config**: all items used by beacon_node, boot_node, validator_client
+  - **vibehouse_tracing**: all span constants used by network, http_api, beacon_chain
+- **Pub visibility audit status**: **COMPLETE** — all 80+ workspace crates audited across runs 2190-2197. No further downgrades possible without breaking trait impls or external usage.
+- **Tests**: 7/7 affected crate tests pass. `make lint` clean, zero warnings.
