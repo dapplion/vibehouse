@@ -18,7 +18,7 @@ use types::{EthSpec, PublicKeyBytes};
 use url::Url;
 use vibehouse_validator_store::VibehouseValidatorStore;
 
-pub fn list<T: SlotClock + 'static, E: EthSpec>(
+pub(crate) fn list<T: SlotClock + 'static, E: EthSpec>(
     validator_store: Arc<VibehouseValidatorStore<T, E>>,
 ) -> ListRemotekeysResponse {
     let initialized_validators_rwlock = validator_store.initialized_validators();
@@ -47,7 +47,7 @@ pub fn list<T: SlotClock + 'static, E: EthSpec>(
     ListRemotekeysResponse { data: keystores }
 }
 
-pub fn import<T: SlotClock + 'static, E: EthSpec>(
+pub(crate) fn import<T: SlotClock + 'static, E: EthSpec>(
     request: ImportRemotekeysRequest,
     validator_store: Arc<VibehouseValidatorStore<T, E>>,
     task_executor: TaskExecutor,
@@ -144,7 +144,7 @@ fn import_single_remotekey<T: SlotClock + 'static, E: EthSpec>(
     Ok(ImportRemotekeyStatus::Imported)
 }
 
-pub fn delete<T: SlotClock + 'static, E: EthSpec>(
+pub(crate) fn delete<T: SlotClock + 'static, E: EthSpec>(
     request: DeleteRemotekeysRequest,
     validator_store: Arc<VibehouseValidatorStore<T, E>>,
     task_executor: TaskExecutor,

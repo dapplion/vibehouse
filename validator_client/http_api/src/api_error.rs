@@ -3,7 +3,7 @@ use axum::response::{IntoResponse, Response};
 use eth2::types::ErrorMessage;
 
 /// Unified error type for the VC HTTP API.
-pub enum ApiError {
+pub(crate) enum ApiError {
     NotFound(String),
     BadRequest(String),
     ServerError(String),

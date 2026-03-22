@@ -23,7 +23,7 @@ use validator_dir::{Builder as ValidatorDirBuilder, keystore_password_path};
 use vibehouse_validator_store::VibehouseValidatorStore;
 use zeroize::Zeroizing;
 
-pub fn list<T: SlotClock + 'static, E: EthSpec>(
+pub(crate) fn list<T: SlotClock + 'static, E: EthSpec>(
     validator_store: Arc<VibehouseValidatorStore<T, E>>,
 ) -> ListKeystoresResponse {
     let initialized_validators_rwlock = validator_store.initialized_validators();
@@ -57,7 +57,7 @@ pub fn list<T: SlotClock + 'static, E: EthSpec>(
     ListKeystoresResponse { data: keystores }
 }
 
-pub fn import<T: SlotClock + 'static, E: EthSpec>(
+pub(crate) fn import<T: SlotClock + 'static, E: EthSpec>(
     request: ImportKeystoresRequest,
     validator_dir: PathBuf,
     secrets_dir: Option<PathBuf>,
@@ -231,7 +231,7 @@ fn import_single_keystore<T: SlotClock + 'static, E: EthSpec>(
     Ok(ImportKeystoreStatus::Imported)
 }
 
-pub fn delete<T: SlotClock + 'static, E: EthSpec>(
+pub(crate) fn delete<T: SlotClock + 'static, E: EthSpec>(
     request: DeleteKeystoresRequest,
     validator_store: Arc<VibehouseValidatorStore<T, E>>,
     task_executor: TaskExecutor,
@@ -262,7 +262,7 @@ pub fn delete<T: SlotClock + 'static, E: EthSpec>(
     })
 }
 
-pub fn export<T: SlotClock + 'static, E: EthSpec>(
+pub(crate) fn export<T: SlotClock + 'static, E: EthSpec>(
     request: DeleteKeystoresRequest,
     validator_store: Arc<VibehouseValidatorStore<T, E>>,
     task_executor: TaskExecutor,

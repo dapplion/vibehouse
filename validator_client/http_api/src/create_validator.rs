@@ -24,7 +24,11 @@ use zeroize::Zeroizing;
 ///
 /// If `key_derivation_path_offset` is supplied then the EIP-2334 validator index will start at
 /// this point.
-pub async fn create_validators_mnemonic<P: AsRef<Path>, T: 'static + SlotClock, E: EthSpec>(
+pub(crate) async fn create_validators_mnemonic<
+    P: AsRef<Path>,
+    T: 'static + SlotClock,
+    E: EthSpec,
+>(
     mnemonic_opt: Option<Mnemonic>,
     key_derivation_path_offset: Option<u32>,
     validator_requests: &[api_types::ValidatorRequest],
@@ -146,7 +150,7 @@ pub async fn create_validators_mnemonic<P: AsRef<Path>, T: 'static + SlotClock, 
     Ok((validators, mnemonic))
 }
 
-pub async fn create_validators_web3signer<T: 'static + SlotClock, E: EthSpec>(
+pub(crate) async fn create_validators_web3signer<T: 'static + SlotClock, E: EthSpec>(
     validators: Vec<ValidatorDefinition>,
     validator_store: &VibehouseValidatorStore<T, E>,
 ) -> Result<(), ApiError> {
@@ -162,7 +166,7 @@ pub async fn create_validators_web3signer<T: 'static + SlotClock, E: EthSpec>(
 
 /// Attempts to return a `PasswordStorage::File` if `secrets_dir` is defined.
 /// Otherwise, returns a `PasswordStorage::ValidatorDefinitions`.
-pub fn get_voting_password_storage(
+pub(crate) fn get_voting_password_storage(
     secrets_dir: &Option<PathBuf>,
     voting_keystore: &Keystore,
     voting_password_string: &Zeroizing<String>,

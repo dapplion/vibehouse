@@ -8,7 +8,7 @@ use types::{Epoch, EthSpec, SignedVoluntaryExit, VoluntaryExit};
 use validator_store::ValidatorStore;
 use vibehouse_validator_store::VibehouseValidatorStore;
 
-pub async fn create_signed_voluntary_exit<T: 'static + SlotClock + Clone, E: EthSpec>(
+pub(crate) async fn create_signed_voluntary_exit<T: 'static + SlotClock + Clone, E: EthSpec>(
     pubkey: PublicKey,
     maybe_epoch: Option<Epoch>,
     validator_store: Arc<VibehouseValidatorStore<T, E>>,

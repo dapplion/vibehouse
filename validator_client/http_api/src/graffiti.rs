@@ -5,7 +5,7 @@ use std::sync::Arc;
 use types::{EthSpec, Graffiti, graffiti::GraffitiString};
 use vibehouse_validator_store::VibehouseValidatorStore;
 
-pub fn get_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
+pub(crate) fn get_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
     validator_pubkey: PublicKey,
     validator_store: Arc<VibehouseValidatorStore<T, E>>,
     graffiti_flag: Option<Graffiti>,
@@ -31,7 +31,7 @@ pub fn get_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
     }
 }
 
-pub fn set_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
+pub(crate) fn set_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
     validator_pubkey: PublicKey,
     graffiti: GraffitiString,
     validator_store: Arc<VibehouseValidatorStore<T, E>>,
@@ -58,7 +58,7 @@ pub fn set_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
     }
 }
 
-pub fn delete_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
+pub(crate) fn delete_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
     validator_pubkey: PublicKey,
     validator_store: Arc<VibehouseValidatorStore<T, E>>,
 ) -> Result<(), ApiError> {

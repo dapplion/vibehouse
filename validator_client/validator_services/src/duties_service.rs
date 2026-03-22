@@ -98,7 +98,7 @@ impl<T> From<ArithError> for Error<T> {
 
 /// Neatly joins the server-generated `AttesterData` with the locally-generated `selection_proof`.
 #[derive(Clone)]
-pub struct DutyAndProof {
+pub(crate) struct DutyAndProof {
     pub duty: AttesterData,
     /// This value is only set to `Some` if the proof indicates that the validator is an aggregator.
     pub selection_proof: Option<SelectionProof>,
@@ -109,7 +109,7 @@ pub struct DutyAndProof {
 }
 
 /// Tracker containing the slots at which an attestation subscription should be sent.
-pub struct SubscriptionSlots {
+pub(crate) struct SubscriptionSlots {
     /// Pairs of `(slot, already_sent)` in slot-descending order.
     slots: Vec<(Slot, AtomicBool)>,
     /// The slot of the duty itself.
@@ -404,34 +404,34 @@ impl<S, T> DutiesServiceBuilder<S, T> {
 /// See the module-level documentation.
 pub struct DutiesService<S, T> {
     /// Maps a validator public key to their duties for each epoch.
-    pub attesters: RwLock<AttesterMap>,
+    pub(crate) attesters: RwLock<AttesterMap>,
     /// Maps an epoch to all *local* proposers in this epoch. Notably, this does not contain
     /// proposals for any validators which are not registered locally.
-    pub proposers: RwLock<ProposerMap>,
+    pub(crate) proposers: RwLock<ProposerMap>,
     /// Map from validator index to sync committee duties.
-    pub sync_duties: SyncDutiesMap,
+    pub(crate) sync_duties: SyncDutiesMap,
     /// PTC (Payload Timeliness Committee) duties for Gloas.
-    pub ptc_duties: PtcDutiesMap,
+    pub(crate) ptc_duties: PtcDutiesMap,
     /// Provides the canonical list of locally-managed validators.
-    pub validator_store: Arc<S>,
+    pub(crate) validator_store: Arc<S>,
     /// Maps unknown validator pubkeys to the next slot time when a poll should be conducted again.
-    pub unknown_validator_next_poll_slots: RwLock<HashMap<PublicKeyBytes, Slot>>,
+    pub(crate) unknown_validator_next_poll_slots: RwLock<HashMap<PublicKeyBytes, Slot>>,
     /// Tracks the current slot.
     pub slot_clock: T,
     /// Provides HTTP access to remote beacon nodes.
     pub beacon_nodes: Arc<BeaconNodeFallback<T>>,
     /// The runtime for spawning tasks.
-    pub executor: TaskExecutor,
+    pub(crate) executor: TaskExecutor,
     /// The current chain spec.
-    pub spec: Arc<ChainSpec>,
+    pub(crate) spec: Arc<ChainSpec>,
     /// Whether we permit large validator counts in the metrics.
-    pub enable_high_validator_count_metrics: bool,
+    pub(crate) enable_high_validator_count_metrics: bool,
     /// Pass the config for distributed or non-distributed mode.
-    pub selection_proof_config: SelectionProofConfig,
-    pub disable_attesting: bool,
+    pub(crate) selection_proof_config: SelectionProofConfig,
+    pub(crate) disable_attesting: bool,
     /// Tracks epochs for which proposer preferences have already been broadcast.
     /// Prevents re-broadcasting on every slot.
-    pub preferences_broadcast_epochs: Mutex<HashSet<Epoch>>,
+    pub(crate) preferences_broadcast_epochs: Mutex<HashSet<Epoch>>,
 }
 
 impl<S: ValidatorStore, T: SlotClock + 'static> DutiesService<S, T> {
@@ -517,7 +517,7 @@ impl<S: ValidatorStore, T: SlotClock + 'static> DutiesService<S, T> {
     }
 
     /// Returns all `ValidatorDuty` for the given `slot`.
-    pub fn attesters(&self, slot: Slot) -> Vec<DutyAndProof> {
+    pub(crate) fn attesters(&self, slot: Slot) -> Vec<DutyAndProof> {
         let epoch = slot.epoch(S::E::slots_per_epoch());
 
         // Only collect validators that are considered safe in terms of doppelganger protection.
