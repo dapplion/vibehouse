@@ -3686,3 +3686,27 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Reverted**: `HierarchyModuli`, `StorageStrategy`, `FrozenForwardsIterator`, `SimpleForwardsIterator`, `StateSummaryIteratorError`, `OptionalDiffBaseState`, `DiffBaseState`, `BytesKey` — all exposed through public types (enum variants, struct fields, function signatures) so must remain `pub`
 - **Verified**: 206/206 proto_array tests pass, 236/236 store tests pass, full workspace lint clean
 - **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since #5005 (Mar 15). All tracked open PRs (#5023, #5022, #5020, #5008, #4992, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4747, #4630, #4558) still OPEN. CI green, nightly green.
+
+### Run 2175
+
+**Pub visibility downgrades: validator_services, initialized_validators, signing_method, eth2, genesis, types**
+
+- **Scope**: Audit and downgrade `pub` items only used within their own crate across 6 crates.
+- **Changes**:
+  - `validator_services/lib.rs`: `pub mod ptc`, `pub mod sync` → `pub(crate) mod` (not imported by any external crate)
+  - `validator_services/block_service.rs`: `BlockError` → `pub(crate)`, `ProposerFallback<T>` → `pub(crate)`, `request_proposers_first`/`request_proposers_last` → `pub(crate)`
+  - `validator_services/duties_service.rs`: `Error<T>` → `pub(crate)`
+  - `validator_services/latency_service.rs`: `SLOT_DELAY_MULTIPLIER`, `SLOT_DELAY_DENOMINATOR` → private (file-internal only)
+  - `validator_services/sync_committee_service.rs`: `SUBSCRIPTION_LOOKAHEAD_EPOCHS` → private
+  - `validator_services/notifier_service.rs`: `notify` → private (only called within same file)
+  - `validator_services/preparation_service.rs`: `ValidatorRegistrationKey` + fields → private (only used in same file)
+  - `initialized_validators/key_cache.rs`: `TEMP_CACHE_FILENAME` → `pub(crate)`, `State` → `pub(crate)`, `init_crypto` → private, `cache_file_path`/`is_modified`/`uuids` → `pub(crate)`
+  - `signing_method/lib.rs`: `pub use web3signer::Web3SignerObject` → `use` (not imported externally)
+  - `eth2/lib.rs`: `V1`, `V2`, `V3` → private (only used within the crate)
+  - `genesis/lib.rs`: removed `interop_genesis_state_with_eth1` from re-export; `genesis/interop.rs`: gated behind `#[cfg(test)]` (only used in tests)
+  - `types/beacon_block_body.rs`: `NUM_BEACON_BLOCK_BODY_HASH_TREE_ROOT_LEAVES`, `BLOB_KZG_COMMITMENTS_INDEX` → `pub(crate)`
+  - `types/application_domain.rs`: `APPLICATION_DOMAIN_BUILDER` → `pub(crate)`
+  - `types/light_client_update.rs`: 6 proof length constants → `#[cfg(test)]` (only used in test assertions), `EXECUTION_PAYLOAD_PROOF_LEN` → `pub(crate)` (used in beacon_block_body.rs)
+- **Reverted during audit**: `DutyAndProof`, `SubscriptionSlots`, `new_without_selection_proof`, `attesters()` — all leak through public `DutiesService` struct fields; `KeystoreAndPassword` — used by `validator_http_api`; `Inner<S,T>` fields `beacon_nodes`/`proposer_nodes` — used by `validator_http_api`; block_service `Inner<S,T>` itself — exposed via Deref from public `BlockService`
+- **Verified**: 1355/1355 tests pass across all affected crates, `make lint-full` clean, zero compiler warnings
+- **Spec check**: v1.7.0-alpha.3 still latest. No new merges since Mar 15. CI green.
