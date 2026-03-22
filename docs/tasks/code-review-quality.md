@@ -3559,3 +3559,22 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Dead code removed — eth2 crate**: removed unused `serde_status_code` module from `common/eth2/src/types.rs` (defined but never referenced in any `#[serde(with = ...)]` attribute)
 - **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since March 15.
 - **Tests**: 454/454 (logging + slot_clock + task_executor + fork_choice + operation_pool + eth2) pass, 311/311 vibehouse binary tests pass. Full workspace clippy zero warnings. `make lint-full` passes.
+
+### Run 2167 (2026-03-22)
+
+**Gloas error handling improvements — Display impl, debug logging, severity upgrade**
+
+- **Scope**: Audited error handling quality across all Gloas-specific code paths (gossip verification, envelope processing, fork choice updates). Fixed three categories of issues.
+- **Code changes — state_processing crate**:
+  - **envelope_processing.rs**: Added `Display` impl for `EnvelopeProcessingError` (15 variants). Produces human-readable log messages instead of verbose Debug format. Includes field values for all mismatch variants.
+- **Code changes — beacon_chain crate**:
+  - **gloas_verification.rs**: Added `tracing::debug` logging in 4 `.map_err(|_| ...)` closures that previously discarded the underlying error. Affected paths: bid signature set construction, PTC committee lookup, payload attestation signature set, envelope signature set. These errors indicate structural issues (key decompression, state corruption) distinct from simple invalid signatures — debug-level logging preserves diagnostics without noise from malicious peers.
+  - **beacon_chain.rs**: Upgraded `on_valid_execution_payload` failure log from `warn!` to `error!` in self-build envelope processing. This failure means the node's own block won't be marked as fully verified, potentially disabling block production — operators need to see this prominently.
+- **Audited but not changed**:
+  - `EnvelopeProcessingError` already has `From` impls for `BeaconStateError`, `BlockProcessingError`, `ArithError` — no wrapping issues
+  - Safe math audit: all Gloas consensus arithmetic uses `safe_*`/`saturating_*` methods. One compile-time constant `1u64 << 16` is fine (constant folded).
+  - All `#[allow(clippy::...)]` suppressions are justified. No stale suppressions.
+  - All TODOs reference issue #36, properly tracked. No orphan TODOs.
+  - No unsafe unwraps in production consensus paths.
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since March 15. Open PRs: #4979, #4843, #4954, #5022, #5008.
+- **Tests**: 88/88 envelope processing tests pass. Full workspace clippy zero warnings. `make lint-full` passes.
