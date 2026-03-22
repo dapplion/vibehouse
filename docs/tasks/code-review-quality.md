@@ -3778,3 +3778,29 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Preserved**: All items used by ef_tests (process_registry_updates, process_slashings, process_operations individual functions, submodules), all items used by beacon_chain (signature sets for attestation/sync/gloas verification, common utilities)
 - **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since March 15. CI green.
 - **Tests**: 1026/1026 state_processing tests pass, 15/15 EF operations tests pass, 20/20 EF epoch+sanity tests pass. `make lint` clean, zero warnings.
+
+### Run 2178
+
+**Pub visibility downgrades + dead code removal in beacon_chain**
+
+- **Scope**: Full visibility audit of beacon_chain crate — lib.rs module declarations, re-exports, beacon_chain.rs, summaries_dag.rs.
+- **Changes — lib.rs modules** (6 modules downgraded):
+  - `execution_bid_pool` → `pub(crate) mod` (0 external path accesses)
+  - `fork_choice_signal` → `pub(crate) mod` (0 external path accesses)
+  - `fork_revert` → `pub(crate) mod` (0 external path accesses)
+  - `observed_block_producers` → `pub(crate) mod` (0 external path accesses)
+  - `single_attestation` → `pub(crate) mod` (0 external path accesses, functions only used internally)
+  - `summaries_dag` → `pub(crate) mod` (0 external path accesses, only used by migrate.rs)
+- **Changes — dead code removed** (2 items):
+  - `AttestationProcessingOutcome` enum — defined but never used anywhere (beacon_chain.rs:287)
+  - `INVALID_FINALIZED_MERGE_TRANSITION_BLOCK_SHUTDOWN_REASON` constant — defined but never used (beacon_chain.rs:189)
+  - Cleaned up unused `AttestationValidationError` import that was only needed by the removed enum
+- **Changes — test-only gating** (summaries_dag.rs):
+  - `DAGStateSummaryV22` struct → `#[cfg(test)]` (only used in tests)
+  - `new_from_v22` method → `#[cfg(test)]` (only used in tests)
+  - `previous_state_root` method → `#[cfg(test)]` (only used in tests)
+  - `ancestor_state_root_at_slot` method → `#[cfg(test)]` (only used in tests, `Ordering` import moved inline)
+  - `state_root_at_slot` method → `#[cfg(test)]` (only used in tests)
+- **Preserved**: Modules used by integration tests in `tests/` directory kept as `pub` (persisted_beacon_chain, persisted_custody, observed_aggregates, historical_blocks). Re-exports used by integration tests kept as `pub` (BeaconSnapshot, OverrideForkchoiceUpdate, INVALID_JUSTIFIED_PAYLOAD_SHUTDOWN_REASON, ExecutionPendingBlock, IntoExecutionPendingBlock).
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since March 15.
+- **Tests**: 999/999 beacon_chain tests pass, `make lint` clean, zero warnings.
