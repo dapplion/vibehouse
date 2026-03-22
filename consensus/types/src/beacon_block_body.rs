@@ -34,9 +34,9 @@ pub type KzgCommitments<E> =
 ///
 /// This constant is set with the assumption that there are `> 8` and `<= 16` fields on the
 /// `BeaconBlockBody`. **Tree hashing will fail if this value is set incorrectly.**
-pub const NUM_BEACON_BLOCK_BODY_HASH_TREE_ROOT_LEAVES: usize = 16;
+pub(crate) const NUM_BEACON_BLOCK_BODY_HASH_TREE_ROOT_LEAVES: usize = 16;
 /// Index of the `blob_kzg_commitments` leaf in the `BeaconBlockBody` tree post-deneb.
-pub const BLOB_KZG_COMMITMENTS_INDEX: usize = 11;
+pub(crate) const BLOB_KZG_COMMITMENTS_INDEX: usize = 11;
 
 /// The body of a `BeaconChain` block, containing operations.
 ///

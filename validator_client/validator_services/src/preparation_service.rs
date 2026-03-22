@@ -123,10 +123,10 @@ pub struct Inner<S, T> {
 }
 
 #[derive(Hash, Eq, PartialEq, Debug, Clone)]
-pub struct ValidatorRegistrationKey {
-    pub fee_recipient: Address,
-    pub gas_limit: u64,
-    pub pubkey: PublicKeyBytes,
+struct ValidatorRegistrationKey {
+    fee_recipient: Address,
+    gas_limit: u64,
+    pubkey: PublicKeyBytes,
 }
 
 impl From<ValidatorRegistrationData> for ValidatorRegistrationKey {

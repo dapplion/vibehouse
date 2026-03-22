@@ -64,9 +64,9 @@ use std::future::Future;
 use std::path::PathBuf;
 use std::time::Duration;
 
-pub const V1: EndpointVersion = EndpointVersion(1);
-pub const V2: EndpointVersion = EndpointVersion(2);
-pub const V3: EndpointVersion = EndpointVersion(3);
+const V1: EndpointVersion = EndpointVersion(1);
+const V2: EndpointVersion = EndpointVersion(2);
+const V3: EndpointVersion = EndpointVersion(3);
 
 pub const CONSENSUS_VERSION_HEADER: &str = "Eth-Consensus-Version";
 pub const EXECUTION_PAYLOAD_BLINDED_HEADER: &str = "Eth-Execution-Payload-Blinded";

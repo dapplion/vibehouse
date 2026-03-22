@@ -18,7 +18,7 @@ use types::{
 };
 use validator_store::{Error as ValidatorStoreError, ValidatorStore};
 
-pub const SUBSCRIPTION_LOOKAHEAD_EPOCHS: u64 = 4;
+const SUBSCRIPTION_LOOKAHEAD_EPOCHS: u64 = 4;
 
 pub struct SyncCommitteeService<S: ValidatorStore, T: SlotClock + 'static> {
     inner: Arc<Inner<S, T>>,

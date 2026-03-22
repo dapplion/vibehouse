@@ -37,14 +37,20 @@ pub type FinalizedRootProofLenElectra = U7;
 pub type CurrentSyncCommitteeProofLenElectra = U6;
 pub type NextSyncCommitteeProofLenElectra = U6;
 
-pub const FINALIZED_ROOT_PROOF_LEN: usize = 6;
-pub const CURRENT_SYNC_COMMITTEE_PROOF_LEN: usize = 5;
-pub const NEXT_SYNC_COMMITTEE_PROOF_LEN: usize = 5;
-pub const EXECUTION_PAYLOAD_PROOF_LEN: usize = 4;
+#[cfg(test)]
+const FINALIZED_ROOT_PROOF_LEN: usize = 6;
+#[cfg(test)]
+const CURRENT_SYNC_COMMITTEE_PROOF_LEN: usize = 5;
+#[cfg(test)]
+const NEXT_SYNC_COMMITTEE_PROOF_LEN: usize = 5;
+pub(crate) const EXECUTION_PAYLOAD_PROOF_LEN: usize = 4;
 
-pub const FINALIZED_ROOT_PROOF_LEN_ELECTRA: usize = 7;
-pub const NEXT_SYNC_COMMITTEE_PROOF_LEN_ELECTRA: usize = 6;
-pub const CURRENT_SYNC_COMMITTEE_PROOF_LEN_ELECTRA: usize = 6;
+#[cfg(test)]
+const FINALIZED_ROOT_PROOF_LEN_ELECTRA: usize = 7;
+#[cfg(test)]
+const NEXT_SYNC_COMMITTEE_PROOF_LEN_ELECTRA: usize = 6;
+#[cfg(test)]
+const CURRENT_SYNC_COMMITTEE_PROOF_LEN_ELECTRA: usize = 6;
 
 pub type MerkleProof = Vec<Hash256>;
 // Max light client updates by range request limits

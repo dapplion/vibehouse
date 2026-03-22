@@ -6,8 +6,8 @@ use tokio::time::sleep;
 use tracing::debug;
 
 /// The latency service will run 11/12ths of the way through the slot.
-pub const SLOT_DELAY_MULTIPLIER: u32 = 11;
-pub const SLOT_DELAY_DENOMINATOR: u32 = 12;
+const SLOT_DELAY_MULTIPLIER: u32 = 11;
+const SLOT_DELAY_DENOMINATOR: u32 = 12;
 
 /// Starts a service that periodically checks the latency between the VC and the
 /// candidate BNs.

@@ -16,7 +16,7 @@ use types::{BlockType, ChainSpec, EthSpec, ForkName, Graffiti, PublicKeyBytes, S
 use validator_store::{Error as ValidatorStoreError, SignedBlock, UnsignedBlock, ValidatorStore};
 
 #[derive(Debug)]
-pub enum BlockError {
+pub(crate) enum BlockError {
     /// A recoverable error that can be retried, as the validator has not signed anything.
     Recoverable(String),
     /// An irrecoverable error has occurred during block proposal and should not be retried, as a
@@ -134,14 +134,17 @@ impl<S: ValidatorStore, T: SlotClock + 'static> BlockServiceBuilder<S, T> {
 
 // Combines a set of non-block-proposing `beacon_nodes` and only-block-proposing
 // `proposer_nodes`.
-pub struct ProposerFallback<T> {
+pub(crate) struct ProposerFallback<T> {
     beacon_nodes: Arc<BeaconNodeFallback<T>>,
     proposer_nodes: Option<Arc<BeaconNodeFallback<T>>>,
 }
 
 impl<T: SlotClock> ProposerFallback<T> {
     // Try `func` on `self.proposer_nodes` first. If that doesn't work, try `self.beacon_nodes`.
-    pub async fn request_proposers_first<F, Err, R>(&self, func: F) -> Result<(), Errors<Err>>
+    pub(crate) async fn request_proposers_first<F, Err, R>(
+        &self,
+        func: F,
+    ) -> Result<(), Errors<Err>>
     where
         F: Fn(BeaconNodeHttpClient) -> R + Clone,
         R: Future<Output = Result<(), Err>>,
@@ -162,7 +165,10 @@ impl<T: SlotClock> ProposerFallback<T> {
     }
 
     // Try `func` on `self.beacon_nodes` first. If that doesn't work, try `self.proposer_nodes`.
-    pub async fn request_proposers_last<F, O, Err, R>(&self, func: F) -> Result<O, Errors<Err>>
+    pub(crate) async fn request_proposers_last<F, O, Err, R>(
+        &self,
+        func: F,
+    ) -> Result<O, Errors<Err>>
     where
         F: Fn(BeaconNodeHttpClient) -> R + Clone,
         R: Future<Output = Result<O, Err>>,

@@ -1,6 +1,6 @@
 /// This value is an application index of 0 with the bitmask applied (so it's equivalent to the bit mask).
 /// Little endian hex: 0x00000001, Binary: 1000000000000000000000000
-pub const APPLICATION_DOMAIN_BUILDER: u32 = 16_777_216;
+pub(crate) const APPLICATION_DOMAIN_BUILDER: u32 = 16_777_216;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ApplicationDomain {

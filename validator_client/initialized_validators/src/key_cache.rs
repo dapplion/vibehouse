@@ -19,10 +19,10 @@ use std::path::{Path, PathBuf};
 pub const CACHE_FILENAME: &str = "validator_key_cache.json";
 
 /// The file name for the temporary `KeyCache`.
-pub const TEMP_CACHE_FILENAME: &str = ".validator_key_cache.json.tmp";
+pub(crate) const TEMP_CACHE_FILENAME: &str = ".validator_key_cache.json.tmp";
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum State {
+pub(crate) enum State {
     NotDecrypted,
     DecryptedAndSaved,
     DecryptedWithUnsavedUpdates,
@@ -64,7 +64,7 @@ impl KeyCache {
         }
     }
 
-    pub fn init_crypto() -> Crypto {
+    fn init_crypto() -> Crypto {
         let salt = rand::rng().random::<[u8; SALT_SIZE]>();
         let iv = rand::rng().random::<[u8; IV_SIZE]>().to_vec().into();
 
@@ -90,7 +90,7 @@ impl KeyCache {
         }
     }
 
-    pub fn cache_file_path<P: AsRef<Path>>(validators_dir: P) -> PathBuf {
+    pub(crate) fn cache_file_path<P: AsRef<Path>>(validators_dir: P) -> PathBuf {
         validators_dir.as_ref().join(CACHE_FILENAME)
     }
 
@@ -161,11 +161,11 @@ impl KeyCache {
         }
     }
 
-    pub fn is_modified(&self) -> bool {
+    pub(crate) fn is_modified(&self) -> bool {
         self.state == State::DecryptedWithUnsavedUpdates
     }
 
-    pub fn uuids(&self) -> &[Uuid] {
+    pub(crate) fn uuids(&self) -> &[Uuid] {
         &self.uuids
     }
 

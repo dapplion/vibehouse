@@ -19,7 +19,7 @@ use types::{
 use url::Url;
 use web3signer::{ForkInfo, MessageType, SigningRequest, SigningResponse};
 
-pub use web3signer::Web3SignerObject;
+use web3signer::Web3SignerObject;
 
 mod web3signer;
 

@@ -81,7 +81,7 @@ const _: () = assert!(ATTESTATION_SUBSCRIPTION_OFFSETS[0] > MIN_ATTESTATION_SUBS
 
 // The info in the enum variants is displayed in logging, clippy thinks it's dead code.
 #[derive(Debug)]
-pub enum Error<T> {
+pub(crate) enum Error<T> {
     UnableToReadSlotClock,
     FailedToDownloadAttesters(#[allow(dead_code)] String),
     FailedToProduceSelectionProof(#[allow(dead_code)] ValidatorStoreError<T>),

@@ -177,6 +177,7 @@ fn alternating_eth1_withdrawal_credentials_fn<'a>(
 
 // returns an interop genesis state except every other
 // validator has eth1 withdrawal credentials
+#[cfg(test)]
 pub fn interop_genesis_state_with_eth1<E: EthSpec>(
     keypairs: &[Keypair],
     genesis_time: u64,
