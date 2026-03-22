@@ -493,7 +493,7 @@ mod test {
     #[test]
     fn should_prune_committee_cache_with_lowest_epoch() {
         let mut cache = new_shuffling_cache();
-        let shuffling_id_and_committee_caches = (0..(TEST_CACHE_SIZE + 1))
+        let shuffling_id_and_committee_caches = (0..=TEST_CACHE_SIZE)
             .map(|i| (shuffling_id(i as u64), Arc::new(CommitteeCache::default())))
             .collect::<Vec<_>>();
 
@@ -501,7 +501,7 @@ mod test {
             cache.insert_committee_cache(*shuffling_id, committee_cache);
         }
 
-        for i in 1..(TEST_CACHE_SIZE + 1) {
+        for i in 1..=TEST_CACHE_SIZE {
             assert!(
                 cache.contains(&shuffling_id_and_committee_caches.get(i).unwrap().0),
                 "should contain recent epoch shuffling ids"

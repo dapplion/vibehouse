@@ -258,6 +258,12 @@ lint:
 		-D clippy::inconsistent_struct_constructor \
 		-D clippy::needless_for_each \
 		-D clippy::implicit_clone \
+		-D clippy::range_plus_one \
+		-D clippy::checked_conversions \
+		-D clippy::if_not_else \
+		-D clippy::redundant_else \
+		-D clippy::inefficient_to_string \
+		-D clippy::items_after_statements \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.

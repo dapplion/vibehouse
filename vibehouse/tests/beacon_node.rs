@@ -1453,12 +1453,11 @@ fn enr_match_flag_over_ipv6() {
 #[test]
 fn enr_match_flag_over_ipv4_and_ipv6() {
     const IPV6_ADDR: &str = "::1";
+    const IPV4_ADDR: &str = "127.0.0.1";
 
     let udp6_port = unused_udp6_port().expect("Unable to find unused port.");
     let tcp6_port = unused_tcp6_port().expect("Unable to find unused port.");
     let ipv6_addr = IPV6_ADDR.parse::<Ipv6Addr>().unwrap();
-
-    const IPV4_ADDR: &str = "127.0.0.1";
     let udp4_port = unused_udp4_port().expect("Unable to find unused port.");
     let tcp4_port = unused_tcp4_port().expect("Unable to find unused port.");
     let ipv4_addr = IPV4_ADDR.parse::<Ipv4Addr>().unwrap();

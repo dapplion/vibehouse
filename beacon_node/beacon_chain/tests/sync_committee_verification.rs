@@ -157,13 +157,13 @@ fn get_non_aggregator(
                     &harness.spec,
                 );
 
-                if !selection_proof
+                if selection_proof
                     .is_aggregator::<E>()
                     .expect("should determine aggregator")
                 {
-                    Some(validator_index)
-                } else {
                     None
+                } else {
+                    Some(validator_index)
                 }
             })
         })

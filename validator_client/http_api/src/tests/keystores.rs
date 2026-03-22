@@ -602,6 +602,8 @@ async fn import_invalid_slashing_protection() {
 #[tokio::test]
 async fn check_get_set_fee_recipient() {
     run_test(|tester: ApiTester| async move {
+        use std::str::FromStr;
+
         let _ = &tester;
         let password = random_password_string();
         let keystores = (0..3)
@@ -642,7 +644,6 @@ async fn check_get_set_fee_recipient() {
             );
         }
 
-        use std::str::FromStr;
         let fee_recipient_public_key_1 =
             Address::from_str("0x25c4a76E7d118705e7Ea2e9b7d8C59930d8aCD3b").unwrap();
         let fee_recipient_public_key_2 =

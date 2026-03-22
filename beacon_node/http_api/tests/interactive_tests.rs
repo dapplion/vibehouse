@@ -745,20 +745,20 @@ pub async fn proposer_boost_re_org_test(
         .checked_sub(first_update.received_at)
         .unwrap();
 
-    if !misprediction {
-        assert_eq!(
-            lookahead,
-            payload_lookahead,
-            "lookahead={lookahead:?}, timestamp={}, prev_randao={:?}",
-            payload_attribs.timestamp(),
-            payload_attribs.prev_randao(),
-        );
-    } else {
+    if misprediction {
         // On a misprediction we issue the first fcU 500ms before creating a block!
         assert_eq!(
             lookahead,
             fork_choice_lookahead,
             "timestamp={}, prev_randao={:?}",
+            payload_attribs.timestamp(),
+            payload_attribs.prev_randao(),
+        );
+    } else {
+        assert_eq!(
+            lookahead,
+            payload_lookahead,
+            "lookahead={lookahead:?}, timestamp={}, prev_randao={:?}",
             payload_attribs.timestamp(),
             payload_attribs.prev_randao(),
         );

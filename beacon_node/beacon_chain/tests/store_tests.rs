@@ -565,10 +565,10 @@ async fn epoch_boundary_state_attestation_processing() {
         // from block.state_root() (which is pre-envelope). Re-load using
         // block.state_root() for the idempotency check, since that's the
         // canonical key under which the state is stored.
-        let lookup_root = if ebs_state_root != block.state_root() {
-            block.state_root()
-        } else {
+        let lookup_root = if ebs_state_root == block.state_root() {
             ebs_state_root
+        } else {
+            block.state_root()
         };
         let mut ebs_of_ebs = store
             .get_state(&lookup_root, None, CACHE_STATE_IN_TESTS)
@@ -3022,10 +3022,10 @@ async fn weak_subjectivity_sync_test(
         let loaded_root = state.update_tree_hash_cache().unwrap();
         if let Ok(Some(env)) = beacon_chain.store.get_payload_envelope(&block_root) {
             let expected = env.message.state_root;
-            if expected != Hash256::zero() {
-                assert_eq!(loaded_root, expected);
-            } else {
+            if expected == Hash256::zero() {
                 assert_eq!(loaded_root, state_root);
+            } else {
+                assert_eq!(loaded_root, expected);
             }
         } else {
             assert_eq!(loaded_root, state_root);

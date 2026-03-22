@@ -597,10 +597,11 @@ async fn pre_finalized_latest_valid_hash() {
 /// - Will not validate `latest_valid_root` and its ancestors.
 #[tokio::test]
 async fn latest_valid_hash_will_not_validate() {
+    const LATEST_VALID_SLOT: u64 = 3;
+
     if fork_name_from_env().is_some_and(|f| !f.bellatrix_enabled()) {
         return;
     }
-    const LATEST_VALID_SLOT: u64 = 3;
 
     let mut rig = InvalidPayloadRig::new().enable_attestations();
     rig.move_to_terminal_block();

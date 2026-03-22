@@ -382,16 +382,6 @@ fn assert_server_indexed_error(error: eth2::Error, status_code: u16, indices: Ve
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn bls_to_execution_changes_update_all_around_capella_fork() {
     const VALIDATOR_COUNT: usize = 128;
-    let fork_epoch = Epoch::new(2);
-    let spec = capella_spec(fork_epoch);
-    let max_bls_to_execution_changes = E::max_bls_to_execution_changes();
-
-    // Use a genesis state with entirely BLS withdrawal credentials.
-    // Offset keypairs by `VALIDATOR_COUNT` to create keys distinct from the signing keys.
-    let validator_keypairs = generate_deterministic_keypairs(VALIDATOR_COUNT);
-    let withdrawal_keypairs = (0..VALIDATOR_COUNT)
-        .map(|i| Some(generate_deterministic_keypair(i + VALIDATOR_COUNT)))
-        .collect::<Vec<_>>();
 
     fn withdrawal_credentials_fn<'a>(
         index: usize,
@@ -404,6 +394,17 @@ async fn bls_to_execution_changes_update_all_around_capella_fork() {
         let keypair = generate_deterministic_keypair(index + VALIDATOR_COUNT);
         bls_withdrawal_credentials(&keypair.pk, spec)
     }
+
+    let fork_epoch = Epoch::new(2);
+    let spec = capella_spec(fork_epoch);
+    let max_bls_to_execution_changes = E::max_bls_to_execution_changes();
+
+    // Use a genesis state with entirely BLS withdrawal credentials.
+    // Offset keypairs by `VALIDATOR_COUNT` to create keys distinct from the signing keys.
+    let validator_keypairs = generate_deterministic_keypairs(VALIDATOR_COUNT);
+    let withdrawal_keypairs = (0..VALIDATOR_COUNT)
+        .map(|i| Some(generate_deterministic_keypair(i + VALIDATOR_COUNT)))
+        .collect::<Vec<_>>();
 
     let header = generate_genesis_header(&spec, true);
 

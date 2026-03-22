@@ -5593,7 +5593,7 @@ impl ApiTester {
 
         // Fill another epoch with blocks, should be enough to finalize. (Sneaky plus 1 because this
         // scenario starts at an epoch boundary).
-        for _ in 0..E::slots_per_epoch() + 1 {
+        for _ in 0..=E::slots_per_epoch() {
             self.harness
                 .extend_chain(
                     1,
@@ -5676,7 +5676,7 @@ impl ApiTester {
 
         // Fill another epoch with blocks, should be enough to finalize. (Sneaky plus 1 because this
         // scenario starts at an epoch boundary).
-        for _ in 0..E::slots_per_epoch() + 1 {
+        for _ in 0..=E::slots_per_epoch() {
             self.harness
                 .extend_chain(
                     1,
