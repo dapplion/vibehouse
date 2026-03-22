@@ -3502,3 +3502,16 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Preserved as `pub`**: `slasher::metrics` module (used by slasher_service), `SLASHER_DATABASE_SIZE` + `SLASHER_RUN_TIME` (used by slasher_service), `pub use metrics::*` in slasher metrics (for `start_timer`/`set_gauge` access), all re-exported types (`Error`, `SlasherDB`, `IndexedAttestationId`, etc.)
 - **Spec**: v1.7.0-alpha.3 still latest. No new merges since March 15. All tracked Gloas PRs remain open.
 - **Tests**: 105/105 slasher tests pass, 1034/1034 beacon_processor+state_processing tests pass. Full workspace clippy zero warnings. `make lint-full` passes.
+
+### Run 2164 (2026-03-22)
+
+**Visibility downgrades in vibehouse_network crate + dead metrics removal + spec audit**
+
+- **Code changes — vibehouse_network crate** (28 items downgraded, 2 dead items removed):
+  - **lib.rs**: `pub mod metrics` → `pub(crate) mod metrics` (no external access to module)
+  - **metrics.rs**: `pub use metrics::*` → `pub(crate) use metrics::*`, 24 `pub static` → `pub(crate) static` (all metrics constants)
+  - **Dead code removed**: `TCP_PEERS_CONNECTED` and `QUIC_PEERS_CONNECTED` statics — defined but never referenced anywhere in codebase
+- **Preserved as `pub`**: `discovery`, `peer_manager`, `rpc`, `types`, `service` modules (all accessed externally by network, http_api, beacon_chain crates), all re-exported types and functions from lib.rs
+- **Visibility audit completeness**: All major beacon_node/ and consensus/ crates now audited. Remaining `pub mod` declarations in types, state_processing, beacon_chain are legitimately pub (external crate access confirmed). No further downgrade targets identified.
+- **Spec audit**: v1.7.0-alpha.3 still latest. Post-alpha.3 merges reviewed: #5001 (parent_block_root in bid key — already implemented), #5002 (wording-only), #5005 (test-only). Open PRs: #5022 (unknown block check — already implemented), #5008, #4992, #4979, #4954, #4939. No action needed.
+- **Tests**: 407/407 vibehouse_network tests pass. Full workspace clippy zero warnings. `make lint-full` passes.
