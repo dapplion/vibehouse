@@ -6,13 +6,13 @@ use types::{Hash256, Slot};
 #[derive(
     PartialEq, Eq, Clone, Hash, Debug, PartialOrd, Ord, Encode, Decode, Serialize, Deserialize,
 )]
-pub struct SyncAggregateId {
-    pub slot: Slot,
-    pub beacon_block_root: Hash256,
+pub(crate) struct SyncAggregateId {
+    pub(crate) slot: Slot,
+    pub(crate) beacon_block_root: Hash256,
 }
 
 impl SyncAggregateId {
-    pub fn new(slot: Slot, beacon_block_root: Hash256) -> Self {
+    pub(crate) fn new(slot: Slot, beacon_block_root: Hash256) -> Self {
         Self {
             slot,
             beacon_block_root,

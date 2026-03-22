@@ -31,7 +31,7 @@ pub(crate) struct BlsToExecutionChanges<E: EthSpec> {
 }
 
 impl<E: EthSpec> BlsToExecutionChanges<E> {
-    pub fn existing_change_equals(
+    pub(crate) fn existing_change_equals(
         &self,
         address_change: &SignedBlsToExecutionChange,
     ) -> Option<bool> {
@@ -40,7 +40,7 @@ impl<E: EthSpec> BlsToExecutionChanges<E> {
             .map(|existing| existing.as_inner() == address_change)
     }
 
-    pub fn insert(
+    pub(crate) fn insert(
         &mut self,
         verified_change: SigVerifiedOp<SignedBlsToExecutionChange, E>,
         received_pre_capella: ReceivedPreCapella,
@@ -62,14 +62,14 @@ impl<E: EthSpec> BlsToExecutionChanges<E> {
     }
 
     /// FIFO ordering, used for persistence to disk.
-    pub fn iter_fifo(
+    pub(crate) fn iter_fifo(
         &self,
     ) -> impl Iterator<Item = &Arc<SigVerifiedOp<SignedBlsToExecutionChange, E>>> {
         self.queue.iter()
     }
 
     /// LIFO ordering, used for block packing.
-    pub fn iter_lifo(
+    pub(crate) fn iter_lifo(
         &self,
     ) -> impl Iterator<Item = &Arc<SigVerifiedOp<SignedBlsToExecutionChange, E>>> {
         self.queue.iter().rev()
@@ -78,7 +78,7 @@ impl<E: EthSpec> BlsToExecutionChanges<E> {
     /// Returns only those which are flagged for broadcasting at the Capella
     /// fork. Uses FIFO ordering, although we expect this list to be shuffled by
     /// the caller.
-    pub fn iter_received_pre_capella(
+    pub(crate) fn iter_received_pre_capella(
         &self,
     ) -> impl Iterator<Item = &Arc<SigVerifiedOp<SignedBlsToExecutionChange, E>>> {
         self.queue.iter().filter(|address_change| {
@@ -89,7 +89,7 @@ impl<E: EthSpec> BlsToExecutionChanges<E> {
 
     /// Returns the set of indicies which should have their address changes
     /// broadcast at the Capella fork.
-    pub fn iter_pre_capella_indices(&self) -> impl Iterator<Item = &u64> {
+    pub(crate) fn iter_pre_capella_indices(&self) -> impl Iterator<Item = &u64> {
         self.received_pre_capella_indices.iter()
     }
 
@@ -99,7 +99,7 @@ impl<E: EthSpec> BlsToExecutionChanges<E> {
     /// address changes during re-orgs. This is isn't *perfect* so some address changes could
     /// still get stuck if there are gnarly re-orgs and the changes can't be widely republished
     /// due to the gossip duplicate rules.
-    pub fn prune<Payload: AbstractExecPayload<E>>(
+    pub(crate) fn prune<Payload: AbstractExecPayload<E>>(
         &mut self,
         head_block: &SignedBeaconBlock<E, Payload>,
         head_state: &BeaconState<E>,
@@ -137,7 +137,7 @@ impl<E: EthSpec> BlsToExecutionChanges<E> {
 
     /// Removes `broadcasted` validators from the set of validators that should
     /// have their BLS changes broadcast at the Capella fork boundary.
-    pub fn register_indices_broadcasted_at_capella(&mut self, broadcasted: &HashSet<u64>) {
+    pub(crate) fn register_indices_broadcasted_at_capella(&mut self, broadcasted: &HashSet<u64>) {
         self.received_pre_capella_indices = self
             .received_pre_capella_indices
             .difference(broadcasted)

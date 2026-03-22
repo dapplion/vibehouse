@@ -26,7 +26,7 @@ pub struct RewardCache {
 }
 
 impl RewardCache {
-    pub fn has_attested_in_epoch(
+    pub(crate) fn has_attested_in_epoch(
         &self,
         validator_index: u64,
         epoch: Epoch,

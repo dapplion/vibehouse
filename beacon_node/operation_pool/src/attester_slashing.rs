@@ -10,7 +10,7 @@ pub(crate) struct AttesterSlashingMaxCover<'a, E: EthSpec> {
 }
 
 impl<'a, E: EthSpec> AttesterSlashingMaxCover<'a, E> {
-    pub fn new(
+    pub(crate) fn new(
         slashing: AttesterSlashingRef<'a, E>,
         proposer_slashing_indices: &HashSet<u64>,
         state: &BeaconState<E>,

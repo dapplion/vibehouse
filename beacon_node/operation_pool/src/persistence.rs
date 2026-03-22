@@ -26,20 +26,20 @@ type PersistedSyncContributions<E> = Vec<(SyncAggregateId, Vec<SyncCommitteeCont
 #[educe(Clone)]
 pub struct PersistedOperationPool<E: EthSpec> {
     /// Attestations and their attesting indices.
-    pub attestations: Vec<(AttestationOnDisk<E>, Vec<u64>)>,
+    pub(crate) attestations: Vec<(AttestationOnDisk<E>, Vec<u64>)>,
     /// Mapping from sync contribution ID to sync contributions and aggregate.
-    pub sync_contributions: PersistedSyncContributions<E>,
+    pub(crate) sync_contributions: PersistedSyncContributions<E>,
     /// Attester slashings.
-    pub attester_slashings: Vec<SigVerifiedOp<AttesterSlashing<E>, E>>,
+    pub(crate) attester_slashings: Vec<SigVerifiedOp<AttesterSlashing<E>, E>>,
     /// Proposer slashings with fork information.
-    pub proposer_slashings: Vec<SigVerifiedOp<ProposerSlashing, E>>,
+    pub(crate) proposer_slashings: Vec<SigVerifiedOp<ProposerSlashing, E>>,
     /// Voluntary exits with fork information.
-    pub voluntary_exits: Vec<SigVerifiedOp<SignedVoluntaryExit, E>>,
+    pub(crate) voluntary_exits: Vec<SigVerifiedOp<SignedVoluntaryExit, E>>,
     /// BLS to Execution Changes
-    pub bls_to_execution_changes: Vec<SigVerifiedOp<SignedBlsToExecutionChange, E>>,
+    pub(crate) bls_to_execution_changes: Vec<SigVerifiedOp<SignedBlsToExecutionChange, E>>,
     /// Validator indices with BLS to Execution Changes to be broadcast at the
     /// Capella fork.
-    pub capella_bls_change_broadcast_indices: Vec<u64>,
+    pub(crate) capella_bls_change_broadcast_indices: Vec<u64>,
 }
 
 impl<E: EthSpec> PersistedOperationPool<E> {

@@ -41,7 +41,7 @@ impl<'a, E: EthSpec> AttMaxCover<'a, E> {
     }
 
     /// Initialise an attestation cover object for base/phase0 hard fork.
-    pub fn new_for_base(
+    fn new_for_base(
         att: CompactAttestationRef<'a, E>,
         state: &BeaconState<E>,
         base_state: &BeaconStateBase<E>,
@@ -76,7 +76,7 @@ impl<'a, E: EthSpec> AttMaxCover<'a, E> {
     }
 
     /// Initialise an attestation cover object for Altair or later.
-    pub fn new_for_altair_or_later(
+    fn new_for_altair_or_later(
         att: CompactAttestationRef<'a, E>,
         state: &BeaconState<E>,
         reward_cache: &'a RewardCache,
