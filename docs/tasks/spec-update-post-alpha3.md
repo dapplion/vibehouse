@@ -247,3 +247,17 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - Ran dead code check (`RUSTFLAGS="-W dead_code"`): zero warnings on core crates
 - Duplicate deps in Cargo.lock: all transitive (strum 0.27 from sp1 stack, rand versions from various ecosystems)
 - **No action needed. Spec current, codebase healthy.**
+
+### run 2215 (Mar 22) — spec audit + codebase health
+
+- 3 new Gloas spec commits since last check:
+  - **#5001** (parent_block_root in bid filtering key): already implemented — `is_highest_value_bid` uses `(Slot, ExecutionBlockHash, Hash256)` 3-tuple
+  - **#5002** (wording clarification for self-build signature verification): doc-only, no code change
+  - **#5008** (field name fix `block_root` → `beacon_block_root` in EnvelopesByRoot): doc-only, our code already correct
+- Approved PRs ready to merge: #5022 (block-known check — already implemented), #4898 (remove pending tiebreaker — already aligned), #4892 (remove impossible branch — already aligned)
+- Nightly failure (Mar 22): transient infrastructure issue — `cargo-nextest@0.9.132` binary wasn't uploaded to GitHub when nightly ran; binary available now, next nightly will pass
+- CI (push): check+clippy+fmt ✓, ef-tests ✓, remaining jobs in progress
+- `cargo clippy --release --all-targets`: zero warnings
+- `RUSTFLAGS="-W dead_code" cargo check --release`: zero warnings
+- Production `.expect()` audit: all 64 occurrences in state_processing are in `#[cfg(test)]` blocks — zero production panics
+- **No action needed. Spec current, codebase healthy.**
