@@ -4394,3 +4394,16 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - 9 are items only used in test code or test_utils (correctly suppressed)
   - 0 genuinely dead items found
 - **Build**: Zero warnings on `cargo check`. `make lint-full` clean.
+
+### Run 2204
+
+**Spec tracking + CI health check — no changes needed**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. Two new merges since last check:
+  - **#5008** (Correct field name `block_root` in `ExecutionPayloadEnvelopesByRoot` — merged March 22): Doc-only fix. Spec text was referencing `block_root` instead of `beacon_block_root` in the RPC protocol description. Our implementation already correctly uses `beacon_block_root` (types/execution_payload_envelope.rs:38). No code changes needed.
+  - **#4902** (Add executable gossip validation functions for phase0 — merged March 22): Adds pyspec-executable gossip validation functions and 74 reference tests for phase0. Not Gloas-specific, no fixtures released yet. No code impact.
+- **Open Gloas PRs** (all unmerged): #5022 (payload attestation block check — already implemented at fork_choice.rs:1426-1432), #5023 (block root filenames + comptests), #5020/#4979 (PTC lookbehind — still debated), #4843 (variable PTC deadline), #4747 (fast confirmation rule).
+- **Nightly CI failure** (March 22 08:55 UTC): op-pool-tests (capella) failed — same `install-action@v2` → `cargo-nextest@latest` → 404 issue from run 2203. This nightly ran BEFORE the fix commit (d32bcaef1, pushed 15:55 UTC). The 0.9.132 binary is now available (`curl -sI` returns 302). Tonight's nightly will use the fixed workflow with `@0.9.132` pin.
+- **CI** (push): check+clippy+fmt passed. Other jobs in progress.
+- **Build**: Zero warnings on `cargo check`.
+- **Conclusion**: No code changes needed. Spec tracking up to date. Nightly flake is self-resolved.
