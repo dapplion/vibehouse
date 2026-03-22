@@ -836,7 +836,7 @@ mod test {
                         let moved_keystores: Vec<_> = {
                             let initial_set: HashSet<_> = src_vc_initial_keystores.iter().collect();
                             let final_set: HashSet<_> = src_vc_final_keystores.iter().collect();
-                            initial_set.difference(&final_set).cloned().collect()
+                            initial_set.difference(&final_set).copied().collect()
                         };
                         assert_eq!(moved_keystores.len(), count);
                         for moved_keystore in &moved_keystores {
@@ -960,7 +960,7 @@ mod test {
                     })
                     .unwrap();
                 // Set all definitions to use the same password path as the primary.
-                definitions.iter_mut().for_each(|def| {
+                for def in definitions.iter_mut() {
                     if let SigningDefinition::LocalKeystore {
                         voting_keystore_password_path: Some(path),
                         ..
@@ -968,7 +968,7 @@ mod test {
                     {
                         *path = primary_path.clone();
                     }
-                });
+                }
             }
 
             let dest_vc = if let Some(import_builder) = self.dest_import_builder.take() {
@@ -1217,10 +1217,10 @@ mod test {
             .await
             .remove_passwords_from_src_vc()
             .mutate_passwords(|passwords| {
-                passwords.iter_mut().for_each(|(_, passwords)| {
+                for (_, passwords) in passwords.iter_mut() {
                     passwords.insert(0, "wrong-password".to_string());
                     passwords.push("wrong-password".to_string());
-                });
+                }
             })
             .run_test(|_| Validators::All)
             .await
@@ -1238,9 +1238,9 @@ mod test {
             .await
             .remove_passwords_from_src_vc()
             .mutate_passwords(|passwords| {
-                passwords
-                    .iter_mut()
-                    .for_each(|(_, passwords)| *passwords = vec!["wrong-password".to_string()]);
+                for (_, passwords) in passwords.iter_mut() {
+                    *passwords = vec!["wrong-password".to_string()];
+                }
             })
             .run_test(|_| Validators::All)
             .await

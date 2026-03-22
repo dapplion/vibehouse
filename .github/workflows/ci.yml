@@ -49,7 +49,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@v2
         with:
-          tool: cargo-nextest@0.9.132
+          tool: cargo-nextest
       - name: Download EF spec test vectors
         run: make -C testing/ef_tests
       - name: Run EF spec tests (fake_crypto)
@@ -66,7 +66,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@v2
         with:
-          tool: cargo-nextest@0.9.132
+          tool: cargo-nextest
       - name: Run workspace tests
         run: >
           cargo nextest run --workspace --release
@@ -87,7 +87,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@v2
         with:
-          tool: cargo-nextest@0.9.132
+          tool: cargo-nextest
       - name: Run beacon_chain tests
         run: env FORK_NAME=gloas cargo nextest run --release --features "fork_from_env,slasher/lmdb" -p beacon_chain
 
@@ -100,7 +100,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@v2
         with:
-          tool: cargo-nextest@0.9.132
+          tool: cargo-nextest
       - name: Run http_api tests
         run: env FORK_NAME=gloas cargo nextest run --release --features "beacon_chain/fork_from_env" -p http_api
 
@@ -113,7 +113,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@v2
         with:
-          tool: cargo-nextest@0.9.132
+          tool: cargo-nextest
       - name: Run network tests
         run: env FORK_NAME=gloas cargo nextest run --release --features "fork_from_env" -p network
       - name: Run operation_pool tests

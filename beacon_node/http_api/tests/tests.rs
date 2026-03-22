@@ -859,7 +859,7 @@ impl ApiTester {
             for validator_indices in self.interesting_validator_indices() {
                 let validator_index_ids = validator_indices
                     .iter()
-                    .cloned()
+                    .copied()
                     .map(ValidatorId::Index)
                     .collect::<Vec<ValidatorId>>();
 
@@ -899,12 +899,12 @@ impl ApiTester {
                 };
                 let validator_index_ids = validator_indices
                     .iter()
-                    .cloned()
+                    .copied()
                     .map(ValidatorId::Index)
                     .collect::<Vec<ValidatorId>>();
                 let validator_pubkey_ids = validator_indices
                     .iter()
-                    .cloned()
+                    .copied()
                     .map(|i| {
                         ValidatorId::PublicKey(
                             validators
@@ -997,13 +997,13 @@ impl ApiTester {
 
                 let validator_index_ids = validator_indices
                     .iter()
-                    .cloned()
+                    .copied()
                     .map(ValidatorId::Index)
                     .collect::<Vec<ValidatorId>>();
 
                 let validator_pubkey_ids = validator_indices
                     .iter()
-                    .cloned()
+                    .copied()
                     .map(|i| {
                         ValidatorId::PublicKey(
                             validators
@@ -1079,12 +1079,12 @@ impl ApiTester {
                     };
                     let validator_index_ids = validator_indices
                         .iter()
-                        .cloned()
+                        .copied()
                         .map(ValidatorId::Index)
                         .collect::<Vec<ValidatorId>>();
                     let validator_pubkey_ids = validator_indices
                         .iter()
-                        .cloned()
+                        .copied()
                         .map(|i| {
                             ValidatorId::PublicKey(
                                 validators

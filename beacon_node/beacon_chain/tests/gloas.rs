@@ -19442,7 +19442,7 @@ async fn gloas_stale_withdrawal_carryover_across_empty_parent() {
         .payload_expected_withdrawals()
         .expect("should have payload_expected_withdrawals")
         .iter()
-        .cloned()
+        .copied()
         .collect();
 
     let withheld_root = withheld_block.canonical_root();
@@ -19486,7 +19486,7 @@ async fn gloas_stale_withdrawal_carryover_across_empty_parent() {
         .payload_expected_withdrawals()
         .expect("should have payload_expected_withdrawals")
         .iter()
-        .cloned()
+        .copied()
         .collect();
     assert_eq!(
         w_stale, recovery_expected,
@@ -19502,7 +19502,7 @@ async fn gloas_stale_withdrawal_carryover_across_empty_parent() {
         .payload
         .withdrawals
         .iter()
-        .cloned()
+        .copied()
         .collect();
     assert_eq!(
         w_stale, envelope_withdrawals,
@@ -19558,7 +19558,7 @@ async fn gloas_stale_withdrawal_carryover_across_empty_parent() {
         .payload
         .withdrawals
         .iter()
-        .cloned()
+        .copied()
         .collect();
 
     let cont_root = cont_block.canonical_root();

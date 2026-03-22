@@ -531,7 +531,9 @@ async fn bls_to_execution_changes_update_all_around_capella_fork() {
             )
             .into_iter()
             .collect::<HashSet<_>>(),
-        HashSet::from_iter(expected_received_pre_capella_messages.into_iter()),
+        expected_received_pre_capella_messages
+            .into_iter()
+            .collect::<HashSet<_>>(),
         "all pre-capella messages should be queued for capella broadcast"
     );
 

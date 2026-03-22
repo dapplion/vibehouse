@@ -251,6 +251,13 @@ lint:
 		-D clippy::disallowed_methods \
 		-D clippy::derive_partial_eq_without_eq \
 		-D clippy::redundant_closure_for_method_calls \
+		-D clippy::cloned_instead_of_copied \
+		-D clippy::flat_map_option \
+		-D clippy::from_iter_instead_of_collect \
+		-D clippy::semicolon_if_nothing_returned \
+		-D clippy::inconsistent_struct_constructor \
+		-D clippy::needless_for_each \
+		-D clippy::implicit_clone \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.
