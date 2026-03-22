@@ -3412,3 +3412,30 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Preserved as `pub`**: `EngineError` (exposed in `pub enum Error` variant), `EngineState` and `ForkchoiceState` (re-exported, used by beacon_chain/network/http_api), `test_utils` module (heavily used by 17 external files), all `engine_api` sub-modules (`auth`, `http`, `json_structures` — constants and types used externally via re-exports)
 - **Spec**: v1.7.0-alpha.3 still latest. No new merges since March 15. All 10 tracked Gloas PRs remain open.
 - **Tests**: 145/145 execution_layer tests pass. Full workspace clippy zero warnings. `make lint-full` passes.
+
+### Run 2159 (2026-03-22)
+
+**Visibility downgrades in network crate**
+
+- **Code changes** — downgraded 206 items from `pub` to `pub(crate)` across 29 files in `beacon_node/network/src/`:
+  - **metrics.rs**: 1 `pub use` → `pub(crate) use` (re-exports of external `metrics` crate), 90 `pub static` → `pub(crate) static` (all metrics constants)
+  - **status.rs**: `ToStatusMessage` trait → `pub(crate) trait`
+  - **network_beacon_processor/mod.rs**: `pub use ChainSegmentProcessId` → `pub(crate) use`
+  - **network_beacon_processor/sync_methods.rs**: `ChainSegmentProcessId` enum → `pub(crate)`
+  - **sync/mod.rs**: `pub mod manager` → `pub(crate) mod`, 2 `pub use` → `pub(crate) use` (`BatchProcessResult`, `SyncMessage`, `ChainId`)
+  - **sync/manager.rs**: 8 items → `pub(crate)` (`SLOT_IMPORT_TOLERANCE`, `SyncMessage`, `BlockProcessType`, `BlockProcessType::id`, `BlockProcessingResult`, `BatchProcessResult`, `CustodyBatchProcessResult`, `SyncManager`, `spawn`)
+  - **sync/network_context.rs**: 15+ items → `pub(crate)` (all types, enums, structs, constants, type aliases)
+  - **sync/network_context/custody.rs**: 3 items → `pub(crate)` (`ActiveCustodyRequest`, `Error`, `CustodyRequestResult`)
+  - **sync/network_context/requests.rs** + 6 sub-files: 15+ items → `pub(crate)` (all request types and traits)
+  - **sync/batch.rs**: 10 items → `pub(crate)` (all types and traits)
+  - **sync/block_lookups/**: 15+ items → `pub(crate)` across mod.rs, single_block_lookup.rs, common.rs
+  - **sync/range_sync/**: 12+ items → `pub(crate)` across chain.rs, chain_collection.rs, mod.rs, range.rs, sync_type.rs
+  - **sync/backfill_sync/mod.rs**: 5 items → `pub(crate)`
+  - **sync/custody_backfill_sync/mod.rs**: 4 items → `pub(crate)`
+  - **sync/block_sidecar_coupling.rs**: 3 items → `pub(crate)`
+  - **sync/peer_sync_info.rs**: 2 items → `pub(crate)`
+  - **sync/range_data_column_batch_request.rs**: 1 item → `pub(crate)`
+- **Dead code removed**: `SyncingChainType::Backfill` variant — never constructed, exposed by visibility downgrade
+- **Preserved as `pub`**: `service` module (pub mod in lib.rs), all items re-exported from lib.rs (`NetworkMessage`, `NetworkReceivers`, `NetworkSenders`, `NetworkService`, `ValidatorSubscriptionMessage`, `NetworkConfig`), struct fields and impl methods (accessible wherever their parent type is)
+- **Spec**: v1.7.0-alpha.3 still latest. No new merges since March 15. All 10 tracked Gloas PRs remain open.
+- **Tests**: 204/204 network tests pass (FORK_NAME=gloas). Full workspace clippy zero warnings. `make lint-full` passes.
