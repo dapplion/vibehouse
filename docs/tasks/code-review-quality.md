@@ -4327,3 +4327,18 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Performance audit**: Checked clone patterns, Vec/HashMap capacity, unsafe blocks in consensus/ and beacon_chain/. Codebase is well-optimized — all clones in hot paths are Arc clones (cheap), capacity hints already used throughout.
 - **Build**: Zero warnings on `cargo build --release`. CI check+clippy+fmt and ef-tests passing.
 - **Conclusion**: Codebase is in excellent shape. All phases of code review complete. No further improvements found at diminishing returns.
+
+### Run 2200
+
+**Spec tracking audit + full test suite verification**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. Reviewed all consensus-specs merges since last check:
+  - **#5001** (Add `parent_block_root` to bid filtering key — merged March 12): **Already implemented.** Our `ObservedExecutionBids` already uses `(Slot, ExecutionBlockHash, Hash256)` as the bid filtering key, where the third element is `parent_block_root`. Comments on lines 44-47 of `observed_execution_bids.rs` quote the exact spec text. No changes needed.
+  - **#4940** (Add initial fork choice tests for Gloas — merged March 13): New pyspec test generators for `on_execution_payload` handler. No downloadable fixtures yet — latest EF test release is v1.6.0-beta.0 (September 2025). Our EF test runner already has `on_execution_payload` handler registered (tests.rs:1061-1062). Will run automatically when fixtures are released.
+  - **#5005** (Fix builder voluntary exit test — March 15): Test infra fix, no code impact.
+  - **#5002** (Wording clarification for payload signature verification — March 13): Doc-only, no code change.
+  - **#5004** (Release notes dependencies section — March 13): Infra, no code impact.
+- **Open Gloas PRs** (all unmerged): #5023 (block root filenames + comptests), #5022 (payload attestation block check — already implemented), #5020/#4979/#4992 (PTC lookbehind — still debated), #5008 (field name doc fix), #4843 (variable PTC deadline), #4962/#4960/#4932 (test additions).
+- **Build**: Zero warnings on `cargo build --release`. `make lint` clean.
+- **Full test suite**: 4919/4919 non-web3signer tests pass (8 web3signer failures are pre-existing infrastructure-dependent). One intermittent failure in `advertise_false_custody_group_count` on first run — passed on retry (port allocation race, pre-existing).
+- **Conclusion**: No code changes needed. Spec tracking up to date. Codebase healthy.
