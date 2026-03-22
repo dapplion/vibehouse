@@ -4089,3 +4089,37 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - `FieldComparison::equal()` → `pub(crate)` (only called from `from_iter` and `not_equal` within crate)
 - **Crates audited with no changes needed**: validator_dir (all pub items used by account_manager, validator_client), eip_3076 (all pub items used by slashing_protection), eth2_key_derivation (all re-exports used), eth2_wallet (all items used by account_manager), eth2_wallet_manager (all items used by account_manager), eth2_interop_keypairs (all functions used in tests), pretty_reqwest_error (both items used), network_utils (all modules used externally), target_check (no pub items), workspace_members (function used by logging), context_deserialize (trait + derive macro used by types)
 - **Tests**: 79/79 affected crate tests pass. `make lint` clean, zero warnings.
+
+### Run 2191
+
+**Pub visibility downgrades in client, bls, vibehouse_network (discovery, peer_manager, gossipsub_scoring)**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs releases.
+- **Changes — client/lib.rs** (2 methods downgraded):
+  - `Client::http_metrics_listen_addr()` → `pub(crate)` + `#[allow(dead_code)]` (zero external usage)
+  - `Client::libp2p_listen_addresses()` → `pub(crate)` + `#[allow(dead_code)]` (zero external usage)
+- **Changes — client/config.rs** (1 method downgraded):
+  - `Config::get_data_dir()` → `pub(crate)` (only called within client crate; beacon_node's `get_data_dir` is a separate standalone function)
+- **Changes — bls/impls/blst.rs** (2 constants downgraded):
+  - `DST` → private (only used within `verify_signature_sets()` in same file)
+  - `RAND_BITS` → private (only used within `verify_signature_sets()` in same file)
+- **Changes — vibehouse_network/discovery/enr.rs** (5 constants downgraded):
+  - `ETH2_ENR_KEY`, `NEXT_FORK_DIGEST_ENR_KEY`, `ATTESTATION_BITFIELD_ENR_KEY`, `SYNC_COMMITTEE_BITFIELD_ENR_KEY`, `PEERDAS_CUSTODY_GROUP_COUNT_ENR_KEY` → `pub(crate)` (all only used within vibehouse_network crate)
+- **Changes — vibehouse_network/discovery/mod.rs** (3 items downgraded):
+  - `FIND_NODE_QUERY_CLOSEST_PEERS` → `pub(crate)` (only used within vibehouse_network)
+  - `UpdatePorts` struct + all fields → `pub(crate)` (only used within vibehouse_network)
+  - `DiscoveredPeers` — attempted downgrade, reverted: used as `NetworkBehaviour::ToSwarm` associated type (requires pub)
+- **Changes — vibehouse_network/peer_manager/config.rs** (4 constants downgraded):
+  - `DEFAULT_STATUS_INTERVAL`, `DEFAULT_PING_INTERVAL_OUTBOUND`, `DEFAULT_PING_INTERVAL_INBOUND`, `DEFAULT_TARGET_PEERS` → `pub(crate)` (all only used within vibehouse_network)
+- **Changes — vibehouse_network/peer_manager/peerdb.rs** (3 items downgraded):
+  - `MAX_BANNED_PEERS` → `pub(crate)` (zero external usage)
+  - `ScoreUpdateResult` enum → `pub(crate)` (only used within vibehouse_network)
+  - `BanOperation` enum → `pub(crate)` (only used within vibehouse_network)
+  - `BanResult` — kept pub: appears in public interface of `PeerManager::ban_status()` and `PeerDB::ban_status()`
+- **Changes — vibehouse_network/service/gossipsub_scoring_parameters.rs** (3 items downgraded):
+  - `GREYLIST_THRESHOLD` → `pub(crate)` (only used within vibehouse_network)
+  - `PeerScoreSettings` struct → `pub(crate)` (only used within vibehouse_network)
+  - `PeerScoreSettings::new()` → `pub(crate)` (only called within vibehouse_network)
+- **RPC module audit**: Attempted downgrades of ~20 types (Protocol, Encoding, SupportedProtocol, RPCProtocol, RpcLimits, ProtocolId, RPCHandler, HandlerEvent, HandlerErr, OutboundSubstreamState, SubstreamId, RPCMessage, RPCSend, RPCReceived, RPC, ReqId, OutboundRequestContainer, OutboundFramed, InboundOutput, InboundFramed). **All reverted** — these types form an interconnected chain through libp2p trait implementations (NetworkBehaviour, ConnectionHandler, UpgradeInfo, InboundUpgrade, OutboundUpgrade). Downgrading any type triggers E0446 (private type in public interface) because trait associated types must be pub.
+- **Crates audited with no changes needed**: vibehouse_network RPC module (all pub items required by trait impls), validator_store (all pub items required by trait interface, `Error::UnknownToDoppelgangerService` variant is dead but removing enum variants from a trait error type is risky)
+- **Tests**: 495/495 affected crate tests pass. `make lint-full` clean, zero warnings.
