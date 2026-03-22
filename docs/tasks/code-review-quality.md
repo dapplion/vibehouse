@@ -4068,3 +4068,24 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - **task_executor**: `HandleProvider` used as bound on public `TaskExecutor::new()` — can't downgrade without private_bounds error.
   - **swap_or_not_shuffle, int_to_bytes, fixed_bytes, lru_cache, oneshot_broadcast, malloc_utils**: all pub items used externally, no downgrades possible.
 - **Tests**: 347/347 affected crate tests pass. `make lint` clean, zero warnings.
+
+### Run 2190
+
+**Pub visibility downgrades in metrics and compare_fields; audit of 13 small utility/crypto crates**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges.
+- **Crates audited (13 total)**: validator_dir, eip_3076, eth2_key_derivation, eth2_wallet, eth2_wallet_manager, eth2_interop_keypairs, metrics, pretty_reqwest_error, network_utils, target_check, workspace_members, compare_fields, context_deserialize
+- **Changes — metrics/lib.rs** (5 functions downgraded):
+  - `inc_gauge()` → `pub(crate)` + `#[allow(dead_code)]` (zero external usage)
+  - `dec_gauge()` → `pub(crate)` + `#[allow(dead_code)]` (zero external usage)
+  - `maybe_set_gauge()` → `pub(crate)` + `#[allow(dead_code)]` (zero external usage)
+  - `maybe_set_float_gauge()` → `pub(crate)` + `#[allow(dead_code)]` (zero external usage)
+  - `get_histogram()` → `pub(crate)` (only called from within crate by `start_timer_vec`, `observe_timer_vec`, `observe_vec`)
+- **Changes — compare_fields/lib.rs** (5 items downgraded):
+  - `Comparison::parent()` → `pub(crate)` (only called from `from_iter` within crate)
+  - `Comparison::from_slice()` → `pub(crate)` + `#[allow(dead_code)]` (only used in crate tests)
+  - `Comparison::from_iter()` → `pub(crate)` (called from `from_into_iter` and `from_slice` within crate)
+  - `Comparison::equal()` → `pub(crate)` (only called from `not_equal` within crate)
+  - `FieldComparison::equal()` → `pub(crate)` (only called from `from_iter` and `not_equal` within crate)
+- **Crates audited with no changes needed**: validator_dir (all pub items used by account_manager, validator_client), eip_3076 (all pub items used by slashing_protection), eth2_key_derivation (all re-exports used), eth2_wallet (all items used by account_manager), eth2_wallet_manager (all items used by account_manager), eth2_interop_keypairs (all functions used in tests), pretty_reqwest_error (both items used), network_utils (all modules used externally), target_check (no pub items), workspace_members (function used by logging), context_deserialize (trait + derive macro used by types)
+- **Tests**: 79/79 affected crate tests pass. `make lint` clean, zero warnings.
