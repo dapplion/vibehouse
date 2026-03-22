@@ -3515,3 +3515,21 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Visibility audit completeness**: All major beacon_node/ and consensus/ crates now audited. Remaining `pub mod` declarations in types, state_processing, beacon_chain are legitimately pub (external crate access confirmed). No further downgrade targets identified.
 - **Spec audit**: v1.7.0-alpha.3 still latest. Post-alpha.3 merges reviewed: #5001 (parent_block_root in bid key — already implemented), #5002 (wording-only), #5005 (test-only). Open PRs: #5022 (unknown block check — already implemented), #5008, #4992, #4979, #4954, #4939. No action needed.
 - **Tests**: 407/407 vibehouse_network tests pass. Full workspace clippy zero warnings. `make lint-full` passes.
+
+### Run 2165 (2026-03-22)
+
+**Minor allocation and conversion cleanups + comprehensive codebase health check**
+
+- **Scope**: Checked spec status, CI health, cargo audit, dependency updates, dead_code annotations, unsafe blocks, and avoidable allocation patterns.
+- **Health status**: All green — nightly CI passing (5 consecutive), spec at v1.7.0-alpha.3 (no new Gloas merges), cargo audit unchanged (1 rsa advisory, no fix), no outdated root deps (rand_xorshift still blocked).
+- **Code changes**:
+  1. **`observed_payload_envelopes.rs` prune()**: removed intermediate `Vec` allocation — `drain(..).collect::<Vec<_>>()` followed by iteration replaced with direct `for root in drain(..)` (disjoint field borrows allow this).
+  2. **`deposit_contract/src/lib.rs` decode_eth1_tx_data()**: replaced `Hash256::from_slice(call.deposit_data_root.as_slice())` with `Hash256::new(call.deposit_data_root.0)` — direct [u8; 32] construction instead of runtime-length-checked slice conversion.
+- **Audited but not changed**:
+  - All `#[allow(dead_code)]` annotations in production code: justified (Debug-only enum fields, cfg(test)-only methods, conditional compilation)
+  - All `unsafe` blocks: justified (blst FFI, libc calls, jemalloc stats, Rust 2024 set_var)
+  - Remaining `Hash256::from_slice` calls: justified (dynamic-sized data from SQLite/network)
+  - Remaining `.collect::<Vec<_>>()` patterns: justified (borrow checker barriers, rayon parallelism, function signature requirements)
+  - Issue #36 remaining items: all blocked on external dependencies or deprioritized
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since March 15. Open PRs: #4979 (PTC lookbehind), #4843 (variable PTC deadline), #4954 (millisecond timing), #5022 (already implemented), #5008 (field rename).
+- **Tests**: 15/15 deposit_contract tests pass. Full workspace clippy zero warnings.
