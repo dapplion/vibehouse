@@ -3947,6 +3947,16 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 );
                 return;
             }
+            Err(PayloadAttestationError::DuplicateAttestation { .. }) => {
+                debug!(
+                    %slot,
+                    ?beacon_block_root,
+                    peer = %peer_id,
+                    "Ignoring duplicate payload attestation"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                return;
+            }
             Err(PayloadAttestationError::UnknownBeaconBlockRoot { .. }) => {
                 debug!(
                     %slot,

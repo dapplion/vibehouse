@@ -1853,10 +1853,10 @@ async fn envelope_external_builder_invalid_signature_rejected() {
 // =============================================================================
 
 #[tokio::test]
-async fn attestation_duplicate_same_value_still_passes() {
-    // When a PTC validator's attestation has already been observed with the
-    // same payload_present value, the equivocation check says "Duplicate" and
-    // continues. The attestation should still pass verification (for relay).
+async fn attestation_duplicate_same_value_rejected() {
+    // Spec: [IGNORE] first valid message from validator. When a PTC validator's
+    // attestation has already been observed, duplicates must be rejected to prevent
+    // double entries in the pool which would produce invalid aggregate signatures.
     let harness = gloas_harness(2).await;
     let spec = &harness.chain.spec;
 
@@ -1906,21 +1906,27 @@ async fn attestation_duplicate_same_value_still_passes() {
     };
     attestation.aggregation_bits.set(0, true).unwrap();
 
-    // Should still pass even though it's a duplicate — duplicates are accepted for relay
+    // Should be rejected — duplicates are not allowed per spec
     let result = harness
         .chain
         .verify_payload_attestation_for_gossip(attestation);
     assert!(
-        result.is_ok(),
-        "duplicate attestation (same value) should still pass, got {:?}",
+        matches!(
+            result,
+            Err(PayloadAttestationError::DuplicateAttestation { .. })
+        ),
+        "duplicate attestation should be rejected, got {:?}",
         result.err()
     );
 }
 
 #[tokio::test]
-async fn attestation_mixed_duplicate_and_new_passes() {
+async fn attestation_mixed_duplicate_and_new_rejected() {
     // Attestation with 2 PTC members: one already observed (duplicate),
-    // one new. Should still pass verification.
+    // one new. Should be rejected because it contains a duplicate validator.
+    // In practice, gossip always sends single-bit attestations, but the
+    // verification function correctly rejects any attestation containing
+    // an already-observed validator.
     let harness = gloas_harness(2).await;
     let spec = &harness.chain.spec;
 
@@ -1980,16 +1986,12 @@ async fn attestation_mixed_duplicate_and_new_passes() {
         .chain
         .verify_payload_attestation_for_gossip(attestation);
     assert!(
-        result.is_ok(),
-        "mixed duplicate+new attestation should pass, got {:?}",
+        matches!(
+            result,
+            Err(PayloadAttestationError::DuplicateAttestation { .. })
+        ),
+        "attestation with duplicate validator should be rejected, got {:?}",
         result.err()
-    );
-
-    let verified = result.unwrap();
-    assert_eq!(
-        verified.attesting_indices().len(),
-        2,
-        "both validators should be in attesting indices (duplicates are not removed)"
     );
 }
 

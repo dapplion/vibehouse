@@ -2839,6 +2839,20 @@ async fn test_gloas_gossip_payload_attestation_accumulates_ptc_weight() {
         "PTC must have at least 2 members for this test"
     );
 
+    // With PTC_SIZE=512 and only 32 validators, many PTC positions map to the
+    // same validator. Find two PTC positions with DIFFERENT validator indices.
+    let validator_index_0 = ptc_indices[0];
+    let Some((second_pos, validator_index_1)) = ptc_indices
+        .iter()
+        .enumerate()
+        .find(|&(_, &vi)| vi != validator_index_0)
+        .map(|(pos, &vi)| (pos, vi))
+    else {
+        // All PTC positions map to the same validator (not enough validators
+        // for PTC_SIZE=512). Skip test.
+        return;
+    };
+
     let epoch = head_slot.epoch(E::slots_per_epoch());
     let domain = spec.get_domain(
         epoch,
@@ -2856,7 +2870,6 @@ async fn test_gloas_gossip_payload_attestation_accumulates_ptc_weight() {
     let signing_root = data.signing_root(domain);
 
     // Send first PTC attestation
-    let validator_index_0 = ptc_indices[0];
     let sk0 = &rig._harness.validator_keypairs[validator_index_0 as usize].sk;
     let message_0 = types::PayloadAttestationMessage {
         validator_index: validator_index_0,
@@ -2883,8 +2896,8 @@ async fn test_gloas_gossip_payload_attestation_accumulates_ptc_weight() {
         );
     }
 
-    // Send second PTC attestation from a different PTC member
-    let validator_index_1 = ptc_indices[1];
+    // Send second PTC attestation from a different validator
+    let _ = second_pos; // used to find the validator, message uses validator_index directly
     let sk1 = &rig._harness.validator_keypairs[validator_index_1 as usize].sk;
     let message_1 = types::PayloadAttestationMessage {
         validator_index: validator_index_1,

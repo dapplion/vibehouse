@@ -189,6 +189,10 @@ pub enum PayloadAttestationError {
     InvalidSignature,
     /// No validators attested (empty aggregation bits).
     EmptyAggregationBits,
+    /// A validator has already submitted a valid attestation for this slot/block.
+    /// Spec: [IGNORE] The payload_attestation_message is the first valid message
+    /// received from the validator.
+    DuplicateAttestation { validator_index: u64, slot: Slot },
     /// Failed to get PTC committee for the slot.
     PtcCommitteeError { slot: Slot },
     /// Beacon chain error occurred during validation.
@@ -690,9 +694,17 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 );
 
                 match outcome {
-                    crate::observed_payload_attestations::AttestationObservationOutcome::New
-                    | crate::observed_payload_attestations::AttestationObservationOutcome::Duplicate => {
-                        // New or already attested with same value — continue
+                    crate::observed_payload_attestations::AttestationObservationOutcome::New => {
+                        // First attestation from this validator — continue
+                    }
+                    crate::observed_payload_attestations::AttestationObservationOutcome::Duplicate => {
+                        // Spec: [IGNORE] first valid message from validator.
+                        // Reject duplicates to prevent double entries in the pool
+                        // which would produce invalid aggregate signatures.
+                        return Err(PayloadAttestationError::DuplicateAttestation {
+                            validator_index,
+                            slot: attestation_slot,
+                        });
                     }
                     crate::observed_payload_attestations::AttestationObservationOutcome::Equivocation {
                         ..
