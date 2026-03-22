@@ -4123,3 +4123,39 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **RPC module audit**: Attempted downgrades of ~20 types (Protocol, Encoding, SupportedProtocol, RPCProtocol, RpcLimits, ProtocolId, RPCHandler, HandlerEvent, HandlerErr, OutboundSubstreamState, SubstreamId, RPCMessage, RPCSend, RPCReceived, RPC, ReqId, OutboundRequestContainer, OutboundFramed, InboundOutput, InboundFramed). **All reverted** — these types form an interconnected chain through libp2p trait implementations (NetworkBehaviour, ConnectionHandler, UpgradeInfo, InboundUpgrade, OutboundUpgrade). Downgrading any type triggers E0446 (private type in public interface) because trait associated types must be pub.
 - **Crates audited with no changes needed**: vibehouse_network RPC module (all pub items required by trait impls), validator_store (all pub items required by trait interface, `Error::UnknownToDoppelgangerService` variant is dead but removing enum variants from a trait error type is risky)
 - **Tests**: 495/495 affected crate tests pass. `make lint-full` clean, zero warnings.
+
+### Run 2192
+
+**Pub visibility downgrades in health_metrics, deposit_contract, system_health, kzg, eth2_keystore, slasher, initialized_validators; audit of 20+ crates**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. Post-release: PR #5001 (parent_block_root in bid filtering key) already implemented in vibehouse. PR #5002 (wording clarification) is non-code.
+- **Changes — health_metrics/metrics.rs** (30 items downgraded):
+  - All 28 `pub static` metric gauges → private (`static`), only used within same file by scrape functions
+  - `scrape_process_health_metrics()` → private (only called by `scrape_health_metrics()`)
+  - `scrape_system_health_metrics()` → private (only called by `scrape_health_metrics()`)
+  - 3 statics (`SYSTEM_VIRT_MEM_CACHED`, `SYSTEM_VIRT_MEM_BUFFERS`, `BOOT_TIME`) were genuinely dead code hidden by being `pub` — marked `#[allow(dead_code)]`
+- **Changes — kzg/trusted_setup.rs** (2 items downgraded):
+  - `TRUSTED_SETUP_BYTES` → `pub(crate)` (only used within kzg crate)
+  - `TrustedSetup::g1_len()` → `pub(crate)` + `#[allow(dead_code)]` (only used in tests)
+- **Changes — eth2_keystore** (4 items downgraded):
+  - `HASH_SIZE` → `pub(crate)`, removed from lib.rs re-export (zero external usage)
+  - `JsonKeystore` struct + all 7 fields → `pub(crate)` (only used within eth2_keystore)
+  - `Version` enum + `four()` method → `pub(crate)` (only used within eth2_keystore)
+- **Changes — deposit_contract/lib.rs** (2 items downgraded):
+  - `ABI` → `pub(crate)` + `#[allow(dead_code)]` (zero external usage)
+  - `testnet` module → `pub(crate)` + `#[allow(dead_code)]` (only used in crate tests)
+- **Changes — system_health/lib.rs** (1 item downgraded):
+  - `NatState::is_anything_open()` → `pub(crate)` (only called within crate)
+- **Changes — initialized_validators** (8 items downgraded):
+  - `InitializedValidator::voting_public_key()` → `pub(crate)` (only called within crate)
+  - `KeyCache::open()`, `save()`, `decrypt()`, `remove()`, `add()`, `get()` → `pub(crate)` (all only called within crate)
+- **Changes — slasher/config.rs** (18 items downgraded):
+  - 10 constants → `pub(crate)`: `DEFAULT_VALIDATOR_CHUNK_SIZE`, `DEFAULT_HISTORY_LENGTH`, `DEFAULT_UPDATE_PERIOD`, `DEFAULT_SLOT_OFFSET`, `DEFAULT_MAX_DB_SIZE`, `DEFAULT_ATTESTATION_ROOT_CACHE_SIZE`, `DEFAULT_BROADCAST`, `DEFAULT_BACKEND` (4 cfg variants), `MAX_HISTORY_LENGTH`, `MEGABYTE`, `REDB_DATA_FILENAME`
+  - 8 methods → `pub(crate)`: `chunk_index`, `validator_chunk_index`, `chunk_offset`, `validator_offset`, `disk_key`, `cell_index`, `validator_indices_in_chunk`, `attesting_validators_in_chunk`
+  - Kept `pub`: `DEFAULT_CHUNK_SIZE` (used by integration tests), `MDBX_DATA_FILENAME` (used by integration tests)
+- **Changes — slasher/slasher.rs** (2 methods downgraded):
+  - `Slasher::process_blocks()` → private (only called from `process_batch` in same file)
+  - `Slasher::process_attestations()` → private (only called from `process_batch` in same file)
+  - Kept `pub`: `from_config_and_db`, `into_reset_db` (used by integration tests)
+- **Crates audited with no changes needed**: http_metrics (all pub items used by client crate), timer (all pub items used by client crate), store (all pub items used externally), filesystem (all pub items used externally), lockfile (all pub items used externally), sensitive_url (all pub items used externally), doppelganger_service (all pub items used externally), graffiti_file (all pub items used externally), validator_metrics (all pub statics used externally), vibehouse_version (all pub items used externally), slasher_service (all pub items used by client crate), operation_pool (attestation_storage module pub needed by http_api tests)
+- **Tests**: 305/305 affected crate tests pass. Workspace clippy clean, zero warnings.
