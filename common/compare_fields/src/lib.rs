@@ -100,7 +100,7 @@ impl Comparison {
         Comparison::Child(FieldComparison::new(field_name, a, b))
     }
 
-    pub fn parent(field_name: String, equal: bool, children: Vec<FieldComparison>) -> Self {
+    pub(crate) fn parent(field_name: String, equal: bool, children: Vec<FieldComparison>) -> Self {
         Comparison::Parent {
             field_name,
             equal,
@@ -108,7 +108,12 @@ impl Comparison {
         }
     }
 
-    pub fn from_slice<T: Debug + PartialEq<T>>(field_name: String, a: &[T], b: &[T]) -> Self {
+    #[allow(dead_code)]
+    pub(crate) fn from_slice<T: Debug + PartialEq<T>>(
+        field_name: String,
+        a: &[T],
+        b: &[T],
+    ) -> Self {
         Self::from_iter(field_name, a.iter(), b.iter())
     }
 
@@ -120,7 +125,7 @@ impl Comparison {
         Self::from_iter(field_name, a.into_iter(), b.into_iter())
     }
 
-    pub fn from_iter<'a, T: Debug + PartialEq + 'a>(
+    pub(crate) fn from_iter<'a, T: Debug + PartialEq + 'a>(
         field_name: String,
         a: impl Iterator<Item = &'a T>,
         b: impl Iterator<Item = &'a T>,
@@ -153,7 +158,7 @@ impl Comparison {
         }
     }
 
-    pub fn equal(&self) -> bool {
+    pub(crate) fn equal(&self) -> bool {
         match self {
             Comparison::Child(fc) => fc.equal,
             Comparison::Parent { equal, .. } => *equal,
@@ -187,7 +192,7 @@ impl FieldComparison {
         }
     }
 
-    pub fn equal(&self) -> bool {
+    pub(crate) fn equal(&self) -> bool {
         self.equal
     }
 

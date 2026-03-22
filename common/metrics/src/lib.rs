@@ -247,7 +247,10 @@ pub fn inc_counter_vec_by(int_counter_vec: &Result<IntCounterVec>, name: &[&str]
 }
 
 /// If `histogram_vec.is_ok()`, returns a histogram with the given `name`.
-pub fn get_histogram(histogram_vec: &Result<HistogramVec>, name: &[&str]) -> Option<Histogram> {
+pub(crate) fn get_histogram(
+    histogram_vec: &Result<HistogramVec>,
+    name: &[&str],
+) -> Option<Histogram> {
     if let Ok(histogram_vec) = histogram_vec {
         Some(histogram_vec.get_metric_with_label_values(name).ok()?)
     } else {
@@ -345,25 +348,29 @@ pub fn set_float_gauge_vec(gauge_vec: &Result<GaugeVec>, name: &[&str], value: f
     }
 }
 
-pub fn inc_gauge(gauge: &Result<IntGauge>) {
+#[allow(dead_code)]
+pub(crate) fn inc_gauge(gauge: &Result<IntGauge>) {
     if let Ok(gauge) = gauge {
         gauge.inc();
     }
 }
 
-pub fn dec_gauge(gauge: &Result<IntGauge>) {
+#[allow(dead_code)]
+pub(crate) fn dec_gauge(gauge: &Result<IntGauge>) {
     if let Ok(gauge) = gauge {
         gauge.dec();
     }
 }
 
-pub fn maybe_set_gauge(gauge: &Result<IntGauge>, value_opt: Option<i64>) {
+#[allow(dead_code)]
+pub(crate) fn maybe_set_gauge(gauge: &Result<IntGauge>, value_opt: Option<i64>) {
     if let Some(value) = value_opt {
         set_gauge(gauge, value);
     }
 }
 
-pub fn maybe_set_float_gauge(gauge: &Result<Gauge>, value_opt: Option<f64>) {
+#[allow(dead_code)]
+pub(crate) fn maybe_set_float_gauge(gauge: &Result<Gauge>, value_opt: Option<f64>) {
     if let Some(value) = value_opt {
         set_float_gauge(gauge, value);
     }
