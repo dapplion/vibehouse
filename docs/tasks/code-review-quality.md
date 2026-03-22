@@ -3950,3 +3950,30 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - `SSE_LOG_CHANNEL_SIZE` → private (only used within lib.rs)
 - **Crates audited with no changes needed**: proto_array (all pub items used externally or required by SszContainer pub fields), store (all pub items actively used by beacon_chain, network, http_api), validator_client (all 3 pub items used by vibehouse binary and test_rig), task_executor (all pub items used across 57+ files)
 - **Tests**: 211/211 affected crate tests pass. `make lint` clean, zero warnings.
+
+### Run 2186
+
+**Pub visibility downgrades in execution_layer + dead code removal**
+
+- **Scope**: Full visibility audit of execution_layer crate (lib.rs, engine_api.rs, json_structures.rs, new_payload_request.rs).
+- **CI status**: Run 2185 CI in progress (all 6 jobs running).
+- **Nightly failure**: op-pool-tests (capella) failed due to nextest 0.9.132 download 404 (transient GitHub release issue, not a code bug).
+- **Changes — lib.rs** (23 items removed from pub re-export):
+  - Removed `ClientCode`, `ForkchoiceUpdatedResponse`, `GetPayloadResponse` (+ Bellatrix/Capella/Deneb/Electra/Fulu/Gloas variants), `GetPayloadResponseType`, `JsonWithdrawal`, `LATEST_TAG`, `NewPayloadRequestBellatrix`/`Capella`/`Deneb`/`Electra`/`Fulu`, `PayloadAttributesV2`, `PayloadAttributesV3`, `PayloadId`, `ProposeBlindedBlockResponse`, `ProposeBlindedBlockResponseStatus`, `TransitionConfigurationV1` from `pub use engine_api::{...}` — all confirmed zero external usage
+  - Added `use engine_api::{GetPayloadResponse, GetPayloadResponseType, LATEST_TAG}` for internal use
+- **Changes — engine_api.rs** (8 items downgraded, 2 dead types removed, 1 method renamed):
+  - `LATEST_TAG` → `pub(crate)`, `PayloadId` type → `pub(crate)`
+  - `ForkchoiceUpdatedResponse` → `pub(crate)`, `GetPayloadResponseType` → `pub(crate)`
+  - `ExecutionBlock::terminal_total_difficulty_reached()` → `pub(crate)`
+  - `EngineCapabilities::to_response()` → `pub(crate)` and renamed to `as_response()` (clippy self-convention)
+  - `NewPayloadRequestBellatrix`/`Capella` removed from `pub use` (dead re-exports), `Deneb`/`Electra`/`Fulu` → `pub(crate) use`
+  - **Dead code removed**: `ProposeBlindedBlockResponseStatus` enum + `ProposeBlindedBlockResponse` struct + test (never used in production, only in test; no external consumers)
+- **Changes — new_payload_request.rs** (3 methods downgraded):
+  - `into_execution_payload()` → `pub(crate)`
+  - `verify_payload_block_hash()` → `pub(crate)`
+  - `verify_versioned_hashes()` → `pub(crate)`
+- **Changes — json_structures.rs** (12 types downgraded, 2 dead types removed):
+  - `JsonRequestBody`, `JsonError`, `JsonResponseBody`, `JsonPayloadIdRequest`, `JsonExecutionPayload`, `RequestsError`, `JsonExecutionRequests`, `JsonGetPayloadResponse`, `EncodableJsonWithdrawal`, `JsonBlobsBundleV1`, `JsonExecutionPayloadBodyV1`, `serde_logs_bloom` mod → `pub(crate)`
+  - **Dead code removed**: `TransitionConfigurationV1` struct (zero usage), `JsonPayloadIdResponse` struct (zero usage)
+  - Kept `pub`: `JsonWithdrawal` (field of pub `JsonPayloadAttributes`), `JsonPayloadAttributes`, `BlobAndProof`/`BlobAndProofV1`/`BlobAndProofV2` (used by beacon_chain), `JsonForkchoiceStateV1` (used externally), `JsonPayloadStatusV1Status` (used by ef_tests), `JsonPayloadStatusV1`, `TransparentJsonPayloadId`, `JsonForkchoiceUpdatedV1Response`, `JsonClientVersionV1` (all exposed via pub test_utils or pub structs)
+- **Tests**: 143/143 execution_layer tests pass. `make lint-full` clean, zero warnings.
