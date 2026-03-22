@@ -4003,3 +4003,43 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - `remotekeys::list()`, `remotekeys::import()`, `remotekeys::delete()` → `pub(crate)`
 - **Crates audited with no changes needed**: vibehouse_validator_store (all pub items used externally), doppelganger_service (all pub items used externally), slasher_service (all pub items used externally), initialized_validators (all pub items used externally)
 - **Tests**: 59/59 affected crate tests pass (58 validator_services + 1 validator_client). `make lint-full` clean, zero warnings.
+
+### Run 2188
+
+**CI nextest pin + pub visibility downgrades in builder_client, vibehouse_tracing, beacon_node_fallback, slashing_protection, clap_utils, eth2_config, eth2_network_config, logging, validator_http_metrics**
+
+- **CI fix**: Pinned `cargo-nextest` to version 0.9.131 in both `ci.yml` and `nightly-tests.yml` (12 total uses). Prevents transient 404 errors when new nextest releases are published without matching GitHub release binaries.
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges.
+- **Changes — vibehouse_tracing/lib.rs** (dead code removed):
+  - `LH_BN_ROOT_SPAN_NAMES` constant — removed (dead code: never referenced outside its definition)
+- **Changes — builder_client/lib.rs** (1 method downgraded):
+  - `get_builder_status()` → `pub(crate)` (only used in builder_client's own tests; supporting methods `get_with_timeout`, `get_response_with_timeout` and `Timeouts.get_builder_status` field are now dead code chains, `#[allow(dead_code)]` applied)
+- **Changes — beacon_node_fallback/beacon_node_health.rs** (5 items downgraded):
+  - `BeaconNodeHealthTier` fields (`tier`, `sync_distance`, `distance_tier`) → `pub(crate)` (struct itself stays pub, fields only accessed within crate)
+  - `BeaconNodeHealthTier::new()` → `pub(crate)` (only called within crate)
+  - `BeaconNodeHealth::from_status()` → `pub(crate)` (only called within crate)
+  - `get_index()`, `get_health_tier()` → `#[cfg(test)]` (test-only helpers, fields are pub so redundant)
+  - `compute_distance_tier()` → `pub(crate)` (only called within crate)
+- **Changes — slashing_protection/slashing_database.rs** (5 methods downgraded):
+  - `register_validators_in_txn()` → `pub(crate)`
+  - `list_all_registered_validators()` → `pub(crate)`
+  - `get_validator_id_in_txn()` → `pub(crate)`
+  - `preliminary_check_block_proposal()`, `preliminary_check_attestation()` → `pub(crate)` + `#[allow(dead_code)]` (never called, kept as useful API surface)
+  - `num_validator_rows()` → `#[cfg(test)]` (only used in tests)
+- **Changes — clap_utils/lib.rs** (4 items downgraded):
+  - `BAD_TESTNET_DIR_MESSAGE` → private
+  - `parse_testnet_dir()`, `parse_hardcoded_network()` → private (called only from `get_eth2_network_config()` within crate)
+  - `parse_ssz_optional()` → private (called only from `parse_ssz_required()` within crate)
+- **Changes — eth2_config/lib.rs** (2 constants downgraded):
+  - `PREDEFINED_NETWORKS_DIR` → private (macro `predefined_networks_dir!` used externally instead)
+  - `GENESIS_ZIP_FILE_NAME` → private (only used within crate)
+- **Changes — eth2_network_config/lib.rs** (5 items downgraded):
+  - `DEPLOY_BLOCK_FILE`, `BOOT_ENR_FILE`, `GENESIS_STATE_FILE`, `BASE_CONFIG_FILE` → private (all internal path constants)
+  - `force_write_to_file()` → private (only called from `write_to_file()` within crate)
+- **Changes — logging** (2 items removed/downgraded):
+  - `MAX_MESSAGE_WIDTH` — removed (dead code: never used anywhere)
+  - `Libp2pDiscv5TracingLayer` fields (`libp2p_non_blocking_writer`, `discv5_non_blocking_writer`) → private (struct stays pub, fields only accessed within file)
+- **Changes — validator_http_metrics/lib.rs** (1 function downgraded):
+  - `gather_prometheus_metrics()` → private (only called from `metrics_handler` within crate)
+- **Crates audited with no changes needed**: timer (all pub items used externally), http_metrics (all pub items used externally), deposit_contract, filesystem, lockfile, sensitive_url, system_health, vibehouse_version (all pub items used externally)
+- **Tests**: 216/216 affected crate tests pass. `make lint-full` clean, zero warnings.
