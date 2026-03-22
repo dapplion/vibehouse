@@ -4230,3 +4230,41 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - `SignalFuture::new()` → private (struct already private, only used internally)
 - **Crates audited with no changes needed**: signing_method (all pub items used by validator_client), directory (all other pub items used externally)
 - **Tests**: 251/251 affected crate tests pass. `make lint-full` clean, zero warnings.
+
+### Run 2196
+
+**Pub visibility downgrades in validator_manager, database_manager, account_manager, boot_node, simulator; clippy fix in malloc_utils**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since March 15. PR #5023 (fix block root filenames and Gloas comptests) is open but unmerged.
+- **Changes — validator_manager/common.rs** (7 items downgraded):
+  - `STDIN_INPUTS_FLAG` re-export → `pub(crate)` (only used within validator_manager)
+  - `IGNORE_DUPLICATES_FLAG`, `COUNT_FLAG` → `pub(crate)` (only used within validator_manager)
+  - `UploadError` enum → `pub(crate)` (only used within validator_manager)
+  - `ValidatorSpecification` struct → `pub(crate)` (only used within validator_manager)
+  - `StandardDepositDataJson` struct → `pub(crate)` (only used within validator_manager)
+  - `vc_http_client()`, `write_to_json_file()` → `pub(crate)` (only used within validator_manager)
+- **Changes — validator_manager submodules** (~45 constants downgraded):
+  - All CLI flag constants across create_validators, import_validators, delete_validators, exit_validators, list_validators, move_validators → private (only used within their own CLI argument definitions)
+  - `CMD` constants in each submodule → `pub(crate)` (used by lib.rs)
+  - `DETECTED_DUPLICATE_MESSAGE` → private (internal error handling)
+  - `VALIDATORS_FILENAME`, `DEPOSITS_FILENAME` → private (internal to create_validators)
+  - `get_current_epoch()` → `pub(crate)` (used by list_validators within crate)
+- **Changes — database_manager/cli.rs** (9 items downgraded):
+  - `DatabaseManagerSubcommand` enum → `pub(crate)` (only used in lib.rs run())
+  - `Migrate`, `Inspect`, `Version`, `PrunePayloads`, `PruneBlobs`, `PruneStates`, `Compact` structs → `pub(crate)` (all only used in lib.rs match arm)
+  - `DatabaseManager.subcommand` field → `pub(crate)` (field type is now pub(crate))
+- **Changes — account_manager/common.rs** (2 items downgraded):
+  - `WALLET_NAME_PROMPT` → private (only used within common.rs)
+  - `read_wallet_name_from_cli()` → `pub(crate)` (only called within account_manager)
+- **Changes — boot_node/config.rs** (2 items downgraded):
+  - `BootNodeConfig<E>` struct → `pub(crate)` (only used within boot_node crate)
+  - `BootNodeConfigSerialization::from_config_ref()` → `pub(crate)` (only called from server.rs)
+- **Changes — simulator/local_network.rs** (2 constants downgraded):
+  - `EXECUTION_PORT`, `TERMINAL_BLOCK` → `pub(crate)` (only used within simulator)
+- **Changes — malloc_utils/glibc.rs** (clippy fix):
+  - Collapsed nested `if` into single `if ... && let` to satisfy new `clippy::collapsible_if` lint in Rust 1.94
+- **Crates audited with no changes needed**:
+  - **operation_pool**: `CompactAttestationData` and `CompactIndexedAttestation` must remain pub — exposed through pub struct fields accessed by beacon_chain. All other pub items used externally.
+  - **lcli**: binary crate, no pub items (all functions and modules are already private)
+  - **simulator**: `Inner<E>` must remain pub — used as `Deref::Target` for pub `LocalNetwork`. `LocalNetwork` methods used across modules.
+- **Tests**: 116/116 affected crate tests pass. `make lint-full` clean, zero warnings.
