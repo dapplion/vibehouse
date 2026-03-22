@@ -4300,3 +4300,19 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - **vibehouse_tracing**: all span constants used by network, http_api, beacon_chain
 - **Pub visibility audit status**: **COMPLETE** — all 80+ workspace crates audited across runs 2190-2197. No further downgrades possible without breaking trait impls or external usage.
 - **Tests**: 7/7 affected crate tests pass. `make lint` clean, zero warnings.
+
+### Run 2198
+
+**Dead code cleanup: remove unused functions, statics, and constants**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since March 15. Open gloas PRs: #5022 (payload attestation block check — already handled in our implementation), #5020/#4979 (PTC lookbehind — still debated), #4843 (variable PTC deadline — still open).
+- **Approach**: Scanned all 97 `#[allow(dead_code)]` annotations across the workspace. Most are on error enum variants (standard Rust pattern), platform-specific code (Windows), or test infrastructure — these are intentional and left as-is. Removed genuinely dead items:
+- **Changes — metrics/src/lib.rs** (4 functions moved to `#[cfg(test)]`):
+  - `inc_gauge()`, `dec_gauge()`, `maybe_set_gauge()`, `maybe_set_float_gauge()` — previously `pub(crate)` with `#[allow(dead_code)]`, only used in tests. Changed from `#[allow(dead_code)] pub(crate)` to `#[cfg(test)]` private.
+- **Changes — health_metrics/src/metrics.rs** (3 statics removed):
+  - `SYSTEM_VIRT_MEM_CACHED`, `SYSTEM_VIRT_MEM_BUFFERS`, `BOOT_TIME` — LazyLock statics never referenced anywhere in the codebase.
+- **Changes — directory/src/lib.rs** (1 constant + 1 test line removed):
+  - `DEFAULT_TRACING_DIR` — unused constant, never referenced. Removed the test assertion that checked its value.
+- **Changes — kzg/src/trusted_setup.rs** (1 method moved to `#[cfg(test)]`):
+  - `TrustedSetup::g1_len()` — only used in tests. Changed from `#[allow(dead_code)] pub(crate)` to `#[cfg(test)] pub(crate)`.
+- **Tests**: 128/128 affected crate tests pass. Full workspace compiles clean.
