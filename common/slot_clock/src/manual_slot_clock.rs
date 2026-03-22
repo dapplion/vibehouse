@@ -67,7 +67,7 @@ impl ManualSlotClock {
     }
 
     /// Returns the duration between `now` and the start of the next slot.
-    pub fn duration_to_next_slot_from(&self, now: Duration) -> Option<Duration> {
+    pub(crate) fn duration_to_next_slot_from(&self, now: Duration) -> Option<Duration> {
         if now < self.genesis_duration {
             self.genesis_duration.checked_sub(now)
         } else {
@@ -76,7 +76,7 @@ impl ManualSlotClock {
     }
 
     /// Returns the duration between `now` and the start of the next epoch.
-    pub fn duration_to_next_epoch_from(
+    pub(crate) fn duration_to_next_epoch_from(
         &self,
         now: Duration,
         slots_per_epoch: u64,

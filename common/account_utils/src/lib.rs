@@ -2,10 +2,7 @@
 //! Vibehouse project.
 
 use eth2_keystore::Keystore;
-use eth2_wallet::{
-    Wallet,
-    bip39::{Language, Mnemonic, MnemonicType},
-};
+use eth2_wallet::bip39::{Language, Mnemonic, MnemonicType};
 use filesystem::{Error as FsError, create_with_600_perms};
 use rand::{Rng, distr::Alphanumeric};
 use std::fs::{self, File};
@@ -24,7 +21,7 @@ pub use eth2_wallet;
 pub use eth2_wallet::PlainText;
 
 /// The minimum number of characters required for a wallet password.
-pub const MINIMUM_PASSWORD_LEN: usize = 12;
+const MINIMUM_PASSWORD_LEN: usize = 12;
 /// The `Alphanumeric` crate only generates a-z, A-Z, 0-9, therefore it has a range of 62
 /// characters.
 ///
@@ -32,26 +29,12 @@ pub const MINIMUM_PASSWORD_LEN: usize = 12;
 /// array of length 32.
 const DEFAULT_PASSWORD_LEN: usize = 48;
 
-pub const MNEMONIC_PROMPT: &str = "Enter the mnemonic phrase:";
+const MNEMONIC_PROMPT: &str = "Enter the mnemonic phrase:";
 
 pub const STDIN_INPUTS_FLAG: &str = "stdin-inputs";
 
-/// Returns the "default" path where a wallet should store its password file.
-pub fn default_wallet_password_path<P: AsRef<Path>>(wallet_name: &str, secrets_dir: P) -> PathBuf {
-    secrets_dir.as_ref().join(format!("{wallet_name}.pass"))
-}
-
-/// Returns a password for a wallet, where that password is loaded from the "default" path.
-pub fn default_wallet_password<P: AsRef<Path>>(
-    wallet: &Wallet,
-    secrets_dir: P,
-) -> Result<PlainText, io::Error> {
-    let path = default_wallet_password_path(wallet.name(), secrets_dir);
-    fs::read(path).map(|bytes| PlainText::from(strip_off_newlines(bytes)))
-}
-
 /// Returns the "default" path where a keystore should store its password file.
-pub fn default_keystore_password_path<P: AsRef<Path>>(
+pub(crate) fn default_keystore_password_path<P: AsRef<Path>>(
     keystore: &Keystore,
     secrets_dir: P,
 ) -> PathBuf {

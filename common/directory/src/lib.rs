@@ -13,7 +13,7 @@ pub const DEFAULT_WALLET_DIR: &str = "wallets";
 pub const DEFAULT_TRACING_DIR: &str = "tracing";
 
 /// Base directory name for unnamed testnets passed through the --testnet-dir flag
-pub const CUSTOM_TESTNET_DIR: &str = "custom";
+const CUSTOM_TESTNET_DIR: &str = "custom";
 
 /// Gets the network directory name
 ///
