@@ -3467,3 +3467,22 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - **lib.rs**: removed dead `RawEntryIter` type alias
 - **Preserved as `pub`**: `Error` enum (used by beacon_chain, fork_choice, etc.), all `HotColdDBError`/`StateSummaryIteratorError`/`SplitChange` types (exposed in public API signatures), `BeaconNodeBackend` (used by beacon_node crate)
 - **Tests**: 236/236 store tests pass. Full workspace clippy zero warnings. `make lint-full` passes.
+
+### Run 2162 (2026-03-22)
+
+**Visibility downgrades in client, builder_client, http_metrics crates**
+
+- **Code changes — client crate** (8 items downgraded, 1 dead code removed):
+  - **lib.rs**: `pub mod config` → `mod config`, `pub mod builder` → `mod builder` (types re-exported via `pub use`)
+  - **metrics.rs**: `pub use` → `pub(crate) use` (metrics re-exports), 3 `pub static` → `pub(crate) static` (SYNC_SLOTS_PER_SECOND, IS_SYNCED, NOTIFIER_HEAD_SLOT)
+  - **notifier.rs**: `pub const WARN_PEER_COUNT` → `const` (private, only used in same file), `pub fn spawn_notifier` → `pub(crate) fn`
+  - **compute_light_client_updates.rs**: `pub async fn compute_light_client_updates` → `pub(crate) async fn`
+  - **proof_broadcaster.rs**: `pub async fn run_proof_broadcaster` → `pub(crate) async fn`
+  - **builder.rs**: removed dead `ETH1_GENESIS_UPDATE_INTERVAL_MILLIS` constant (exposed by visibility downgrade)
+- **Code changes — builder_client crate** (6 items downgraded):
+  - 5 `pub const` → `const` (DEFAULT_TIMEOUT_MILLIS, DEFAULT_GET_HEADER_TIMEOUT_MILLIS, DEFAULT_USER_AGENT, PREFERENCE_ACCEPT_VALUE, JSON_ACCEPT_VALUE — all only used within crate)
+  - `pub struct Timeouts` → `struct Timeouts` (private field of `BuilderHttpClient`, never exposed)
+- **Code changes — http_metrics crate** (1 item downgraded):
+  - **metrics.rs**: `pub fn gather_prometheus_metrics` → `pub(crate) fn` (only called from lib.rs within crate)
+- **Preserved as `pub`**: `ClientBuilder`, `ClientConfig`, `ClientGenesis` (re-exported from lib.rs, used by beacon_node), `Client` struct + methods (used by beacon_node and tests), `BuilderHttpClient` + public methods (used by execution_layer), `Error` re-export (used by execution_layer), http_metrics `Error`/`Context`/`Config`/`serve` (used by client crate)
+- **Tests**: 26/26 tests pass (client + builder_client + http_metrics). Full workspace clippy zero warnings. `make lint-full` passes.
