@@ -3610,3 +3610,23 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - Removed unused `ArgMatches` and `ValidatorClient` imports from validator_client after dead code removal
 - **Spec tracking**: Checked latest consensus-specs PRs. PR #5001 (parent_block_root in bid filtering key) — already implemented. PR #5002 (wording fix) — no code change. PR #5022 (assert block known in on_payload_attestation_message) — already handled with explicit error. No new code changes needed.
 - **Verification**: 31/31 monitoring_api + validator_client tests pass. Full clippy clean (workspace + benches + tests). `make lint-full` passes.
+
+### Run 2170 (2026-03-22)
+
+**Health check + spec tracking + upcoming change analysis**
+
+- **Scope**: Full health audit, spec PR tracking, analysis of approved-but-unmerged spec changes.
+- **Findings — all green**:
+  - CI: check+clippy+fmt ✓, remaining jobs (unit tests, ef-tests, beacon_chain, http_api, network+op_pool) in progress
+  - Nightly CI: 5 consecutive green runs
+  - Spec version check: v1.7.0-alpha.3 still latest, no new releases
+  - Cargo audit: unchanged (1 vulnerability in rsa — no fix available, 5 allowed warnings)
+  - Zero compiler warnings, all TODOs tracked to #36
+- **Spec tracking — no new merges since March 15**:
+  - **#4898** (remove pending status from tiebreaker) — approved, ready to merge. Our `get_payload_tiebreaker` already matches: we don't have a separate PENDING check in the previous-slot path. No code change needed when it merges.
+  - **#4892** (is_supporting_vote same-slot fix) — approved, ready to merge. Changes same-slot vote behavior from `return False` to `return True`. **When this merges, we need to update `is_supporting_vote_gloas_at_slot` (line 1689) and `is_supporting_vote_gloas_cached` (line 1730) in proto_array_fork_choice.rs** — change `return false` to `return true`.
+  - **#5008** (field name fix: block_root → beacon_block_root) — docs-only, our code already uses `beacon_block_root`. No change needed.
+  - **#4979/#4992/#5020** (PTC lookbehind) — still in active discussion, 3 competing approaches. Not actionable yet.
+  - **#4843** (variable PTC deadline) — open, no approvals. Not actionable yet.
+  - **#4954** (millisecond timing) — open, no approvals. Not actionable yet.
+- **Conclusion**: Codebase remains stable and healthy. All priorities 1-6 complete. Key upcoming change to watch: #4892 (is_supporting_vote same-slot fix) will require a 2-line change when merged.
