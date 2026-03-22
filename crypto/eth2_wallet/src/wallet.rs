@@ -5,8 +5,9 @@ use crate::{
         Kdf, KdfModule, Sha256Checksum, TypeField, Version,
     },
 };
-pub use bip39::{Mnemonic, Seed as Bip39Seed};
-pub use eth2_key_derivation::{DerivedKey, DerivedKeyError};
+pub(crate) use bip39::{Mnemonic, Seed as Bip39Seed};
+pub use eth2_key_derivation::DerivedKey;
+pub(crate) use eth2_key_derivation::DerivedKeyError;
 pub use eth2_keystore::{Error as KeystoreError, PlainText};
 use eth2_keystore::{
     IV_SIZE, Keystore, KeystoreBuilder, SALT_SIZE, decrypt, default_kdf, encrypt,

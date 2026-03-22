@@ -53,7 +53,7 @@ pub(crate) struct CacheItem {
 }
 
 #[derive(PartialEq, Clone, Default, Debug, Encode, Decode)]
-pub struct BalancesCache {
+pub(crate) struct BalancesCache {
     pub(crate) items: Vec<CacheItem>,
 }
 
@@ -61,7 +61,7 @@ impl BalancesCache {
     /// Inspect the given `state` and determine the root of the block at the first slot of
     /// `state.current_epoch`. If there is not already some entry for the given block root, then
     /// add the effective balances from the `state` to the cache.
-    pub fn process_state<E: EthSpec>(
+    pub(crate) fn process_state<E: EthSpec>(
         &mut self,
         block_root: Hash256,
         state: &BeaconState<E>,
@@ -106,7 +106,7 @@ impl BalancesCache {
     /// Get the balances for the given `block_root`, if any.
     ///
     /// If some balances are found, they are cloned from the cache.
-    pub fn get(&mut self, block_root: Hash256, epoch: Epoch) -> Option<Vec<u64>> {
+    pub(crate) fn get(&mut self, block_root: Hash256, epoch: Epoch) -> Option<Vec<u64>> {
         let i = self.position(block_root, epoch)?;
         Some(self.items[i].balances.clone())
     }

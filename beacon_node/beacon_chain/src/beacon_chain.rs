@@ -19,7 +19,7 @@ use crate::block_verification::{
 use crate::block_verification_types::{
     AsBlock, AvailableExecutedBlock, BlockImportData, ExecutedBlock, RpcBlock,
 };
-pub use crate::canonical_head::CanonicalHead;
+pub(crate) use crate::canonical_head::CanonicalHead;
 use crate::chain_config::ChainConfig;
 use crate::custody_context::CustodyContextSsz;
 use crate::data_availability_checker::{
@@ -330,7 +330,7 @@ pub enum BlockProcessStatus<E: EthSpec> {
 
 pub type LightClientProducerEvent<T> = (Hash256, Slot, SyncAggregate<T>);
 
-pub type BeaconForkChoice<T> = ForkChoice<
+pub(crate) type BeaconForkChoice<T> = ForkChoice<
     BeaconForkChoiceStore<
         <T as BeaconChainTypes>::EthSpec,
         <T as BeaconChainTypes>::HotStore,

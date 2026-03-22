@@ -130,7 +130,7 @@ impl ValidatorRegistrations {
     ///
     /// This is done by pruning all values on/after `effective_epoch` and updating the map to store
     /// the latest validator custody requirements for the `effective_epoch`.
-    pub fn backfill_validator_custody_requirements(
+    pub(crate) fn backfill_validator_custody_requirements(
         &mut self,
         effective_epoch: Epoch,
         expected_cgc: u64,
@@ -158,7 +158,7 @@ impl ValidatorRegistrations {
     /// while setting the `cgc` at `effective_epoch` to the latest validator custody requirement.
     ///
     /// This is used to restart custody backfill sync at `effective_epoch`
-    pub fn reset_validator_custody_requirements(&mut self, effective_epoch: Epoch) {
+    pub(crate) fn reset_validator_custody_requirements(&mut self, effective_epoch: Epoch) {
         if let Some(latest_validator_custody_requirements) =
             self.latest_validator_custody_requirement()
         {

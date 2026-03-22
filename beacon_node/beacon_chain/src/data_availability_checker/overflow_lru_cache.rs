@@ -27,13 +27,13 @@ use types::{
 use vibehouse_tracing::SPAN_PENDING_COMPONENTS;
 
 #[derive(Clone)]
-pub enum CachedBlock<E: EthSpec> {
+pub(crate) enum CachedBlock<E: EthSpec> {
     PreExecution(Arc<SignedBeaconBlock<E>>, BlockImportSource),
     Executed(Box<DietAvailabilityPendingExecutedBlock<E>>),
 }
 
 impl<E: EthSpec> CachedBlock<E> {
-    pub fn get_commitments(&self) -> KzgCommitments<E> {
+    pub(crate) fn get_commitments(&self) -> KzgCommitments<E> {
         let block = self.as_block();
         block
             .message()
@@ -50,7 +50,7 @@ impl<E: EthSpec> CachedBlock<E> {
         }
     }
 
-    pub fn num_blobs_expected(&self) -> usize {
+    pub(crate) fn num_blobs_expected(&self) -> usize {
         self.as_block()
             .message()
             .body()
@@ -72,7 +72,7 @@ impl<E: EthSpec> CachedBlock<E> {
 /// Note: from this, one can immediately see that `verified_blobs` and `verified_data_columns`
 /// are mutually exclusive. i.e. If we are verifying columns to determine a block's availability
 /// we are ignoring the `verified_blobs` field.
-pub struct PendingComponents<E: EthSpec> {
+pub(crate) struct PendingComponents<E: EthSpec> {
     pub block_root: Hash256,
     pub verified_blobs: RuntimeFixedVector<Option<KzgVerifiedBlob<E>>>,
     pub verified_data_columns: Vec<KzgVerifiedCustodyDataColumn<E>>,
@@ -84,7 +84,7 @@ pub struct PendingComponents<E: EthSpec> {
 
 impl<E: EthSpec> PendingComponents<E> {
     /// Returns an immutable reference to the fixed vector of cached blobs.
-    pub fn get_cached_blobs(&self) -> &RuntimeFixedVector<Option<KzgVerifiedBlob<E>>> {
+    pub(crate) fn get_cached_blobs(&self) -> &RuntimeFixedVector<Option<KzgVerifiedBlob<E>>> {
         &self.verified_blobs
     }
 
@@ -97,7 +97,7 @@ impl<E: EthSpec> PendingComponents<E> {
     }
 
     /// Returns an immutable reference to the cached data column.
-    pub fn get_cached_data_column(
+    pub(crate) fn get_cached_data_column(
         &self,
         data_column_index: u64,
     ) -> Option<Arc<DataColumnSidecar<E>>> {
@@ -108,7 +108,9 @@ impl<E: EthSpec> PendingComponents<E> {
     }
 
     /// Returns a mutable reference to the fixed vector of cached blobs.
-    pub fn get_cached_blobs_mut(&mut self) -> &mut RuntimeFixedVector<Option<KzgVerifiedBlob<E>>> {
+    pub(crate) fn get_cached_blobs_mut(
+        &mut self,
+    ) -> &mut RuntimeFixedVector<Option<KzgVerifiedBlob<E>>> {
         &mut self.verified_blobs
     }
 
@@ -117,14 +119,14 @@ impl<E: EthSpec> PendingComponents<E> {
     /// Returns:
     /// - `true` if a blob exists at the given index.
     /// - `false` otherwise.
-    pub fn blob_exists(&self, blob_index: usize) -> bool {
+    pub(crate) fn blob_exists(&self, blob_index: usize) -> bool {
         self.get_cached_blobs()
             .get(blob_index)
             .is_some_and(std::option::Option::is_some)
     }
 
     /// Returns the indices of cached custody columns
-    pub fn get_cached_data_columns_indices(&self) -> Vec<ColumnIndex> {
+    pub(crate) fn get_cached_data_columns_indices(&self) -> Vec<ColumnIndex> {
         self.verified_data_columns
             .iter()
             .map(super::super::data_column_verification::KzgVerifiedCustodyDataColumn::index)
@@ -132,13 +134,13 @@ impl<E: EthSpec> PendingComponents<E> {
     }
 
     /// Inserts an executed block into the cache.
-    pub fn insert_executed_block(&mut self, block: DietAvailabilityPendingExecutedBlock<E>) {
+    pub(crate) fn insert_executed_block(&mut self, block: DietAvailabilityPendingExecutedBlock<E>) {
         self.block = Some(CachedBlock::Executed(Box::new(block)));
     }
 
     /// Inserts a pre-execution block into the cache.
     /// This does NOT override an existing executed block.
-    pub fn insert_pre_execution_block(
+    pub(crate) fn insert_pre_execution_block(
         &mut self,
         block: Arc<SignedBeaconBlock<E>>,
         source: BlockImportSource,
@@ -151,7 +153,7 @@ impl<E: EthSpec> PendingComponents<E> {
     /// Inserts a blob at a specific index in the cache.
     ///
     /// Existing blob at the index will be replaced.
-    pub fn insert_blob_at_index(&mut self, blob_index: usize, blob: KzgVerifiedBlob<E>) {
+    pub(crate) fn insert_blob_at_index(&mut self, blob_index: usize, blob: KzgVerifiedBlob<E>) {
         if let Some(b) = self.get_cached_blobs_mut().get_mut(blob_index) {
             *b = Some(blob);
         }
@@ -162,7 +164,7 @@ impl<E: EthSpec> PendingComponents<E> {
     /// Blobs are only inserted if:
     /// 1. The blob entry at the index is empty and no block exists.
     /// 2. The block exists and its commitment matches the blob's commitment.
-    pub fn merge_blobs(&mut self, blobs: RuntimeFixedVector<Option<KzgVerifiedBlob<E>>>) {
+    pub(crate) fn merge_blobs(&mut self, blobs: RuntimeFixedVector<Option<KzgVerifiedBlob<E>>>) {
         for (index, blob) in blobs.iter().cloned().enumerate() {
             let Some(blob) = blob else { continue };
             self.merge_single_blob(index, blob);
@@ -174,7 +176,7 @@ impl<E: EthSpec> PendingComponents<E> {
     /// Blobs are only inserted if:
     /// 1. The blob entry at the index is empty and no block exists, or
     /// 2. The block exists and its commitment matches the blob's commitment.
-    pub fn merge_single_blob(&mut self, index: usize, blob: KzgVerifiedBlob<E>) {
+    pub(crate) fn merge_single_blob(&mut self, index: usize, blob: KzgVerifiedBlob<E>) {
         if let Some(cached_block) = &self.block {
             let block_commitment_opt = cached_block.get_commitments().get(index).copied();
             if let Some(block_commitment) = block_commitment_opt
@@ -217,7 +219,7 @@ impl<E: EthSpec> PendingComponents<E> {
     /// Inserts a new block and revalidates the existing blobs against it.
     ///
     /// Blobs that don't match the new block's commitments are evicted.
-    pub fn merge_block(&mut self, block: DietAvailabilityPendingExecutedBlock<E>) {
+    pub(crate) fn merge_block(&mut self, block: DietAvailabilityPendingExecutedBlock<E>) {
         self.insert_executed_block(block);
         let reinsert = self.get_cached_blobs_mut().take();
         self.merge_blobs(reinsert);
@@ -228,7 +230,7 @@ impl<E: EthSpec> PendingComponents<E> {
     ///
     /// WARNING: This function can potentially take a lot of time if the state needs to be
     /// reconstructed from disk. Ensure you are not holding any write locks while calling this.
-    pub fn make_available<R>(
+    pub(crate) fn make_available<R>(
         &self,
         spec: &Arc<ChainSpec>,
         num_expected_columns_opt: Option<usize>,
@@ -356,7 +358,7 @@ impl<E: EthSpec> PendingComponents<E> {
     }
 
     /// Returns an empty `PendingComponents` object with the given block root.
-    pub fn empty(block_root: Hash256, max_len: usize) -> Self {
+    pub(crate) fn empty(block_root: Hash256, max_len: usize) -> Self {
         let span = debug_span!(parent: None, SPAN_PENDING_COMPONENTS, %block_root);
         let _guard = span.clone().entered();
         Self {
@@ -375,7 +377,7 @@ impl<E: EthSpec> PendingComponents<E> {
     /// - The first available blob
     /// - The first data column
     ///   Otherwise, returns None
-    pub fn epoch(&self) -> Option<Epoch> {
+    pub(crate) fn epoch(&self) -> Option<Epoch> {
         // Get epoch from cached block
         if let Some(block) = &self.block {
             return Some(block.as_block().epoch());
@@ -394,7 +396,7 @@ impl<E: EthSpec> PendingComponents<E> {
         None
     }
 
-    pub fn status_str(&self, num_expected_columns_opt: Option<usize>) -> String {
+    pub(crate) fn status_str(&self, num_expected_columns_opt: Option<usize>) -> String {
         let block_count = u8::from(self.block.is_some());
         if let Some(num_expected_columns) = num_expected_columns_opt {
             format!(
@@ -421,7 +423,7 @@ impl<E: EthSpec> PendingComponents<E> {
 
 /// This is the main struct for this module. Outside methods should
 /// interact with the cache through this.
-pub struct DataAvailabilityCheckerInner<T: BeaconChainTypes> {
+pub(crate) struct DataAvailabilityCheckerInner<T: BeaconChainTypes> {
     /// Contains all the data we keep in memory, protected by an RwLock
     critical: RwLock<LruCache<Hash256, PendingComponents<T::EthSpec>>>,
     /// This cache holds a limited number of states in memory and reconstructs them
@@ -445,7 +447,7 @@ pub(crate) enum ReconstructColumnsDecision<E: EthSpec> {
 }
 
 impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
-    pub fn new(
+    pub(crate) fn new(
         capacity: NonZeroUsize,
         beacon_store: BeaconStore<T>,
         custody_context: Arc<CustodyContext<T::EthSpec>>,
@@ -462,7 +464,10 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
     }
 
     /// Returns true if the block root is known, without altering the LRU ordering
-    pub fn get_cached_block(&self, block_root: &Hash256) -> Option<BlockProcessStatus<T::EthSpec>> {
+    pub(crate) fn get_cached_block(
+        &self,
+        block_root: &Hash256,
+    ) -> Option<BlockProcessStatus<T::EthSpec>> {
         self.critical
             .read()
             .peek(block_root)
@@ -479,7 +484,7 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
     }
 
     /// Fetch a blob from the cache without affecting the LRU ordering
-    pub fn peek_blob(
+    pub(crate) fn peek_blob(
         &self,
         blob_id: &BlobIdentifier,
     ) -> Result<Option<Arc<BlobSidecar<T::EthSpec>>>, AvailabilityCheckError> {
@@ -496,7 +501,7 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
     }
 
     /// Fetch data columns of a given `block_root` from the cache without affecting the LRU ordering
-    pub fn peek_data_columns(
+    pub(crate) fn peek_data_columns(
         &self,
         block_root: Hash256,
     ) -> Option<DataColumnSidecarList<T::EthSpec>> {
@@ -512,7 +517,10 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
             })
     }
 
-    pub fn peek_pending_components<R, F: FnOnce(Option<&PendingComponents<T::EthSpec>>) -> R>(
+    pub(crate) fn peek_pending_components<
+        R,
+        F: FnOnce(Option<&PendingComponents<T::EthSpec>>) -> R,
+    >(
         &self,
         block_root: &Hash256,
         f: F,
@@ -521,7 +529,7 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
     }
 
     /// Puts the KZG verified blobs into the availability cache as pending components.
-    pub fn put_kzg_verified_blobs<I: IntoIterator<Item = KzgVerifiedBlob<T::EthSpec>>>(
+    pub(crate) fn put_kzg_verified_blobs<I: IntoIterator<Item = KzgVerifiedBlob<T::EthSpec>>>(
         &self,
         block_root: Hash256,
         kzg_verified_blobs: I,
@@ -562,7 +570,7 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
     }
 
     #[allow(clippy::type_complexity)]
-    pub fn put_kzg_verified_data_columns<
+    pub(crate) fn put_kzg_verified_data_columns<
         I: IntoIterator<Item = KzgVerifiedCustodyDataColumn<T::EthSpec>>,
     >(
         &self,
@@ -677,7 +685,7 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
     ///
     /// If reconstruction is required, returns `PendingComponents` which contains the
     /// components to be used as inputs to reconstruction, otherwise returns a `reason`.
-    pub fn check_and_set_reconstruction_started(
+    pub(crate) fn check_and_set_reconstruction_started(
         &self,
         block_root: &Hash256,
     ) -> ReconstructColumnsDecision<T::EthSpec> {
@@ -718,7 +726,7 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
     /// This could mean some invalid data columns made it through to the `DataAvailabilityChecker`.
     /// In this case, we remove all data columns in `PendingComponents`, reset reconstruction
     /// status so that we can attempt to retrieve columns from peers again.
-    pub fn handle_reconstruction_failure(&self, block_root: &Hash256) {
+    pub(crate) fn handle_reconstruction_failure(&self, block_root: &Hash256) {
         if let Some(pending_components_mut) = self.critical.write().get_mut(block_root) {
             pending_components_mut.verified_data_columns = vec![];
             pending_components_mut.reconstruction_started = false;
@@ -728,7 +736,7 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
     /// Inserts a pre executed block into the cache.
     /// - This does NOT trigger the availability check as the block still needs to be executed.
     /// - This does NOT override an existing cached block to avoid overwriting an executed block.
-    pub fn put_pre_execution_block(
+    pub(crate) fn put_pre_execution_block(
         &self,
         block_root: Hash256,
         block: Arc<SignedBeaconBlock<T::EthSpec>>,
@@ -756,7 +764,7 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
 
     /// Removes a pre-execution block from the cache.
     /// This does NOT remove an existing executed block.
-    pub fn remove_pre_execution_block(&self, block_root: &Hash256) {
+    pub(crate) fn remove_pre_execution_block(&self, block_root: &Hash256) {
         // The read lock is immediately dropped so we can safely remove the block from the cache.
         if let Some(BlockProcessStatus::NotValidated(_, _)) = self.get_cached_block(block_root) {
             self.critical.write().pop(block_root);
@@ -765,7 +773,7 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
 
     /// Check if we have all the blobs for a block. If we do, return the Availability variant that
     /// triggers import of the block.
-    pub fn put_executed_block(
+    pub(crate) fn put_executed_block(
         &self,
         executed_block: AvailabilityPendingExecutedBlock<T::EthSpec>,
     ) -> Result<Availability<T::EthSpec>, AvailabilityCheckError> {
@@ -813,7 +821,7 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
     }
 
     /// Store verified execution proofs in the pending components cache and check availability.
-    pub fn put_execution_proofs(
+    pub(crate) fn put_execution_proofs(
         &self,
         block_root: Hash256,
         proofs: Vec<(ExecutionProofSubnetId, Arc<ExecutionProof>)>,
@@ -872,7 +880,7 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
     }
 
     /// maintain the cache
-    pub fn do_maintenance(&self, cutoff_epoch: Epoch) -> Result<(), AvailabilityCheckError> {
+    pub(crate) fn do_maintenance(&self, cutoff_epoch: Epoch) -> Result<(), AvailabilityCheckError> {
         // clean up any lingering states in the state cache
         self.state_cache.do_maintenance(cutoff_epoch);
 
@@ -901,12 +909,12 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
     }
 
     /// Number of states stored in memory in the cache.
-    pub fn state_cache_size(&self) -> usize {
+    pub(crate) fn state_cache_size(&self) -> usize {
         self.state_cache.lru_cache().read().len()
     }
 
     /// Number of pending component entries in memory in the cache.
-    pub fn block_cache_size(&self) -> usize {
+    pub(crate) fn block_cache_size(&self) -> usize {
         self.critical.read().len()
     }
 }

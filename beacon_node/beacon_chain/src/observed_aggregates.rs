@@ -223,7 +223,7 @@ struct SlotHashSet<I> {
 }
 
 impl<I> SlotHashSet<I> {
-    pub fn new(slot: Slot, initial_capacity: usize, max_capacity: usize) -> Self {
+    pub(crate) fn new(slot: Slot, initial_capacity: usize, max_capacity: usize) -> Self {
         Self {
             slot,
             map: HashMap::with_capacity(initial_capacity),
@@ -232,7 +232,7 @@ impl<I> SlotHashSet<I> {
     }
 
     /// Store the items in self so future observations recognise its existence.
-    pub fn observe_item<S: SlotData + SubsetItem<Item = I>>(
+    pub(crate) fn observe_item<S: SlotData + SubsetItem<Item = I>>(
         &mut self,
         item: S,
         root: Hash256,
@@ -278,7 +278,7 @@ impl<I> SlotHashSet<I> {
 
     /// Check if `item` is a non-strict subset of any of the already observed aggregates for
     /// the given root and slot.
-    pub fn is_known_subset<S: SlotData + SubsetItem<Item = I>>(
+    pub(crate) fn is_known_subset<S: SlotData + SubsetItem<Item = I>>(
         &self,
         item: S,
         root: Hash256,
@@ -297,7 +297,7 @@ impl<I> SlotHashSet<I> {
     }
 
     /// The number of observed items in `self`.
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.map.len()
     }
 }

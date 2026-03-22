@@ -77,17 +77,17 @@ struct Lock(Arc<AtomicBool>);
 
 impl Lock {
     /// Instantiate an unlocked self.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self(Arc::new(AtomicBool::new(false)))
     }
 
     /// Lock self, returning `true` if the lock was already set.
-    pub fn lock(&self) -> bool {
+    pub(crate) fn lock(&self) -> bool {
         self.0.fetch_or(true, Ordering::SeqCst)
     }
 
     /// Unlock self.
-    pub fn unlock(&self) {
+    pub(crate) fn unlock(&self) {
         self.0.store(false, Ordering::SeqCst);
     }
 }

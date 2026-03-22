@@ -35,11 +35,11 @@ use types::{Epoch, EthSpec, Hash256, Slot, Unsigned};
 /// at least one slot in the epoch prior to the previous epoch.
 pub(crate) const MAX_CACHED_EPOCHS: u64 = 4;
 
-pub type ObservedAttesters<E> = AutoPruningEpochContainer<EpochBitfield, E>;
-pub type ObservedSyncContributors<E> =
+pub(crate) type ObservedAttesters<E> = AutoPruningEpochContainer<EpochBitfield, E>;
+pub(crate) type ObservedSyncContributors<E> =
     AutoPruningSlotContainer<SlotSubcommitteeIndex, Hash256, SyncContributorSlotHashSet<E>, E>;
-pub type ObservedAggregators<E> = AutoPruningEpochContainer<EpochHashSet, E>;
-pub type ObservedSyncAggregators<E> =
+pub(crate) type ObservedAggregators<E> = AutoPruningEpochContainer<EpochHashSet, E>;
+pub(crate) type ObservedSyncAggregators<E> =
     AutoPruningSlotContainer<SlotSubcommitteeIndex, (), SyncAggregatorSlotHashSet, E>;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -177,7 +177,7 @@ impl Item<()> for EpochHashSet {
 
 /// Stores a `HashSet` of which validator indices have created a sync aggregate during a
 /// slot.
-pub struct SyncContributorSlotHashSet<E> {
+pub(crate) struct SyncContributorSlotHashSet<E> {
     map: HashMap<usize, Hash256>,
     phantom: PhantomData<E>,
 }
@@ -219,7 +219,7 @@ impl<E: EthSpec> Item<Hash256> for SyncContributorSlotHashSet<E> {
 
 /// Stores a `HashSet` of which validator indices have created a sync aggregate during a
 /// slot.
-pub struct SyncAggregatorSlotHashSet {
+pub(crate) struct SyncAggregatorSlotHashSet {
     set: HashSet<usize>,
 }
 
@@ -407,7 +407,7 @@ impl<T: Item<()>, E: EthSpec> AutoPruningEpochContainer<T, E> {
 /// sync contributions with an epoch prior to `data.slot - 3` will be cleared from the cache.
 ///
 /// `V` should be set to a `SyncAggregatorSlotHashSet` or a `SyncContributorSlotHashSet`.
-pub struct AutoPruningSlotContainer<K: SlotData + Eq + Hash, S, V, E: EthSpec> {
+pub(crate) struct AutoPruningSlotContainer<K: SlotData + Eq + Hash, S, V, E: EthSpec> {
     lowest_permissible_slot: Slot,
     items: HashMap<K, V>,
     _phantom_e: PhantomData<E>,
@@ -441,7 +441,7 @@ impl<K: SlotData + Eq + Hash + Copy, S, V: Item<S>, E: EthSpec>
     /// Alternatively, it returns `None` if:
     /// - An observation did not already exist for the given validator, OR,
     /// - The `override_observation` function returned `true`.
-    pub fn observe_validator_with_override<F>(
+    pub(crate) fn observe_validator_with_override<F>(
         &mut self,
         key: K,
         validator_index: usize,
@@ -471,7 +471,7 @@ impl<K: SlotData + Eq + Hash + Copy, S, V: Item<S>, E: EthSpec>
     ///
     /// - `validator_index` is higher than `VALIDATOR_REGISTRY_LIMIT`.
     /// - `key.slot` is earlier than `self.lowest_permissible_slot`.
-    pub fn observe_validator(
+    pub(crate) fn observe_validator(
         &mut self,
         key: K,
         validator_index: usize,
@@ -509,7 +509,7 @@ impl<K: SlotData + Eq + Hash + Copy, S, V: Item<S>, E: EthSpec>
     // Identical to `Self::observation_for_validator` but discards the
     // observation, simply returning `true` if the validator has been observed
     // at all.
-    pub fn validator_has_been_observed(
+    pub(crate) fn validator_has_been_observed(
         &self,
         key: K,
         validator_index: usize,
@@ -525,7 +525,7 @@ impl<K: SlotData + Eq + Hash + Copy, S, V: Item<S>, E: EthSpec>
     ///
     /// - `validator_index` is higher than `VALIDATOR_REGISTRY_LIMIT`.
     /// - `key.slot` is earlier than `self.lowest_permissible_slot`.
-    pub fn observation_for_validator(
+    pub(crate) fn observation_for_validator(
         &self,
         key: K,
         validator_index: usize,
@@ -542,7 +542,7 @@ impl<K: SlotData + Eq + Hash + Copy, S, V: Item<S>, E: EthSpec>
 
     /// Returns the number of validators that have been observed at the given `slot`. Returns
     /// `None` if `self` does not have a cache for that slot.
-    pub fn observed_validator_count(&self, key: K) -> Option<usize> {
+    pub(crate) fn observed_validator_count(&self, key: K) -> Option<usize> {
         self.items.get(&key).map(Item::validator_count)
     }
 
@@ -574,7 +574,7 @@ impl<K: SlotData + Eq + Hash + Copy, S, V: Item<S>, E: EthSpec>
     ///
     /// Also sets `self.lowest_permissible_slot` with relation to `current_slot` and
     /// `Self::max_capacity`.
-    pub fn prune(&mut self, current_slot: Slot) {
+    pub(crate) fn prune(&mut self, current_slot: Slot) {
         let lowest_permissible_slot =
             current_slot.saturating_sub(self.max_capacity().saturating_sub(1));
 
@@ -594,7 +594,7 @@ impl<K: SlotData + Eq + Hash + Copy, S, V: Item<S>, E: EthSpec>
 /// `subcommittee_index` because it is possible that a validator can aggregate for multiple
 /// subcommittees in the same slot.
 #[derive(Eq, PartialEq, Hash, Clone, Copy, PartialOrd, Ord, Debug)]
-pub struct SlotSubcommitteeIndex {
+pub(crate) struct SlotSubcommitteeIndex {
     slot: Slot,
     subcommittee_index: u64,
 }
@@ -606,7 +606,7 @@ impl SlotData for SlotSubcommitteeIndex {
 }
 
 impl SlotSubcommitteeIndex {
-    pub fn new(slot: Slot, subcommittee_index: u64) -> Self {
+    pub(crate) fn new(slot: Slot, subcommittee_index: u64) -> Self {
         Self {
             slot,
             subcommittee_index,

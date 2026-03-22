@@ -16,7 +16,7 @@ use types::{BeaconState, BlindedPayload, ChainSpec, Epoch, EthSpec, Hash256, Sig
 /// that it is much smaller because it contains only a state root instead of
 /// a full `BeaconState`.
 #[derive(Clone)]
-pub struct DietAvailabilityPendingExecutedBlock<E: EthSpec> {
+pub(crate) struct DietAvailabilityPendingExecutedBlock<E: EthSpec> {
     block: Arc<SignedBeaconBlock<E>>,
     state_root: Hash256,
     parent_block: SignedBeaconBlock<E, BlindedPayload<E>>,
@@ -26,15 +26,15 @@ pub struct DietAvailabilityPendingExecutedBlock<E: EthSpec> {
 
 /// just implementing the same methods as `AvailabilityPendingExecutedBlock`
 impl<E: EthSpec> DietAvailabilityPendingExecutedBlock<E> {
-    pub fn as_block(&self) -> &SignedBeaconBlock<E> {
+    pub(crate) fn as_block(&self) -> &SignedBeaconBlock<E> {
         &self.block
     }
 
-    pub fn block_cloned(&self) -> Arc<SignedBeaconBlock<E>> {
+    pub(crate) fn block_cloned(&self) -> Arc<SignedBeaconBlock<E>> {
         self.block.clone()
     }
 
-    pub fn num_blobs_expected(&self) -> usize {
+    pub(crate) fn num_blobs_expected(&self) -> usize {
         self.block
             .message()
             .body()
@@ -43,7 +43,7 @@ impl<E: EthSpec> DietAvailabilityPendingExecutedBlock<E> {
     }
 
     /// Returns the epoch corresponding to `self.slot()`.
-    pub fn epoch(&self) -> Epoch {
+    pub(crate) fn epoch(&self) -> Epoch {
         self.block.slot().epoch(E::slots_per_epoch())
     }
 }
@@ -56,14 +56,14 @@ impl<E: EthSpec> DietAvailabilityPendingExecutedBlock<E> {
 /// has already been imported into ForkChoice. If this is not the case, the cache
 /// will fail to recover the state when the cache overflows because it can't load
 /// the parent state!
-pub struct StateLRUCache<T: BeaconChainTypes> {
+pub(crate) struct StateLRUCache<T: BeaconChainTypes> {
     states: RwLock<LruCache<Hash256, BeaconState<T::EthSpec>>>,
     store: BeaconStore<T>,
     spec: Arc<ChainSpec>,
 }
 
 impl<T: BeaconChainTypes> StateLRUCache<T> {
-    pub fn new(store: BeaconStore<T>, spec: Arc<ChainSpec>) -> Self {
+    pub(crate) fn new(store: BeaconStore<T>, spec: Arc<ChainSpec>) -> Self {
         Self {
             states: RwLock::new(LruCache::new(STATE_LRU_CAPACITY_NON_ZERO)),
             store,
@@ -74,7 +74,7 @@ impl<T: BeaconChainTypes> StateLRUCache<T> {
     /// This will store the state in the LRU cache and return a
     /// `DietAvailabilityPendingExecutedBlock` which is much cheaper to
     /// keep around in memory.
-    pub fn register_pending_executed_block(
+    pub(crate) fn register_pending_executed_block(
         &self,
         executed_block: AvailabilityPendingExecutedBlock<T::EthSpec>,
     ) -> DietAvailabilityPendingExecutedBlock<T::EthSpec> {
@@ -98,7 +98,7 @@ impl<T: BeaconChainTypes> StateLRUCache<T> {
     /// it will reconstruct the state by loading the parent state from disk and
     /// replaying the block.
     #[instrument(skip_all, parent = span, level = "debug")]
-    pub fn recover_pending_executed_block(
+    pub(crate) fn recover_pending_executed_block(
         &self,
         diet_executed_block: DietAvailabilityPendingExecutedBlock<T::EthSpec>,
         span: &Span,
@@ -209,12 +209,12 @@ impl<T: BeaconChainTypes> StateLRUCache<T> {
     }
 
     /// returns the state cache for inspection
-    pub fn lru_cache(&self) -> &RwLock<LruCache<Hash256, BeaconState<T::EthSpec>>> {
+    pub(crate) fn lru_cache(&self) -> &RwLock<LruCache<Hash256, BeaconState<T::EthSpec>>> {
         &self.states
     }
 
     /// remove any states from the cache from before the given epoch
-    pub fn do_maintenance(&self, cutoff_epoch: Epoch) {
+    pub(crate) fn do_maintenance(&self, cutoff_epoch: Epoch) {
         let mut write_lock = self.states.write();
         while let Some((_, state)) = write_lock.peek_lru() {
             if state.slot().epoch(T::EthSpec::slots_per_epoch()) < cutoff_epoch {

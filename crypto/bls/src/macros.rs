@@ -128,7 +128,7 @@ macro_rules! impl_serde_deserialize {
         where
             D: Deserializer<'de>,
         {
-            pub struct StringVisitor;
+            struct StringVisitor;
 
             impl<'de> serde::de::Visitor<'de> for StringVisitor {
                 type Value = String;

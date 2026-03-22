@@ -11,7 +11,7 @@ use types::{
     DataColumnSidecarList, Epoch, EthSpec, Hash256, SignedBeaconBlock, Slot,
 };
 
-pub struct CacheItem<E: EthSpec> {
+pub(crate) struct CacheItem<E: EthSpec> {
     /*
      * Values used to create attestations.
      */

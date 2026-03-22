@@ -103,7 +103,7 @@ use types::{
     data_column_sidecar::DataColumnSidecarError,
 };
 
-pub const POS_PANDA_BANNER: &str = r#"
+pub(crate) const POS_PANDA_BANNER: &str = r#"
     ,,,         ,,,                                               ,,,         ,,,
   ;"   ^;     ;'   ",                                           ;"   ^;     ;'   ",
   ;    s$$$$$$$s     ;                                          ;    s$$$$$$$s     ;
@@ -719,7 +719,7 @@ pub struct GossipVerifiedBlock<T: BeaconChainTypes> {
 
 /// A wrapper around a `SignedBeaconBlock` that indicates that all signatures (except the deposit
 /// signatures) have been verified.
-pub struct SignatureVerifiedBlock<T: BeaconChainTypes> {
+pub(crate) struct SignatureVerifiedBlock<T: BeaconChainTypes> {
     block: MaybeAvailableBlock<T::EthSpec>,
     block_root: Hash256,
     parent: Option<PreProcessingSnapshot<T::EthSpec>>,
@@ -1147,7 +1147,7 @@ impl<T: BeaconChainTypes> SignatureVerifiedBlock<T> {
     /// signatures) are valid  (i.e., signed by the correct public keys).
     ///
     /// Returns an error if the block is invalid, or if the block was unable to be verified.
-    pub fn new(
+    pub(crate) fn new(
         block: MaybeAvailableBlock<T::EthSpec>,
         block_root: Hash256,
         chain: &BeaconChain<T>,
@@ -1211,7 +1211,7 @@ impl<T: BeaconChainTypes> SignatureVerifiedBlock<T> {
     }
 
     /// As for `new` above but producing `BlockSlashInfo`.
-    pub fn check_slashable(
+    pub(crate) fn check_slashable(
         block: MaybeAvailableBlock<T::EthSpec>,
         block_root: Hash256,
         chain: &BeaconChain<T>,
@@ -1224,7 +1224,7 @@ impl<T: BeaconChainTypes> SignatureVerifiedBlock<T> {
     /// Finishes signature verification on the provided `GossipVerifedBlock`. Does not re-verify
     /// the proposer signature.
     #[instrument(skip_all, level = "debug")]
-    pub fn from_gossip_verified_block(
+    pub(crate) fn from_gossip_verified_block(
         from: GossipVerifiedBlock<T>,
         chain: &BeaconChain<T>,
     ) -> Result<Self, BlockError> {
@@ -1282,7 +1282,7 @@ impl<T: BeaconChainTypes> SignatureVerifiedBlock<T> {
     }
 
     /// Same as `from_gossip_verified_block` but producing slashing-relevant data as well.
-    pub fn from_gossip_verified_block_check_slashable(
+    pub(crate) fn from_gossip_verified_block_check_slashable(
         from: GossipVerifiedBlock<T>,
         chain: &BeaconChain<T>,
     ) -> Result<Self, BlockSlashInfo<BlockError>> {
@@ -1291,11 +1291,11 @@ impl<T: BeaconChainTypes> SignatureVerifiedBlock<T> {
             .map_err(|e| BlockSlashInfo::from_early_error_block(header, e))
     }
 
-    pub fn block_root(&self) -> Hash256 {
+    pub(crate) fn block_root(&self) -> Hash256 {
         self.block_root
     }
 
-    pub fn slot(&self) -> Slot {
+    pub(crate) fn slot(&self) -> Slot {
         self.block.slot()
     }
 }
@@ -1888,7 +1888,7 @@ pub fn get_block_root<E: EthSpec>(block: &SignedBeaconBlock<E>) -> Hash256 {
 /// Returns the canonical root of the given `block_header`.
 ///
 /// Use this function to ensure that we report the block hashing time Prometheus metric.
-pub fn get_block_header_root(block_header: &SignedBeaconBlockHeader) -> Hash256 {
+pub(crate) fn get_block_header_root(block_header: &SignedBeaconBlockHeader) -> Hash256 {
     let block_root_timer = metrics::start_timer(&metrics::BLOCK_HEADER_PROCESSING_BLOCK_ROOT);
 
     let block_root = block_header.message.canonical_root();
@@ -2150,7 +2150,9 @@ fn load_parent<T: BeaconChainTypes, B: AsBlock<T::EthSpec>>(
 }
 
 /// This trait is used to unify `BlockError` and `GossipBlobError`.
-pub trait BlockBlobError: From<BeaconStateError> + From<BeaconChainError> + Debug {
+pub(crate) trait BlockBlobError:
+    From<BeaconStateError> + From<BeaconChainError> + Debug
+{
     fn not_later_than_parent_error(block_slot: Slot, state_slot: Slot) -> Self;
     fn unknown_validator_error(validator_index: u64) -> Self;
     fn proposer_signature_invalid() -> Self;

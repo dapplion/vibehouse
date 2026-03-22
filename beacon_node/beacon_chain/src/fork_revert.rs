@@ -22,7 +22,7 @@ const CORRUPT_DB_MESSAGE: &str = "The database could be corrupt. Check its file 
 /// forever.
 ///
 /// Return the `(head_block_root, head_block)` that should be used post-reversion.
-pub fn revert_to_fork_boundary<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
+pub(crate) fn revert_to_fork_boundary<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
     current_slot: Slot,
     head_block_root: Hash256,
     store: Arc<HotColdDB<E, Hot, Cold>>,
@@ -85,7 +85,11 @@ pub fn revert_to_fork_boundary<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>
 /// WARNING: this function is destructive and causes fork choice to permanently forget all
 /// chains other than the chain leading to `head_block_root`. It should only be used in extreme
 /// circumstances when there is no better alternative.
-pub fn reset_fork_choice_to_finalization<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
+pub(crate) fn reset_fork_choice_to_finalization<
+    E: EthSpec,
+    Hot: ItemStore<E>,
+    Cold: ItemStore<E>,
+>(
     head_block_root: Hash256,
     head_state: &BeaconState<E>,
     store: Arc<HotColdDB<E, Hot, Cold>>,

@@ -4,7 +4,7 @@ use store::HotStateSummary;
 use types::{Hash256, Slot};
 
 #[derive(Debug, Clone, Copy)]
-pub struct DAGStateSummary {
+pub(crate) struct DAGStateSummary {
     pub slot: Slot,
     pub latest_block_root: Hash256,
     pub latest_block_slot: Slot,
@@ -21,7 +21,7 @@ pub struct DAGStateSummaryV22 {
 }
 
 #[derive(Debug)]
-pub struct StateSummariesDAG {
+pub(crate) struct StateSummariesDAG {
     // state_root -> state_summary
     state_summaries_by_state_root: HashMap<Hash256, DAGStateSummary>,
     // block_root -> state slot -> (state_root, state summary)
@@ -66,7 +66,7 @@ pub enum Error {
 }
 
 impl StateSummariesDAG {
-    pub fn new(state_summaries: Vec<(Hash256, DAGStateSummary)>) -> Result<Self, Error> {
+    pub(crate) fn new(state_summaries: Vec<(Hash256, DAGStateSummary)>) -> Result<Self, Error> {
         // Group them by latest block root, and sorted state slot
         let mut state_summaries_by_state_root = HashMap::new();
         let mut state_summaries_by_block_root = HashMap::<_, BTreeMap<_, _>>::new();
@@ -193,7 +193,7 @@ impl StateSummariesDAG {
     }
 
     // Returns all non-unique latest block roots of a given set of states
-    pub fn blocks_of_states<'a, I: Iterator<Item = &'a Hash256>>(
+    pub(crate) fn blocks_of_states<'a, I: Iterator<Item = &'a Hash256>>(
         &self,
         state_roots: I,
     ) -> Result<Vec<(Hash256, Slot)>, Error> {
@@ -209,7 +209,7 @@ impl StateSummariesDAG {
     }
 
     // Returns all unique latest blocks of this DAG's summaries
-    pub fn iter_blocks(&self) -> impl Iterator<Item = (Hash256, Slot)> + '_ {
+    pub(crate) fn iter_blocks(&self) -> impl Iterator<Item = (Hash256, Slot)> + '_ {
         self.state_summaries_by_state_root
             .values()
             .map(|summary| (summary.latest_block_root, summary.latest_block_slot))
@@ -217,7 +217,7 @@ impl StateSummariesDAG {
     }
 
     /// Returns a vec of state summaries that have an unknown parent when forming the DAG tree
-    pub fn tree_roots(&self) -> Vec<(Hash256, DAGStateSummary)> {
+    pub(crate) fn tree_roots(&self) -> Vec<(Hash256, DAGStateSummary)> {
         self.state_summaries_by_state_root
             .iter()
             .filter_map(|(state_root, summary)| {
@@ -234,14 +234,16 @@ impl StateSummariesDAG {
             .collect()
     }
 
-    pub fn summaries_count(&self) -> usize {
+    pub(crate) fn summaries_count(&self) -> usize {
         self.state_summaries_by_block_root
             .values()
             .map(std::collections::BTreeMap::len)
             .sum()
     }
 
-    pub fn summaries_by_slot_ascending(&self) -> BTreeMap<Slot, Vec<(Hash256, DAGStateSummary)>> {
+    pub(crate) fn summaries_by_slot_ascending(
+        &self,
+    ) -> BTreeMap<Slot, Vec<(Hash256, DAGStateSummary)>> {
         let mut summaries = BTreeMap::<Slot, Vec<_>>::new();
         for (state_root, summary) in &self.state_summaries_by_state_root {
             summaries
@@ -313,7 +315,10 @@ impl StateSummariesDAG {
 
     /// Returns all ancestors of `state_root` INCLUDING `state_root` until the next parent is not
     /// known.
-    pub fn ancestors_of(&self, mut state_root: Hash256) -> Result<Vec<(Hash256, Slot)>, Error> {
+    pub(crate) fn ancestors_of(
+        &self,
+        mut state_root: Hash256,
+    ) -> Result<Vec<(Hash256, Slot)>, Error> {
         // Sanity check that the first summary exists
         if !self.state_summaries_by_state_root.contains_key(&state_root) {
             return Err(Error::MissingStateSummary(state_root));
@@ -345,7 +350,7 @@ impl StateSummariesDAG {
     }
 
     /// Returns of the descendant state summaries roots given an initiail state root.
-    pub fn descendants_of(&self, query_state_root: &Hash256) -> Result<Vec<Hash256>, Error> {
+    pub(crate) fn descendants_of(&self, query_state_root: &Hash256) -> Result<Vec<Hash256>, Error> {
         let mut descendants = vec![];
         for child_root in self
             .child_state_roots

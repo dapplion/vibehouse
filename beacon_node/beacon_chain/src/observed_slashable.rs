@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 use types::{EthSpec, Hash256, Slot, Unsigned};
 
 #[derive(Eq, Hash, PartialEq, Debug, Default)]
-pub struct ProposalKey {
+pub(crate) struct ProposalKey {
     pub slot: Slot,
     pub proposer: u64,
 }

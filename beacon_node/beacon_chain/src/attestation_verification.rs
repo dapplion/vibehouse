@@ -495,7 +495,7 @@ fn process_slash_info<T: BeaconChainTypes>(
 impl<'a, T: BeaconChainTypes> IndexedAggregatedAttestation<'a, T> {
     /// Returns `Ok(Self)` if the `signed_aggregate` is valid to be (re)published on the gossip
     /// network.
-    pub fn verify(
+    pub(crate) fn verify(
         signed_aggregate: &'a SignedAggregateAndProof<T::EthSpec>,
         chain: &BeaconChain<T>,
     ) -> Result<Self, Error> {
@@ -627,7 +627,7 @@ impl<'a, T: BeaconChainTypes> IndexedAggregatedAttestation<'a, T> {
     }
 
     /// Verify the attestation, producing extra information about whether it might be slashable.
-    pub fn verify_slashable(
+    pub(crate) fn verify_slashable(
         signed_aggregate: &'a SignedAggregateAndProof<T::EthSpec>,
         chain: &BeaconChain<T>,
     ) -> Result<Self, AttestationSlashInfo<'a, T, Error>> {
@@ -859,7 +859,7 @@ impl<'a, T: BeaconChainTypes> VerifiedAggregatedAttestation<'a, T> {
 
 impl<'a, T: BeaconChainTypes> IndexedUnaggregatedAttestation<'a, T> {
     /// Run the checks that happen before an indexed attestation is constructed.
-    pub fn verify_early_checks(
+    pub(crate) fn verify_early_checks(
         attestation: &'a SingleAttestation,
         chain: &BeaconChain<T>,
     ) -> Result<(), Error> {
@@ -938,7 +938,7 @@ impl<'a, T: BeaconChainTypes> IndexedUnaggregatedAttestation<'a, T> {
     }
 
     /// Run the checks that apply to the indexed attestation before the signature is checked.
-    pub fn verify_middle_checks(
+    pub(crate) fn verify_middle_checks(
         attestation: &'a SingleAttestation,
         chain: &BeaconChain<T>,
     ) -> Result<u64, Error> {
@@ -968,7 +968,7 @@ impl<'a, T: BeaconChainTypes> IndexedUnaggregatedAttestation<'a, T> {
     ///
     /// `subnet_id` is the subnet from which we received this attestation. This function will
     /// verify that it was received on the correct subnet.
-    pub fn verify(
+    pub(crate) fn verify(
         attestation: &'a SingleAttestation,
         subnet_id: Option<SubnetId>,
         chain: &BeaconChain<T>,
@@ -983,7 +983,7 @@ impl<'a, T: BeaconChainTypes> IndexedUnaggregatedAttestation<'a, T> {
     }
 
     /// Verify the attestation, producing extra information about whether it might be slashable.
-    pub fn verify_slashable(
+    pub(crate) fn verify_slashable(
         attestation: &'a SingleAttestation,
         subnet_id: Option<SubnetId>,
         chain: &BeaconChain<T>,
@@ -1017,7 +1017,7 @@ impl<'a, T: BeaconChainTypes> IndexedUnaggregatedAttestation<'a, T> {
     ///
     /// Only use during testing since modifying the `IndexedAttestation` can cause the attestation
     /// to no-longer be valid.
-    pub fn __indexed_attestation_mut(&mut self) -> &mut IndexedAttestation<T::EthSpec> {
+    pub(crate) fn __indexed_attestation_mut(&mut self) -> &mut IndexedAttestation<T::EthSpec> {
         &mut self.indexed_attestation
     }
 }

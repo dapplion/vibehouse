@@ -6,7 +6,7 @@ use types::{
 
 /// Build an `Attestation` from a `SingleAttestation` using pre-computed aggregation bit position
 /// and committee length, avoiding a full committee Vec allocation.
-pub fn build_attestation_from_single<E: EthSpec>(
+pub(crate) fn build_attestation_from_single<E: EthSpec>(
     single_attestation: &SingleAttestation,
     aggregation_bit: usize,
     committee_len: usize,
