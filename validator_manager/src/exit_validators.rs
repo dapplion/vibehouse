@@ -376,7 +376,7 @@ mod test {
                     let keystore = KeystoreBuilder::new(
                         &self.beacon_node.harness.validator_keypairs[index],
                         "password".as_bytes(),
-                        "".into(),
+                        String::new(),
                     )
                     .unwrap()
                     .build()

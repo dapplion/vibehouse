@@ -644,7 +644,7 @@ async fn ptc_duties_rejected_before_gloas_scheduled() {
             msg.message
         );
     } else {
-        panic!("expected ServerMessage error, got: {:?}", result);
+        panic!("expected ServerMessage error, got: {result:?}");
     }
 }
 
@@ -686,8 +686,7 @@ async fn ptc_duties_returns_duties_after_gloas() {
     // minimal preset, we should get some duties.
     assert!(
         !duties.is_empty(),
-        "PTC duties should not be empty for {} validators",
-        validator_count
+        "PTC duties should not be empty for {validator_count} validators"
     );
 
     // All returned duties should have valid validator indices
@@ -1235,7 +1234,7 @@ async fn post_execution_payload_envelope_valid_self_build() {
             );
         }
         Err(e) => {
-            panic!("unexpected error type: {:?}", e);
+            panic!("unexpected error type: {e:?}");
         }
     }
 }
@@ -2085,8 +2084,7 @@ async fn proposer_lookahead_returns_data_gloas() {
     for &proposer_index in lookahead {
         assert!(
             proposer_index < validator_count as u64,
-            "proposer_index {} out of range",
-            proposer_index
+            "proposer_index {proposer_index} out of range"
         );
     }
 }
@@ -2693,7 +2691,7 @@ async fn post_proposer_preferences_rejected_before_gloas() {
             msg.message
         );
     } else {
-        panic!("expected ServerMessage error, got: {:?}", result);
+        panic!("expected ServerMessage error, got: {result:?}");
     }
 }
 
@@ -2763,7 +2761,7 @@ async fn post_proposer_preferences_invalid_signature() {
             msg.message
         );
     } else {
-        panic!("expected ServerMessage error, got: {:?}", result);
+        panic!("expected ServerMessage error, got: {result:?}");
     }
 }
 
@@ -2797,7 +2795,7 @@ async fn post_proposer_preferences_unknown_validator() {
             msg.message
         );
     } else {
-        panic!("expected ServerMessage error, got: {:?}", result);
+        panic!("expected ServerMessage error, got: {result:?}");
     }
 }
 
@@ -3736,7 +3734,7 @@ async fn post_execution_proof_empty_data_rejected() {
             msg.message
         );
     } else {
-        panic!("expected ServerMessage error, got: {:?}", result);
+        panic!("expected ServerMessage error, got: {result:?}");
     }
 }
 
@@ -3841,7 +3839,7 @@ async fn bid_submission_rejected_invalid_signature() {
             msg.message
         );
     } else {
-        panic!("expected ServerMessage error, got: {:?}", result);
+        panic!("expected ServerMessage error, got: {result:?}");
     }
 }
 
@@ -3909,7 +3907,7 @@ async fn bid_submission_rejected_inactive_builder() {
             msg.message
         );
     } else {
-        panic!("expected ServerMessage error, got: {:?}", result);
+        panic!("expected ServerMessage error, got: {result:?}");
     }
 }
 
@@ -4002,7 +4000,7 @@ async fn bid_submission_rejected_insufficient_balance() {
             msg.message
         );
     } else {
-        panic!("expected ServerMessage error, got: {:?}", result);
+        panic!("expected ServerMessage error, got: {result:?}");
     }
 }
 
@@ -4096,7 +4094,7 @@ async fn bid_submission_rejected_fee_recipient_mismatch() {
             msg.message
         );
     } else {
-        panic!("expected ServerMessage error, got: {:?}", result);
+        panic!("expected ServerMessage error, got: {result:?}");
     }
 }
 
@@ -4190,7 +4188,7 @@ async fn bid_submission_rejected_gas_limit_mismatch() {
             msg.message
         );
     } else {
-        panic!("expected ServerMessage error, got: {:?}", result);
+        panic!("expected ServerMessage error, got: {result:?}");
     }
 }
 
@@ -4309,7 +4307,7 @@ async fn bid_submission_rejected_not_highest_value() {
             msg.message
         );
     } else {
-        panic!("expected ServerMessage error, got: {:?}", result);
+        panic!("expected ServerMessage error, got: {result:?}");
     }
 }
 
@@ -4369,7 +4367,7 @@ async fn bid_submission_rejected_slot_not_current_or_next() {
             msg.message
         );
     } else {
-        panic!("expected ServerMessage error, got: {:?}", result);
+        panic!("expected ServerMessage error, got: {result:?}");
     }
 }
 
@@ -4428,7 +4426,7 @@ async fn bid_submission_rejected_invalid_parent_root() {
             msg.message
         );
     } else {
-        panic!("expected ServerMessage error, got: {:?}", result);
+        panic!("expected ServerMessage error, got: {result:?}");
     }
 }
 
@@ -4488,7 +4486,7 @@ async fn bid_submission_rejected_unknown_parent_block_hash() {
             msg.message
         );
     } else {
-        panic!("expected ServerMessage error, got: {:?}", result);
+        panic!("expected ServerMessage error, got: {result:?}");
     }
 }
 
@@ -4545,7 +4543,7 @@ async fn bid_submission_rejected_proposer_preferences_not_seen() {
             msg.message
         );
     } else {
-        panic!("expected ServerMessage error, got: {:?}", result);
+        panic!("expected ServerMessage error, got: {result:?}");
     }
 }
 
@@ -4660,7 +4658,7 @@ async fn bid_submission_rejected_builder_equivocation() {
             msg.message
         );
     } else {
-        panic!("expected ServerMessage error, got: {:?}", result);
+        panic!("expected ServerMessage error, got: {result:?}");
     }
 }
 
@@ -4696,6 +4694,6 @@ async fn post_execution_proof_unknown_block_root_rejected() {
             msg.message
         );
     } else {
-        panic!("expected ServerMessage error, got: {:?}", result);
+        panic!("expected ServerMessage error, got: {result:?}");
     }
 }

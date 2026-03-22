@@ -406,7 +406,7 @@ mod tests {
 
     fn create_and_save_keystore(dir: &TempDir, save_password: bool) -> PublicKey {
         let keypair = Keypair::random();
-        let keystore = KeystoreBuilder::new(&keypair, PASSWORD.as_bytes(), "".into())
+        let keystore = KeystoreBuilder::new(&keypair, PASSWORD.as_bytes(), String::new())
             .unwrap()
             .build()
             .unwrap();

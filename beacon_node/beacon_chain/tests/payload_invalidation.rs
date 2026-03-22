@@ -328,7 +328,7 @@ impl InvalidPayloadRig {
                 {
                     Err(error) if evaluate_error(&error) => (),
                     Err(other) => {
-                        panic!("evaluate_error returned false with {:?}", other)
+                        panic!("evaluate_error returned false with {other:?}")
                     }
                     Ok(_) => {
                         // An invalid payload should only be imported initially if its status when
@@ -385,7 +385,7 @@ impl InvalidPayloadRig {
             .get_head(self.harness.chain.slot().unwrap(), &self.harness.chain.spec)
         {
             Err(ForkChoiceError::ProtoArrayStringError(e)) if e.contains(s) => (),
-            other => panic!("expected {} error, got {:?}", s, other),
+            other => panic!("expected {s} error, got {other:?}"),
         };
     }
 }

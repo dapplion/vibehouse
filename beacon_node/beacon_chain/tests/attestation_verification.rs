@@ -442,10 +442,7 @@ impl GossipTester {
             .verify_aggregated_attestation_for_gossip(&aggregate)
             .err()
             .unwrap_or_else(|| {
-                panic!(
-                    "{} should error during verify_aggregated_attestation_for_gossip",
-                    desc
-                )
+                panic!("{desc} should error during verify_aggregated_attestation_for_gossip")
             });
         inspect_err(&self, err);
 
@@ -462,10 +459,7 @@ impl GossipTester {
 
         assert_eq!(results.len(), 2);
         let batch_err = results.pop().unwrap().err().unwrap_or_else(|| {
-            panic!(
-                "{} should error during batch_verify_aggregated_attestations_for_gossip",
-                desc
-            )
+            panic!("{desc} should error during batch_verify_aggregated_attestations_for_gossip")
         });
         inspect_err(&self, batch_err);
 
@@ -495,10 +489,7 @@ impl GossipTester {
             .verify_unaggregated_attestation_for_gossip(&attn, Some(subnet_id))
             .err()
             .unwrap_or_else(|| {
-                panic!(
-                    "{} should error during verify_unaggregated_attestation_for_gossip",
-                    desc
-                )
+                panic!("{desc} should error during verify_unaggregated_attestation_for_gossip")
             });
         inspect_err(&self, err);
 
@@ -518,10 +509,7 @@ impl GossipTester {
             .unwrap();
         assert_eq!(results.len(), 2);
         let batch_err = results.pop().unwrap().err().unwrap_or_else(|| {
-            panic!(
-                "{} should error during batch_verify_unaggregated_attestations_for_gossip",
-                desc
-            )
+            panic!("{desc} should error during batch_verify_unaggregated_attestations_for_gossip")
         });
         inspect_err(&self, batch_err);
 

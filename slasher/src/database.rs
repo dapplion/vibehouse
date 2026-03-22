@@ -847,6 +847,7 @@ impl<E: EthSpec> SlasherDB<E> {
         txn.commit()
     }
 
+    #[allow(clippy::unused_self)]
     fn reset_db(&self, txn: &mut RwTransaction<'_>, db: &Database<'static>) -> Result<(), Error> {
         let mut cursor = txn.cursor(db)?;
         if cursor.first_key()?.is_none() {

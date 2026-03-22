@@ -15,7 +15,7 @@ const BAD_PASSWORD: &[u8] = &[43, 43, 43];
 #[test]
 fn empty_password() {
     assert_eq!(
-        KeystoreBuilder::new(&Keypair::random(), "".as_bytes(), "".into())
+        KeystoreBuilder::new(&Keypair::random(), "".as_bytes(), String::new())
             .err()
             .unwrap(),
         Error::EmptyPassword
@@ -26,7 +26,7 @@ fn empty_password() {
 fn string_round_trip() {
     let keypair = Keypair::random();
 
-    let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, "".into())
+    let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, String::new())
         .unwrap()
         .build()
         .unwrap();
@@ -53,7 +53,7 @@ fn file() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("keystore.json");
 
-    let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, "".into())
+    let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, String::new())
         .unwrap()
         .build()
         .unwrap();
@@ -83,7 +83,7 @@ fn scrypt_params() {
     let keypair = Keypair::random();
     let salt = vec![42; 32];
 
-    let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, "".into())
+    let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, String::new())
         .unwrap()
         .build()
         .unwrap();
@@ -108,7 +108,7 @@ fn scrypt_params() {
         r: 8,
         salt: salt.clone().into(),
     });
-    let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, "".into())
+    let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, String::new())
         .unwrap()
         .kdf(my_kdf.clone())
         .build();
@@ -122,7 +122,7 @@ fn scrypt_params() {
         r: 8,
         salt: salt.clone().into(),
     });
-    let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, "".into())
+    let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, String::new())
         .unwrap()
         .kdf(my_kdf.clone())
         .build();
@@ -136,7 +136,7 @@ fn scrypt_params() {
         r: 0,
         salt: salt.clone().into(),
     });
-    let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, "".into())
+    let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, String::new())
         .unwrap()
         .kdf(my_kdf.clone())
         .build();
@@ -150,7 +150,7 @@ fn scrypt_params() {
         r: 1 << 31,
         salt: salt.clone().into(),
     });
-    let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, "".into())
+    let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, String::new())
         .unwrap()
         .kdf(my_kdf.clone())
         .build();
@@ -169,7 +169,7 @@ fn pbkdf2_params() {
         prf: Prf::HmacSha256,
         salt: salt.clone().into(),
     });
-    let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, "".into())
+    let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, String::new())
         .unwrap()
         .kdf(my_kdf.clone())
         .build();
@@ -181,7 +181,7 @@ fn pbkdf2_params() {
         prf: Prf::HmacSha256,
         salt: salt.clone().into(),
     });
-    let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, "".into())
+    let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, String::new())
         .unwrap()
         .kdf(my_kdf.clone())
         .build();
@@ -204,7 +204,7 @@ fn custom_scrypt_kdf() {
 
     assert!(my_kdf != default_kdf(salt));
 
-    let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, "".into())
+    let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, String::new())
         .unwrap()
         .kdf(my_kdf.clone())
         .build()
@@ -228,7 +228,7 @@ fn custom_pbkdf2_kdf() {
 
     assert!(my_kdf != default_kdf(salt));
 
-    let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, "".into())
+    let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, String::new())
         .unwrap()
         .kdf(my_kdf.clone())
         .build()
@@ -244,12 +244,12 @@ fn utf8_control_characters() {
     let password = vec![42, 42, 42];
     let password_with_control_chars = vec![0x7Fu8, 42, 42, 42];
 
-    let keystore1 = KeystoreBuilder::new(&keypair, &password_with_control_chars, "".into())
+    let keystore1 = KeystoreBuilder::new(&keypair, &password_with_control_chars, String::new())
         .unwrap()
         .build()
         .unwrap();
 
-    let keystore2 = KeystoreBuilder::new(&keypair, &password, "".into())
+    let keystore2 = KeystoreBuilder::new(&keypair, &password, String::new())
         .unwrap()
         .build()
         .unwrap();
@@ -278,12 +278,12 @@ fn normalization() {
 
     assert_ne!(password_nfc, password_nfkd);
 
-    let keystore_nfc = KeystoreBuilder::new(&keypair, password_nfc.as_bytes(), "".into())
+    let keystore_nfc = KeystoreBuilder::new(&keypair, password_nfc.as_bytes(), String::new())
         .unwrap()
         .build()
         .unwrap();
 
-    let keystore_nfkd = KeystoreBuilder::new(&keypair, password_nfkd.as_bytes(), "".into())
+    let keystore_nfkd = KeystoreBuilder::new(&keypair, password_nfkd.as_bytes(), String::new())
         .unwrap()
         .build()
         .unwrap();

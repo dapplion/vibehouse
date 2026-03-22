@@ -3320,6 +3320,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Stores a block as a SSZ file, if and where `invalid_block_storage` dictates.
+    #[allow(clippy::unused_self)]
     fn maybe_store_invalid_block(
         &self,
         invalid_block_storage: &InvalidBlockStorage,

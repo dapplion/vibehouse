@@ -268,6 +268,7 @@ impl<T: BeaconChainTypes> LightClientServerCache<T> {
         Ok(None)
     }
 
+    #[allow(clippy::unused_self)]
     pub fn get_light_client_updates(
         &self,
         store: &BeaconStore<T>,
@@ -425,6 +426,7 @@ impl<T: BeaconChainTypes> LightClientServerCache<T> {
     /// for a finalized checkpoint block root. However, we currently have no backfill mechanism for these values.
     /// Therefore, `sync_committee_branch` and `sync_committee` are only persisted while a node is synced.
     #[allow(clippy::type_complexity)]
+    #[allow(clippy::unused_self)]
     pub fn get_light_client_bootstrap(
         &self,
         store: &BeaconStore<T>,

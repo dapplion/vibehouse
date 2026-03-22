@@ -391,6 +391,7 @@ where
     }
 
     /// The maximum number of slots that items are stored for.
+    #[allow(clippy::unused_self)]
     fn max_capacity(&self) -> u64 {
         // We add `2` in order to account for one slot either side of the range due to
         // `MAXIMUM_GOSSIP_CLOCK_DISPARITY`.

@@ -986,6 +986,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         Ok(())
     }
 
+    #[allow(clippy::unused_self)]
     pub(crate) fn blobs_as_kv_store_ops(
         &self,
         key: &Hash256,
@@ -1050,6 +1051,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         Ok(())
     }
 
+    #[allow(clippy::unused_self)]
     pub(crate) fn data_columns_as_kv_store_ops(
         &self,
         block_root: &Hash256,
@@ -2081,6 +2083,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         )
     }
 
+    #[allow(clippy::unused_self)]
     pub(crate) fn store_cold_state_summary(
         &self,
         state_root: &Hash256,
@@ -2722,6 +2725,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     ///
     /// Unlike `get_data_column_keys`, these keys are not necessarily all present in the database,
     /// due to the node's custody requirements many just store a subset.
+    #[allow(clippy::unused_self)]
     pub(crate) fn get_all_data_column_keys(&self, block_root: Hash256) -> Vec<Vec<u8>> {
         (0..E::number_of_columns() as u64)
             .map(|column_index| get_data_column_key(&block_root, column_index))
@@ -2871,6 +2875,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     ///
     /// The argument is intended to be `self.anchor_info`, but is passed manually to avoid issues
     /// with recursive locking.
+    #[allow(clippy::unused_self)]
     fn store_anchor_info_in_batch(&self, anchor_info: &AnchorInfo) -> KeyValueStoreOp {
         anchor_info.as_kv_store_op(ANCHOR_INFO_KEY)
     }
@@ -2955,6 +2960,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     ///
     /// The argument is intended to be `self.blob_info`, but is passed manually to avoid issues
     /// with recursive locking.
+    #[allow(clippy::unused_self)]
     fn store_blob_info_in_batch(&self, blob_info: &BlobInfo) -> KeyValueStoreOp {
         blob_info.as_kv_store_op(BLOB_INFO_KEY)
     }
@@ -3002,6 +3008,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     ///
     /// The argument is intended to be `self.data_column_info`, but is passed manually to avoid issues
     /// with recursive locking.
+    #[allow(clippy::unused_self)]
     fn store_data_column_info_in_batch(
         &self,
         data_column_info: &DataColumnInfo,

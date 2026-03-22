@@ -68,8 +68,8 @@ impl<T> CommandLineTest<T> {
         if output.status.success() != should_succeed {
             let stdout = String::from_utf8(output.stdout).unwrap();
             let stderr = String::from_utf8(output.stderr).unwrap();
-            eprintln!("{}", stdout);
-            eprintln!("{}", stderr);
+            eprintln!("{stdout}");
+            eprintln!("{stderr}");
             panic!(
                 "Command success was {} when expecting {}",
                 !should_succeed, should_succeed
@@ -310,7 +310,7 @@ pub(crate) fn validator_import_keystore_file_with_password_flag_should_pass() {
                 prefer_builder_proposals: None,
             };
             assert_eq!(expected, config);
-            println!("{:?}", expected);
+            println!("{expected:?}");
         });
 }
 
@@ -388,7 +388,7 @@ pub(crate) fn validator_move_misc_flags_0() {
         .flag("--dest-vc-token", Some("./2.json"))
         .flag(
             "--validators",
-            Some(&format!("{},{}", EXAMPLE_PUBKEY_0, EXAMPLE_PUBKEY_1)),
+            Some(&format!("{EXAMPLE_PUBKEY_0},{EXAMPLE_PUBKEY_1}")),
         )
         .flag("--builder-proposals", Some("true"))
         .flag("--suggested-fee-recipient", Some(EXAMPLE_ETH1_ADDRESS))
@@ -527,7 +527,7 @@ pub(crate) fn validator_delete_defaults() {
     CommandLineTest::validators_delete()
         .flag(
             "--validators",
-            Some(&format!("{},{}", EXAMPLE_PUBKEY_0, EXAMPLE_PUBKEY_1)),
+            Some(&format!("{EXAMPLE_PUBKEY_0},{EXAMPLE_PUBKEY_1}")),
         )
         .flag("--vc-token", Some("./token.json"))
         .assert_success(|config| {
@@ -555,7 +555,7 @@ pub(crate) fn validator_exit_defaults() {
     CommandLineTest::validators_exit()
         .flag(
             "--validators",
-            Some(&format!("{},{}", EXAMPLE_PUBKEY_0, EXAMPLE_PUBKEY_1)),
+            Some(&format!("{EXAMPLE_PUBKEY_0},{EXAMPLE_PUBKEY_1}")),
         )
         .flag("--vc-token", Some("./token.json"))
         .flag("--beacon-node", Some("http://localhost:5052"))
@@ -580,7 +580,7 @@ pub(crate) fn validator_exit_exit_epoch_and_presign_flags() {
     CommandLineTest::validators_exit()
         .flag(
             "--validators",
-            Some(&format!("{},{}", EXAMPLE_PUBKEY_0, EXAMPLE_PUBKEY_1)),
+            Some(&format!("{EXAMPLE_PUBKEY_0},{EXAMPLE_PUBKEY_1}")),
         )
         .flag("--vc-token", Some("./token.json"))
         .flag("--exit-epoch", Some("1234567"))
@@ -614,7 +614,7 @@ pub(crate) fn validator_exit_using_beacon_and_presign_flags() {
         .flag("--vc-token", Some("./token.json"))
         .flag(
             "--validators",
-            Some(&format!("{},{}", EXAMPLE_PUBKEY_0, EXAMPLE_PUBKEY_1)),
+            Some(&format!("{EXAMPLE_PUBKEY_0},{EXAMPLE_PUBKEY_1}")),
         )
         .flag("--beacon-node", Some("http://localhost:1001"))
         .flag("--presign", None)
@@ -627,7 +627,7 @@ pub(crate) fn validator_exit_using_beacon_and_exit_epoch_flags() {
         .flag("--vc-token", Some("./token.json"))
         .flag(
             "--validators",
-            Some(&format!("{},{}", EXAMPLE_PUBKEY_0, EXAMPLE_PUBKEY_1)),
+            Some(&format!("{EXAMPLE_PUBKEY_0},{EXAMPLE_PUBKEY_1}")),
         )
         .flag("--beacon-node", Some("http://localhost:1001"))
         .flag("--exit-epoch", Some("1234567"))
@@ -640,7 +640,7 @@ pub(crate) fn validator_exit_exit_epoch_flag_without_presign_flag() {
         .flag("--vc-token", Some("./token.json"))
         .flag(
             "--validators",
-            Some(&format!("{},{}", EXAMPLE_PUBKEY_0, EXAMPLE_PUBKEY_1)),
+            Some(&format!("{EXAMPLE_PUBKEY_0},{EXAMPLE_PUBKEY_1}")),
         )
         .flag("--exit-epoch", Some("1234567"))
         .assert_failed();

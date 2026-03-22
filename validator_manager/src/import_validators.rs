@@ -538,16 +538,11 @@ pub mod tests {
                 .read(true)
                 .create(false)
                 .open(&validators_file_path)
-                .map_err(|e| format!("Unable to open {:?}: {:?}", validators_file_path, e))
+                .map_err(|e| format!("Unable to open {validators_file_path:?}: {e:?}"))
                 .unwrap();
 
             let validators: Vec<ValidatorSpecification> = serde_json::from_reader(&validators_file)
-                .map_err(|e| {
-                    format!(
-                        "Unable to parse JSON in {:?}: {:?}",
-                        validators_file_path, e
-                    )
-                })
+                .map_err(|e| format!("Unable to parse JSON in {validators_file_path:?}: {e:?}"))
                 .unwrap();
 
             let validator = &validators[0];

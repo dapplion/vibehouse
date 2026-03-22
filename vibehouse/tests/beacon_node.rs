@@ -437,7 +437,7 @@ fn run_bellatrix_execution_endpoints_flag_test(flag: &str) {
     let (_dirs, jwts): (Vec<_>, Vec<_>) = (0..2)
         .map(|i| {
             let dir = TempDir::new().expect("Unable to create temporary directory");
-            let path = dir.path().join(format!("jwt-{}", i));
+            let path = dir.path().join(format!("jwt-{i}"));
             (dir, path)
         })
         .unzip();

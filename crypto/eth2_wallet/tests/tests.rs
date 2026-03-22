@@ -28,8 +28,8 @@ fn recovered_voting_key(wallet: &Wallet, index: u32) -> Vec<u8> {
         .expect("should recover voting secret");
 
     assert_eq!(
-        format!("{}", path),
-        format!("m/12381/3600/{}/0/0", index),
+        format!("{path}"),
+        format!("m/12381/3600/{index}/0/0"),
         "path should be as expected"
     );
 
@@ -42,8 +42,8 @@ fn recovered_withdrawal_key(wallet: &Wallet, index: u32) -> Vec<u8> {
             .expect("should recover withdrawal secret");
 
     assert_eq!(
-        format!("{}", path),
-        format!("m/12381/3600/{}/0", index),
+        format!("{path}"),
+        format!("m/12381/3600/{index}/0"),
         "path should be as expected"
     );
 
@@ -218,13 +218,13 @@ fn key_derivation_from_seed() {
 
         assert_eq!(
             keystores.voting.path().unwrap(),
-            format!("m/12381/3600/{}/0/0", i),
+            format!("m/12381/3600/{i}/0/0"),
             "voting path should match"
         );
 
         assert_eq!(
             keystores.withdrawal.path().unwrap(),
-            format!("m/12381/3600/{}/0", i),
+            format!("m/12381/3600/{i}/0"),
             "withdrawal path should match"
         );
 

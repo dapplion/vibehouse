@@ -38,7 +38,7 @@ fn check_keystore<P: AsRef<Path>>(path: P, password_dir: P) -> Keypair {
     let mut file = File::open(path).unwrap();
     let keystore = Keystore::from_json_reader(&mut file).unwrap();
     let pubkey = keystore.pubkey();
-    let password_path = password_dir.as_ref().join(format!("0x{}", pubkey));
+    let password_path = password_dir.as_ref().join(format!("0x{pubkey}"));
     let password = fs::read(password_path).unwrap();
     keystore.decrypt_keypair(&password).unwrap()
 }
@@ -47,10 +47,10 @@ fn check_keystore<P: AsRef<Path>>(path: P, password_dir: P) -> Keypair {
 pub fn generate_deterministic_keystore(i: usize) -> Result<(Keystore, PlainText), String> {
     let keypair = generate_deterministic_keypair(i);
 
-    let keystore = KeystoreBuilder::new(&keypair, INSECURE_PASSWORD, "".into())
-        .map_err(|e| format!("Unable to create keystore builder: {:?}", e))?
+    let keystore = KeystoreBuilder::new(&keypair, INSECURE_PASSWORD, String::new())
+        .map_err(|e| format!("Unable to create keystore builder: {e:?}"))?
         .build()
-        .map_err(|e| format!("Unable to build keystore: {:?}", e))?;
+        .map_err(|e| format!("Unable to build keystore: {e:?}"))?;
 
     Ok((keystore, INSECURE_PASSWORD.to_vec().into()))
 }

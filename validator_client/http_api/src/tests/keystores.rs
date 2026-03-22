@@ -41,7 +41,7 @@ fn new_web3signer_validator() -> (Keypair, Web3SignerValidatorRequest) {
 fn web3signer_validator_with_pubkey(pubkey: PublicKey) -> Web3SignerValidatorRequest {
     Web3SignerValidatorRequest {
         enable: true,
-        description: "".into(),
+        description: String::new(),
         graffiti: None,
         suggested_fee_recipient: None,
         gas_limit: None,
@@ -413,7 +413,7 @@ async fn get_web3_signer_keystores() {
             .collect::<Vec<_>>();
 
         for response in expected_responses {
-            assert!(get_res.data.contains(&response), "{:?}", response);
+            assert!(get_res.data.contains(&response), "{response:?}");
         }
     })
     .await;
@@ -1184,7 +1184,7 @@ async fn generic_migration_test(
                 .await
             {
                 Ok(()) => assert!(should_succeed),
-                Err(e) => assert!(!should_succeed, "{:?}", e),
+                Err(e) => assert!(!should_succeed, "{e:?}"),
             }
         }
     })
@@ -1736,7 +1736,7 @@ async fn import_remote_and_local_keys() {
             })
             .collect::<Vec<_>>();
         for response in expected_responses {
-            assert!(get_res.data.contains(&response), "{:?}", response);
+            assert!(get_res.data.contains(&response), "{response:?}");
         }
     })
     .await;
@@ -1805,7 +1805,7 @@ async fn import_same_local_and_remote_keys() {
             })
             .collect::<Vec<_>>();
         for response in expected_responses {
-            assert!(get_res.data.contains(&response), "{:?}", response);
+            assert!(get_res.data.contains(&response), "{response:?}");
         }
     })
     .await;

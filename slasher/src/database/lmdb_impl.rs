@@ -87,7 +87,7 @@ impl Environment {
         Ok(RwTransaction { txn })
     }
 
-    #[allow(dead_code)] // called via interface::Environment::filenames, only used on Windows
+    #[allow(dead_code, clippy::unused_self)] // called via interface::Environment::filenames, only used on Windows
     pub(crate) fn filenames(&self, config: &Config) -> Vec<PathBuf> {
         vec![
             config.database_path.join("data.mdb"),

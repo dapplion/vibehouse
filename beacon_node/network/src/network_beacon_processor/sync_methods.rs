@@ -850,6 +850,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Helper function to handle a `BlockError` from `process_chain_segment`
+    #[allow(clippy::unused_self)]
     fn handle_failed_chain_segment(&self, error: BlockError) -> Result<(), ChainSegmentFailed> {
         match error {
             BlockError::ParentUnknown { parent_root, .. } => {

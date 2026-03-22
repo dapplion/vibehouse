@@ -149,6 +149,7 @@ impl MonitoringHttpClient {
     }
 
     /// Gets validator process metrics by querying the validator metrics endpoint
+    #[allow(clippy::unused_self)]
     fn get_validator_metrics(&self) -> Result<MonitoringMetrics, Error> {
         let metrics = gather_validator_metrics().map_err(Error::BeaconMetricsFailed)?;
         Ok(MonitoringMetrics {
@@ -158,6 +159,7 @@ impl MonitoringHttpClient {
     }
 
     /// Gets system metrics by observing capturing the SystemHealth metrics.
+    #[allow(clippy::unused_self)]
     fn get_system_metrics(&self) -> Result<MonitoringMetrics, Error> {
         let system_health = SystemHealth::observe().map_err(Error::SystemMetricsFailed)?;
         Ok(MonitoringMetrics {

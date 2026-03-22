@@ -1161,6 +1161,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
 
     /// Attempts to send deferred column requests for batches that are downloading blocks
     /// but waiting for custody column peers.
+    #[allow(clippy::unused_self)]
     fn try_send_deferred_columns(&self, network: &mut SyncNetworkContext<T>) {
         let synced_column_peers: HashSet<PeerId> = network
             .network_globals()

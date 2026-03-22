@@ -1747,6 +1747,7 @@ impl<E: EthSpec> ExecutionLayer<E> {
     /// This function should remain internal.
     ///
     /// External users should use `self.is_valid_terminal_pow_block_hash`.
+    #[allow(clippy::unused_self)]
     fn is_valid_terminal_pow_block(
         &self,
         block: ExecutionBlock,

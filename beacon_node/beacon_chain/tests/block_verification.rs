@@ -460,8 +460,7 @@ async fn chain_segment_varying_chunk_size() {
         assert_eq!(
             harness.head_block_root(),
             blocks.last().unwrap().canonical_root(),
-            "harness should have last block as head (chunk_size={})",
-            chunk_size
+            "harness should have last block as head (chunk_size={chunk_size})"
         );
     }
 }
@@ -611,8 +610,7 @@ async fn assert_invalid_signature(
         .into_block_error();
     assert!(
         chain_segment_res.is_err(),
-        "should not import chain segment with an invalid {} signature, got: Ok",
-        item
+        "should not import chain segment with an invalid {item} signature, got: Ok"
     );
 
     // Call fork choice to update cached head (including finalization).
@@ -654,9 +652,7 @@ async fn assert_invalid_signature(
                 InvalidSignature::BlockBodySignatures
             ))
         ),
-        "should not import individual block with an invalid {} signature, got: {:?}",
-        item,
-        process_res
+        "should not import individual block with an invalid {item} signature, got: {process_res:?}"
     );
 
     // NOTE: we choose not to check gossip verification here. It only checks one signature
@@ -721,8 +717,7 @@ async fn invalid_signature_gossip_block() {
                     InvalidSignature::ProposerSignature
                 ))
             ),
-            "should not import individual block with an invalid gossip signature, got: {:?}",
-            process_res
+            "should not import individual block with an invalid gossip signature, got: {process_res:?}"
         );
     }
 }
@@ -1494,7 +1489,7 @@ async fn verify_block_for_gossip_slashing_detection() {
             // No slasher backend compiled in (needs --features slasher/lmdb), skip test.
             return;
         }
-        Err(e) => panic!("unexpected slasher error: {:?}", e),
+        Err(e) => panic!("unexpected slasher error: {e:?}"),
     };
 
     let inner_slasher = slasher.clone();

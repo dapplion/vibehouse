@@ -1120,6 +1120,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
     /// every sampling column subnet.
     ///
     /// Returns `true` if peerdas isn't enabled for the epoch.
+    #[allow(clippy::unused_self)]
     fn good_peers_on_sampling_subnets(
         &self,
         epoch: Epoch,

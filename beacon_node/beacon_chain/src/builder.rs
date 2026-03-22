@@ -1492,8 +1492,7 @@ mod test {
         assert_eq!(
             indices.len(),
             expected_count,
-            "fullnode should custody {} columns",
-            expected_count
+            "fullnode should custody {expected_count} columns",
         );
 
         // Verify the indices match the first N entries from ordered list
@@ -1540,8 +1539,7 @@ mod test {
         assert_eq!(
             indices.len(),
             expected_count,
-            "semi-supernode should custody {} columns",
-            expected_count
+            "semi-supernode should custody {expected_count} columns",
         );
     }
 

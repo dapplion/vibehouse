@@ -240,8 +240,7 @@ impl ApiTester {
             .epoch(E::slots_per_epoch());
         let is_altair = spec
             .altair_fork_epoch
-            .map(|epoch| epoch <= current_epoch)
-            .unwrap_or(false);
+            .is_some_and(|epoch| epoch <= current_epoch);
         let contribution_and_proofs = if is_altair {
             harness
                 .make_sync_contributions(
@@ -563,7 +562,7 @@ impl ApiTester {
                 .is_finalized_state(&state_root, state_slot)
                 .unwrap();
 
-            assert_eq!(result, expected, "{:?}", state_id);
+            assert_eq!(result, expected, "{state_id:?}");
         }
 
         self
@@ -600,7 +599,7 @@ impl ApiTester {
                 .is_finalized_state(&state_root, state_slot)
                 .unwrap();
 
-            assert_eq!(result, expected, "{:?}", state_id);
+            assert_eq!(result, expected, "{state_id:?}");
         }
 
         self
@@ -637,7 +636,7 @@ impl ApiTester {
                 .is_finalized_state(&state_root, state_slot)
                 .unwrap();
 
-            assert_eq!(result, expected, "{:?}", state_id);
+            assert_eq!(result, expected, "{state_id:?}");
         }
 
         self
@@ -674,7 +673,7 @@ impl ApiTester {
                 .is_finalized_block(&block_root, block_slot)
                 .unwrap();
 
-            assert_eq!(result, expected, "{:?}", block_id);
+            assert_eq!(result, expected, "{block_id:?}");
         }
 
         self
@@ -711,7 +710,7 @@ impl ApiTester {
                 .is_finalized_block(&block_root, block_slot)
                 .unwrap();
 
-            assert_eq!(result, expected, "{:?}", block_id);
+            assert_eq!(result, expected, "{block_id:?}");
         }
 
         self
@@ -748,7 +747,7 @@ impl ApiTester {
                 .is_finalized_block(&block_root, block_slot)
                 .unwrap();
 
-            assert_eq!(result, expected, "{:?}", block_id);
+            assert_eq!(result, expected, "{block_id:?}");
         }
 
         self
@@ -786,7 +785,7 @@ impl ApiTester {
                 .is_finalized_state(&state_root, state_slot)
                 .unwrap();
 
-            assert_eq!(result, expected, "{:?}", state_id);
+            assert_eq!(result, expected, "{state_id:?}");
         }
 
         self
@@ -806,7 +805,7 @@ impl ApiTester {
                 .ok()
                 .map(|(root, _execution_optimistic, _finalized)| root);
 
-            assert_eq!(result, expected, "{:?}", state_id);
+            assert_eq!(result, expected, "{state_id:?}");
         }
 
         self
@@ -823,7 +822,7 @@ impl ApiTester {
 
             let expected = state_id.fork(&self.chain).ok();
 
-            assert_eq!(result, expected, "{:?}", state_id);
+            assert_eq!(result, expected, "{state_id:?}");
         }
 
         self
@@ -846,7 +845,7 @@ impl ApiTester {
                 },
             );
 
-            assert_eq!(result, expected, "{:?}", state_id);
+            assert_eq!(result, expected, "{state_id:?}");
         }
 
         self
@@ -974,10 +973,10 @@ impl ApiTester {
                     }
                 });
 
-                assert_eq!(result_index_ids, expected, "{:?}", state_id);
-                assert_eq!(result_pubkey_ids, expected, "{:?}", state_id);
-                assert_eq!(result_post_index_ids, expected, "{:?}", state_id);
-                assert_eq!(result_post_pubkey_ids, expected, "{:?}", state_id);
+                assert_eq!(result_index_ids, expected, "{state_id:?}");
+                assert_eq!(result_pubkey_ids, expected, "{state_id:?}");
+                assert_eq!(result_post_index_ids, expected, "{state_id:?}");
+                assert_eq!(result_post_pubkey_ids, expected, "{state_id:?}");
             }
         }
 
@@ -1058,8 +1057,8 @@ impl ApiTester {
                     }
                 });
 
-                assert_eq!(result_index_ids, expected, "{:?}", state_id);
-                assert_eq!(result_pubkey_ids, expected, "{:?}", state_id);
+                assert_eq!(result_index_ids, expected, "{state_id:?}");
+                assert_eq!(result_pubkey_ids, expected, "{state_id:?}");
             }
         }
         self
@@ -1173,10 +1172,10 @@ impl ApiTester {
                         validators
                     });
 
-                    assert_eq!(result_index_ids, expected, "{:?}", state_id);
-                    assert_eq!(result_pubkey_ids, expected, "{:?}", state_id);
-                    assert_eq!(post_result_index_ids, expected, "{:?}", state_id);
-                    assert_eq!(post_result_pubkey_ids, expected, "{:?}", state_id);
+                    assert_eq!(result_index_ids, expected, "{state_id:?}");
+                    assert_eq!(result_pubkey_ids, expected, "{state_id:?}");
+                    assert_eq!(post_result_index_ids, expected, "{state_id:?}");
+                    assert_eq!(post_result_pubkey_ids, expected, "{state_id:?}");
                 }
             }
         }
@@ -1231,7 +1230,7 @@ impl ApiTester {
                         }
                     };
 
-                    assert_eq!(result, Some(expected), "{:?}, {:?}", state_id, validator_id);
+                    assert_eq!(result, Some(expected), "{state_id:?}, {validator_id:?}");
                 }
             }
         }
@@ -1268,8 +1267,8 @@ impl ApiTester {
             for (i, result) in results.unwrap().into_iter().enumerate() {
                 let expected = &committees[i];
 
-                assert_eq!(result.index, expected.index, "{}", state_id);
-                assert_eq!(result.slot, expected.slot, "{}", state_id);
+                assert_eq!(result.index, expected.index, "{state_id}");
+                assert_eq!(result.slot, expected.slot, "{state_id}");
                 assert_eq!(
                     result
                         .validators
@@ -1277,8 +1276,7 @@ impl ApiTester {
                         .map(|i| i as usize)
                         .collect::<Vec<_>>(),
                     expected.committee.to_vec(),
-                    "{}",
-                    state_id
+                    "{state_id}"
                 );
             }
         }
@@ -1440,7 +1438,7 @@ impl ApiTester {
             };
             let expected = vec![header];
 
-            assert_eq!(result.unwrap(), expected, "slot {:?}", slot);
+            assert_eq!(result.unwrap(), expected, "slot {slot:?}");
         }
 
         self
@@ -1470,8 +1468,8 @@ impl ApiTester {
                 .unwrap()
                 .data;
 
-            assert_eq!(result.len(), 1, "i {}", i);
-            assert_eq!(result[0].root, child_root, "i {}", i);
+            assert_eq!(result.len(), 1, "i {i}");
+            assert_eq!(result[0].root, child_root, "i {i}");
         }
 
         self
@@ -1518,19 +1516,17 @@ impl ApiTester {
                 .unwrap()
                 .is_some_and(|canonical| block_root == canonical);
 
-            assert_eq!(result.canonical, canonical, "{:?}", block_id);
-            assert_eq!(result.root, block_root, "{:?}", block_id);
+            assert_eq!(result.canonical, canonical, "{block_id:?}");
+            assert_eq!(result.root, block_root, "{block_id:?}");
             assert_eq!(
                 result.header.message,
                 block.message().block_header(),
-                "{:?}",
-                block_id
+                "{block_id:?}"
             );
             assert_eq!(
                 result.header.signature,
                 block.signature().clone().into(),
-                "{:?}",
-                block_id
+                "{block_id:?}"
             );
         }
 
@@ -1557,7 +1553,7 @@ impl ApiTester {
                     assert!(!SKIPPED_SLOTS.contains(&slot.as_u64()));
                 }
             }
-            assert_eq!(result, expected, "{:?}", block_id);
+            assert_eq!(result, expected, "{block_id:?}");
         }
 
         self
@@ -1720,7 +1716,7 @@ impl ApiTester {
             let json_result = self.client.get_beacon_blocks(block_id.0).await.unwrap();
 
             if let (Some(json), Some(expected)) = (&json_result, &expected) {
-                assert_eq!(json.data(), expected.as_ref(), "{:?}", block_id);
+                assert_eq!(json.data(), expected.as_ref(), "{block_id:?}");
                 assert_eq!(
                     json.version(),
                     Some(expected.fork_name(&self.chain.spec).unwrap())
@@ -1739,8 +1735,7 @@ impl ApiTester {
             assert_eq!(
                 ssz_result.as_ref(),
                 expected.as_ref().map(std::convert::AsRef::as_ref),
-                "{:?}",
-                block_id
+                "{block_id:?}"
             );
 
             // Check that the legacy v1 API still works but doesn't return a version field.
@@ -1808,7 +1803,7 @@ impl ApiTester {
                 .unwrap();
 
             if let (Some(json), Some(expected)) = (&json_result, &expected) {
-                assert_eq!(json.data(), expected, "{:?}", block_id);
+                assert_eq!(json.data(), expected, "{block_id:?}");
                 assert_eq!(
                     json.version(),
                     Some(expected.fork_name(&self.chain.spec).unwrap())
@@ -1824,7 +1819,7 @@ impl ApiTester {
                 .get_beacon_blinded_blocks_ssz(block_id.0, &self.chain.spec)
                 .await
                 .unwrap();
-            assert_eq!(ssz_result.as_ref(), expected.as_ref(), "{:?}", block_id);
+            assert_eq!(ssz_result.as_ref(), expected.as_ref(), "{block_id:?}");
 
             // Check that version headers are provided.
             let url = self
@@ -2080,7 +2075,7 @@ impl ApiTester {
                 }
             }
 
-            assert_eq!(result, expected, "{:?}", block_id);
+            assert_eq!(result, expected, "{block_id:?}");
         }
 
         self
@@ -2971,7 +2966,7 @@ impl ApiTester {
             expected.as_mut().map(types::BeaconState::drop_all_caches);
 
             if let (Some(json), Some(expected)) = (&result_json, &expected) {
-                assert_eq!(json.data(), expected, "{:?}", state_id);
+                assert_eq!(json.data(), expected, "{state_id:?}");
                 assert_eq!(
                     json.version(),
                     Some(expected.fork_name(&self.chain.spec).unwrap())
@@ -2987,7 +2982,7 @@ impl ApiTester {
                 .get_debug_beacon_states_ssz(state_id.0, &self.chain.spec)
                 .await
                 .unwrap();
-            assert_eq!(result_ssz, expected, "{:?}", state_id);
+            assert_eq!(result_ssz, expected, "{state_id:?}");
 
             // Check that version headers are provided.
             let url = self
@@ -3116,6 +3111,7 @@ impl ApiTester {
         interesting
     }
 
+    #[allow(clippy::unused_self)]
     fn interesting_validator_statuses(&self) -> Vec<Vec<ValidatorStatus>> {
         let interesting = vec![
             vec![],
@@ -3223,8 +3219,7 @@ impl ApiTester {
 
                         assert_eq!(
                             *result, expected,
-                            "epoch: {}, indices_set: {}",
-                            epoch, indices_set
+                            "epoch: {epoch}, indices_set: {indices_set}"
                         );
                     } else {
                         assert!(

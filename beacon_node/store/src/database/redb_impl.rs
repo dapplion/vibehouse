@@ -51,10 +51,12 @@ impl<E: EthSpec> Redb<E> {
         tx.commit().map_err(Into::into)
     }
 
+    #[allow(clippy::unused_self)]
     pub(crate) fn write_options(&self) -> WriteOptions {
         WriteOptions::new()
     }
 
+    #[allow(clippy::unused_self)]
     pub(crate) fn write_options_sync(&self) -> WriteOptions {
         let mut opts = WriteOptions::new();
         opts.sync = true;

@@ -254,6 +254,7 @@ impl SlashingDatabase {
     }
 
     /// List the internal validator ID and public key of every registered validator.
+    #[allow(clippy::unused_self)]
     pub(crate) fn list_all_registered_validators(
         &self,
         txn: &Transaction,
@@ -849,6 +850,7 @@ impl SlashingDatabase {
         Ok(Interchange { metadata, data })
     }
 
+    #[allow(clippy::unused_self)]
     fn export_interchange_blocks_for_validator(
         &self,
         validator_id: i64,
@@ -868,6 +870,7 @@ impl SlashingDatabase {
         .collect()
     }
 
+    #[allow(clippy::unused_self)]
     fn export_interchange_attestations_for_validator(
         &self,
         validator_id: i64,

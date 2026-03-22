@@ -149,6 +149,7 @@ impl TestRig {
         }
     }
 
+    #[allow(clippy::unused_self)]
     pub(super) fn log(&self, msg: &str) {
         info!(msg, "TEST_RIG");
     }

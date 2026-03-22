@@ -14,7 +14,7 @@ pub(crate) trait CommandLineTestExec {
 
     /// Adds a flag with optional value to the command.
     fn flag(&mut self, flag: &str, value: Option<&str>) -> &mut Self {
-        self.cmd_mut().arg(format!("--{}", flag));
+        self.cmd_mut().arg(format!("--{flag}"));
         if let Some(value) = value {
             self.cmd_mut().arg(value);
         }
@@ -55,7 +55,7 @@ pub(crate) trait CommandLineTestExec {
         // Run the command.
         let output = output_result(cmd);
         if let Err(e) = output {
-            panic!("{:?}", e);
+            panic!("{e:?}");
         }
 
         // Grab the config.
@@ -92,7 +92,7 @@ pub(crate) trait CommandLineTestExec {
         // Run the command.
         let output = output_result(cmd);
         if let Err(e) = output {
-            panic!("{:?}", e);
+            panic!("{e:?}");
         }
 
         // Grab the config.

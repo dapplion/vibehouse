@@ -237,7 +237,7 @@ fn graffiti_file_with_pk_flag() {
     let mut file = File::create(dir.path().join("graffiti.txt")).expect("Unable to create file");
     let new_key = Keypair::random();
     let pubkeybytes = PublicKeyBytes::from(new_key.pk);
-    let contents = format!("{}:nice-graffiti", pubkeybytes);
+    let contents = format!("{pubkeybytes}:nice-graffiti");
     file.write_all(contents.as_bytes())
         .expect("Unable to write to file");
     CommandLineTest::new()

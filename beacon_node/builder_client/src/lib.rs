@@ -91,6 +91,7 @@ impl BuilderHttpClient {
         &self.user_agent
     }
 
+    #[allow(clippy::unused_self)]
     fn fork_name_from_header(&self, headers: &HeaderMap) -> Result<Option<ForkName>, String> {
         headers
             .get(CONSENSUS_VERSION_HEADER)
@@ -103,6 +104,7 @@ impl BuilderHttpClient {
             .transpose()
     }
 
+    #[allow(clippy::unused_self)]
     fn content_type_from_header(&self, headers: &HeaderMap) -> ContentType {
         let Some(content_type) = headers.get(CONTENT_TYPE_HEADER).map(|content_type| {
             let content_type = content_type.to_str();

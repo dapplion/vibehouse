@@ -88,7 +88,7 @@ fn dir_validator_count<P: AsRef<Path>>(dir: P) -> usize {
 fn list_wallets<P: AsRef<Path>>(base_dir: P) -> Vec<String> {
     let output = output_result(
         wallet_cmd()
-            .arg(format!("--{}", WALLETS_DIR_FLAG))
+            .arg(format!("--{WALLETS_DIR_FLAG}"))
             .arg(base_dir.as_ref().as_os_str())
             .arg(LIST_CMD),
     )
@@ -112,14 +112,14 @@ fn create_wallet<P: AsRef<Path>>(
 ) -> Result<Output, String> {
     output_result(
         wallet_cmd()
-            .arg(format!("--{}", WALLETS_DIR_FLAG))
+            .arg(format!("--{WALLETS_DIR_FLAG}"))
             .arg(base_dir.as_ref().as_os_str())
             .arg(CREATE_CMD)
-            .arg(format!("--{}", NAME_FLAG))
+            .arg(format!("--{NAME_FLAG}"))
             .arg(name)
-            .arg(format!("--{}", PASSWORD_FLAG))
+            .arg(format!("--{PASSWORD_FLAG}"))
             .arg(password.as_ref().as_os_str())
-            .arg(format!("--{}", MNEMONIC_FLAG))
+            .arg(format!("--{MNEMONIC_FLAG}"))
             .arg(mnemonic.as_ref().as_os_str()),
     )
 }
@@ -252,24 +252,24 @@ impl TestValidator {
         store_withdrawal_key: bool,
     ) -> Result<Vec<String>, String> {
         let mut cmd = validator_cmd();
-        cmd.arg(format!("--{}", VALIDATOR_DIR_FLAG))
+        cmd.arg(format!("--{VALIDATOR_DIR_FLAG}"))
             .arg(self.validator_dir.clone().into_os_string())
             .arg(CREATE_CMD)
-            .arg(format!("--{}", WALLETS_DIR_FLAG))
+            .arg(format!("--{WALLETS_DIR_FLAG}"))
             .arg(self.wallet.base_dir().into_os_string())
-            .arg(format!("--{}", WALLET_NAME_FLAG))
+            .arg(format!("--{WALLET_NAME_FLAG}"))
             .arg(&self.wallet.name)
-            .arg(format!("--{}", WALLET_PASSWORD_FLAG))
+            .arg(format!("--{WALLET_PASSWORD_FLAG}"))
             .arg(self.wallet.password_path().into_os_string())
-            .arg(format!("--{}", SECRETS_DIR_FLAG))
+            .arg(format!("--{SECRETS_DIR_FLAG}"))
             .arg(self.secrets_dir.clone().into_os_string())
-            .arg(format!("--{}", DEPOSIT_GWEI_FLAG))
+            .arg(format!("--{DEPOSIT_GWEI_FLAG}"))
             .arg("32000000000")
-            .arg(format!("--{}", quantity_flag))
-            .arg(format!("{}", quantity));
+            .arg(format!("--{quantity_flag}"))
+            .arg(format!("{quantity}"));
 
         let output = if store_withdrawal_key {
-            output_result(cmd.arg(format!("--{}", STORE_WITHDRAW_FLAG))).unwrap()
+            output_result(cmd.arg(format!("--{STORE_WITHDRAW_FLAG}"))).unwrap()
         } else {
             output_result(&mut cmd).unwrap()
         };
@@ -415,7 +415,7 @@ fn validator_import_launchpad() {
     let dst_dir = tempdir().unwrap();
 
     let keypair = Keypair::random();
-    let keystore = KeystoreBuilder::new(&keypair, PASSWORD.as_bytes(), "".into())
+    let keystore = KeystoreBuilder::new(&keypair, PASSWORD.as_bytes(), String::new())
         .unwrap()
         .build()
         .unwrap();
@@ -431,10 +431,10 @@ fn validator_import_launchpad() {
     File::create(src_dir.path().join(NOT_KEYSTORE_NAME)).unwrap();
 
     let mut child = validator_cmd()
-        .arg(format!("--{}", VALIDATOR_DIR_FLAG))
+        .arg(format!("--{VALIDATOR_DIR_FLAG}"))
         .arg(dst_dir.path().as_os_str())
         .arg(IMPORT_CMD)
-        .arg(format!("--{}", STDIN_INPUTS_FLAG)) // Using tty does not work well with tests.
+        .arg(format!("--{STDIN_INPUTS_FLAG}")) // Using tty does not work well with tests.
         .arg(format!("--{}", import::DIR_FLAG))
         .arg(src_dir.path().as_os_str())
         .stderr(Stdio::piped())
@@ -451,9 +451,7 @@ fn validator_import_launchpad() {
         }
     }
 
-    stdin
-        .write_all(format!("{}\n", PASSWORD).as_bytes())
-        .unwrap();
+    stdin.write_all(format!("{PASSWORD}\n").as_bytes()).unwrap();
 
     child.wait().unwrap();
 
@@ -483,11 +481,11 @@ fn validator_import_launchpad() {
     // Disable all the validators in validator_definition.
     output_result(
         validator_cmd()
-            .arg(format!("--{}", VALIDATOR_DIR_FLAG))
+            .arg(format!("--{VALIDATOR_DIR_FLAG}"))
             .arg(dst_dir.path().as_os_str())
             .arg(MODIFY_CMD)
             .arg(DISABLE)
-            .arg(format!("--{}", ALL)),
+            .arg(format!("--{ALL}")),
     )
     .unwrap();
 
@@ -495,7 +493,7 @@ fn validator_import_launchpad() {
 
     let mut expected_def = ValidatorDefinition {
         enabled: false,
-        description: "".into(),
+        description: String::new(),
         graffiti: None,
         suggested_fee_recipient: None,
         gas_limit: None,
@@ -518,11 +516,11 @@ fn validator_import_launchpad() {
     // Enable keystore validator again
     output_result(
         validator_cmd()
-            .arg(format!("--{}", VALIDATOR_DIR_FLAG))
+            .arg(format!("--{VALIDATOR_DIR_FLAG}"))
             .arg(dst_dir.path().as_os_str())
             .arg(MODIFY_CMD)
             .arg(ENABLE)
-            .arg(format!("--{}", PUBKEY_FLAG))
+            .arg(format!("--{PUBKEY_FLAG}"))
             .arg(format!("{}", keystore.public_key().unwrap())),
     )
     .unwrap();
@@ -547,7 +545,7 @@ fn validator_import_launchpad_no_password_then_add_password() {
     let dst_dir = tempdir().unwrap();
 
     let keypair = Keypair::random();
-    let keystore = KeystoreBuilder::new(&keypair, PASSWORD.as_bytes(), "".into())
+    let keystore = KeystoreBuilder::new(&keypair, PASSWORD.as_bytes(), String::new())
         .unwrap()
         .build()
         .unwrap();
@@ -564,10 +562,10 @@ fn validator_import_launchpad_no_password_then_add_password() {
 
     let validator_import_key_cmd = || {
         validator_cmd()
-            .arg(format!("--{}", VALIDATOR_DIR_FLAG))
+            .arg(format!("--{VALIDATOR_DIR_FLAG}"))
             .arg(dst_dir.path().as_os_str())
             .arg(IMPORT_CMD)
-            .arg(format!("--{}", STDIN_INPUTS_FLAG)) // Using tty does not work well with tests.
+            .arg(format!("--{STDIN_INPUTS_FLAG}")) // Using tty does not work well with tests.
             .arg(format!("--{}", import::DIR_FLAG))
             .arg(src_dir.path().as_os_str())
             .stderr(Stdio::piped())
@@ -619,7 +617,7 @@ fn validator_import_launchpad_no_password_then_add_password() {
 
     let expected_def = ValidatorDefinition {
         enabled: true,
-        description: "".into(),
+        description: String::new(),
         graffiti: None,
         suggested_fee_recipient: None,
         gas_limit: None,
@@ -642,14 +640,12 @@ fn validator_import_launchpad_no_password_then_add_password() {
     let mut child = validator_import_key_cmd();
     wait_for_password_prompt(&mut child);
     let stdin = child.stdin.as_mut().unwrap();
-    stdin
-        .write_all(format!("{}\n", PASSWORD).as_bytes())
-        .unwrap();
+    stdin.write_all(format!("{PASSWORD}\n").as_bytes()).unwrap();
     child.wait().unwrap();
 
     let expected_def = ValidatorDefinition {
         enabled: true,
-        description: "".into(),
+        description: String::new(),
         graffiti: None,
         suggested_fee_recipient: None,
         gas_limit: None,
@@ -682,7 +678,7 @@ fn validator_import_launchpad_password_file() {
     let dst_dir = tempdir().unwrap();
 
     let keypair = Keypair::random();
-    let keystore = KeystoreBuilder::new(&keypair, PASSWORD.as_bytes(), "".into())
+    let keystore = KeystoreBuilder::new(&keypair, PASSWORD.as_bytes(), String::new())
         .unwrap()
         .build()
         .unwrap();
@@ -704,13 +700,13 @@ fn validator_import_launchpad_password_file() {
         .unwrap();
 
     let mut child = validator_cmd()
-        .arg(format!("--{}", VALIDATOR_DIR_FLAG))
+        .arg(format!("--{VALIDATOR_DIR_FLAG}"))
         .arg(dst_dir.path().as_os_str())
         .arg(IMPORT_CMD)
         .arg(format!("--{}", import::DIR_FLAG))
         .arg(src_dir.path().as_os_str())
         .arg(format!("--{}", import::REUSE_PASSWORD_FLAG))
-        .arg(format!("--{}", PASSWORD_FLAG))
+        .arg(format!("--{PASSWORD_FLAG}"))
         .arg(src_dir.path().join(PASSWORD_FILE_NAME).as_os_str())
         .spawn()
         .unwrap();
@@ -752,7 +748,7 @@ fn validator_import_launchpad_password_file() {
 
     let expected_def = ValidatorDefinition {
         enabled: true,
-        description: "".into(),
+        description: String::new(),
         voting_public_key: keystore.public_key().unwrap(),
         graffiti: None,
         suggested_fee_recipient: None,

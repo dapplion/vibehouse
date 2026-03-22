@@ -1027,11 +1027,7 @@ async fn data_column_reconstruction_at_slot_start() {
         "chain should be at the correct slot"
     );
 
-    let num_data_columns = rig
-        .next_data_columns
-        .as_ref()
-        .map(std::vec::Vec::len)
-        .unwrap_or(0);
+    let num_data_columns = rig.next_data_columns.as_ref().map_or(0, std::vec::Vec::len);
     for i in 0..num_data_columns {
         rig.enqueue_gossip_data_columns(i);
         rig.assert_event_journal_completes(&[WorkType::GossipDataColumnSidecar])
@@ -1090,11 +1086,7 @@ async fn data_column_reconstruction_at_deadline() {
         .slot_clock
         .set_current_time(slot_start + Duration::from_secs(3));
 
-    let num_data_columns = rig
-        .next_data_columns
-        .as_ref()
-        .map(std::vec::Vec::len)
-        .unwrap_or(0);
+    let num_data_columns = rig.next_data_columns.as_ref().map_or(0, std::vec::Vec::len);
 
     // Enqueue all columns first. At the reconstruction deadline, reconstruction may fire
     // between gossip column processing events, so we can't assert per-column ordering.
@@ -1174,11 +1166,7 @@ async fn data_column_reconstruction_at_next_slot() {
         .slot_clock
         .set_current_time(slot_start + Duration::from_secs(12));
 
-    let num_data_columns = rig
-        .next_data_columns
-        .as_ref()
-        .map(std::vec::Vec::len)
-        .unwrap_or(0);
+    let num_data_columns = rig.next_data_columns.as_ref().map_or(0, std::vec::Vec::len);
     for i in 0..num_data_columns {
         rig.enqueue_gossip_data_columns(i);
         rig.assert_event_journal_completes(&[WorkType::GossipDataColumnSidecar])
@@ -1231,19 +1219,14 @@ async fn import_gossip_block_acceptably_early() {
     let num_blobs = rig
         .next_blobs
         .as_ref()
-        .map(types::RuntimeVariableList::len)
-        .unwrap_or(0);
+        .map_or(0, types::RuntimeVariableList::len);
     for i in 0..num_blobs {
         rig.enqueue_gossip_blob(i);
         rig.assert_event_journal_completes(&[WorkType::GossipBlobSidecar])
             .await;
     }
 
-    let num_data_columns = rig
-        .next_data_columns
-        .as_ref()
-        .map(std::vec::Vec::len)
-        .unwrap_or(0);
+    let num_data_columns = rig.next_data_columns.as_ref().map_or(0, std::vec::Vec::len);
     for i in 0..num_data_columns {
         rig.enqueue_gossip_data_columns(i);
         rig.assert_event_journal_completes(&[WorkType::GossipDataColumnSidecar])
@@ -1387,19 +1370,14 @@ async fn import_gossip_block_at_current_slot() {
     let num_blobs = rig
         .next_blobs
         .as_ref()
-        .map(types::RuntimeVariableList::len)
-        .unwrap_or(0);
+        .map_or(0, types::RuntimeVariableList::len);
     for i in 0..num_blobs {
         rig.enqueue_gossip_blob(i);
         rig.assert_event_journal_completes(&[WorkType::GossipBlobSidecar])
             .await;
     }
 
-    let num_data_columns = rig
-        .next_data_columns
-        .as_ref()
-        .map(std::vec::Vec::len)
-        .unwrap_or(0);
+    let num_data_columns = rig.next_data_columns.as_ref().map_or(0, std::vec::Vec::len);
     for i in 0..num_data_columns {
         rig.enqueue_gossip_data_columns(i);
         rig.assert_event_journal_completes(&[WorkType::GossipDataColumnSidecar])
@@ -1461,13 +1439,8 @@ async fn attestation_to_unknown_block_processed(import_method: BlockImportMethod
     let num_blobs = rig
         .next_blobs
         .as_ref()
-        .map(types::RuntimeVariableList::len)
-        .unwrap_or(0);
-    let num_data_columns = rig
-        .next_data_columns
-        .as_ref()
-        .map(std::vec::Vec::len)
-        .unwrap_or(0);
+        .map_or(0, types::RuntimeVariableList::len);
+    let num_data_columns = rig.next_data_columns.as_ref().map_or(0, std::vec::Vec::len);
     let mut events = vec![];
     match import_method {
         BlockImportMethod::Gossip => {
@@ -1555,13 +1528,8 @@ async fn aggregate_attestation_to_unknown_block(import_method: BlockImportMethod
     let num_blobs = rig
         .next_blobs
         .as_ref()
-        .map(types::RuntimeVariableList::len)
-        .unwrap_or(0);
-    let num_data_columns = rig
-        .next_data_columns
-        .as_ref()
-        .map(std::vec::Vec::len)
-        .unwrap_or(0);
+        .map_or(0, types::RuntimeVariableList::len);
+    let num_data_columns = rig.next_data_columns.as_ref().map_or(0, std::vec::Vec::len);
     let mut events = vec![];
     match import_method {
         BlockImportMethod::Gossip => {
@@ -1778,19 +1746,14 @@ async fn test_rpc_block_reprocessing() {
     let num_blobs = rig
         .next_blobs
         .as_ref()
-        .map(types::RuntimeVariableList::len)
-        .unwrap_or(0);
+        .map_or(0, types::RuntimeVariableList::len);
     if num_blobs > 0 {
         rig.enqueue_single_lookup_rpc_blobs();
         rig.assert_event_journal_completes(&[WorkType::RpcBlobs])
             .await;
     }
 
-    let num_data_columns = rig
-        .next_data_columns
-        .as_ref()
-        .map(std::vec::Vec::len)
-        .unwrap_or(0);
+    let num_data_columns = rig.next_data_columns.as_ref().map_or(0, std::vec::Vec::len);
     if num_data_columns > 0 {
         rig.enqueue_single_lookup_rpc_data_columns();
         rig.assert_event_journal_completes(&[WorkType::RpcCustodyColumn])
@@ -1905,14 +1868,12 @@ async fn test_blobs_by_range() {
             .chain
             .block_root_at_slot(Slot::new(slot), WhenSlotSkipped::None)
             .unwrap();
-        blob_count += root
-            .map(|root| {
-                rig.chain
-                    .get_blobs(&root)
-                    .map(|list| list.len())
-                    .unwrap_or(0)
-            })
-            .unwrap_or(0);
+        blob_count += root.map_or(0, |root| {
+            rig.chain
+                .get_blobs(&root)
+                .map(|list| list.len())
+                .unwrap_or(0)
+        });
     }
     let mut actual_count = 0;
     while let Some(next) = rig.network_rx.recv().await {
@@ -1928,7 +1889,7 @@ async fn test_blobs_by_range() {
                 break;
             }
         } else {
-            panic!("unexpected message {:?}", next);
+            panic!("unexpected message {next:?}");
         }
     }
     if test_spec::<E>().fulu_fork_epoch.is_some() {
@@ -1968,14 +1929,12 @@ async fn test_blobs_by_range_spans_fulu_fork() {
             .chain
             .block_root_at_slot(Slot::new(slot), WhenSlotSkipped::None)
             .unwrap();
-        blob_count += root
-            .map(|root| {
-                rig.chain
-                    .get_blobs(&root)
-                    .map(|list| list.len())
-                    .unwrap_or(0)
-            })
-            .unwrap_or(0);
+        blob_count += root.map_or(0, |root| {
+            rig.chain
+                .get_blobs(&root)
+                .map(|list| list.len())
+                .unwrap_or(0)
+        });
     }
 
     let mut actual_count = 0;
@@ -1993,7 +1952,7 @@ async fn test_blobs_by_range_spans_fulu_fork() {
                 break;
             }
         } else {
-            panic!("unexpected message {:?}", next);
+            panic!("unexpected message {next:?}");
         }
     }
     assert_eq!(blob_count, actual_count);
@@ -2033,14 +1992,12 @@ async fn test_blobs_by_root() {
         .chain
         .block_root_at_slot(Slot::new(1), WhenSlotSkipped::None)
         .unwrap();
-    blob_count += root
-        .map(|root| {
-            rig.chain
-                .get_blobs(&root)
-                .map(|list| list.len())
-                .unwrap_or(0)
-        })
-        .unwrap_or(0);
+    blob_count += root.map_or(0, |root| {
+        rig.chain
+            .get_blobs(&root)
+            .map(|list| list.len())
+            .unwrap_or(0)
+    });
 
     let mut actual_count = 0;
 
@@ -2057,7 +2014,7 @@ async fn test_blobs_by_root() {
                 break;
             }
         } else {
-            panic!("unexpected message {:?}", next);
+            panic!("unexpected message {next:?}");
         }
     }
     assert_eq!(blob_count, actual_count);
@@ -2102,7 +2059,7 @@ async fn test_blobs_by_root_post_fulu_should_return_empty() {
                 break;
             }
         } else {
-            panic!("unexpected message {:?}", next);
+            panic!("unexpected message {next:?}");
         }
     }
     // Post-Fulu should return 0 blobs
@@ -2131,11 +2088,7 @@ async fn test_data_column_import_notifies_sync() {
         .expect("should receive sync message");
 
     // Enqueue data columns which should trigger block import when complete
-    let num_data_columns = rig
-        .next_data_columns
-        .as_ref()
-        .map(std::vec::Vec::len)
-        .unwrap_or(0);
+    let num_data_columns = rig.next_data_columns.as_ref().map_or(0, std::vec::Vec::len);
     if num_data_columns > 0 {
         for i in 0..num_data_columns {
             rig.enqueue_gossip_data_columns(i);
@@ -2170,7 +2123,7 @@ async fn test_data_column_import_notifies_sync() {
                 assert_eq!(*msg_block_root, block_root, "block root should match");
                 assert!(*imported, "block should be marked as imported");
             }
-            other => panic!("expected GossipBlockProcessResult, got {:?}", other),
+            other => panic!("expected GossipBlockProcessResult, got {other:?}"),
         }
     }
 }
@@ -2211,16 +2164,14 @@ async fn test_data_columns_by_range_request_only_returns_requested_columns() {
                 break;
             }
         } else {
-            panic!("unexpected message {:?}", next);
+            panic!("unexpected message {next:?}");
         }
     }
 
     for received_index in &received_columns {
         assert!(
             requested_columns.contains(received_index),
-            "Received column index {} was not in requested columns {:?}",
-            received_index,
-            requested_columns
+            "Received column index {received_index} was not in requested columns {requested_columns:?}"
         );
     }
 
@@ -5680,25 +5631,25 @@ async fn gloas_rig_stateless(chain_length: u64, min_proofs_required: usize) -> T
         producer
             .process_block(next_slot, block_root, block_contents.clone())
             .await
-            .unwrap_or_else(|e| panic!("producer import failed: {:?}", e));
+            .unwrap_or_else(|e| panic!("producer import failed: {e:?}"));
         producer
             .chain
             .process_self_build_envelope(&envelope)
             .await
-            .unwrap_or_else(|e| panic!("producer envelope failed: {:?}", e));
+            .unwrap_or_else(|e| panic!("producer envelope failed: {e:?}"));
 
         // Import into stateless harness via harness helper (builds RpcBlock internally)
         harness
             .process_block(next_slot, block_root, block_contents)
             .await
-            .unwrap_or_else(|e| panic!("stateless import failed: {:?}", e));
+            .unwrap_or_else(|e| panic!("stateless import failed: {e:?}"));
 
         // Process envelope on stateless harness (skips EL, runs state transition)
         harness
             .chain
             .process_self_build_envelope(&envelope)
             .await
-            .unwrap_or_else(|e| panic!("stateless envelope failed: {:?}", e));
+            .unwrap_or_else(|e| panic!("stateless envelope failed: {e:?}"));
     }
 
     // Build the TestRig manually — can't use new_from_harness because it calls
@@ -5895,7 +5846,7 @@ async fn test_gloas_gossip_execution_proof_stateless_import_notifies_sync() {
                 "block should be marked as imported after proof threshold reached"
             );
         }
-        other => panic!("expected GossipBlockProcessResult, got {:?}", other),
+        other => panic!("expected GossipBlockProcessResult, got {other:?}"),
     }
 }
 
@@ -6041,8 +5992,7 @@ async fn test_gloas_gossip_execution_proof_stateless_missing_components_no_sync(
         .await;
     assert!(
         sync_msgs.is_none(),
-        "MissingComponents should NOT dispatch any sync message, got: {:?}",
-        sync_msgs
+        "MissingComponents should NOT dispatch any sync message, got: {sync_msgs:?}"
     );
 
     // Verify the proof was tracked in the execution_proof_tracker (one subnet recorded)

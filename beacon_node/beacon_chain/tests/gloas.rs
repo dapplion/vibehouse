@@ -177,8 +177,7 @@ async fn gloas_multiple_consecutive_blocks() {
     assert_eq!(
         head.slot(),
         Slot::new(slots as u64),
-        "Head should be at slot {}",
-        slots
+        "Head should be at slot {slots}"
     );
     assert!(head.as_gloas().is_ok());
 
@@ -206,8 +205,7 @@ async fn gloas_chain_finalizes() {
 
     assert!(
         finalized_epoch > Epoch::new(0),
-        "Chain should finalize after 5 epochs of Gloas blocks, got finalized_epoch={}",
-        finalized_epoch
+        "Chain should finalize after 5 epochs of Gloas blocks, got finalized_epoch={finalized_epoch}"
     );
 }
 
@@ -226,9 +224,7 @@ async fn gloas_fork_transition_preserves_finalization() {
 
     assert!(
         finalized_epoch > gloas_fork_epoch,
-        "Should finalize past the Gloas fork epoch (got finalized_epoch={}, fork={})",
-        finalized_epoch,
-        gloas_fork_epoch
+        "Should finalize past the Gloas fork epoch (got finalized_epoch={finalized_epoch}, fork={gloas_fork_epoch})"
     );
 }
 
@@ -367,8 +363,7 @@ async fn gloas_gossip_rejects_block_with_unrevealed_parent_payload() {
     let err = result.unwrap_err();
     assert!(
         matches!(err, BlockError::GloasParentPayloadUnknown { .. }),
-        "expected GloasParentPayloadUnknown, got {:?}",
-        err
+        "expected GloasParentPayloadUnknown, got {err:?}"
     );
 }
 
@@ -399,8 +394,7 @@ async fn gloas_gossip_accepts_block_with_revealed_parent_payload() {
         Err(ref e) => {
             assert!(
                 !matches!(e, BlockError::GloasParentPayloadUnknown { .. }),
-                "block with revealed parent payload should not fail with GloasParentPayloadUnknown, got {:?}",
-                e
+                "block with revealed parent payload should not fail with GloasParentPayloadUnknown, got {e:?}"
             );
         }
     }
@@ -1520,10 +1514,7 @@ async fn gloas_import_payload_attestation_message_not_in_ptc() {
             assert_eq!(validator_index, non_ptc_validator);
             assert_eq!(slot, head_slot);
         }
-        other => panic!(
-            "expected PayloadAttestationValidatorNotInPtc, got: {:?}",
-            other
-        ),
+        other => panic!("expected PayloadAttestationValidatorNotInPtc, got: {other:?}"),
     }
 }
 
@@ -2180,8 +2171,7 @@ async fn gloas_each_block_has_distinct_envelope() {
 
     assert!(
         envelope_count >= 3,
-        "should have envelopes for most blocks, got {}",
-        envelope_count
+        "should have envelopes for most blocks, got {envelope_count}"
     );
 }
 
@@ -2265,8 +2255,7 @@ async fn gloas_envelope_accessible_after_finalization() {
 
     assert!(
         blinded.is_some(),
-        "blinded envelope should be accessible for finalized block at slot {}",
-        finalized_slot
+        "blinded envelope should be accessible for finalized block at slot {finalized_slot}"
     );
 }
 
@@ -2440,8 +2429,7 @@ async fn gloas_load_envelopes_falls_back_to_blinded_after_pruning() {
     for root in &block_roots {
         assert!(
             blinded_after.contains_key(root),
-            "blinded fallback should contain block root {:?}",
-            root
+            "blinded fallback should contain block root {root:?}"
         );
     }
 }
@@ -2497,8 +2485,7 @@ async fn gloas_mixed_full_and_blinded_envelopes_after_partial_prune() {
     for root in &block_roots[1..] {
         assert!(
             full.contains_key(root),
-            "non-pruned block {:?} should still have full envelope",
-            root
+            "non-pruned block {root:?} should still have full envelope"
         );
     }
 }
@@ -2569,16 +2556,14 @@ async fn gloas_fork_choice_payload_revealed_after_extend() {
         {
             assert!(
                 block.payload_revealed,
-                "payload_revealed should be true for block at slot {} (self-build envelope processed)",
-                slot_idx
+                "payload_revealed should be true for block at slot {slot_idx} (self-build envelope processed)"
             );
             checked += 1;
         }
     }
     assert!(
         checked >= 3,
-        "should have checked at least 3 blocks, got {}",
-        checked
+        "should have checked at least 3 blocks, got {checked}"
     );
 }
 
@@ -2603,16 +2588,14 @@ async fn gloas_fork_choice_builder_index_self_build() {
             assert_eq!(
                 block.builder_index,
                 Some(harness.spec.builder_index_self_build),
-                "fork choice node at slot {} should have BUILDER_INDEX_SELF_BUILD",
-                slot_idx
+                "fork choice node at slot {slot_idx} should have BUILDER_INDEX_SELF_BUILD"
             );
             checked += 1;
         }
     }
     assert!(
         checked >= 2,
-        "should have checked at least 2 blocks, got {}",
-        checked
+        "should have checked at least 2 blocks, got {checked}"
     );
 }
 
@@ -2630,8 +2613,7 @@ async fn gloas_fork_choice_execution_status_valid_after_envelope() {
     // The mock EL returns Valid, so after envelope processing the block should be Valid
     assert!(
         status.is_valid_or_irrelevant(),
-        "head block execution status should be Valid after EL validation, got {:?}",
-        status
+        "head block execution status should be Valid after EL validation, got {status:?}"
     );
 }
 
@@ -2734,7 +2716,7 @@ async fn gloas_execution_proof_invalid_subnet_id() {
     match result {
         Err(GossipExecutionProofError::InvalidSubnetId { received })
             if received == execution_proof_subnet_id::MAX_EXECUTION_PROOF_SUBNETS => {}
-        Err(other) => panic!("expected InvalidSubnetId, got: {:?}", other),
+        Err(other) => panic!("expected InvalidSubnetId, got: {other:?}"),
         Ok(_) => panic!("expected error for out-of-bounds subnet ID"),
     }
 }
@@ -2763,7 +2745,7 @@ async fn gloas_execution_proof_invalid_version() {
 
     match result {
         Err(GossipExecutionProofError::InvalidVersion { version: 0 }) => {}
-        Err(other) => panic!("expected InvalidVersion, got: {:?}", other),
+        Err(other) => panic!("expected InvalidVersion, got: {other:?}"),
         Ok(_) => panic!("expected error for unsupported version"),
     }
 }
@@ -2792,7 +2774,7 @@ async fn gloas_execution_proof_empty_proof_data() {
 
     match result {
         Err(GossipExecutionProofError::ProofDataEmpty) => {}
-        Err(other) => panic!("expected ProofDataEmpty, got: {:?}", other),
+        Err(other) => panic!("expected ProofDataEmpty, got: {other:?}"),
         Ok(_) => panic!("expected error for empty proof data"),
     }
 }
@@ -2822,7 +2804,7 @@ async fn gloas_execution_proof_oversized_proof_data() {
     match result {
         Err(GossipExecutionProofError::ProofDataTooLarge { size })
             if size == execution_proof::MAX_EXECUTION_PROOF_SIZE + 1 => {}
-        Err(other) => panic!("expected ProofDataTooLarge, got: {:?}", other),
+        Err(other) => panic!("expected ProofDataTooLarge, got: {other:?}"),
         Ok(_) => panic!("expected error for oversized proof data"),
     }
 }
@@ -2861,7 +2843,7 @@ async fn gloas_execution_proof_unknown_block_root() {
     match result {
         Err(GossipExecutionProofError::UnknownBlockRoot { block_root })
             if block_root == unknown_root => {}
-        Err(other) => panic!("expected UnknownBlockRoot, got: {:?}", other),
+        Err(other) => panic!("expected UnknownBlockRoot, got: {other:?}"),
         Ok(_) => panic!("expected error, got Ok"),
     }
 }
@@ -2891,9 +2873,9 @@ async fn gloas_execution_proof_prior_to_finalization() {
         .store
         .get_blinded_payload_envelope(&block_root)
         .unwrap();
-    let block_hash = envelope
-        .map(|e| e.message.payload_header.block_hash)
-        .unwrap_or(ExecutionBlockHash::zero());
+    let block_hash = envelope.map_or(ExecutionBlockHash::zero(), |e| {
+        e.message.payload_header.block_hash
+    });
 
     let proof = make_stub_execution_proof(block_root, block_hash);
 
@@ -2904,12 +2886,11 @@ async fn gloas_execution_proof_prior_to_finalization() {
     // The block is finalized so it might not be in fork choice anymore (pruned).
     // If pruned, we get UnknownBlockRoot. If still in tree, we get PriorToFinalization.
     match result {
-        Err(GossipExecutionProofError::UnknownBlockRoot { .. })
-        | Err(GossipExecutionProofError::PriorToFinalization { .. }) => {}
-        Err(other) => panic!(
-            "expected UnknownBlockRoot or PriorToFinalization, got: {:?}",
-            other
-        ),
+        Err(
+            GossipExecutionProofError::UnknownBlockRoot { .. }
+            | GossipExecutionProofError::PriorToFinalization { .. },
+        ) => {}
+        Err(other) => panic!("expected UnknownBlockRoot or PriorToFinalization, got: {other:?}"),
         Ok(_) => panic!("expected error for finalized block proof"),
     }
 }
@@ -2933,7 +2914,7 @@ async fn gloas_execution_proof_block_hash_mismatch() {
 
     match result {
         Err(GossipExecutionProofError::BlockHashMismatch { .. }) => {}
-        Err(other) => panic!("expected BlockHashMismatch, got: {:?}", other),
+        Err(other) => panic!("expected BlockHashMismatch, got: {other:?}"),
         Ok(_) => panic!("expected error for mismatched block hash"),
     }
 }
@@ -3194,15 +3175,13 @@ async fn gloas_block_production_aggregates_matching_payload_attestations() {
     for i in 0..num_attesters {
         assert!(
             aggregated.aggregation_bits.get(i).unwrap_or(false),
-            "bit {} should be set in aggregated attestation",
-            i
+            "bit {i} should be set in aggregated attestation"
         );
     }
     assert_eq!(
         aggregated.num_attesters(),
         num_attesters,
-        "aggregated attestation should have {} attesters",
-        num_attesters
+        "aggregated attestation should have {num_attesters} attesters"
     );
     assert!(aggregated.data.payload_present);
     assert!(aggregated.data.blob_data_available);
@@ -3369,8 +3348,7 @@ async fn gloas_gossip_rejects_block_with_bid_parent_root_mismatch() {
     let err = result.unwrap_err();
     assert!(
         matches!(err, BlockError::BidParentRootMismatch { .. }),
-        "expected BidParentRootMismatch, got {:?}",
-        err
+        "expected BidParentRootMismatch, got {err:?}"
     );
 }
 
@@ -3410,8 +3388,7 @@ async fn gloas_gossip_accepts_block_with_matching_bid_parent_root() {
         Err(ref e) => {
             assert!(
                 !matches!(e, BlockError::BidParentRootMismatch { .. }),
-                "valid block should not fail with BidParentRootMismatch, got {:?}",
-                e
+                "valid block should not fail with BidParentRootMismatch, got {e:?}"
             );
         }
     }
@@ -4145,8 +4122,7 @@ async fn gloas_self_build_envelope_el_invalid_returns_error() {
     let err_msg = format!("{:?}", result.unwrap_err());
     assert!(
         err_msg.contains("invalid"),
-        "error should mention invalid payload, got: {}",
-        err_msg
+        "error should mention invalid payload, got: {err_msg}"
     );
 
     // Block should still be Optimistic (not Valid) in fork choice
@@ -4215,8 +4191,7 @@ async fn gloas_self_build_envelope_el_invalid_block_hash_returns_error() {
     let err_msg = format!("{:?}", result.unwrap_err());
     assert!(
         err_msg.contains("invalid block hash"),
-        "error should mention invalid block hash, got: {}",
-        err_msg
+        "error should mention invalid block hash, got: {err_msg}"
     );
 
     // Block should still be Optimistic
@@ -4395,8 +4370,7 @@ async fn gloas_self_build_envelope_el_transport_error_returns_error() {
     let err_msg = format!("{:?}", result.unwrap_err());
     assert!(
         err_msg.contains("newPayload failed"),
-        "error should mention newPayload failure, got: {}",
-        err_msg
+        "error should mention newPayload failure, got: {err_msg}"
     );
 
     // payload_revealed should be false (fork choice is updated after EL validation,
@@ -4449,8 +4423,7 @@ async fn gloas_self_build_envelope_missing_block_root_errors() {
     let err_msg = format!("{:?}", result.unwrap_err());
     assert!(
         err_msg.contains("Missing beacon block"),
-        "error should mention missing beacon block, got: {}",
-        err_msg
+        "error should mention missing beacon block, got: {err_msg}"
     );
 }
 
@@ -4508,11 +4481,10 @@ async fn gloas_self_build_envelope_missing_state_errors() {
         .await;
 
     let err = result.expect_err("should fail with missing state");
-    let err_msg = format!("{:?}", err);
+    let err_msg = format!("{err:?}");
     assert!(
         err_msg.contains("Missing post-block state"),
-        "error should mention 'Missing post-block state', got: {}",
-        err_msg
+        "error should mention 'Missing post-block state', got: {err_msg}"
     );
 
     // Fork choice should have payload_revealed = false (fork choice is updated
@@ -4735,18 +4707,18 @@ async fn import_blocks_into_stateless(
         producer
             .process_block(next_slot, block_root, block_contents.clone())
             .await
-            .unwrap_or_else(|e| panic!("producer import failed at block {}: {:?}", i, e));
+            .unwrap_or_else(|e| panic!("producer import failed at block {i}: {e:?}"));
         producer
             .chain
             .process_self_build_envelope(&envelope)
             .await
-            .unwrap_or_else(|e| panic!("producer envelope failed at block {}: {:?}", i, e));
+            .unwrap_or_else(|e| panic!("producer envelope failed at block {i}: {e:?}"));
 
         // Import the block on the stateless harness
         stateless
             .process_block(next_slot, block_root, block_contents)
             .await
-            .unwrap_or_else(|e| panic!("stateless import failed at block {}: {:?}", i, e));
+            .unwrap_or_else(|e| panic!("stateless import failed at block {i}: {e:?}"));
 
         // Process the envelope on the stateless harness too — the envelope state transition
         // updates latest_block_hash which subsequent blocks' bids depend on. In stateless
@@ -4757,7 +4729,7 @@ async fn import_blocks_into_stateless(
             .chain
             .process_self_build_envelope(&envelope)
             .await
-            .unwrap_or_else(|e| panic!("stateless envelope failed at block {}: {:?}", i, e));
+            .unwrap_or_else(|e| panic!("stateless envelope failed at block {i}: {e:?}"));
     }
 
     (block_root, block_hash)
@@ -4779,8 +4751,7 @@ async fn gloas_stateless_proof_threshold_marks_block_valid() {
             .expect("block should be in fork choice");
         assert!(
             exec_status.is_optimistic_or_invalid(),
-            "block should be optimistic before proof, got {:?}",
-            exec_status
+            "block should be optimistic before proof, got {exec_status:?}"
         );
     }
 
@@ -4814,8 +4785,7 @@ async fn gloas_stateless_proof_threshold_marks_block_valid() {
         .expect("block should be in fork choice");
     assert!(
         exec_status.is_valid_or_irrelevant(),
-        "block should be execution-valid after proof threshold, got {:?}",
-        exec_status
+        "block should be execution-valid after proof threshold, got {exec_status:?}"
     );
 }
 
@@ -4857,8 +4827,7 @@ async fn gloas_stateless_below_threshold_returns_missing_components() {
         .expect("block should be in fork choice");
     assert!(
         exec_status.is_optimistic_or_invalid(),
-        "block should remain optimistic below threshold, got {:?}",
-        exec_status
+        "block should remain optimistic below threshold, got {exec_status:?}"
     );
 }
 
@@ -4984,8 +4953,7 @@ async fn gloas_process_pending_proofs_drains_and_marks_valid() {
         .expect("block should be in fork choice");
     assert!(
         exec_status.is_valid_or_irrelevant(),
-        "block should be execution-valid after pending proofs met threshold, got {:?}",
-        exec_status
+        "block should be execution-valid after pending proofs met threshold, got {exec_status:?}"
     );
 }
 
@@ -5042,8 +5010,7 @@ async fn gloas_process_pending_proofs_below_threshold_stays_optimistic() {
         .expect("block should be in fork choice");
     assert!(
         exec_status.is_optimistic_or_invalid(),
-        "block should remain optimistic when pending proofs below threshold, got {:?}",
-        exec_status
+        "block should remain optimistic when pending proofs below threshold, got {exec_status:?}"
     );
 }
 
@@ -5087,7 +5054,7 @@ fn assert_envelope_rejected(
         .verify_payload_envelope_for_gossip(Arc::new(envelope))
     {
         Err(e) => e,
-        Ok(_) => panic!("envelope should have been rejected: {}", context),
+        Ok(_) => panic!("envelope should have been rejected: {context}"),
     }
 }
 
@@ -5105,8 +5072,7 @@ async fn gloas_envelope_gossip_rejects_slot_mismatch() {
     let err = assert_envelope_rejected(&harness, signed_envelope, "tampered slot");
     assert!(
         matches!(err, PayloadEnvelopeError::SlotMismatch { .. }),
-        "expected SlotMismatch, got {:?}",
-        err
+        "expected SlotMismatch, got {err:?}"
     );
 }
 
@@ -5124,8 +5090,7 @@ async fn gloas_envelope_gossip_rejects_builder_index_mismatch() {
     let err = assert_envelope_rejected(&harness, signed_envelope, "tampered builder_index");
     assert!(
         matches!(err, PayloadEnvelopeError::BuilderIndexMismatch { .. }),
-        "expected BuilderIndexMismatch, got {:?}",
-        err
+        "expected BuilderIndexMismatch, got {err:?}"
     );
 }
 
@@ -5143,8 +5108,7 @@ async fn gloas_envelope_gossip_rejects_block_hash_mismatch() {
     let err = assert_envelope_rejected(&harness, signed_envelope, "tampered block_hash");
     assert!(
         matches!(err, PayloadEnvelopeError::BlockHashMismatch { .. }),
-        "expected BlockHashMismatch, got {:?}",
-        err
+        "expected BlockHashMismatch, got {err:?}"
     );
 }
 
@@ -5163,8 +5127,7 @@ async fn gloas_envelope_gossip_buffers_unknown_block_root() {
     let err = assert_envelope_rejected(&harness, signed_envelope, "unknown block root");
     assert!(
         matches!(err, PayloadEnvelopeError::BlockRootUnknown { .. }),
-        "expected BlockRootUnknown, got {:?}",
-        err
+        "expected BlockRootUnknown, got {err:?}"
     );
 
     // Verify envelope was buffered for later processing
@@ -5202,8 +5165,7 @@ async fn gloas_envelope_gossip_rejects_not_gloas_block() {
             PayloadEnvelopeError::NotGloasBlock { .. }
                 | PayloadEnvelopeError::PriorToFinalization { .. }
         ),
-        "expected NotGloasBlock or PriorToFinalization, got {:?}",
-        err
+        "expected NotGloasBlock or PriorToFinalization, got {err:?}"
     );
 }
 
@@ -5233,7 +5195,7 @@ fn assert_bid_rejected(
 ) -> ExecutionBidError {
     match harness.chain.verify_execution_bid_for_gossip(bid) {
         Err(e) => e,
-        Ok(_) => panic!("bid should have been rejected: {}", context),
+        Ok(_) => panic!("bid should have been rejected: {context}"),
     }
 }
 
@@ -5259,8 +5221,7 @@ async fn gloas_bid_gossip_rejects_slot_not_current_or_next() {
     let err = assert_bid_rejected(&harness, bid, "far-future slot");
     assert!(
         matches!(err, ExecutionBidError::SlotNotCurrentOrNext { .. }),
-        "expected SlotNotCurrentOrNext, got {:?}",
-        err
+        "expected SlotNotCurrentOrNext, got {err:?}"
     );
 }
 
@@ -5285,8 +5246,7 @@ async fn gloas_bid_gossip_rejects_zero_execution_payment() {
     let err = assert_bid_rejected(&harness, bid, "zero execution_payment");
     assert!(
         matches!(err, ExecutionBidError::ZeroExecutionPayment),
-        "expected ZeroExecutionPayment, got {:?}",
-        err
+        "expected ZeroExecutionPayment, got {err:?}"
     );
 }
 
@@ -5315,8 +5275,7 @@ async fn gloas_bid_gossip_rejects_unknown_builder() {
     let err = assert_bid_rejected(&harness, bid, "unknown builder");
     assert!(
         matches!(err, ExecutionBidError::UnknownBuilder { .. }),
-        "expected UnknownBuilder, got {:?}",
-        err
+        "expected UnknownBuilder, got {err:?}"
     );
 }
 
@@ -5342,8 +5301,7 @@ async fn gloas_bid_gossip_rejects_nonexistent_builder_index() {
     let err = assert_bid_rejected(&harness, bid, "nonexistent builder index");
     assert!(
         matches!(err, ExecutionBidError::UnknownBuilder { builder_index: 42 }),
-        "expected UnknownBuilder with index 42, got {:?}",
-        err
+        "expected UnknownBuilder with index 42, got {err:?}"
     );
 }
 
@@ -5390,8 +5348,7 @@ async fn gloas_payload_notifier_returns_irrelevant() {
     assert_eq!(
         status,
         PayloadVerificationStatus::Irrelevant,
-        "Gloas block payload verification should be Irrelevant, got {:?}",
-        status
+        "Gloas block payload verification should be Irrelevant, got {status:?}"
     );
 }
 
@@ -7155,8 +7112,7 @@ async fn gloas_import_attestation_quorum_triggers_payload_revealed() {
         if votes_so_far > quorum_threshold {
             assert!(
                 node.payload_revealed,
-                "payload_revealed should be true after {} votes (quorum threshold = {})",
-                votes_so_far, quorum_threshold
+                "payload_revealed should be true after {votes_so_far} votes (quorum threshold = {quorum_threshold})"
             );
         }
     }
@@ -7772,11 +7728,10 @@ async fn gloas_fork_transition_chain_continues_full_epoch() {
             assert_ne!(
                 bid.message.block_hash,
                 ExecutionBlockHash::zero(),
-                "Gloas block at slot {} should have non-zero bid block_hash",
-                slot
+                "Gloas block at slot {slot} should have non-zero bid block_hash"
             );
         } else {
-            panic!("block at slot {} should be Gloas with a bid", slot);
+            panic!("block at slot {slot} should be Gloas with a bid");
         }
     }
 }
@@ -7810,9 +7765,7 @@ async fn gloas_fork_transition_execution_payload_availability_all_set() {
     // Gloas slot, so at most one bit should be cleared.
     assert!(
         set_count >= total_bits - 1,
-        "at most one bit should be cleared after one Gloas slot (got {}/{} set)",
-        set_count,
-        total_bits
+        "at most one bit should be cleared after one Gloas slot (got {set_count}/{total_bits} set)"
     );
 }
 
@@ -7835,8 +7788,7 @@ async fn gloas_fork_transition_builder_pending_payments_all_default() {
     assert_eq!(
         gloas_state.builder_pending_payments.len(),
         payments_limit,
-        "builder_pending_payments should have exactly {} entries",
-        payments_limit
+        "builder_pending_payments should have exactly {payments_limit} entries"
     );
 
     // The first slot's bid records a pending payment for the proposer.
@@ -8195,9 +8147,7 @@ async fn gloas_attestation_non_same_slot_payload_revealed_index_one() {
         1,
         "non-same-slot Gloas attestation should have index=1 (payload_present=true) \
          when payload_revealed=true in fork choice. \
-         head_slot={}, attest_slot={}",
-        head_slot,
-        attest_slot
+         head_slot={head_slot}, attest_slot={attest_slot}"
     );
 }
 
@@ -8263,7 +8213,7 @@ async fn gloas_attestation_refused_for_unrevealed_payload_block() {
     // Verify the specific error
     match result {
         Err(BeaconChainError::HeadBlockNotFullyVerified { .. }) => {}
-        other => panic!("expected HeadBlockNotFullyVerified error, got {:?}", other),
+        other => panic!("expected HeadBlockNotFullyVerified error, got {other:?}"),
     }
 }
 
@@ -9598,8 +9548,7 @@ async fn gloas_external_bid_withheld_chain_recovers_multiple_blocks() {
         let node = &fc.proto_array().core_proto_array().nodes[idx];
         assert!(
             node.payload_revealed,
-            "{} continuation block should have payload_revealed=true",
-            label
+            "{label} continuation block should have payload_revealed=true"
         );
     }
     // External bid block remains unrevealed
@@ -9760,8 +9709,7 @@ async fn gloas_multi_epoch_builder_payments_rotation() {
 
     assert!(
         current_epoch >= Epoch::new(3),
-        "should be at epoch 3 or later (got epoch {})",
-        current_epoch
+        "should be at epoch 3 or later (got epoch {current_epoch})"
     );
 
     // Builder pending payments should still be properly sized
@@ -9778,13 +9726,11 @@ async fn gloas_multi_epoch_builder_payments_rotation() {
         let payment = gloas_state.builder_pending_payments.get(i).unwrap();
         assert_eq!(
             payment.weight, 0,
-            "payment[{}].weight should be 0 after rotation (self-build blocks have value=0)",
-            i
+            "payment[{i}].weight should be 0 after rotation (self-build blocks have value=0)"
         );
         assert_eq!(
             payment.withdrawal.amount, 0,
-            "payment[{}].withdrawal.amount should be 0 after rotation",
-            i
+            "payment[{i}].withdrawal.amount should be 0 after rotation"
         );
     }
 }
@@ -9835,8 +9781,7 @@ async fn gloas_skip_slot_latest_block_hash_continuity() {
     assert_eq!(
         next_bid.message.parent_block_hash, latest_hash_before_skip,
         "bid parent_block_hash after skip slot should equal latest_block_hash \
-         from the last processed envelope (skip_slot={}, produce_slot={})",
-        skip_slot, produce_slot
+         from the last processed envelope (skip_slot={skip_slot}, produce_slot={produce_slot})"
     );
 
     // The parent_block_root should reference the head (last actual block), not the skip slot
@@ -10505,8 +10450,7 @@ async fn gloas_execution_payload_availability_multi_epoch() {
             .execution_payload_availability
             .get(current_slot_index)
             .unwrap_or(false),
-        "current slot's availability bit (index {}) should be true (envelope processed)",
-        current_slot_index
+        "current slot's availability bit (index {current_slot_index}) should be true (envelope processed)"
     );
 
     // Verify that ALL slots that had blocks have availability=true.
@@ -10518,9 +10462,7 @@ async fn gloas_execution_payload_availability_multi_epoch() {
                 .execution_payload_availability
                 .get(idx)
                 .unwrap_or(false),
-            "slot {} (index {}) should have availability=true (block+envelope processed)",
-            slot_num,
-            idx
+            "slot {slot_num} (index {idx}) should have availability=true (block+envelope processed)"
         );
     }
 
@@ -10551,9 +10493,8 @@ async fn gloas_execution_payload_availability_multi_epoch() {
 
     assert_eq!(
         set_count, slots_per_hist,
-        "all {} availability bits should be set (16 slots processed, {} total bits, \
-         all cleared bits restored by envelope processing)",
-        slots_per_hist, slots_per_hist
+        "all {slots_per_hist} availability bits should be set (16 slots processed, {slots_per_hist} total bits, \
+         all cleared bits restored by envelope processing)"
     );
 }
 
@@ -11365,16 +11306,14 @@ async fn gloas_proposer_preferences_pool_dedup_and_pruning() {
     let inserted = harness.chain.insert_proposer_preferences(prefs1.clone());
     assert!(
         inserted,
-        "first insertion for slot {} should succeed",
-        current_slot
+        "first insertion for slot {current_slot} should succeed"
     );
 
     // Retrieval should return the preferences
     let retrieved = harness.chain.get_proposer_preferences(current_slot);
     assert!(
         retrieved.is_some(),
-        "should retrieve preferences for slot {}",
-        current_slot
+        "should retrieve preferences for slot {current_slot}"
     );
     assert_eq!(
         retrieved.unwrap().message.fee_recipient,
@@ -11432,8 +11371,7 @@ async fn gloas_proposer_preferences_pool_dedup_and_pruning() {
     let inserted_new = harness.chain.insert_proposer_preferences(prefs_new);
     assert!(
         inserted_new,
-        "insertion for new slot {} should succeed",
-        new_slot
+        "insertion for new slot {new_slot} should succeed"
     );
 
     // The old preference should have been pruned (current_slot < new_slot - 2*slots_per_epoch)
@@ -11453,8 +11391,7 @@ async fn gloas_proposer_preferences_pool_dedup_and_pruning() {
     let new = harness.chain.get_proposer_preferences(new_slot);
     assert!(
         new.is_some(),
-        "new preferences at slot {} should still be present",
-        new_slot
+        "new preferences at slot {new_slot} should still be present"
     );
 }
 
@@ -11687,8 +11624,7 @@ async fn gloas_gossip_envelope_el_invalid_returns_error() {
     let err_msg = format!("{:?}", result.unwrap_err());
     assert!(
         err_msg.contains("invalid"),
-        "error should mention invalid payload, got: {}",
-        err_msg
+        "error should mention invalid payload, got: {err_msg}"
     );
 
     // payload_revealed should be false (fork choice not updated on failure)
@@ -12725,8 +12661,7 @@ async fn gloas_gossip_envelope_invalid_block_hash_returns_error() {
     let err_msg = format!("{:?}", result.unwrap_err());
     assert!(
         err_msg.contains("invalid block hash"),
-        "error should mention invalid block hash, got: {}",
-        err_msg
+        "error should mention invalid block hash, got: {err_msg}"
     );
 
     // payload_revealed should be false (fork choice not updated on failure)
@@ -12801,8 +12736,7 @@ async fn gloas_gossip_envelope_el_transport_error_returns_error() {
     let err_msg = format!("{:?}", result.unwrap_err());
     assert!(
         err_msg.contains("newPayload failed"),
-        "error should mention newPayload failure, got: {}",
-        err_msg
+        "error should mention newPayload failure, got: {err_msg}"
     );
 
     // payload_revealed should be false (fork choice not updated on failure)
@@ -13057,7 +12991,7 @@ async fn gloas_gossip_verify_envelope_missing_beacon_block() {
             );
         }
         Ok(_) => panic!("expected MissingBeaconBlock error, got Ok"),
-        Err(e) => panic!("expected MissingBeaconBlock error, got: {:?}", e),
+        Err(e) => panic!("expected MissingBeaconBlock error, got: {e:?}"),
     }
 }
 
@@ -13113,10 +13047,7 @@ async fn gloas_execution_status_lifecycle_bid_optimistic_to_valid() {
                     "Optimistic status should use the bid's block_hash"
                 );
             }
-            other => panic!(
-                "block should be Optimistic after import (EL syncing), got {:?}",
-                other
-            ),
+            other => panic!("block should be Optimistic after import (EL syncing), got {other:?}"),
         }
         // payload_revealed should be false (no envelope processed yet)
         assert!(
@@ -13165,10 +13096,7 @@ async fn gloas_execution_status_lifecycle_bid_optimistic_to_valid() {
                     "Valid status should preserve the bid's block_hash"
                 );
             }
-            other => panic!(
-                "block should be Valid after envelope processing, got {:?}",
-                other
-            ),
+            other => panic!("block should be Valid after envelope processing, got {other:?}"),
         }
         // payload_revealed should now be true
         assert!(
@@ -13315,11 +13243,10 @@ async fn gloas_process_envelope_missing_state_returns_error() {
     let result = harness.chain.process_payload_envelope(&verified).await;
 
     let err = result.expect_err("should fail with missing state");
-    let err_msg = format!("{:?}", err);
+    let err_msg = format!("{err:?}");
     assert!(
         err_msg.contains("Missing state"),
-        "error should mention 'Missing state', got: {}",
-        err_msg
+        "error should mention 'Missing state', got: {err_msg}"
     );
 
     // Fork choice should still have payload_revealed = false (fork choice is only
@@ -13392,11 +13319,10 @@ async fn gloas_process_envelope_missing_block_returns_error() {
     let result = harness.chain.process_payload_envelope(&verified).await;
 
     let err = result.expect_err("should fail with missing block");
-    let err_msg = format!("{:?}", err);
+    let err_msg = format!("{err:?}");
     assert!(
         err_msg.contains("Missing beacon block"),
-        "error should mention 'Missing beacon block', got: {}",
-        err_msg
+        "error should mention 'Missing beacon block', got: {err_msg}"
     );
 
     // Fork choice should have payload_revealed = false (process_payload_envelope
@@ -13461,11 +13387,10 @@ async fn gloas_process_payload_envelope_el_invalid_returns_error() {
     let result = harness.chain.process_payload_envelope(&verified).await;
 
     let err = result.expect_err("should error when EL returns Invalid");
-    let err_msg = format!("{:?}", err);
+    let err_msg = format!("{err:?}");
     assert!(
         err_msg.contains("invalid"),
-        "error should mention invalid payload, got: {}",
-        err_msg
+        "error should mention invalid payload, got: {err_msg}"
     );
 
     // Block should still be Optimistic (not Valid) in fork choice
@@ -13522,11 +13447,10 @@ async fn gloas_process_payload_envelope_el_invalid_block_hash_returns_error() {
     let result = harness.chain.process_payload_envelope(&verified).await;
 
     let err = result.expect_err("should error when EL returns InvalidBlockHash");
-    let err_msg = format!("{:?}", err);
+    let err_msg = format!("{err:?}");
     assert!(
         err_msg.contains("invalid block hash"),
-        "error should mention invalid block hash, got: {}",
-        err_msg
+        "error should mention invalid block hash, got: {err_msg}"
     );
 
     // Block should still be Optimistic
@@ -13639,11 +13563,10 @@ async fn gloas_process_payload_envelope_state_transition_fails_after_el_valid() 
     let result = harness.chain.process_payload_envelope(&verified).await;
 
     let err = result.expect_err("should fail due to state transition error");
-    let err_msg = format!("{:?}", err);
+    let err_msg = format!("{err:?}");
     assert!(
         err_msg.contains("BuilderIndexMismatch"),
-        "error should mention BuilderIndexMismatch, got: {}",
-        err_msg
+        "error should mention BuilderIndexMismatch, got: {err_msg}"
     );
 
     // Key assertion: fork choice remains Optimistic because process_payload_envelope
@@ -13770,11 +13693,10 @@ async fn gloas_self_build_envelope_state_transition_fails_after_el_valid() {
         .await;
 
     let err = result.expect_err("should fail due to state transition error");
-    let err_msg = format!("{:?}", err);
+    let err_msg = format!("{err:?}");
     assert!(
         err_msg.contains("BuilderIndexMismatch"),
-        "error should mention BuilderIndexMismatch, got: {}",
-        err_msg
+        "error should mention BuilderIndexMismatch, got: {err_msg}"
     );
 
     // Key assertion: fork choice remains Optimistic with payload_revealed=false.
@@ -13865,7 +13787,7 @@ async fn gloas_bid_gossip_rejects_insufficient_builder_balance() {
             assert_eq!(reported_balance, balance);
             assert_eq!(bid_value, 200);
         }
-        other => panic!("expected InsufficientBuilderBalance, got {:?}", other),
+        other => panic!("expected InsufficientBuilderBalance, got {other:?}"),
     }
 }
 
@@ -13922,7 +13844,7 @@ async fn gloas_bid_gossip_rejects_builder_equivocation() {
             assert_eq!(builder_index, 0);
             assert_eq!(slot, next_slot);
         }
-        other => panic!("expected BuilderEquivocation, got {:?}", other),
+        other => panic!("expected BuilderEquivocation, got {other:?}"),
     }
 }
 
@@ -13987,10 +13909,7 @@ async fn gloas_payload_attestation_invalid_sig_does_not_poison_cache() {
         .verify_payload_attestation_for_gossip(attestation_1);
     match result_1 {
         Err(PayloadAttestationError::InvalidSignature) => {}
-        Err(other) => panic!(
-            "first attestation should fail with InvalidSignature, got {:?}",
-            other
-        ),
+        Err(other) => panic!("first attestation should fail with InvalidSignature, got {other:?}"),
         Ok(_) => panic!("first attestation should fail at signature check"),
     }
 
@@ -14022,8 +13941,7 @@ async fn gloas_payload_attestation_invalid_sig_does_not_poison_cache() {
             // so this attempt also reaches BLS verification (and fails).
         }
         Err(other) => panic!(
-            "second attestation should also fail with InvalidSignature (not Duplicate), got {:?}",
-            other
+            "second attestation should also fail with InvalidSignature (not Duplicate), got {other:?}"
         ),
         Ok(_) => panic!("second attestation should fail at signature check"),
     }
@@ -14062,8 +13980,7 @@ async fn gloas_bid_gossip_rejects_no_proposer_preferences() {
     // Verify NO proposer preferences exist for next_slot (precondition).
     assert!(
         harness.chain.get_proposer_preferences(next_slot).is_none(),
-        "no preferences should exist for slot {} before insertion",
-        next_slot
+        "no preferences should exist for slot {next_slot} before insertion"
     );
 
     // Create a bid for next_slot. It will pass checks 1-4 (slot, payment,
@@ -14080,7 +13997,7 @@ async fn gloas_bid_gossip_rejects_no_proposer_preferences() {
         ExecutionBidError::ProposerPreferencesNotSeen { slot } => {
             assert_eq!(slot, next_slot);
         }
-        other => panic!("expected ProposerPreferencesNotSeen, got {:?}", other),
+        other => panic!("expected ProposerPreferencesNotSeen, got {other:?}"),
     }
 }
 
@@ -14142,7 +14059,7 @@ async fn gloas_bid_gossip_rejects_fee_recipient_mismatch() {
             assert_eq!(expected, proposer_fee_recipient);
             assert_eq!(received, Address::zero());
         }
-        other => panic!("expected FeeRecipientMismatch, got {:?}", other),
+        other => panic!("expected FeeRecipientMismatch, got {other:?}"),
     }
 }
 
@@ -14206,7 +14123,7 @@ async fn gloas_bid_gossip_rejects_gas_limit_mismatch() {
             assert_eq!(expected, proposer_gas_limit);
             assert_eq!(received, 30_000_000);
         }
-        other => panic!("expected GasLimitMismatch, got {:?}", other),
+        other => panic!("expected GasLimitMismatch, got {other:?}"),
     }
 }
 
@@ -14253,7 +14170,7 @@ async fn gloas_payload_attestation_gossip_rejects_empty_aggregation_bits() {
         .verify_payload_attestation_for_gossip(attestation);
     match result {
         Err(PayloadAttestationError::EmptyAggregationBits) => {}
-        Err(other) => panic!("expected EmptyAggregationBits, got {:?}", other),
+        Err(other) => panic!("expected EmptyAggregationBits, got {other:?}"),
         Ok(_) => panic!("empty aggregation bits should be rejected"),
     }
 }
@@ -14308,12 +14225,10 @@ async fn gloas_payload_attestation_gossip_rejects_future_slot() {
             assert_eq!(attestation_slot, future_slot);
             assert!(
                 latest_permissible_slot < future_slot,
-                "latest permissible slot {} should be less than future slot {}",
-                latest_permissible_slot,
-                future_slot
+                "latest permissible slot {latest_permissible_slot} should be less than future slot {future_slot}"
             );
         }
-        Err(other) => panic!("expected FutureSlot, got {:?}", other),
+        Err(other) => panic!("expected FutureSlot, got {other:?}"),
         Ok(_) => panic!("far-future attestation should be rejected"),
     }
 }
@@ -14371,12 +14286,10 @@ async fn gloas_payload_attestation_gossip_rejects_past_slot() {
             assert_eq!(attestation_slot, past_slot);
             assert!(
                 earliest_permissible_slot > past_slot,
-                "earliest permissible slot {} should be greater than past slot {}",
-                earliest_permissible_slot,
-                past_slot
+                "earliest permissible slot {earliest_permissible_slot} should be greater than past slot {past_slot}"
             );
         }
-        Err(other) => panic!("expected PastSlot, got {:?}", other),
+        Err(other) => panic!("expected PastSlot, got {other:?}"),
         Ok(_) => panic!("past-slot attestation should be rejected"),
     }
 }
@@ -14430,7 +14343,7 @@ async fn gloas_bid_gossip_rejects_inactive_builder() {
         ExecutionBidError::InactiveBuilder { builder_index } => {
             assert_eq!(builder_index, 0);
         }
-        other => panic!("expected InactiveBuilder, got {:?}", other),
+        other => panic!("expected InactiveBuilder, got {other:?}"),
     }
 }
 
@@ -14484,7 +14397,7 @@ async fn gloas_bid_gossip_rejects_duplicate_bid() {
         } => {
             assert_eq!(rejected_root, bid_root);
         }
-        other => panic!("expected DuplicateBid, got {:?}", other),
+        other => panic!("expected DuplicateBid, got {other:?}"),
     }
 }
 
@@ -14520,7 +14433,7 @@ async fn gloas_bid_gossip_rejects_invalid_parent_root() {
         ExecutionBidError::InvalidParentRoot { received } => {
             assert_eq!(received, unknown_root);
         }
-        other => panic!("expected InvalidParentRoot, got {:?}", other),
+        other => panic!("expected InvalidParentRoot, got {other:?}"),
     }
 }
 
@@ -14607,8 +14520,7 @@ async fn gloas_bid_gossip_rejects_invalid_signature() {
     let err = assert_bid_rejected(&harness, bid, "bid with invalid signature");
     assert!(
         matches!(err, ExecutionBidError::InvalidSignature),
-        "expected InvalidSignature, got {:?}",
-        err
+        "expected InvalidSignature, got {err:?}"
     );
 }
 
@@ -14699,8 +14611,7 @@ async fn gloas_envelope_gossip_rejects_finalized_slot() {
     let finalized_epoch = state.finalized_checkpoint().epoch;
     assert!(
         finalized_epoch > Epoch::new(0),
-        "chain should have finalized beyond genesis (finalized_epoch={})",
-        finalized_epoch
+        "chain should have finalized beyond genesis (finalized_epoch={finalized_epoch})"
     );
 
     let finalized_slot = finalized_epoch.start_slot(E::slots_per_epoch());
@@ -14724,9 +14635,7 @@ async fn gloas_envelope_gossip_rejects_finalized_slot() {
     let old_slot = Slot::new(1);
     assert!(
         old_slot < finalized_slot,
-        "old_slot {} should be before finalized_slot {}",
-        old_slot,
-        finalized_slot
+        "old_slot {old_slot} should be before finalized_slot {finalized_slot}"
     );
 
     // Clear observed envelopes so the duplicate check doesn't preempt finalization error
@@ -14764,7 +14673,7 @@ async fn gloas_envelope_gossip_rejects_finalized_slot() {
             panic!("got SlotMismatch instead of PriorToFinalization — check ordering may be wrong");
         }
         Ok(_) => panic!("finalized-slot envelope should be rejected"),
-        Err(e) => panic!("expected PriorToFinalization, got {:?}", e),
+        Err(e) => panic!("expected PriorToFinalization, got {e:?}"),
     }
 }
 
@@ -14839,8 +14748,7 @@ async fn gloas_range_sync_full_parent_patch_condition_verified() {
         assert_ne!(
             prev_bid_hash,
             ExecutionBlockHash::zero(),
-            "block {}'s bid.block_hash should be non-zero (non-genesis)",
-            i
+            "block {i}'s bid.block_hash should be non-zero (non-genesis)"
         );
     }
 
@@ -15089,8 +14997,7 @@ async fn gloas_get_advanced_hot_state_reapplies_envelope_from_db() {
         .expect("should have availability");
     assert!(
         availability.get(availability_index).unwrap_or(false),
-        "after envelope re-application, availability bit at index {} should be set",
-        availability_index
+        "after envelope re-application, availability bit at index {availability_index} should be set"
     );
 
     // Build and import the next block — this uses load_parent which calls
@@ -15251,8 +15158,7 @@ async fn gloas_get_advanced_hot_state_blinded_envelope_fallback() {
         .expect("should have availability");
     assert!(
         availability.get(availability_index).unwrap_or(false),
-        "after blinded envelope re-application, availability bit at index {} should be set",
-        availability_index
+        "after blinded envelope re-application, availability bit at index {availability_index} should be set"
     );
 }
 
@@ -15283,8 +15189,7 @@ async fn gloas_payload_attestation_data_past_slot_block_pruned_from_fc() {
     let finalized_checkpoint = head.beacon_state.finalized_checkpoint();
     assert!(
         finalized_checkpoint.epoch > Epoch::new(0),
-        "chain should have finalized: {:?}",
-        finalized_checkpoint
+        "chain should have finalized: {finalized_checkpoint:?}"
     );
 
     // Pick a slot that's before the finalized epoch boundary.
@@ -15293,9 +15198,7 @@ async fn gloas_payload_attestation_data_past_slot_block_pruned_from_fc() {
     let finalized_slot = finalized_checkpoint.epoch.start_slot(E::slots_per_epoch());
     assert!(
         old_slot < finalized_slot,
-        "old_slot {} should be before finalized boundary {}",
-        old_slot,
-        finalized_slot
+        "old_slot {old_slot} should be before finalized boundary {finalized_slot}"
     );
 
     // Get the block root at old_slot from the state
@@ -15425,8 +15328,7 @@ async fn gloas_multi_epoch_latest_block_hash_consistency() {
     let finalized_epoch = head.beacon_state.finalized_checkpoint().epoch;
     assert!(
         finalized_epoch >= Epoch::new(2),
-        "chain should have finalized after 4 epochs, got finalized_epoch={}",
-        finalized_epoch
+        "chain should have finalized after 4 epochs, got finalized_epoch={finalized_epoch}"
     );
 
     // Verify latest_block_hash consistency at the head
@@ -15546,8 +15448,7 @@ async fn gloas_gossip_unaggregated_index_two_rejected() {
 
     assert!(
         matches!(err, AttestationError::CommitteeIndexNonZero(2)),
-        "expected CommitteeIndexNonZero(2), got {:?}",
-        err
+        "expected CommitteeIndexNonZero(2), got {err:?}"
     );
 }
 
@@ -15570,8 +15471,7 @@ async fn gloas_gossip_unaggregated_large_index_rejected() {
 
     assert!(
         matches!(err, AttestationError::CommitteeIndexNonZero(255)),
-        "expected CommitteeIndexNonZero(255), got {:?}",
-        err
+        "expected CommitteeIndexNonZero(255), got {err:?}"
     );
 }
 
@@ -15604,8 +15504,7 @@ async fn gloas_gossip_unaggregated_same_slot_index_one_rejected() {
 
     assert!(
         matches!(err, AttestationError::CommitteeIndexNonZero(1)),
-        "expected CommitteeIndexNonZero(1), got {:?}",
-        err
+        "expected CommitteeIndexNonZero(1), got {err:?}"
     );
 }
 
@@ -15764,8 +15663,7 @@ async fn gloas_gossip_aggregate_index_two_rejected() {
 
     assert!(
         matches!(err, AttestationError::CommitteeIndexNonZero(2)),
-        "expected CommitteeIndexNonZero(2), got {:?}",
-        err
+        "expected CommitteeIndexNonZero(2), got {err:?}"
     );
 }
 
@@ -15788,8 +15686,7 @@ async fn gloas_gossip_aggregate_large_index_rejected() {
 
     assert!(
         matches!(err, AttestationError::CommitteeIndexNonZero(255)),
-        "expected CommitteeIndexNonZero(255), got {:?}",
-        err
+        "expected CommitteeIndexNonZero(255), got {err:?}"
     );
 }
 
@@ -15824,8 +15721,7 @@ async fn gloas_gossip_aggregate_same_slot_index_one_rejected() {
 
     assert!(
         matches!(err, AttestationError::CommitteeIndexNonZero(1)),
-        "expected CommitteeIndexNonZero(1), got {:?}",
-        err
+        "expected CommitteeIndexNonZero(1), got {err:?}"
     );
 }
 
@@ -15971,7 +15867,7 @@ async fn gloas_payload_attestation_gossip_rejects_unknown_block_root() {
         Err(PayloadAttestationError::UnknownBeaconBlockRoot { root }) => {
             assert_eq!(root, unknown_root, "error should report the unknown root");
         }
-        Err(other) => panic!("expected UnknownBeaconBlockRoot, got {:?}", other),
+        Err(other) => panic!("expected UnknownBeaconBlockRoot, got {other:?}"),
         Ok(_) => panic!("attestation with unknown block root should be rejected"),
     }
 }
@@ -16052,11 +15948,12 @@ async fn gloas_payload_attestation_gossip_duplicate_same_value_not_equivocation(
         .chain
         .verify_payload_attestation_for_gossip(attestation_2);
     match result_2 {
-        Err(PayloadAttestationError::EmptyAggregationBits) => {
-            // Expected: the only validator was a duplicate, so no indices remain
-        }
-        Err(PayloadAttestationError::InvalidSignature) => {
-            // Also acceptable: if the implementation processes duplicates differently
+        Err(
+            PayloadAttestationError::EmptyAggregationBits
+            | PayloadAttestationError::InvalidSignature,
+        ) => {
+            // Expected: the only validator was a duplicate, so no indices remain.
+            // InvalidSignature is also acceptable if duplicates are processed differently.
         }
         Err(PayloadAttestationError::ValidatorEquivocation { .. }) => {
             panic!(
@@ -16064,10 +15961,7 @@ async fn gloas_payload_attestation_gossip_duplicate_same_value_not_equivocation(
                  equivocation requires different payload_present values"
             );
         }
-        Err(other) => panic!(
-            "expected EmptyAggregationBits or InvalidSignature, got {:?}",
-            other
-        ),
+        Err(other) => panic!("expected EmptyAggregationBits or InvalidSignature, got {other:?}"),
         Ok(_) => panic!("duplicate attestation with empty signature should not pass"),
     }
 }
@@ -16096,8 +15990,7 @@ async fn gloas_envelope_gossip_rejects_prior_to_finalization_with_real_finality(
     // Verify we actually finalized
     assert!(
         finalized_epoch > Epoch::new(0),
-        "should have finalized past genesis, got epoch {}",
-        finalized_epoch
+        "should have finalized past genesis, got epoch {finalized_epoch}"
     );
 
     let finalized_slot = finalized_epoch.start_slot(E::slots_per_epoch());
@@ -16121,9 +16014,7 @@ async fn gloas_envelope_gossip_rejects_prior_to_finalization_with_real_finality(
                 finalized_slot: fs,
             } if envelope_slot == pre_finalized_slot && fs == finalized_slot
         ),
-        "expected PriorToFinalization with envelope_slot=0 and finalized_slot={}, got {:?}",
-        finalized_slot,
-        err
+        "expected PriorToFinalization with envelope_slot=0 and finalized_slot={finalized_slot}, got {err:?}"
     );
 }
 
@@ -16164,8 +16055,7 @@ async fn gloas_envelope_gossip_self_build_rejects_block_hash_mismatch() {
     );
     assert!(
         matches!(err, PayloadEnvelopeError::BlockHashMismatch { .. }),
-        "expected BlockHashMismatch, got {:?}",
-        err
+        "expected BlockHashMismatch, got {err:?}"
     );
 }
 
@@ -16218,10 +16108,7 @@ async fn gloas_payload_attestation_gossip_genesis_root_passes_block_check() {
             // Expected: passed block root check, PTC check, equivocation check,
             // but failed at signature verification with empty sig
         }
-        Err(other) => panic!(
-            "expected InvalidSignature (passed block root check), got {:?}",
-            other
-        ),
+        Err(other) => panic!("expected InvalidSignature (passed block root check), got {other:?}"),
         Ok(_) => panic!("attestation with empty signature should not pass"),
     }
 }
@@ -16586,8 +16473,7 @@ async fn gloas_external_bid_records_pending_payment_in_state() {
     let finalized_epoch = state.finalized_checkpoint().epoch;
     assert!(
         finalized_epoch >= Epoch::new(1),
-        "should be finalized past epoch 0 for builder activation, got epoch {}",
-        finalized_epoch
+        "should be finalized past epoch 0 for builder activation, got epoch {finalized_epoch}"
     );
 
     // Create external bid with non-zero value
@@ -17202,8 +17088,7 @@ async fn gloas_block_production_after_reorg_filters_stale_attestations() {
             let att_root = att.data().beacon_block_root;
             assert!(
                 fc.get_block(&att_root).is_some(),
-                "attestation beacon_block_root {:?} must be in fork choice",
-                att_root
+                "attestation beacon_block_root {att_root:?} must be in fork choice"
             );
         }
     }
@@ -17508,8 +17393,7 @@ async fn gloas_prune_gloas_pools_buffer_cap_enforcement() {
         assert_eq!(
             pending.len(),
             0,
-            "pending_gossip_envelopes should be cleared when exceeding cap of {}",
-            cap
+            "pending_gossip_envelopes should be cleared when exceeding cap of {cap}"
         );
     }
     {
@@ -17517,8 +17401,7 @@ async fn gloas_prune_gloas_pools_buffer_cap_enforcement() {
         assert_eq!(
             tracker.len(),
             0,
-            "execution_proof_tracker should be cleared when exceeding cap of {}",
-            cap
+            "execution_proof_tracker should be cleared when exceeding cap of {cap}"
         );
     }
     {
@@ -17526,8 +17409,7 @@ async fn gloas_prune_gloas_pools_buffer_cap_enforcement() {
         assert_eq!(
             pending.len(),
             0,
-            "pending_execution_proofs should be cleared when exceeding cap of {}",
-            cap
+            "pending_execution_proofs should be cleared when exceeding cap of {cap}"
         );
     }
 
@@ -17536,16 +17418,14 @@ async fn gloas_prune_gloas_pools_buffer_cap_enforcement() {
         let pool = harness.chain.payload_attestation_pool.lock();
         assert!(
             !pool.contains_key(&old_slot),
-            "payload_attestation_pool should prune old slot {}",
-            old_slot
+            "payload_attestation_pool should prune old slot {old_slot}"
         );
     }
     {
         let pool = harness.chain.proposer_preferences_pool.lock();
         assert!(
             !pool.contains_key(&old_slot),
-            "proposer_preferences_pool should prune old slot {}",
-            old_slot
+            "proposer_preferences_pool should prune old slot {old_slot}"
         );
     }
 }
@@ -17612,18 +17492,15 @@ async fn gloas_prune_gloas_pools_slot_boundary_retention() {
         let pool = harness.chain.payload_attestation_pool.lock();
         assert!(
             !pool.contains_key(&one_before),
-            "payload_attestation_pool: slot {} (one before boundary) should be pruned",
-            one_before
+            "payload_attestation_pool: slot {one_before} (one before boundary) should be pruned"
         );
         assert!(
             pool.contains_key(&earliest_slot),
-            "payload_attestation_pool: slot {} (exact boundary) should be RETAINED",
-            earliest_slot
+            "payload_attestation_pool: slot {earliest_slot} (exact boundary) should be RETAINED"
         );
         assert!(
             pool.contains_key(&after_advance_slot),
-            "payload_attestation_pool: slot {} (current) should be retained",
-            after_advance_slot
+            "payload_attestation_pool: slot {after_advance_slot} (current) should be retained"
         );
     }
 
@@ -17632,18 +17509,15 @@ async fn gloas_prune_gloas_pools_slot_boundary_retention() {
         let pool = harness.chain.proposer_preferences_pool.lock();
         assert!(
             !pool.contains_key(&one_before),
-            "proposer_preferences_pool: slot {} (one before boundary) should be pruned",
-            one_before
+            "proposer_preferences_pool: slot {one_before} (one before boundary) should be pruned"
         );
         assert!(
             pool.contains_key(&earliest_slot),
-            "proposer_preferences_pool: slot {} (exact boundary) should be RETAINED",
-            earliest_slot
+            "proposer_preferences_pool: slot {earliest_slot} (exact boundary) should be RETAINED"
         );
         assert!(
             pool.contains_key(&after_advance_slot),
-            "proposer_preferences_pool: slot {} (current) should be retained",
-            after_advance_slot
+            "proposer_preferences_pool: slot {after_advance_slot} (current) should be retained"
         );
     }
 }
@@ -17700,8 +17574,7 @@ async fn gloas_prune_gloas_pools_at_cap_not_cleared() {
         assert_eq!(
             pending.len(),
             cap,
-            "pending_gossip_envelopes at exactly cap={} should NOT be cleared",
-            cap
+            "pending_gossip_envelopes at exactly cap={cap} should NOT be cleared"
         );
     }
     {
@@ -17709,8 +17582,7 @@ async fn gloas_prune_gloas_pools_at_cap_not_cleared() {
         assert_eq!(
             tracker.len(),
             cap,
-            "execution_proof_tracker at exactly cap={} should NOT be cleared",
-            cap
+            "execution_proof_tracker at exactly cap={cap} should NOT be cleared"
         );
     }
     {
@@ -17718,8 +17590,7 @@ async fn gloas_prune_gloas_pools_at_cap_not_cleared() {
         assert_eq!(
             pending.len(),
             cap,
-            "pending_execution_proofs at exactly cap={} should NOT be cleared",
-            cap
+            "pending_execution_proofs at exactly cap={cap} should NOT be cleared"
         );
     }
 }
@@ -17757,10 +17628,7 @@ async fn gloas_proposer_lookahead_consistency_across_epochs() {
     for (i, &proposer) in prev_lookahead.iter().enumerate() {
         assert!(
             (proposer as usize) < VALIDATOR_COUNT,
-            "lookahead[{}] = {} is out of range (max {})",
-            i,
-            proposer,
-            VALIDATOR_COUNT
+            "lookahead[{i}] = {proposer} is out of range (max {VALIDATOR_COUNT})"
         );
     }
 
@@ -17777,8 +17645,7 @@ async fn gloas_proposer_lookahead_consistency_across_epochs() {
         let new_epoch = state.current_epoch();
         assert_eq!(
             new_epoch, target_epoch,
-            "should be at epoch {} (offset {})",
-            target_epoch, epoch_offset
+            "should be at epoch {target_epoch} (offset {epoch_offset})"
         );
 
         let new_lookahead: Vec<u64> = state
@@ -17795,19 +17662,15 @@ async fn gloas_proposer_lookahead_consistency_across_epochs() {
         let new_current_epoch = &new_lookahead[..slots_per_epoch];
         assert_eq!(
             prev_next_epoch, new_current_epoch,
-            "epoch {}: next-epoch proposers from previous lookahead should become \
-             current-epoch proposers in the new lookahead",
-            new_epoch
+            "epoch {new_epoch}: next-epoch proposers from previous lookahead should become \
+             current-epoch proposers in the new lookahead"
         );
 
         // All entries should still be valid
         for (i, &proposer) in new_lookahead.iter().enumerate() {
             assert!(
                 (proposer as usize) < VALIDATOR_COUNT,
-                "epoch {}: lookahead[{}] = {} out of range",
-                new_epoch,
-                i,
-                proposer
+                "epoch {new_epoch}: lookahead[{i}] = {proposer} out of range"
             );
         }
 
@@ -18031,9 +17894,7 @@ async fn gloas_empty_path_clears_availability_bit() {
             .execution_payload_availability
             .get(ext_slot_index)
             .unwrap_or(true),
-        "availability bit for EMPTY-path slot {} (index {}) should be false",
-        ext_slot,
-        ext_slot_index
+        "availability bit for EMPTY-path slot {ext_slot} (index {ext_slot_index}) should be false"
     );
 
     // Now produce + import the continuation block (self-build) and process its envelope
@@ -18068,16 +17929,14 @@ async fn gloas_empty_path_clears_availability_bit() {
             .execution_payload_availability
             .get(ext_slot_index)
             .unwrap_or(true),
-        "EMPTY-path slot {} availability bit should remain false after continuation",
-        ext_slot
+        "EMPTY-path slot {ext_slot} availability bit should remain false after continuation"
     );
     assert!(
         gloas_final
             .execution_payload_availability
             .get(cont_slot_index)
             .unwrap_or(false),
-        "continuation slot {} availability bit should be true after envelope processing",
-        cont_slot
+        "continuation slot {cont_slot} availability bit should be true after envelope processing"
     );
 }
 
@@ -18222,8 +18081,7 @@ async fn gloas_full_ptc_gossip_then_block_no_double_count() {
         let node = fc.get_block(&head_root).unwrap();
         assert_eq!(
             node.ptc_weight, expected_weight,
-            "ptc_weight should be {} after all gossip imports",
-            expected_weight
+            "ptc_weight should be {expected_weight} after all gossip imports"
         );
     }
 
@@ -18254,9 +18112,8 @@ async fn gloas_full_ptc_gossip_then_block_no_double_count() {
     let node = fc.get_block(&head_root).unwrap();
     assert_eq!(
         node.ptc_weight, expected_weight,
-        "ptc_weight should still be {} after block import — full PTC \
-         gossip + in-block must not double-count",
-        expected_weight
+        "ptc_weight should still be {expected_weight} after block import — full PTC \
+         gossip + in-block must not double-count"
     );
 }
 
@@ -18837,8 +18694,7 @@ async fn gloas_index_1_attestation_for_unrevealed_payload_rejected_at_fork_choic
 
     assert!(
         matches!(err, AttestationError::PayloadEnvelopeNotSeen { .. }),
-        "expected PayloadEnvelopeNotSeen error, got {:?}",
-        err
+        "expected PayloadEnvelopeNotSeen error, got {err:?}"
     );
 }
 
@@ -19323,8 +19179,7 @@ async fn gloas_consecutive_empty_blocks_chain_continues() {
                 .unwrap();
             assert!(
                 !fc.proto_array().core_proto_array().nodes[idx].payload_revealed,
-                "{} withheld block should remain unrevealed",
-                label
+                "{label} withheld block should remain unrevealed"
             );
         }
     }
@@ -19735,8 +19590,7 @@ async fn gloas_reorg_filters_stale_external_bids_in_block_production() {
     );
     assert_eq!(
         block_bid.message.value, fork_b_bid_value,
-        "block should use fork B's bid value ({}), not fork A's ({})",
-        fork_b_bid_value, fork_a_bid_value
+        "block should use fork B's bid value ({fork_b_bid_value}), not fork A's ({fork_a_bid_value})"
     );
     assert_eq!(
         block_bid.message.parent_block_root, fork_b_root,
@@ -19959,8 +19813,7 @@ async fn gloas_builder_exit_gossip_inactive_rejected() {
                 )
             )
         ),
-        "inactive builder exit should be rejected, got: {:?}",
-        err
+        "inactive builder exit should be rejected, got: {err:?}"
     );
 }
 
@@ -20144,8 +19997,7 @@ async fn gloas_attester_slashing_op_pool_retrieval() {
     for idx in &slashed_validators {
         assert!(
             slashing_indices.contains(idx),
-            "returned slashing should include validator {}",
-            idx
+            "returned slashing should include validator {idx}"
         );
     }
 
@@ -20806,8 +20658,7 @@ async fn gloas_multi_epoch_mixed_full_empty_chain_finalizes() {
         .epoch;
     assert!(
         initial_finalized >= Epoch::new(1),
-        "pre-condition: should be finalized past epoch 0, got {}",
-        initial_finalized
+        "pre-condition: should be finalized past epoch 0, got {initial_finalized}"
     );
 
     // Build 24 more slots (3 epochs on minimal) with every 3rd block being EMPTY
@@ -20837,15 +20688,14 @@ async fn gloas_multi_epoch_mixed_full_empty_chain_finalizes() {
                 harness.make_block_with_envelope(current_state, slot).await;
             assert!(
                 env.is_none(),
-                "external bid block at slot {} should not have self-build envelope",
-                slot
+                "external bid block at slot {slot} should not have self-build envelope"
             );
             let block_root = block.canonical_root();
             let block_ref = block.clone();
             harness
                 .process_block(slot, block_root, (block, blobs))
                 .await
-                .unwrap_or_else(|e| panic!("EMPTY block at slot {} should import: {:?}", slot, e));
+                .unwrap_or_else(|e| panic!("EMPTY block at slot {slot} should import: {e:?}"));
 
             // Verify payload_revealed=false
             {
@@ -20858,8 +20708,7 @@ async fn gloas_multi_epoch_mixed_full_empty_chain_finalizes() {
                     .expect("block should be in fork choice");
                 assert!(
                     !fc.proto_array().core_proto_array().nodes[idx].payload_revealed,
-                    "EMPTY block at slot {} should have payload_revealed=false",
-                    slot
+                    "EMPTY block at slot {slot} should have payload_revealed=false"
                 );
             }
 
@@ -20880,21 +20729,20 @@ async fn gloas_multi_epoch_mixed_full_empty_chain_finalizes() {
             harness.advance_slot();
             let ((block, blobs), _post_block_state, env) =
                 harness.make_block_with_envelope(current_state, slot).await;
-            let signed_envelope = env.unwrap_or_else(|| {
-                panic!("self-build block at slot {} should have envelope", slot)
-            });
+            let signed_envelope = env
+                .unwrap_or_else(|| panic!("self-build block at slot {slot} should have envelope"));
             let block_root = block.canonical_root();
             let block_state_root = block.message().state_root();
             let block_ref = block.clone();
             harness
                 .process_block(slot, block_root, (block, blobs))
                 .await
-                .unwrap_or_else(|e| panic!("FULL block at slot {} should import: {:?}", slot, e));
+                .unwrap_or_else(|e| panic!("FULL block at slot {slot} should import: {e:?}"));
             harness
                 .chain
                 .process_self_build_envelope(&signed_envelope)
                 .await
-                .unwrap_or_else(|e| panic!("envelope at slot {} should process: {:?}", slot, e));
+                .unwrap_or_else(|e| panic!("envelope at slot {slot} should process: {e:?}"));
 
             // Verify payload_revealed=true
             {
@@ -20907,8 +20755,7 @@ async fn gloas_multi_epoch_mixed_full_empty_chain_finalizes() {
                     .expect("block should be in fork choice");
                 assert!(
                     fc.proto_array().core_proto_array().nodes[idx].payload_revealed,
-                    "FULL block at slot {} should have payload_revealed=true",
-                    slot
+                    "FULL block at slot {slot} should have payload_revealed=true"
                 );
             }
 
@@ -20948,9 +20795,7 @@ async fn gloas_multi_epoch_mixed_full_empty_chain_finalizes() {
     assert!(
         final_finalized > initial_finalized,
         "finalization should advance despite EMPTY blocks: \
-         initial={}, final={}",
-        initial_finalized,
-        final_finalized
+         initial={initial_finalized}, final={final_finalized}"
     );
 
     // Verify latest_block_hash consistency at the head
@@ -21203,8 +21048,7 @@ async fn gloas_sync_envelope_builder_index_mismatch() {
     let err_msg = format!("{:?}", result.unwrap_err());
     assert!(
         err_msg.contains("Builder index mismatch"),
-        "error should mention builder index mismatch, got: {}",
-        err_msg
+        "error should mention builder index mismatch, got: {err_msg}"
     );
 }
 
@@ -21228,8 +21072,7 @@ async fn gloas_sync_envelope_block_hash_mismatch() {
     let err_msg = format!("{:?}", result.unwrap_err());
     assert!(
         err_msg.contains("Block hash mismatch"),
-        "error should mention block hash mismatch, got: {}",
-        err_msg
+        "error should mention block hash mismatch, got: {err_msg}"
     );
 }
 
@@ -21257,8 +21100,7 @@ async fn gloas_sync_envelope_tampered_state_root_rejected() {
     let err_msg = format!("{:?}", result.unwrap_err());
     assert!(
         err_msg.contains("signature"),
-        "tampered state_root should be caught by signature verification, got: {}",
-        err_msg
+        "tampered state_root should be caught by signature verification, got: {err_msg}"
     );
 }
 
@@ -21284,8 +21126,7 @@ async fn gloas_sync_envelope_missing_block() {
     let err_msg = format!("{:?}", result.unwrap_err());
     assert!(
         err_msg.contains("Missing beacon block"),
-        "error should mention missing block, got: {}",
-        err_msg
+        "error should mention missing block, got: {err_msg}"
     );
 }
 
@@ -21614,7 +21455,6 @@ async fn gloas_sync_envelope_invalid_signature() {
     let err_msg = format!("{:?}", result.unwrap_err());
     assert!(
         err_msg.contains("signature"),
-        "error should mention signature, got: {}",
-        err_msg
+        "error should mention signature, got: {err_msg}"
     );
 }

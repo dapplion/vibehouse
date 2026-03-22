@@ -212,7 +212,7 @@ mod tests {
     fn create_wallet(mgr: &WalletManager, id: usize) -> LockedWallet {
         let wallet = mgr
             .create_wallet(
-                format!("{}", id),
+                format!("{id}"),
                 WalletType::Hd,
                 &get_mnemonic(),
                 WALLET_PASSWORD,
@@ -310,8 +310,7 @@ mod tests {
             assert_eq!(
                 load_wallet_raw(base_dir, &uuid).nextaccount(),
                 i,
-                "should update wallet with nextaccount {}",
-                i
+                "should update wallet with nextaccount {i}"
             );
         }
 

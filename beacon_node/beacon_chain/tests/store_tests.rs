@@ -1736,17 +1736,14 @@ async fn prunes_abandoned_fork_between_two_finalized_checkpoints() {
     for &block_hash in stray_blocks.values() {
         assert!(
             rig.block_exists(block_hash),
-            "stray block {} should be still present",
-            block_hash
+            "stray block {block_hash} should be still present"
         );
     }
 
     for (&slot, &state_hash) in &stray_states {
         assert!(
             rig.hot_state_exists(state_hash),
-            "stray state {} at slot {} should be still present",
-            state_hash,
-            slot
+            "stray state {state_hash} at slot {slot} should be still present"
         );
     }
 
@@ -1788,15 +1785,11 @@ async fn prunes_abandoned_fork_between_two_finalized_checkpoints() {
     for (&slot, &state_hash) in &stray_states {
         assert!(
             !rig.hot_state_exists(state_hash),
-            "stray state {} at slot {} should have been pruned",
-            state_hash,
-            slot
+            "stray state {state_hash} at slot {slot} should have been pruned"
         );
         assert!(
             !rig.cold_state_exists(state_hash),
-            "stray state {} at slot {} should have been pruned",
-            state_hash,
-            slot
+            "stray state {state_hash} at slot {slot} should have been pruned"
         );
     }
 
@@ -1862,17 +1855,14 @@ async fn pruning_does_not_touch_abandoned_block_shared_with_canonical_chain() {
     for &block_hash in stray_blocks.values() {
         assert!(
             rig.block_exists(block_hash),
-            "stray block {} should be still present",
-            block_hash
+            "stray block {block_hash} should be still present"
         );
     }
 
     for (&slot, &state_hash) in &stray_states {
         assert!(
             rig.hot_state_exists(state_hash),
-            "stray state {} at slot {} should be still present",
-            state_hash,
-            slot
+            "stray state {state_hash} at slot {slot} should be still present"
         );
     }
 
@@ -1906,23 +1896,18 @@ async fn pruning_does_not_touch_abandoned_block_shared_with_canonical_chain() {
     for &block_hash in stray_blocks.values() {
         assert!(
             !rig.block_exists(block_hash),
-            "stray block {} should have been pruned",
-            block_hash,
+            "stray block {block_hash} should have been pruned",
         );
     }
 
     for (&slot, &state_hash) in &stray_states {
         assert!(
             !rig.hot_state_exists(state_hash),
-            "stray state {} at slot {} should have been pruned",
-            state_hash,
-            slot
+            "stray state {state_hash} at slot {slot} should have been pruned"
         );
         assert!(
             !rig.cold_state_exists(state_hash),
-            "stray state {} at slot {} should have been pruned",
-            state_hash,
-            slot
+            "stray state {state_hash} at slot {slot} should have been pruned"
         );
     }
 
@@ -1970,17 +1955,14 @@ async fn pruning_does_not_touch_blocks_prior_to_finalization() {
     for &block_hash in stray_blocks.values() {
         assert!(
             rig.block_exists(block_hash),
-            "stray block {} should be still present",
-            block_hash
+            "stray block {block_hash} should be still present"
         );
     }
 
     for (&slot, &state_hash) in &stray_states {
         assert!(
             rig.hot_state_exists(state_hash),
-            "stray state {} at slot {} should be still present",
-            state_hash,
-            slot
+            "stray state {state_hash} at slot {slot} should be still present"
         );
     }
 
@@ -2005,17 +1987,14 @@ async fn pruning_does_not_touch_blocks_prior_to_finalization() {
     for &block_hash in stray_blocks.values() {
         assert!(
             rig.block_exists(block_hash),
-            "stray block {} should be still present",
-            block_hash
+            "stray block {block_hash} should be still present"
         );
     }
 
     for (&slot, &state_hash) in &stray_states {
         assert!(
             rig.hot_state_exists(state_hash),
-            "stray state {} at slot {} should be still present",
-            state_hash,
-            slot
+            "stray state {state_hash} at slot {slot} should be still present"
         );
     }
 
@@ -2086,17 +2065,14 @@ async fn prunes_fork_growing_past_youngest_finalized_checkpoint() {
     for &block_hash in stray_blocks.values() {
         assert!(
             rig.block_exists(block_hash),
-            "stray block {} should be still present",
-            block_hash
+            "stray block {block_hash} should be still present"
         );
     }
 
     for (&slot, &state_hash) in &stray_states {
         assert!(
             rig.hot_state_exists(state_hash),
-            "stray state {} at slot {} should be still present",
-            state_hash,
-            slot
+            "stray state {state_hash} at slot {slot} should be still present"
         );
     }
 
@@ -2138,23 +2114,18 @@ async fn prunes_fork_growing_past_youngest_finalized_checkpoint() {
     for &block_hash in stray_blocks.values() {
         assert!(
             !rig.block_exists(block_hash),
-            "abandoned block {} should have been pruned",
-            block_hash
+            "abandoned block {block_hash} should have been pruned"
         );
     }
 
     for (&slot, &state_hash) in &stray_states {
         assert!(
             !rig.hot_state_exists(state_hash),
-            "stray state {} at slot {} should have been pruned",
-            state_hash,
-            slot
+            "stray state {state_hash} at slot {slot} should have been pruned"
         );
         assert!(
             !rig.cold_state_exists(state_hash),
-            "stray state {} at slot {} should have been pruned",
-            state_hash,
-            slot
+            "stray state {state_hash} at slot {slot} should have been pruned"
         );
     }
 
@@ -2204,17 +2175,14 @@ async fn prunes_skipped_slots_states() {
     for &block_hash in stray_blocks.values() {
         assert!(
             rig.block_exists(block_hash),
-            "stray block {} should be still present",
-            block_hash
+            "stray block {block_hash} should be still present"
         );
     }
 
     for (&slot, &state_hash) in &stray_states {
         assert!(
             rig.hot_state_exists(state_hash),
-            "stray state {} at slot {} should be still present",
-            state_hash,
-            slot
+            "stray state {state_hash} at slot {slot} should be still present"
         );
     }
 
@@ -2226,8 +2194,7 @@ async fn prunes_skipped_slots_states() {
         let state_hash = (*stray_state.get_state_root(skipped_slot).unwrap()).into();
         assert!(
             rig.hot_state_exists(state_hash),
-            "skipped slot state {} should be still present",
-            state_hash
+            "skipped slot state {state_hash} should be still present"
         );
     }
 
@@ -2261,15 +2228,11 @@ async fn prunes_skipped_slots_states() {
     for (&slot, &state_hash) in &stray_states {
         assert!(
             !rig.hot_state_exists(state_hash),
-            "stray state {} at slot {} should have been pruned",
-            state_hash,
-            slot
+            "stray state {state_hash} at slot {slot} should have been pruned"
         );
         assert!(
             !rig.cold_state_exists(state_hash),
-            "stray state {} at slot {} should have been pruned",
-            state_hash,
-            slot
+            "stray state {state_hash} at slot {slot} should have been pruned"
         );
     }
 
@@ -2279,9 +2242,7 @@ async fn prunes_skipped_slots_states() {
             (*stray_state.get_state_root(skipped_slot).unwrap()).into();
         assert!(
             !rig.hot_state_exists(state_hash),
-            "skipped slot {} state {} should have been pruned",
-            skipped_slot,
-            state_hash
+            "skipped slot {skipped_slot} state {state_hash} should have been pruned"
         );
     }
 }
@@ -2329,17 +2290,14 @@ async fn finalizes_non_epoch_start_slot() {
     for &block_hash in stray_blocks.values() {
         assert!(
             rig.block_exists(block_hash),
-            "stray block {} should be still present",
-            block_hash
+            "stray block {block_hash} should be still present"
         );
     }
 
     for (&slot, &state_hash) in &stray_states {
         assert!(
             rig.hot_state_exists(state_hash),
-            "stray state {} at slot {} should be still present",
-            state_hash,
-            slot
+            "stray state {state_hash} at slot {slot} should be still present"
         );
     }
 
@@ -2351,8 +2309,7 @@ async fn finalizes_non_epoch_start_slot() {
         let state_hash = (*stray_state.get_state_root(skipped_slot).unwrap()).into();
         assert!(
             rig.hot_state_exists(state_hash),
-            "skipped slot state {} should be still present",
-            state_hash
+            "skipped slot state {state_hash} should be still present"
         );
     }
 
@@ -2386,15 +2343,11 @@ async fn finalizes_non_epoch_start_slot() {
     for (&slot, &state_hash) in &stray_states {
         assert!(
             !rig.hot_state_exists(state_hash),
-            "stray state {} at slot {} should have been pruned",
-            state_hash,
-            slot
+            "stray state {state_hash} at slot {slot} should have been pruned"
         );
         assert!(
             !rig.cold_state_exists(state_hash),
-            "stray state {} at slot {} should have been pruned",
-            state_hash,
-            slot
+            "stray state {state_hash} at slot {slot} should have been pruned"
         );
     }
 
@@ -2404,9 +2357,7 @@ async fn finalizes_non_epoch_start_slot() {
             (*stray_state.get_state_root(skipped_slot).unwrap()).into();
         assert!(
             !rig.hot_state_exists(state_hash),
-            "skipped slot {} state {} should have been pruned",
-            skipped_slot,
-            state_hash
+            "skipped slot {skipped_slot} state {state_hash} should have been pruned"
         );
     }
 }
@@ -2417,11 +2368,7 @@ fn check_all_blocks_exist<'a>(
 ) {
     for &block_hash in blocks {
         let block = harness.chain.get_blinded_block(&block_hash.into()).unwrap();
-        assert!(
-            block.is_some(),
-            "expected block {:?} to be in DB",
-            block_hash
-        );
+        assert!(block.is_some(), "expected block {block_hash:?} to be in DB");
     }
 }
 
@@ -2434,11 +2381,7 @@ fn check_all_states_exist<'a>(
             .chain
             .get_state(&state_hash.into(), None, CACHE_STATE_IN_TESTS)
             .unwrap();
-        assert!(
-            state.is_some(),
-            "expected state {:?} to be in DB",
-            state_hash,
-        );
+        assert!(state.is_some(), "expected state {state_hash:?} to be in DB",);
     }
 }
 
@@ -2454,8 +2397,7 @@ fn check_no_states_exist<'a>(
                 .get_state(&state_root.into(), None, CACHE_STATE_IN_TESTS)
                 .unwrap()
                 .is_none(),
-            "state {:?} should not be in the DB",
-            state_root
+            "state {state_root:?} should not be in the DB"
         );
     }
 }
@@ -2469,8 +2411,7 @@ fn check_no_blocks_exist<'a>(
         let block = harness.chain.get_blinded_block(&block_hash.into()).unwrap();
         assert!(
             block.is_none(),
-            "did not expect block {:?} to be in the DB",
-            block_hash
+            "did not expect block {block_hash:?} to be in the DB"
         );
         assert!(
             !harness.chain.store.blobs_exist(&block_hash.into()).unwrap(),
@@ -5357,9 +5298,7 @@ fn check_chain_dump_from_slot(harness: &TestHarness, from_slot: Slot, expected_l
                             .store
                             .payload_envelope_exists(&block_root)
                             .unwrap(),
-                        "incorrect envelope storage for block at slot {}: {:?}",
-                        slot,
-                        block_root,
+                        "incorrect envelope storage for block at slot {slot}: {block_root:?}",
                     );
                 }
             } else {
@@ -5369,9 +5308,7 @@ fn check_chain_dump_from_slot(harness: &TestHarness, from_slot: Slot, expected_l
                         .store
                         .execution_payload_exists(&block_root)
                         .unwrap(),
-                    "incorrect payload storage for block at slot {}: {:?}",
-                    slot,
-                    block_root,
+                    "incorrect payload storage for block at slot {slot}: {block_root:?}",
                 );
             }
         }
@@ -5424,8 +5361,7 @@ fn check_iterators_from_slot(harness: &TestHarness, slot: Slot) {
                 .get_state(&state_root, Some(slot), CACHE_STATE_IN_TESTS)
                 .unwrap()
                 .is_some(),
-            "state {:?} from canonical chain should be in DB",
-            state_root
+            "state {state_root:?} from canonical chain should be in DB"
         );
         max_slot = Some(slot);
     }
@@ -5490,8 +5426,7 @@ async fn gloas_cold_state_dual_indexing_after_finalization() {
     let finalized_epoch = head.beacon_state.finalized_checkpoint().epoch;
     assert!(
         finalized_epoch > Epoch::new(0),
-        "chain should have finalized: got epoch {}",
-        finalized_epoch
+        "chain should have finalized: got epoch {finalized_epoch}"
     );
 
     let split_slot = store.get_split_slot();
@@ -5541,8 +5476,7 @@ async fn gloas_cold_state_dual_indexing_after_finalization() {
         assert_eq!(
             pre_slot,
             Some(slot),
-            "pre-envelope root should resolve to slot {} in cold DB",
-            slot
+            "pre-envelope root should resolve to slot {slot} in cold DB"
         );
 
         // Verify post-envelope root also resolves in cold DB.
@@ -5556,8 +5490,7 @@ async fn gloas_cold_state_dual_indexing_after_finalization() {
             assert_eq!(
                 post_slot,
                 Some(slot),
-                "post-envelope root should resolve to slot {} in cold DB",
-                slot
+                "post-envelope root should resolve to slot {slot} in cold DB"
             );
             checked_count += 1;
         }
@@ -5648,8 +5581,7 @@ async fn gloas_cold_state_loadable_by_post_envelope_root() {
             .expect("no error loading cold state by post-envelope root");
         assert!(
             loaded_state.is_some(),
-            "cold state should be loadable by post-envelope root at slot {}",
-            slot,
+            "cold state should be loadable by post-envelope root at slot {slot}",
         );
         assert_eq!(
             loaded_state.unwrap().slot(),
@@ -5723,8 +5655,7 @@ async fn gloas_reconstruct_states_with_pruned_payloads() {
     let split_slot = store.get_split_slot();
     assert!(
         split_slot > Slot::new(0),
-        "chain should have finalized: split_slot={}",
-        split_slot
+        "chain should have finalized: split_slot={split_slot}"
     );
 
     // Collect Gloas block roots in the cold DB, their pre-envelope state roots (block.state_root),
@@ -5769,8 +5700,7 @@ async fn gloas_reconstruct_states_with_pruned_payloads() {
     for (block_root, _, _, _) in &gloas_blocks {
         assert!(
             store.execution_payload_exists(block_root).unwrap(),
-            "full payload should exist before pruning for {:?}",
-            block_root
+            "full payload should exist before pruning for {block_root:?}"
         );
     }
 
@@ -5784,14 +5714,12 @@ async fn gloas_reconstruct_states_with_pruned_payloads() {
         // Full payload should still exist (Gloas payloads are not pruned).
         assert!(
             store.execution_payload_exists(block_root).unwrap(),
-            "Gloas full payload should be retained after pruning for {:?}",
-            block_root
+            "Gloas full payload should be retained after pruning for {block_root:?}"
         );
         // get_payload_envelope should succeed (full payload + blinded envelope).
         assert!(
             store.get_payload_envelope(block_root).unwrap().is_some(),
-            "get_payload_envelope should succeed for retained Gloas payload {:?}",
-            block_root
+            "get_payload_envelope should succeed for retained Gloas payload {block_root:?}"
         );
         // Blinded envelope should also exist.
         assert!(
@@ -5799,8 +5727,7 @@ async fn gloas_reconstruct_states_with_pruned_payloads() {
                 .get_blinded_payload_envelope(block_root)
                 .unwrap()
                 .is_some(),
-            "blinded envelope should exist for {:?}",
-            block_root
+            "blinded envelope should exist for {block_root:?}"
         );
         verified_count_pre += 1;
     }
@@ -5833,8 +5760,7 @@ async fn gloas_reconstruct_states_with_pruned_payloads() {
         assert_eq!(
             *state_lbh, *bid_block_hash,
             "reconstructed state latest_block_hash should match bid.block_hash \
-             for block_root {:?} at slot {}",
-            block_root, slot
+             for block_root {block_root:?} at slot {slot}"
         );
         verified_count += 1;
     }
@@ -5948,8 +5874,7 @@ async fn gloas_reconstruct_states_with_empty_path_block() {
         .epoch;
     assert!(
         finalized_epoch >= Epoch::new(1),
-        "builder should be active: finalized_epoch={} >= 1",
-        finalized_epoch
+        "builder should be active: finalized_epoch={finalized_epoch} >= 1"
     );
 
     // Phase 2: Insert external bid for the next slot (EMPTY path).
@@ -6128,9 +6053,7 @@ async fn gloas_reconstruct_states_with_empty_path_block() {
     let split_slot = store.get_split_slot();
     assert!(
         split_slot > empty_path_slot,
-        "split_slot {} should be past EMPTY-path block slot {}",
-        split_slot,
-        empty_path_slot
+        "split_slot {split_slot} should be past EMPTY-path block slot {empty_path_slot}"
     );
 
     // Verify: no envelope stored for the EMPTY-path block.
@@ -6164,8 +6087,7 @@ async fn gloas_reconstruct_states_with_empty_path_block() {
     assert_eq!(
         empty_block_in_cold,
         Some(empty_block_root),
-        "EMPTY-path block root should be in the block roots at slot {}",
-        empty_path_slot
+        "EMPTY-path block root should be in the block roots at slot {empty_path_slot}"
     );
 
     // Use load_cold_state_by_slot to verify reconstructed states at key slots.
@@ -6607,13 +6529,11 @@ async fn gloas_prunes_abandoned_fork_envelopes() {
     for &block_hash in stray_blocks.values() {
         assert!(
             rig.block_exists(block_hash),
-            "stray block {:?} should exist before finalization",
-            block_hash
+            "stray block {block_hash:?} should exist before finalization"
         );
         assert!(
             store.payload_envelope_exists(&block_hash.into()).unwrap(),
-            "stray block {:?} should have a blinded envelope before finalization",
-            block_hash
+            "stray block {block_hash:?} should have a blinded envelope before finalization"
         );
     }
 
@@ -6640,18 +6560,15 @@ async fn gloas_prunes_abandoned_fork_envelopes() {
     for &block_hash in stray_blocks.values() {
         assert!(
             !rig.block_exists(block_hash),
-            "abandoned block {:?} should have been pruned",
-            block_hash
+            "abandoned block {block_hash:?} should have been pruned"
         );
         assert!(
             !store.blobs_exist(&block_hash.into()).unwrap(),
-            "blobs for abandoned block {:?} should have been pruned",
-            block_hash
+            "blobs for abandoned block {block_hash:?} should have been pruned"
         );
         assert!(
             !store.payload_envelope_exists(&block_hash.into()).unwrap(),
-            "blinded envelope for abandoned block {:?} should have been pruned",
-            block_hash
+            "blinded envelope for abandoned block {block_hash:?} should have been pruned"
         );
     }
 }

@@ -177,7 +177,7 @@ impl ApiTester {
          */
         match func(self.invalid_token_client()).await {
             Err(ApiError::ServerMessage(ApiErrorMessage { code: 403, .. })) => (),
-            Err(other) => panic!("expected authorized error, got {:?}", other),
+            Err(other) => panic!("expected authorized error, got {other:?}"),
             Ok(_) => panic!("expected authorized error, got Ok"),
         }
 
@@ -190,7 +190,7 @@ impl ApiTester {
             Err(ApiError::ServerMessage(ApiErrorMessage {
                 code: 401, message, ..
             })) if message.contains("missing Authorization header") => (),
-            Err(other) => panic!("expected missing header error, got {:?}", other),
+            Err(other) => panic!("expected missing header error, got {other:?}"),
             Ok(_) => panic!("expected missing header error, got Ok"),
         }
 
@@ -282,7 +282,7 @@ impl ApiTester {
         let validators = (0..s.count)
             .map(|i| ValidatorRequest {
                 enable: !s.disabled.contains(&i),
-                description: format!("boi #{}", i),
+                description: format!("boi #{i}"),
                 graffiti: None,
                 suggested_fee_recipient: None,
                 gas_limit: None,
@@ -347,7 +347,7 @@ impl ApiTester {
          */
 
         let mnemonic = mnemonic_from_phrase(mnemonic.as_str()).unwrap();
-        let mut wallet = WalletBuilder::from_mnemonic(&mnemonic, PASSWORD_BYTES, "".to_string())
+        let mut wallet = WalletBuilder::from_mnemonic(&mnemonic, PASSWORD_BYTES, String::new())
             .unwrap()
             .build()
             .unwrap();
@@ -480,7 +480,7 @@ impl ApiTester {
                 let kp = Keypair::random();
                 Web3SignerValidatorRequest {
                     enable: s.enabled,
-                    description: format!("{}", i),
+                    description: format!("{i}"),
                     graffiti: None,
                     suggested_fee_recipient: None,
                     gas_limit: None,
@@ -488,7 +488,7 @@ impl ApiTester {
                     builder_boost_factor: None,
                     prefer_builder_proposals: None,
                     voting_public_key: kp.pk,
-                    url: format!("http://signer_{}.com/", i),
+                    url: format!("http://signer_{i}.com/"),
                     root_certificate_path: None,
                     request_timeout_ms: None,
                     client_identity_path: None,

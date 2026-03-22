@@ -766,7 +766,7 @@ pub async fn equivocation_consensus_late_equivocation() {
                 "proposal for this slot and proposer has already been seen"
             );
         }
-        other => panic!("Expected BadRequest, got {:?}", other),
+        other => panic!("Expected BadRequest, got {other:?}"),
     }
 }
 
@@ -1490,12 +1490,10 @@ pub async fn blinded_equivocation_consensus_late_equivocation() {
         .expect("block expected");
 
         let inner_block_a = match unblinded_block_a {
-            ProvenancedBlock::Local(a, _, _) => a,
-            ProvenancedBlock::Builder(a, _, _) => a,
+            ProvenancedBlock::Local(a, _, _) | ProvenancedBlock::Builder(a, _, _) => a,
         };
         let inner_block_b = match unblinded_block_b {
-            ProvenancedBlock::Local(b, _, _) => b,
-            ProvenancedBlock::Builder(b, _, _) => b,
+            ProvenancedBlock::Local(b, _, _) | ProvenancedBlock::Builder(b, _, _) => b,
         };
 
         let gossip_block_b = GossipVerifiedBlock::new(inner_block_b, &tester.harness.chain);

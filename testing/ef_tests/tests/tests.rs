@@ -161,49 +161,49 @@ fn random() {
 #[test]
 #[cfg(not(feature = "fake_crypto"))]
 fn bls_aggregate() {
-    BlsAggregateSigsHandler::default().run();
+    BlsAggregateSigsHandler.run();
 }
 
 #[test]
 #[cfg(not(feature = "fake_crypto"))]
 fn bls_sign() {
-    BlsSignMsgHandler::default().run();
+    BlsSignMsgHandler.run();
 }
 
 #[test]
 #[cfg(not(feature = "fake_crypto"))]
 fn bls_verify() {
-    BlsVerifyMsgHandler::default().run();
+    BlsVerifyMsgHandler.run();
 }
 
 #[test]
 #[cfg(not(feature = "fake_crypto"))]
 fn bls_batch_verify() {
-    BlsBatchVerifyHandler::default().run();
+    BlsBatchVerifyHandler.run();
 }
 
 #[test]
 #[cfg(not(feature = "fake_crypto"))]
 fn bls_aggregate_verify() {
-    BlsAggregateVerifyHandler::default().run();
+    BlsAggregateVerifyHandler.run();
 }
 
 #[test]
 #[cfg(not(feature = "fake_crypto"))]
 fn bls_fast_aggregate_verify() {
-    BlsFastAggregateVerifyHandler::default().run();
+    BlsFastAggregateVerifyHandler.run();
 }
 
 #[test]
 #[cfg(not(feature = "fake_crypto"))]
 fn bls_eth_aggregate_pubkeys() {
-    BlsEthAggregatePubkeysHandler::default().run();
+    BlsEthAggregatePubkeysHandler.run();
 }
 
 #[test]
 #[cfg(not(feature = "fake_crypto"))]
 fn bls_eth_fast_aggregate_verify() {
-    BlsEthFastAggregateVerifyHandler::default().run();
+    BlsEthFastAggregateVerifyHandler.run();
 }
 
 /// As for `ssz_static_test_no_run` (below), but also executes the function as a test.

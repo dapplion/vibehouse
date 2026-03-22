@@ -365,6 +365,7 @@ impl<T: Item<()>, E: EthSpec> AutoPruningEpochContainer<T, E> {
     }
 
     /// The maximum number of epochs stored in `self`.
+    #[allow(clippy::unused_self)]
     fn max_capacity(&self) -> u64 {
         MAX_CACHED_EPOCHS
     }
@@ -563,6 +564,7 @@ impl<K: SlotData + Eq + Hash + Copy, S, V: Item<S>, E: EthSpec>
     }
 
     /// The maximum number of slots stored in `self`.
+    #[allow(clippy::unused_self)]
     fn max_capacity(&self) -> u64 {
         // The next, current and previous slots. We require the next slot due to the
         // `MAXIMUM_GOSSIP_CLOCK_DISPARITY`.

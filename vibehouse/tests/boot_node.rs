@@ -130,8 +130,7 @@ fn boot_nodes_flag() {
                 assert_eq!(
                     enr.to_base64(),
                     expect_enr[i],
-                    "ENR missmatch at index [{}]",
-                    i
+                    "ENR missmatch at index [{i}]"
                 );
             }
         });
@@ -183,7 +182,7 @@ fn network_dir_flag() {
 
 fn save_enr_to_disk(dir: &Path, enr: &Enr) -> Result<(), String> {
     let mut file = File::create(dir.join(Path::new(ENR_FILENAME)))
-        .map_err(|e| format!("Could not create ENR file: {:?}", e))?;
+        .map_err(|e| format!("Could not create ENR file: {e:?}"))?;
     file.write_all(enr.to_base64().as_bytes())
-        .map_err(|e| format!("Could not write ENR to file: {:?}", e))
+        .map_err(|e| format!("Could not write ENR to file: {e:?}"))
 }

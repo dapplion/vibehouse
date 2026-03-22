@@ -24,7 +24,7 @@ type E = MainnetEthSpec;
 /// Extract Err from a Result where the Ok type doesn't implement Debug.
 fn unwrap_err<T, E: std::fmt::Debug>(result: Result<T, E>, msg: &str) -> E {
     match result {
-        Ok(_) => panic!("{}: expected Err, got Ok", msg),
+        Ok(_) => panic!("{msg}: expected Err, got Ok"),
         Err(e) => e,
     }
 }
@@ -181,8 +181,7 @@ async fn bid_slot_not_current_or_next_past() {
     );
     assert!(
         matches!(err, ExecutionBidError::SlotNotCurrentOrNext { .. }),
-        "expected SlotNotCurrentOrNext, got {:?}",
-        err
+        "expected SlotNotCurrentOrNext, got {err:?}"
     );
 }
 
@@ -201,8 +200,7 @@ async fn bid_slot_not_current_or_next_future() {
     );
     assert!(
         matches!(err, ExecutionBidError::SlotNotCurrentOrNext { .. }),
-        "expected SlotNotCurrentOrNext, got {:?}",
-        err
+        "expected SlotNotCurrentOrNext, got {err:?}"
     );
 }
 
@@ -221,8 +219,7 @@ async fn bid_zero_execution_payment() {
     );
     assert!(
         matches!(err, ExecutionBidError::ZeroExecutionPayment),
-        "expected ZeroExecutionPayment, got {:?}",
-        err
+        "expected ZeroExecutionPayment, got {err:?}"
     );
 }
 
@@ -242,8 +239,7 @@ async fn bid_unknown_builder_index_zero() {
     );
     assert!(
         matches!(err, ExecutionBidError::UnknownBuilder { builder_index: 0 }),
-        "expected UnknownBuilder(0), got {:?}",
-        err
+        "expected UnknownBuilder(0), got {err:?}"
     );
 }
 
@@ -266,8 +262,7 @@ async fn bid_unknown_builder_high_index() {
             err,
             ExecutionBidError::UnknownBuilder { builder_index: 999 }
         ),
-        "expected UnknownBuilder(999), got {:?}",
-        err
+        "expected UnknownBuilder(999), got {err:?}"
     );
 }
 
@@ -287,8 +282,7 @@ async fn bid_current_slot_passes_slot_check() {
     );
     assert!(
         !matches!(err, ExecutionBidError::SlotNotCurrentOrNext { .. }),
-        "bid at current slot should pass slot check, got {:?}",
-        err
+        "bid at current slot should pass slot check, got {err:?}"
     );
 }
 
@@ -308,8 +302,7 @@ async fn bid_next_slot_passes_slot_check() {
     );
     assert!(
         !matches!(err, ExecutionBidError::SlotNotCurrentOrNext { .. }),
-        "bid at next slot should pass slot check, got {:?}",
-        err
+        "bid at next slot should pass slot check, got {err:?}"
     );
 }
 
@@ -329,8 +322,7 @@ async fn bid_slot_two_ahead_rejected() {
     );
     assert!(
         matches!(err, ExecutionBidError::SlotNotCurrentOrNext { .. }),
-        "expected SlotNotCurrentOrNext, got {:?}",
-        err
+        "expected SlotNotCurrentOrNext, got {err:?}"
     );
 }
 
@@ -350,8 +342,7 @@ async fn bid_slot_one_behind_rejected() {
     );
     assert!(
         matches!(err, ExecutionBidError::SlotNotCurrentOrNext { .. }),
-        "expected SlotNotCurrentOrNext, got {:?}",
-        err
+        "expected SlotNotCurrentOrNext, got {err:?}"
     );
 }
 
@@ -377,8 +368,7 @@ async fn bid_inactive_builder() {
     );
     assert!(
         matches!(err, ExecutionBidError::InactiveBuilder { builder_index: 0 }),
-        "expected InactiveBuilder, got {:?}",
-        err
+        "expected InactiveBuilder, got {err:?}"
     );
 }
 
@@ -428,8 +418,7 @@ async fn bid_insufficient_builder_balance() {
                 ..
             }
         ),
-        "expected InsufficientBuilderBalance, got {:?}",
-        err
+        "expected InsufficientBuilderBalance, got {err:?}"
     );
 }
 
@@ -483,8 +472,7 @@ async fn bid_duplicate_via_gossip_path() {
     );
     assert!(
         matches!(err, ExecutionBidError::DuplicateBid { .. }),
-        "expected DuplicateBid, got {:?}",
-        err
+        "expected DuplicateBid, got {err:?}"
     );
 }
 
@@ -560,8 +548,7 @@ async fn bid_equivocation_via_gossip_path() {
                 ..
             }
         ),
-        "expected BuilderEquivocation, got {:?}",
-        err
+        "expected BuilderEquivocation, got {err:?}"
     );
 }
 
@@ -584,8 +571,7 @@ async fn bid_invalid_parent_root() {
     );
     assert!(
         matches!(err, ExecutionBidError::InvalidParentRoot { .. }),
-        "expected InvalidParentRoot, got {:?}",
-        err
+        "expected InvalidParentRoot, got {err:?}"
     );
 }
 
@@ -614,8 +600,7 @@ async fn bid_unknown_parent_block_hash() {
     );
     assert!(
         matches!(err, ExecutionBidError::UnknownParentBlockHash { .. }),
-        "expected UnknownParentBlockHash, got {:?}",
-        err
+        "expected UnknownParentBlockHash, got {err:?}"
     );
 }
 
@@ -650,8 +635,7 @@ async fn bid_invalid_signature() {
     );
     assert!(
         matches!(err, ExecutionBidError::InvalidSignature),
-        "expected InvalidSignature, got {:?}",
-        err
+        "expected InvalidSignature, got {err:?}"
     );
 }
 
@@ -727,8 +711,7 @@ async fn attestation_future_slot() {
     );
     assert!(
         matches!(err, PayloadAttestationError::FutureSlot { .. }),
-        "expected FutureSlot, got {:?}",
-        err
+        "expected FutureSlot, got {err:?}"
     );
 }
 
@@ -748,8 +731,7 @@ async fn attestation_past_slot() {
     );
     assert!(
         matches!(err, PayloadAttestationError::PastSlot { .. }),
-        "expected PastSlot, got {:?}",
-        err
+        "expected PastSlot, got {err:?}"
     );
 }
 
@@ -769,8 +751,7 @@ async fn attestation_empty_aggregation_bits() {
     );
     assert!(
         matches!(err, PayloadAttestationError::EmptyAggregationBits),
-        "expected EmptyAggregationBits, got {:?}",
-        err
+        "expected EmptyAggregationBits, got {err:?}"
     );
 }
 
@@ -792,8 +773,7 @@ async fn attestation_unknown_beacon_block_root() {
     );
     assert!(
         matches!(err, PayloadAttestationError::UnknownBeaconBlockRoot { .. }),
-        "expected UnknownBeaconBlockRoot, got {:?}",
-        err
+        "expected UnknownBeaconBlockRoot, got {err:?}"
     );
 }
 
@@ -821,8 +801,7 @@ async fn attestation_valid_slot_passes_slot_check() {
                 | PayloadAttestationError::PastSlot { .. }
                 | PayloadAttestationError::EmptyAggregationBits
         ),
-        "valid slot should pass early checks, got {:?}",
-        err
+        "valid slot should pass early checks, got {err:?}"
     );
 }
 
@@ -880,9 +859,7 @@ async fn attestation_validator_equivocation() {
                 ..
             } if validator_index == ptc_validator && slot == head_slot
         ),
-        "expected ValidatorEquivocation for validator {}, got {:?}",
-        ptc_validator,
-        err
+        "expected ValidatorEquivocation for validator {ptc_validator}, got {err:?}"
     );
 }
 
@@ -906,8 +883,7 @@ async fn envelope_block_root_unknown() {
     );
     assert!(
         matches!(err, PayloadEnvelopeError::BlockRootUnknown { .. }),
-        "expected BlockRootUnknown, got {:?}",
-        err
+        "expected BlockRootUnknown, got {err:?}"
     );
 
     // Verify the envelope was buffered in pending_gossip_envelopes
@@ -947,8 +923,7 @@ async fn envelope_slot_mismatch() {
                 envelope_slot,
             } if block_slot == head_slot && envelope_slot == head_slot + 5
         ),
-        "expected SlotMismatch, got {:?}",
-        err
+        "expected SlotMismatch, got {err:?}"
     );
 }
 
@@ -988,8 +963,7 @@ async fn envelope_builder_index_mismatch() {
     );
     assert!(
         matches!(err, PayloadEnvelopeError::BuilderIndexMismatch { .. }),
-        "expected BuilderIndexMismatch, got {:?}",
-        err
+        "expected BuilderIndexMismatch, got {err:?}"
     );
 }
 
@@ -1031,8 +1005,7 @@ async fn envelope_block_hash_mismatch() {
     );
     assert!(
         matches!(err, PayloadEnvelopeError::BlockHashMismatch { .. }),
-        "expected BlockHashMismatch, got {:?}",
-        err
+        "expected BlockHashMismatch, got {err:?}"
     );
 }
 
@@ -1268,10 +1241,7 @@ async fn envelope_self_build_passes_all_checks() {
             }
             Err(e) => {
                 // May fail on state-dependent checks for already-processed envelopes
-                eprintln!(
-                    "note: stored envelope re-verification failed (expected): {:?}",
-                    e
-                );
+                eprintln!("note: stored envelope re-verification failed (expected): {e:?}");
             }
         }
     }
@@ -1305,8 +1275,7 @@ async fn envelope_duplicate_returns_ignore() {
     );
     assert!(
         matches!(err, PayloadEnvelopeError::DuplicateEnvelope { block_root } if block_root == head_root),
-        "expected DuplicateEnvelope for self-build gossip echo, got {:?}",
-        err
+        "expected DuplicateEnvelope for self-build gossip echo, got {err:?}"
     );
 
     // Clear observed envelopes to test the independent gossip dedup path
@@ -1332,8 +1301,7 @@ async fn envelope_duplicate_returns_ignore() {
     );
     assert!(
         matches!(err, PayloadEnvelopeError::DuplicateEnvelope { block_root } if block_root == head_root),
-        "expected DuplicateEnvelope with head root, got {:?}",
-        err
+        "expected DuplicateEnvelope with head root, got {err:?}"
     );
 }
 
@@ -1375,8 +1343,7 @@ async fn envelope_prior_to_finalization() {
                 PayloadEnvelopeError::SlotMismatch { .. }
                     | PayloadEnvelopeError::PriorToFinalization { .. }
             ),
-            "expected SlotMismatch or PriorToFinalization, got {:?}",
-            err
+            "expected SlotMismatch or PriorToFinalization, got {err:?}"
         );
     }
 }
@@ -1507,8 +1474,7 @@ async fn attestation_invalid_signature_rejected() {
     );
     assert!(
         matches!(err, PayloadAttestationError::InvalidSignature),
-        "expected InvalidSignature, got {:?}",
-        err
+        "expected InvalidSignature, got {err:?}"
     );
 }
 
@@ -1724,8 +1690,7 @@ async fn bid_balance_one_over_rejected() {
                 bid_value: 101,
             } if balance == 1_000_000_100
         ),
-        "expected InsufficientBuilderBalance, got {:?}",
-        err
+        "expected InsufficientBuilderBalance, got {err:?}"
     );
 }
 
@@ -1842,8 +1807,7 @@ async fn envelope_external_builder_invalid_signature_rejected() {
         );
         assert!(
             matches!(err, PayloadEnvelopeError::InvalidSignature),
-            "expected InvalidSignature, got {:?}",
-            err
+            "expected InvalidSignature, got {err:?}"
         );
     }
 }
@@ -2138,8 +2102,7 @@ async fn envelope_prior_to_finalization_direct() {
 
     assert!(
         finalized_slot > Slot::new(0),
-        "chain should have finalized, got finalized_slot={}",
-        finalized_slot
+        "chain should have finalized, got finalized_slot={finalized_slot}"
     );
 
     // Use the current head (in fork choice) but set envelope slot to 0 (finalized)
@@ -2169,8 +2132,7 @@ async fn envelope_prior_to_finalization_direct() {
                 ..
             } if envelope_slot == Slot::new(0)
         ),
-        "expected PriorToFinalization with envelope_slot=0, got {:?}",
-        err
+        "expected PriorToFinalization with envelope_slot=0, got {err:?}"
     );
 }
 
@@ -2205,9 +2167,7 @@ async fn bid_no_proposer_preferences_ignored() {
     );
     assert!(
         matches!(err, ExecutionBidError::ProposerPreferencesNotSeen { slot } if slot == current_slot),
-        "expected ProposerPreferencesNotSeen for slot {}, got {:?}",
-        current_slot,
-        err
+        "expected ProposerPreferencesNotSeen for slot {current_slot}, got {err:?}"
     );
 }
 
@@ -2255,8 +2215,7 @@ async fn bid_fee_recipient_mismatch_rejected() {
                 received,
             } if expected == Address::from([0xbb; 20]) && received == Address::from([0xaa; 20])
         ),
-        "expected FeeRecipientMismatch, got {:?}",
-        err
+        "expected FeeRecipientMismatch, got {err:?}"
     );
 }
 
@@ -2304,8 +2263,7 @@ async fn bid_gas_limit_mismatch_rejected() {
                 received: 30_000_000,
             }
         ),
-        "expected GasLimitMismatch {{ expected: 20_000_000, received: 30_000_000 }}, got {:?}",
-        err
+        "expected GasLimitMismatch {{ expected: 20_000_000, received: 30_000_000 }}, got {err:?}"
     );
 }
 
@@ -2557,8 +2515,7 @@ async fn bid_not_highest_value_rejected() {
             err,
             ExecutionBidError::NotHighestValue { bid_value: 100, .. }
         ),
-        "expected NotHighestValue with bid_value=100, got {:?}",
-        err
+        "expected NotHighestValue with bid_value=100, got {err:?}"
     );
 }
 
@@ -2712,8 +2669,7 @@ async fn bid_equal_value_rejected() {
             err,
             ExecutionBidError::NotHighestValue { bid_value: 200, .. }
         ),
-        "expected NotHighestValue with bid_value=200, got {:?}",
-        err
+        "expected NotHighestValue with bid_value=200, got {err:?}"
     );
 }
 
@@ -2768,8 +2724,7 @@ async fn bid_invalid_signature_does_not_poison_equivocation_tracker() {
     );
     assert!(
         matches!(err, ExecutionBidError::InvalidSignature),
-        "expected InvalidSignature, got {:?}",
-        err
+        "expected InvalidSignature, got {err:?}"
     );
 
     // Step 2: Submit a valid bid from the SAME builder with a different message
@@ -2881,8 +2836,7 @@ async fn bid_equivocation_short_circuits_before_highest_value() {
                 ..
             }
         ),
-        "expected BuilderEquivocation (not NotHighestValue), got {:?}",
-        err
+        "expected BuilderEquivocation (not NotHighestValue), got {err:?}"
     );
 
     // Step 3: Builder 1 submits bid (value=600) → should be accepted because the
@@ -2972,8 +2926,7 @@ async fn attestation_invalid_signature_does_not_poison_observation_cache() {
     );
     assert!(
         matches!(err, PayloadAttestationError::InvalidSignature),
-        "expected InvalidSignature, got {:?}",
-        err
+        "expected InvalidSignature, got {err:?}"
     );
 
     // Step 2: Submit a valid attestation from the SAME PTC validator.

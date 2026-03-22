@@ -545,9 +545,7 @@ async fn unaggregated_attestations_added_to_fork_choice_some_none() {
             assert_eq!(
                 latest_message.unwrap().1,
                 slot.epoch(MinimalEthSpec::slots_per_epoch()),
-                "Latest message epoch for {} should be equal to epoch {}.",
-                validator,
-                slot
+                "Latest message epoch for {validator} should be equal to epoch {slot}."
             );
         } else {
             assert!(

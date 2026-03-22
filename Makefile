@@ -265,6 +265,16 @@ lint:
 		-D clippy::inefficient_to_string \
 		-D clippy::items_after_statements \
 		-D clippy::trivially_copy_pass_by_ref \
+		-D clippy::unused_self \
+		-D clippy::map_unwrap_or \
+		-D clippy::match_same_arms \
+		-D clippy::single_match_else \
+		-D clippy::unnested_or_patterns \
+		-D clippy::explicit_into_iter_loop \
+		-D clippy::explicit_iter_loop \
+		-D clippy::manual_string_new \
+		-D clippy::uninlined_format_args \
+		-D clippy::needless_raw_string_hashes \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.

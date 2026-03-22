@@ -886,7 +886,7 @@ mod test {
                                     src_vc
                                         .secrets_dir
                                         .path()
-                                        .join(format!("{:?}", pubkey))
+                                        .join(format!("{pubkey:?}"))
                                         .exists(),
                                     "the source password file was used by another validator and should not be deleted"
                                 );
@@ -895,7 +895,7 @@ mod test {
                                     !src_vc
                                         .secrets_dir
                                         .path()
-                                        .join(format!("{:?}", pubkey))
+                                        .join(format!("{pubkey:?}"))
                                         .exists(),
                                     "the source password file should be deleted"
                                 );

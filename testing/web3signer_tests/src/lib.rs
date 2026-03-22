@@ -189,7 +189,7 @@ mod tests {
             let keystore_dir = TempDir::new().unwrap();
             let keypair = testing_keypair();
             let keystore =
-                KeystoreBuilder::new(&keypair, KEYSTORE_PASSWORD.as_bytes(), "".to_string())
+                KeystoreBuilder::new(&keypair, KEYSTORE_PASSWORD.as_bytes(), String::new())
                     .unwrap()
                     .build()
                     .unwrap();
@@ -229,8 +229,8 @@ mod tests {
                     "--key-store-path={}",
                     keystore_dir.path().to_str().unwrap()
                 ))
-                .arg(format!("--http-listen-host={}", listen_address))
-                .arg(format!("--http-listen-port={}", listen_port))
+                .arg(format!("--http-listen-host={listen_address}"))
+                .arg(format!("--http-listen-port={listen_port}"))
                 .arg(format!(
                     "--tls-known-clients-file={}",
                     tls_known_clients_file.to_str().unwrap()
@@ -244,7 +244,7 @@ mod tests {
                     tls_keystore_password_file.to_str().unwrap()
                 ))
                 .arg("eth2")
-                .arg(format!("--network={}", network))
+                .arg(format!("--network={network}"))
                 // Can't *easily* test `--slashing-protection-enabled=true` because web3signer
                 // requires a Postgres instance.
                 .arg("--slashing-protection-enabled=false")
@@ -253,7 +253,7 @@ mod tests {
                 .spawn()
                 .unwrap();
 
-            let url = Url::parse(&format!("https://{}:{}", listen_address, listen_port)).unwrap();
+            let url = Url::parse(&format!("https://{listen_address}:{listen_port}")).unwrap();
 
             let certificate = load_pem_certificate(root_certificate_path()).unwrap();
             let identity =
@@ -284,7 +284,7 @@ mod tests {
                 if self.upcheck().await.is_ok() {
                     return;
                 } else if Instant::now().duration_since(start) > timeout {
-                    panic!("upcheck failed with timeout {:?}", timeout)
+                    panic!("upcheck failed with timeout {timeout:?}")
                 } else {
                     sleep(Duration::from_secs(1)).await;
                 }
@@ -496,8 +496,7 @@ mod tests {
                 if let Some(prev_signature) = &prev_signature {
                     assert_eq!(
                         prev_signature, &signature,
-                        "signature mismatch at index {} for case {}",
-                        i, case_name
+                        "signature mismatch at index {i} for case {case_name}"
                     );
                 }
 

@@ -216,7 +216,7 @@ impl<E: EthSpec> OperationPool<E> {
     }
 
     /// Return all valid attestations for the given epoch, for use in max cover.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments, clippy::unused_self)]
     fn get_valid_attestations_for_epoch<'a>(
         &'a self,
         checkpoint_key: &'a CheckpointKey,

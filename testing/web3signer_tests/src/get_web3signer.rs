@@ -29,8 +29,7 @@ pub(crate) async fn download_binary(dest_dir: PathBuf) {
     // Download the release zip.
     let client = Client::builder().build().unwrap();
     let zip_url = format!(
-        "https://artifacts.consensys.net/public/web3signer/raw/names/web3signer.zip/versions/{}/web3signer-{}.zip",
-        version, version
+        "https://artifacts.consensys.net/public/web3signer/raw/names/web3signer.zip/versions/{version}/web3signer-{version}.zip",
     );
     let zip_response = client
         .get(zip_url)
@@ -81,8 +80,7 @@ fn find_versioned_web3signer_dir(dest_dir: &Path) -> PathBuf {
         if path
             .file_name()
             .and_then(|n| n.to_str())
-            .map(|s| s.starts_with("web3signer-"))
-            .unwrap_or(false)
+            .is_some_and(|s| s.starts_with("web3signer-"))
             && entry.file_type().unwrap().is_dir()
         {
             return path;

@@ -887,7 +887,7 @@ pub mod tests {
             let vector_name = file_name.to_str().unwrap();
             let path = entry.path();
             // Leave this `println!` so we can tell which test fails.
-            println!("Running test {}", vector_name);
+            println!("Running test {vector_name}");
             run_test_vector(vector_name, &path).await;
         }
     }

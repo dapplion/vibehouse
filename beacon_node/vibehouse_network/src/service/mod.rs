@@ -1195,6 +1195,7 @@ impl<E: EthSpec> Network<E> {
     // RPC Propagation methods
     /// Queues the response to be sent upwards as long at it was requested outside the Behaviour.
     #[must_use = "return the response"]
+    #[allow(clippy::unused_self)]
     fn build_response(
         &mut self,
         app_request_id: AppRequestId,

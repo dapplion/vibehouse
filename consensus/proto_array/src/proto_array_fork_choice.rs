@@ -1431,6 +1431,7 @@ impl ProtoArrayForkChoice {
     /// Compares child's `bid_parent_block_hash` with parent's `bid_block_hash`.
     /// If they match, the parent was FULL (execution payload delivered).
     /// Otherwise, the parent was EMPTY.
+    #[allow(clippy::unused_self)]
     fn get_parent_payload_status_of(
         &self,
         child: &ProtoNode,
