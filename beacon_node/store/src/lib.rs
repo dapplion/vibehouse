@@ -7,20 +7,20 @@
 //!
 //! Provides a simple API for storing/retrieving all types that sometimes needs type-hints. See
 //! tests for implementation examples.
-pub mod blob_sidecar_list_from_root;
+mod blob_sidecar_list_from_root;
 pub mod config;
-pub mod consensus_context;
+mod consensus_context;
 pub mod errors;
 mod forwards_iter;
 pub mod hdiff;
-pub mod historic_state_cache;
+pub(crate) mod historic_state_cache;
 pub mod hot_cold_store;
 mod impls;
 mod memory_store;
 pub mod metadata;
 pub mod metrics;
-pub mod reconstruct;
-pub mod state_cache;
+mod reconstruct;
+pub(crate) mod state_cache;
 
 pub mod database;
 pub mod iter;
