@@ -4,32 +4,29 @@ use std::sync::LazyLock;
 use tracing_log::NormalizeEvent;
 
 /// Count of `INFO` logs registered per enabled dependency.
-pub static DEP_INFOS_TOTAL: LazyLock<metrics::Result<metrics::IntCounterVec>> =
-    LazyLock::new(|| {
-        metrics::try_create_int_counter_vec(
-            "dep_info_total",
-            "Count of infos logged per enabled dependency",
-            &["target"],
-        )
-    });
+static DEP_INFOS_TOTAL: LazyLock<metrics::Result<metrics::IntCounterVec>> = LazyLock::new(|| {
+    metrics::try_create_int_counter_vec(
+        "dep_info_total",
+        "Count of infos logged per enabled dependency",
+        &["target"],
+    )
+});
 /// Count of `WARN` logs registered per enabled dependency.
-pub static DEP_WARNS_TOTAL: LazyLock<metrics::Result<metrics::IntCounterVec>> =
-    LazyLock::new(|| {
-        metrics::try_create_int_counter_vec(
-            "dep_warn_total",
-            "Count of warns logged per enabled dependency",
-            &["target"],
-        )
-    });
+static DEP_WARNS_TOTAL: LazyLock<metrics::Result<metrics::IntCounterVec>> = LazyLock::new(|| {
+    metrics::try_create_int_counter_vec(
+        "dep_warn_total",
+        "Count of warns logged per enabled dependency",
+        &["target"],
+    )
+});
 /// Count of `ERROR` logs registered per enabled dependency.
-pub static DEP_ERRORS_TOTAL: LazyLock<metrics::Result<metrics::IntCounterVec>> =
-    LazyLock::new(|| {
-        metrics::try_create_int_counter_vec(
-            "dep_error_total",
-            "Count of errors logged per enabled dependency",
-            &["target"],
-        )
-    });
+static DEP_ERRORS_TOTAL: LazyLock<metrics::Result<metrics::IntCounterVec>> = LazyLock::new(|| {
+    metrics::try_create_int_counter_vec(
+        "dep_error_total",
+        "Count of errors logged per enabled dependency",
+        &["target"],
+    )
+});
 
 /// Layer that registers Prometheus metrics for `INFO`, `WARN` and `ERROR` logs emitted per dependency.
 /// Dependencies are enabled via the `RUST_LOG` env flag.

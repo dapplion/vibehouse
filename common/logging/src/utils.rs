@@ -19,7 +19,7 @@ pub fn build_workspace_filter()
 ///
 /// This helps to keep log formatting consistent.
 /// Whitespace and padding control codes are excluded.
-pub fn is_ascii_control(character: &u8) -> bool {
+pub(crate) fn is_ascii_control(character: &u8) -> bool {
     matches!(
         character,
         b'\x00'..=b'\x08' |

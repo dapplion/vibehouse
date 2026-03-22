@@ -57,7 +57,6 @@ where
             let mut extensions = span.extensions_mut();
 
             let span_data = SpanData {
-                name: attrs.metadata().name().to_string(),
                 fields: visitor.fields,
             };
 
@@ -161,9 +160,8 @@ where
 }
 
 #[derive(Clone, Debug)]
-pub struct SpanData {
-    pub name: String,
-    pub fields: Vec<(String, String)>,
+pub(crate) struct SpanData {
+    pub(crate) fields: Vec<(String, String)>,
 }
 
 struct FieldVisitor {

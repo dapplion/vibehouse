@@ -1,17 +1,17 @@
 use crate::SlotClock;
-pub use metrics::*;
+pub(crate) use metrics::*;
 use std::sync::LazyLock;
 use types::{EthSpec, Slot};
 
-pub static PRESENT_SLOT: LazyLock<Result<IntGauge>> =
+pub(crate) static PRESENT_SLOT: LazyLock<Result<IntGauge>> =
     LazyLock::new(|| try_create_int_gauge("slotclock_present_slot", "The present wall-clock slot"));
-pub static PRESENT_EPOCH: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+pub(crate) static PRESENT_EPOCH: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge("slotclock_present_epoch", "The present wall-clock epoch")
 });
-pub static SLOTS_PER_EPOCH: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+pub(crate) static SLOTS_PER_EPOCH: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge("slotclock_slots_per_epoch", "Slots per epoch (constant)")
 });
-pub static SECONDS_PER_SLOT: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+pub(crate) static SECONDS_PER_SLOT: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge(
         "slotclock_slot_time_seconds",
         "The duration in seconds between each slot",

@@ -33,8 +33,8 @@ use types::{EthSpec, EthSpecId};
 use validator_client::ProductionValidatorClient;
 use vibehouse_version::VERSION;
 
-pub static SHORT_VERSION: LazyLock<String> = LazyLock::new(|| VERSION.replace("vibehouse/", ""));
-pub static LONG_VERSION: LazyLock<String> = LazyLock::new(|| {
+static SHORT_VERSION: LazyLock<String> = LazyLock::new(|| VERSION.replace("vibehouse/", ""));
+static LONG_VERSION: LazyLock<String> = LazyLock::new(|| {
     format!(
         "{}\n\
          BLS library: {}\n\

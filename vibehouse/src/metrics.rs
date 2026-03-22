@@ -1,17 +1,17 @@
-pub use metrics::*;
+use metrics::*;
 use std::sync::LazyLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tracing::error;
 use vibehouse_version::VERSION;
 
-pub static PROCESS_START_TIME_SECONDS: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+static PROCESS_START_TIME_SECONDS: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge(
         "process_start_time_seconds",
         "The unix timestamp at which the process was started",
     )
 });
 
-pub static VIBEHOUSE_VERSION: LazyLock<Result<IntGaugeVec>> = LazyLock::new(|| {
+static VIBEHOUSE_VERSION: LazyLock<Result<IntGaugeVec>> = LazyLock::new(|| {
     try_create_int_gauge_vec(
         "vibehouse_info",
         "The build of vibehouse running on the server",
@@ -19,7 +19,7 @@ pub static VIBEHOUSE_VERSION: LazyLock<Result<IntGaugeVec>> = LazyLock::new(|| {
     )
 });
 
-pub fn expose_process_start_time() {
+pub(crate) fn expose_process_start_time() {
     match SystemTime::now().duration_since(UNIX_EPOCH) {
         Ok(duration) => set_gauge(&PROCESS_START_TIME_SECONDS, duration.as_secs() as i64),
         Err(e) => error!(
@@ -29,6 +29,6 @@ pub fn expose_process_start_time() {
     }
 }
 
-pub fn expose_vibehouse_version() {
+pub(crate) fn expose_vibehouse_version() {
     set_gauge_vec(&VIBEHOUSE_VERSION, &[VERSION], 1);
 }

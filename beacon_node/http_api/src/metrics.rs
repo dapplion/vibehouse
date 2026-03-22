@@ -1,4 +1,4 @@
-pub use metrics::{
+pub(crate) use metrics::{
     Histogram, HistogramVec, IntCounterVec, Result, decimal_buckets, inc_counter_vec,
     observe_timer_vec, start_timer, try_create_histogram, try_create_histogram_vec,
     try_create_histogram_vec_with_buckets, try_create_int_counter_vec,
