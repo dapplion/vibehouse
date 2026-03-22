@@ -4475,3 +4475,28 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - No hard envelope deadline in gossip validation — enforced by gossip scoring (messages outside timing windows scored lower).
 - **CI**: All 6 jobs passed on latest push (c5169cf33). Green.
 - **Conclusion**: No code changes needed. Four subsystems deeply audited, all clean. Codebase remains in excellent shape.
+
+### Run 2209
+
+**Code cleanup: dead code removal, stale allow(dead_code), pub→pub(crate) downgrades**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since #5008/#4902 (March 22). All open Gloas PRs remain unmerged.
+- **Nightly failure investigation**: `op-pool-tests (capella)` failed at 08:55 UTC due to `cargo-nextest-0.9.132` binary 404 on GitHub. The code at that time used unpinned `taiki-e/install-action@cargo-nextest`. The fix (pin to `@v2` with `tool: cargo-nextest@0.9.132`) was pushed later at 15:55 UTC. Tonight's nightly will use the fixed workflow.
+- **Removed stale `#[allow(dead_code)]` annotations**:
+  - `beacon_block_streamer.rs:Error` — all 4 variants are constructed and the type is referenced from `errors.rs`. Annotation was unnecessary.
+  - `json_structures.rs:RequestsError` — all variants are constructed in TryFrom impl and tests. Moved `#[allow(dead_code)]` to individual fields (values used for Debug formatting but never destructured in production).
+  - `engine_api.rs:GetPayloadResponseType` — moved `#[allow(dead_code)]` from enum level to just the `Blinded` variant (never constructed in production, only in tests).
+- **Removed dead builder status code** in `builder_client/src/lib.rs`:
+  - `get_builder_status()` — never called from outside the crate
+  - `get_with_timeout()` — only caller was `get_builder_status`
+  - `get_response_with_timeout()` — only caller was `get_with_timeout`
+  - `Timeouts::get_builder_status` field — only used by the dead method
+  - Removed corresponding test assertion. Total: -50 lines.
+- **Downgraded `pub` to `pub(crate)` on internal APIs** (11 items):
+  - `gloas_verification.rs:envelope_arc()` — only called within `beacon_chain` crate
+  - `router.rs:on_envelopes_by_root_response()` — only called within same file (downgraded to private)
+  - `network_context.rs`: `request_envelopes_if_needed`, `on_envelope_by_root_response`, `request_single_envelope`, `send_rpc_payload_envelope` — all crate-internal
+  - `network_beacon_processor/mod.rs`: `send_gossip_payload_attestation`, `send_rpc_payload_envelope`, `send_execution_payload_envelopes_by_roots_request` — all crate-internal
+  - `rpc_methods.rs:handle_execution_payload_envelopes_by_root_request` — crate-internal
+- **Tests**: 24/24 builder_client, workspace check clean with zero warnings, clippy clean.
+- **CI**: Push succeeded, pre-push hook (lint-full) passed.
