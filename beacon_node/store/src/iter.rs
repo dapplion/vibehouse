@@ -7,50 +7,6 @@ use types::{
     typenum::Unsigned,
 };
 
-/// Implemented for types that have ancestors (e.g., blocks, states) that may be iterated over.
-///
-/// ## Note
-///
-/// It is assumed that all ancestors for this object are stored in the database. If this is not the
-/// case, the iterator will start returning `None` prior to genesis.
-pub trait AncestorIter<'a, E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>, I: Iterator> {
-    /// Returns an iterator over the roots of the ancestors of `self`.
-    fn try_iter_ancestor_roots(&self, store: &'a HotColdDB<E, Hot, Cold>) -> Option<I>;
-}
-
-impl<'a, E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>
-    AncestorIter<'a, E, Hot, Cold, BlockRootsIterator<'a, E, Hot, Cold>> for SignedBeaconBlock<E>
-{
-    /// Iterates across all available prior block roots of `self`, starting at the most recent and ending
-    /// at genesis.
-    fn try_iter_ancestor_roots(
-        &self,
-        store: &'a HotColdDB<E, Hot, Cold>,
-    ) -> Option<BlockRootsIterator<'a, E, Hot, Cold>> {
-        // Ancestor roots and their states are probably in the cold db
-        // but we set `update_cache` to false just in case
-        let state = store
-            .get_state(&self.message().state_root(), Some(self.slot()), false)
-            .ok()??;
-
-        Some(BlockRootsIterator::owned(store, state))
-    }
-}
-
-impl<'a, E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>
-    AncestorIter<'a, E, Hot, Cold, StateRootsIterator<'a, E, Hot, Cold>> for BeaconState<E>
-{
-    /// Iterates across all available prior state roots of `self`, starting at the most recent and ending
-    /// at genesis.
-    fn try_iter_ancestor_roots(
-        &self,
-        store: &'a HotColdDB<E, Hot, Cold>,
-    ) -> Option<StateRootsIterator<'a, E, Hot, Cold>> {
-        // The `self.clone()` here is wasteful.
-        Some(StateRootsIterator::owned(store, self.clone()))
-    }
-}
-
 pub struct StateRootsIterator<'a, E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> {
     inner: RootsIterator<'a, E, Hot, Cold>,
 }
@@ -151,7 +107,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> Iterator
 }
 
 /// Iterator over state and block roots that backtracks using the vectors from a `BeaconState`.
-pub struct RootsIterator<'a, E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> {
+pub(crate) struct RootsIterator<'a, E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> {
     store: &'a HotColdDB<E, Hot, Cold>,
     beacon_state: Cow<'a, BeaconState<E>>,
     slot: Slot,
@@ -300,47 +256,6 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> Iterator
     for ParentRootBlockIterator<'_, E, Hot, Cold>
 {
     type Item = Result<(Hash256, SignedBeaconBlock<E, BlindedPayload<E>>), Error>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.do_next().transpose()
-    }
-}
-
-#[derive(Clone)]
-/// Extends `BlockRootsIterator`, returning `SignedBeaconBlock` instances, instead of their roots.
-pub struct BlockIterator<'a, E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> {
-    roots: BlockRootsIterator<'a, E, Hot, Cold>,
-}
-
-impl<'a, E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BlockIterator<'a, E, Hot, Cold> {
-    /// Create a new iterator over all blocks in the given `beacon_state` and prior states.
-    pub fn new(store: &'a HotColdDB<E, Hot, Cold>, beacon_state: &'a BeaconState<E>) -> Self {
-        Self {
-            roots: BlockRootsIterator::new(store, beacon_state),
-        }
-    }
-
-    /// Create a new iterator over all blocks in the given `beacon_state` and prior states.
-    pub fn owned(store: &'a HotColdDB<E, Hot, Cold>, beacon_state: BeaconState<E>) -> Self {
-        Self {
-            roots: BlockRootsIterator::owned(store, beacon_state),
-        }
-    }
-
-    fn do_next(&mut self) -> Result<Option<SignedBeaconBlock<E, BlindedPayload<E>>>, Error> {
-        if let Some(result) = self.roots.next() {
-            let (root, _slot) = result?;
-            self.roots.inner.store.get_blinded_block(&root)
-        } else {
-            Ok(None)
-        }
-    }
-}
-
-impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> Iterator
-    for BlockIterator<'_, E, Hot, Cold>
-{
-    type Item = Result<SignedBeaconBlock<E, BlindedPayload<E>>, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.do_next().transpose()

@@ -5,7 +5,7 @@ use ssz::DecodeError;
 use state_processing::BlockReplayError;
 use types::{BeaconStateError, EpochCacheError, Hash256, InconsistentFork, Slot, milhouse};
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub(crate) type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug)]
 pub enum Error {
@@ -94,7 +94,7 @@ pub enum Error {
     },
 }
 
-pub trait HandleUnavailable<T> {
+pub(crate) trait HandleUnavailable<T> {
     fn handle_unavailable(self) -> std::result::Result<Option<T>, Error>;
 }
 
@@ -229,11 +229,12 @@ impl From<safe_arith::ArithError> for Error {
 }
 
 #[derive(Debug)]
-pub struct DBError {
-    pub message: String,
+pub(crate) struct DBError {
+    pub(crate) message: String,
 }
 
 impl DBError {
+    #[cfg(test)]
     pub fn new(message: String) -> Self {
         Self { message }
     }

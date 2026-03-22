@@ -1,2 +1,2 @@
 pub mod interface;
-pub mod redb_impl;
+pub(crate) mod redb_impl;

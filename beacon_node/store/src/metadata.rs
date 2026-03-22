@@ -9,15 +9,15 @@ pub const CURRENT_SCHEMA_VERSION: SchemaVersion = SchemaVersion(28);
 // All the keys that get stored under the `BeaconMeta` column.
 //
 // We use `repeat_byte` because it's a const fn.
-pub const SCHEMA_VERSION_KEY: Hash256 = Hash256::repeat_byte(0);
-pub const CONFIG_KEY: Hash256 = Hash256::repeat_byte(1);
-pub const SPLIT_KEY: Hash256 = Hash256::repeat_byte(2);
+pub(crate) const SCHEMA_VERSION_KEY: Hash256 = Hash256::repeat_byte(0);
+pub(crate) const CONFIG_KEY: Hash256 = Hash256::repeat_byte(1);
+pub(crate) const SPLIT_KEY: Hash256 = Hash256::repeat_byte(2);
 // Note: repeat_byte(3) was PRUNING_CHECKPOINT_KEY, now removed.
-pub const COMPACTION_TIMESTAMP_KEY: Hash256 = Hash256::repeat_byte(4);
-pub const ANCHOR_INFO_KEY: Hash256 = Hash256::repeat_byte(5);
-pub const BLOB_INFO_KEY: Hash256 = Hash256::repeat_byte(6);
-pub const DATA_COLUMN_INFO_KEY: Hash256 = Hash256::repeat_byte(7);
-pub const DATA_COLUMN_CUSTODY_INFO_KEY: Hash256 = Hash256::repeat_byte(8);
+pub(crate) const COMPACTION_TIMESTAMP_KEY: Hash256 = Hash256::repeat_byte(4);
+pub(crate) const ANCHOR_INFO_KEY: Hash256 = Hash256::repeat_byte(5);
+pub(crate) const BLOB_INFO_KEY: Hash256 = Hash256::repeat_byte(6);
+pub(crate) const DATA_COLUMN_INFO_KEY: Hash256 = Hash256::repeat_byte(7);
+pub(crate) const DATA_COLUMN_CUSTODY_INFO_KEY: Hash256 = Hash256::repeat_byte(8);
 
 /// State upper limit value used to indicate that a node is not storing historic states.
 pub const STATE_UPPER_LIMIT_NO_RETAIN: Slot = Slot::new(u64::MAX);
@@ -26,7 +26,7 @@ pub const STATE_UPPER_LIMIT_NO_RETAIN: Slot = Slot::new(u64::MAX);
 ///
 /// This value should never exist except on initial start-up prior to the anchor being initialised
 /// by `init_anchor_info`.
-pub const ANCHOR_UNINITIALIZED: AnchorInfo = AnchorInfo {
+pub(crate) const ANCHOR_UNINITIALIZED: AnchorInfo = AnchorInfo {
     anchor_slot: Slot::new(u64::MAX),
     oldest_block_slot: Slot::new(u64::MAX),
     oldest_block_parent: Hash256::ZERO,
@@ -58,7 +58,7 @@ impl StoreItem for SchemaVersion {
 }
 
 /// The last time the database was compacted.
-pub struct CompactionTimestamp(pub u64);
+pub(crate) struct CompactionTimestamp(pub(crate) u64);
 
 impl StoreItem for CompactionTimestamp {
     fn db_column() -> DBColumn {

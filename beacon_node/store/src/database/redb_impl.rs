@@ -9,9 +9,9 @@ use types::EthSpec;
 
 use super::interface::WriteOptions;
 
-pub const DB_FILE_NAME: &str = "database.redb";
+pub(crate) const DB_FILE_NAME: &str = "database.redb";
 
-pub struct Redb<E: EthSpec> {
+pub(crate) struct Redb<E: EthSpec> {
     db: RwLock<redb::Database>,
     _phantom: PhantomData<E>,
 }
@@ -87,11 +87,6 @@ impl<E: EthSpec> Redb<E> {
         })?;
         drop(table);
         tx.commit().map_err(Into::into)
-    }
-
-    /// Store some `value` in `column`, indexed with `key`.
-    pub fn put_bytes(&self, col: DBColumn, key: &[u8], val: &[u8]) -> Result<(), Error> {
-        self.put_bytes_with_options(col, key, val, self.write_options())
     }
 
     pub fn put_bytes_sync(&self, col: DBColumn, key: &[u8], val: &[u8]) -> Result<(), Error> {
@@ -277,10 +272,6 @@ impl<E: EthSpec> Redb<E> {
             Ok(iter) => Box::new(iter),
             Err(err) => Box::new(std::iter::once(Err(err))),
         }
-    }
-
-    pub fn iter_column<K: Key>(&self, column: DBColumn) -> ColumnIter<'_, K> {
-        self.iter_column_from(column, &vec![0; column.key_size()])
     }
 
     pub fn delete_batch(&self, col: DBColumn, ops: HashSet<&[u8]>) -> Result<(), Error> {

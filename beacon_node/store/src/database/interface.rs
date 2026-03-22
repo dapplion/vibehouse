@@ -84,9 +84,9 @@ impl<E: EthSpec> BeaconNodeBackend<E> {
     }
 }
 
-pub struct WriteOptions {
+pub(crate) struct WriteOptions {
     /// fsync before acknowledging a write operation.
-    pub sync: bool,
+    pub(crate) sync: bool,
 }
 
 impl WriteOptions {

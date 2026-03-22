@@ -49,9 +49,6 @@ const DATA_COLUMN_DB_KEY_SIZE: usize = 32 + 8;
 pub type ColumnIter<'a, K> = Box<dyn Iterator<Item = Result<(K, Vec<u8>), Error>> + 'a>;
 pub type ColumnKeyIter<'a, K> = Box<dyn Iterator<Item = Result<K, Error>> + 'a>;
 
-pub type RawEntryIter<'a> =
-    Result<Box<dyn Iterator<Item = Result<(Vec<u8>, Vec<u8>), Error>> + 'a>, Error>;
-
 pub trait KeyValueStore<E: EthSpec>: Sync + Send + Sized + 'static {
     /// Retrieve some bytes in `column` with `key`.
     fn get_bytes(&self, column: DBColumn, key: &[u8]) -> Result<Option<Vec<u8>>, Error>;
