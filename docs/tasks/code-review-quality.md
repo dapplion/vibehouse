@@ -4538,3 +4538,18 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Workspace-wide unreachable_pub status**: Down from 800+ (initial) → 162 (run 2211) → 1 (unfixable re-export). Complete.
 - **Tests**: 69/69 EF SSZ static, 24/24 EF operations+fork_choice, clippy clean, workspace compiles with zero warnings.
 - **CI**: Pre-push hook (lint-full) passed, push succeeded.
+
+### Run 2213
+
+**Enforce `unreachable_pub` lint in `make lint-full` and fix all remaining warnings**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. New merge since last check: #5014 (EIP-8025 p2p protocol for ZK proofs — not Gloas-related, no action needed). All open Gloas PRs unchanged: #5022, #5023, #5020, #4979, #4992, #4843, #4747.
+- **Lint enforcement**: Added `-W unreachable_pub` to RUSTFLAGS in `make lint-full` target. This means the pre-push hook and CI will now catch any future `unreachable_pub` regressions as errors (via `-D warnings`).
+- **Fixed all remaining warnings (54 files)**:
+  - Test helpers in `#[cfg(test)]` modules: `pub` → `pub(crate)` across beacon_chain (attester_cache, summaries_dag, overflow_lru_cache), execution_layer, gossip_cache, genesis, slasher, slashing_protection, deposit_contract
+  - Macro-generated test functions: removed `pub` from `slot_epoch_macros.rs` and `test_utils/macros.rs` test fns
+  - Integration test files: `cargo fix --tests` across workspace (http_api, network, fork_choice, doppelganger, validator_client, vibehouse CLI tests)
+  - Integration test common modules: added `#[allow(unreachable_pub)]` to `vibehouse_network/tests/common.rs` and `validator_dir/tests/tests.rs` (items need `pub` for sibling test files)
+  - Re-export: `#[allow(unreachable_pub)]` on `block_verification.rs` `pub use fork_choice::{...}` (re-exported from lib.rs, must stay `pub`)
+- **Tests**: 4991/4991 workspace tests pass (excluding web3signer infra-dependent). `make lint-full` clean.
+- **CI**: Pre-push hook passed with new lint enforcement, push succeeded.
