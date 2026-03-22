@@ -4647,3 +4647,30 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Unpin cargo-nextest in CI**: Removed `@0.9.132` version pin from `ci.yml` (5 occurrences) and `nightly-tests.yml` (6 occurrences). `taiki-e/install-action` now installs latest, avoiding recurring transient 404s on the specific 0.9.132 GitHub Release binary.
 - **Makefile lint target**: now 13 extra `-D` lints enforced (was 6).
 - **Tests**: 1085/1085 types. `make lint-full` clean. Pre-push hook passed, pushed successfully.
+
+### Run 2220 (2026-03-22)
+
+**Enforce 6 new clippy lints + fix all warnings**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs releases. #5014 (EIP-8025 p2p ZK proofs) was the only recent merge — not Gloas-related. #5008 (field name fix for `ExecutionPayloadEnvelopesByRoot`) is a doc-only fix; our implementation already uses correct field names. All tracked open Gloas PRs (#5022, #5023, #5020, #4979, #4992, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4747) remain unmerged.
+- **CI**: Run 23413579467 (from run 2219) — check+clippy+fmt passed, other jobs building.
+- **6 new lints enforced** (all had zero warnings — added for regression prevention):
+  - `range_plus_one` — prefer inclusive ranges (`0..=N` over `0..N+1`)
+  - `checked_conversions` — prefer `try_from()` over manual range checks
+  - `if_not_else` — prefer positive conditions in if/else
+  - `redundant_else` — remove else after return/break/continue
+  - `inefficient_to_string` — prefer `.to_string()` on `&str` over `String::to_string()`
+  - `items_after_statements` — const/fn/use items before let bindings
+- **Fixed 12 lint warnings** (exposed by `lint-full` with `-C debug-assertions=no`) across 9 files:
+  - `shuffling_cache.rs`: 2× `0..(N+1)` → `0..=N`
+  - `payload_invalidation.rs`: 1× const moved before early return
+  - `store_tests.rs`: 2× `if != { a } else { b }` → `if == { b } else { a }`
+  - `sync_committee_verification.rs`: 1× `if !cond { Some } else { None }` → `if cond { None } else { Some }`
+  - `fork_tests.rs`: 1× fn moved before let bindings
+  - `interactive_tests.rs`: 1× `if !misprediction` → `if misprediction` with branches swapped
+  - `tests.rs`: 2× `0..slots_per_epoch() + 1` → `0..=slots_per_epoch()`
+  - `keystores.rs`: 1× `use` moved to start of closure
+  - `beacon_node.rs`: 1× const moved before let bindings
+- **Also checked** (zero warnings): `trivially_copy_pass_by_ref` (22 warnings — deferred, changes function signatures), `wildcard_imports` (85), `needless_pass_by_value` (305), `doc_markdown` (1009). These have too many inherited warnings for zero-regression enforcement.
+- **Makefile lint target**: now 19 extra `-D` lints enforced (was 13).
+- **Tests**: 1085/1085 types, 7/7 shuffling_cache. `make lint-full` clean. Pre-push hook passed, pushed successfully.
