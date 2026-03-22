@@ -56,7 +56,7 @@ impl InvalidationOperation {
         }
     }
 
-    pub fn invalidate_block_root(&self) -> bool {
+    pub(crate) fn invalidate_block_root(&self) -> bool {
         match self {
             InvalidationOperation::InvalidateOne { .. } => true,
             InvalidationOperation::InvalidateMany {
@@ -177,7 +177,7 @@ impl ProtoArray {
     ///   should become the best child.
     /// - If required, update the parents best-descendant with the current node or its best-descendant.
     #[allow(clippy::too_many_arguments)]
-    pub fn apply_score_changes<E: EthSpec>(
+    pub(crate) fn apply_score_changes<E: EthSpec>(
         &mut self,
         mut deltas: Vec<i64>,
         justified_checkpoint: Checkpoint,
@@ -409,7 +409,7 @@ impl ProtoArray {
     ///
     /// - The `block-root` is unknown.
     /// - Any of the to-be-validated payloads are already invalid.
-    pub fn propagate_execution_payload_validation(
+    pub(crate) fn propagate_execution_payload_validation(
         &mut self,
         block_root: Hash256,
     ) -> Result<(), Error> {
@@ -470,7 +470,7 @@ impl ProtoArray {
     /// Invalidate zero or more blocks, as specified by the `InvalidationOperation`.
     ///
     /// See the documentation of `InvalidationOperation` for usage.
-    pub fn propagate_execution_payload_invalidation<E: EthSpec>(
+    pub(crate) fn propagate_execution_payload_invalidation<E: EthSpec>(
         &mut self,
         op: &InvalidationOperation,
     ) -> Result<(), Error> {
@@ -1072,7 +1072,7 @@ impl ProtoArray {
 
     /// Returns the first *beacon block root* which contains an execution payload with the given
     /// `block_hash`, if any.
-    pub fn execution_block_hash_to_beacon_block_root(
+    pub(crate) fn execution_block_hash_to_beacon_block_root(
         &self,
         block_hash: &ExecutionBlockHash,
     ) -> Option<Hash256> {

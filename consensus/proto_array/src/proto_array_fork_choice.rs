@@ -1036,7 +1036,7 @@ impl ProtoArrayForkChoice {
             .map_err(|e| format!("find_head maybe_prune failed: {e:?}"))
     }
 
-    pub fn set_prune_threshold(&mut self, prune_threshold: usize) {
+    pub(crate) fn set_prune_threshold(&mut self, prune_threshold: usize) {
         self.proto_array.prune_threshold = prune_threshold;
     }
 

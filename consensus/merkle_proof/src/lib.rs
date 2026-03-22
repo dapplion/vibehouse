@@ -329,7 +329,8 @@ impl MerkleTree {
     }
 
     /// useful for debugging
-    pub fn print_node(&self, mut space: u32) {
+    #[allow(dead_code)]
+    pub(crate) fn print_node(&self, mut space: u32) {
         const SPACES: u32 = 10;
         space += SPACES;
         let (pair, text) = match self {
