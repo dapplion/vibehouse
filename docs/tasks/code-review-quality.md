@@ -3365,3 +3365,22 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Spec**: v1.7.0-alpha.3 still latest. No new merges since March 15. All tracked Gloas PRs remain open.
 - **Tests**: 346/346 http_api tests pass (FORK_NAME=fulu). Full workspace clippy zero warnings. `make lint-full` passes.
 - **CI**: Previous run (zip update) still in progress, all green so far.
+
+### Run 2156 (2026-03-22)
+
+**Visibility downgrades in beacon_chain crate**
+
+- **Code changes** — downgraded 67 items from `pub` to `pub(crate)` across 10 private module files in `beacon_node/beacon_chain/src/`:
+  - **attester_cache.rs**: `CommitteeLengths` struct + fields, `AttesterCacheValue` struct + fields, `AttesterCacheKey` struct + fields, `AttesterCache` methods (5)
+  - **beacon_block_streamer.rs**: `CheckCaches` enum, `BeaconBlockStreamer` struct + methods (6)
+  - **block_times_cache.rs**: `BlockDelays` struct + fields (7)
+  - **light_client_server_cache.rs**: `get_latest_broadcasted_optimistic_update`, `get_latest_broadcasted_finality_update`, `set_latest_broadcasted_optimistic_update`, `set_latest_broadcasted_finality_update`, `recompute_and_cache_updates`, `get_light_client_update` (6 methods)
+  - **naive_aggregation_pool.rs**: `AttestationKey` struct + fields + methods (4), `get`, `prune` methods on `NaiveAggregationPool` (2)
+  - **observed_attesters.rs**: `MAX_CACHED_EPOCHS` constant
+  - **observed_payload_envelopes.rs**: `new`, `is_known`, `observe`, `is_empty` methods (4)
+  - **observed_slashable.rs**: `observe_slashable` method
+  - **persisted_fork_choice.rs**: `PersistedForkChoice` struct + fields, `new` method
+  - **pre_finalization_cache.rs**: `block_processed` method
+- **Preserved as `pub`**: All types used as `BeaconChain` struct fields or `BeaconChainError` enum variants, all methods used by integration tests (in `beacon_node/beacon_chain/tests/`) or other crates (http_api, network)
+- **Spec**: v1.7.0-alpha.3 still latest. All 10 tracked Gloas PRs remain open (#4992, #4843, #4979, #5022, #5023, #4898, #4954, #5008, #5020, #4840).
+- **Tests**: 999/999 beacon_chain tests pass (FORK_NAME=gloas). Full workspace clippy zero warnings. `make lint-full` passes.
