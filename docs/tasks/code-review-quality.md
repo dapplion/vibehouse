@@ -3851,3 +3851,31 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Not downgraded**: `AttestationStats` (used by beacon_chain metrics), `OperationPool`, `OpPoolError`, `RewardCache`, `PersistedOperationPool`, `ReceivedPreCapella`, `CompactAttestationRef`, `SplitAttestation`, `AttMaxCover`, `MaxCover`, `PROPOSER_REWARD_DENOMINATOR`, `attestation_storage` module, all insert/get/num_* methods (all have external callers)
 - **Spec check**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since March 15. All 17 tracked open PRs remain OPEN. CI green.
 - **Tests**: 72/72 operation_pool tests pass, 327/327 fork_choice + proto_array tests pass, 9/9 EF fork choice tests pass. `make lint` clean.
+
+### Run 2182
+
+**Pub visibility downgrades in slasher + dead code removal in http_api**
+
+- **Scope**: Full visibility audit of slasher crate (lib.rs re-exports, attestation_queue, block_queue, database interface) and http_api crate (test_utils, publish_blocks).
+- **Spec check**: v1.7.0-alpha.3 still latest. Reviewed 4 recently merged spec PRs since alpha.3: #5001 (parent_block_root in bid filtering — already implemented), #4940 (Gloas fork choice tests — test runner already handles on_execution_payload + head_payload_status), #5002 (wording clarification), #5005 (test fix). No action needed. 12+ open Gloas PRs reviewed — all unmerged.
+- **Changes — slasher/lib.rs** (10 items downgraded):
+  - `AttestationBatch`, `AttestationQueue`, `SimpleBatch` → `pub(crate)` (only used within slasher crate)
+  - `AttesterRecord`, `CompactAttesterRecord`, `IndexedAttesterRecord` → `pub(crate)` (only used within slasher crate)
+  - `BlockQueue` → `pub(crate)` (only used within slasher crate)
+  - `IndexedAttestationId` → `pub(crate)` (only used within slasher crate)
+  - `Database` (interface enum) → `pub(crate)` (only used within slasher crate)
+  - `Environment` re-export — **removed** (never imported via `crate::Environment`, only via `interface::Environment` in database.rs)
+- **Changes — slasher/attestation_queue.rs** (2 methods gated):
+  - `AttestationQueue::len()`, `is_empty()` → `#[cfg(test)]` (only called from tests)
+- **Changes — slasher/block_queue.rs** (2 methods gated):
+  - `BlockQueue::len()`, `is_empty()` → `#[cfg(test)]` (only called from tests)
+- **Changes — slasher/database** (false-positive dead_code warnings fixed):
+  - `interface::Environment` enum → `#[allow(dead_code)]` (Disabled variant reachable at runtime via DatabaseBackend::Disabled)
+  - `interface::Environment::filenames()` → `#[allow(dead_code)]` (only used on Windows behind cfg(windows))
+  - `lmdb_impl::Environment::filenames()`, `mdbx_impl::Environment::filenames()`, `redb_impl::Environment::filenames()` → `#[allow(dead_code)]` (same reason)
+- **Changes — http_api/test_utils.rs** (2 dead constants removed, 2 privatized):
+  - `TCP_PORT`, `UDP_PORT` — **removed** (defined but never used anywhere in workspace)
+  - `SEQ_NUMBER`, `EXTERNAL_ADDR` → private (only used within test_utils.rs)
+- **Preserved in slasher**: `Slasher` (used by beacon_chain, client), `Config`/`DatabaseBackend`/`DatabaseBackendOverride` (used by CLI, beacon_node), `SlasherDB` (used by integration tests), `Error` (used by block_verification tests), `RwTransaction` (used by array.rs, slasher.rs), `config` module (DEFAULT_CHUNK_SIZE, MDBX_DATA_FILENAME used by tests), `test_utils` module (used by integration tests), `metrics` module (used by slasher_service)
+- **Audited but no changes**: beacon_processor (all pub items genuinely used externally by network, client, http_api), http_api main API (all pub items used externally by client, tests, validator_manager)
+- **Tests**: 105/105 slasher tests pass, 346/346 http_api tests pass. `make lint` clean, zero warnings.
