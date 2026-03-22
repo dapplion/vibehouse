@@ -1,8 +1,5 @@
 use itertools::Itertools;
-use std::{
-    cmp::Ordering,
-    collections::{BTreeMap, HashMap, btree_map::Entry},
-};
+use std::collections::{BTreeMap, HashMap, btree_map::Entry};
 use store::HotStateSummary;
 use types::{Hash256, Slot};
 
@@ -14,6 +11,7 @@ pub struct DAGStateSummary {
     pub previous_state_root: Hash256,
 }
 
+#[cfg(test)]
 #[derive(Debug, Clone, Copy)]
 pub struct DAGStateSummaryV22 {
     pub slot: Slot,
@@ -117,6 +115,7 @@ impl StateSummariesDAG {
     ///   of each tree branch
     /// - Maybe include multiple disjoint trees. The root of each tree will have a ZERO parent state
     ///   root, which will error later when calling `previous_state_root`.
+    #[cfg(test)]
     pub fn new_from_v22(
         state_summaries_v22: Vec<(Hash256, DAGStateSummaryV22)>,
     ) -> Result<Self, Error> {
@@ -253,6 +252,7 @@ impl StateSummariesDAG {
         summaries
     }
 
+    #[cfg(test)]
     pub fn previous_state_root(&self, state_root: Hash256) -> Result<Hash256, Error> {
         let summary = self
             .state_summaries_by_state_root
@@ -268,11 +268,13 @@ impl StateSummariesDAG {
         }
     }
 
+    #[cfg(test)]
     pub fn ancestor_state_root_at_slot(
         &self,
         starting_state_root: Hash256,
         ancestor_slot: Slot,
     ) -> Result<Hash256, Error> {
+        use std::cmp::Ordering;
         let mut state_root = starting_state_root;
         // Walk backwards until we reach the state at `ancestor_slot`.
         loop {
@@ -361,6 +363,7 @@ impl StateSummariesDAG {
     /// The `slot` must be the slot of the `latest_block_root` or a skipped slot following it. This
     /// function will not return the `state_root` of a state with a different `latest_block_root`
     /// even if it lies on the same chain.
+    #[cfg(test)]
     pub fn state_root_at_slot(&self, latest_block_root: Hash256, slot: Slot) -> Option<Hash256> {
         self.state_summaries_by_block_root
             .get(&latest_block_root)?

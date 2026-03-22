@@ -23,13 +23,13 @@ pub mod data_column_verification;
 mod early_attester_cache;
 mod errors;
 pub mod events;
-pub mod execution_bid_pool;
+pub(crate) mod execution_bid_pool;
 pub mod execution_payload;
 pub mod execution_proof_generation;
 pub mod execution_proof_verification;
 pub mod fetch_blobs;
-pub mod fork_choice_signal;
-pub mod fork_revert;
+pub(crate) mod fork_choice_signal;
+pub(crate) mod fork_revert;
 pub mod gloas_verification;
 pub mod graffiti_calculator;
 pub mod historical_blocks;
@@ -43,7 +43,7 @@ pub mod migrate;
 mod naive_aggregation_pool;
 pub mod observed_aggregates;
 mod observed_attesters;
-pub mod observed_block_producers;
+pub(crate) mod observed_block_producers;
 pub mod observed_data_sidecars;
 mod observed_execution_bids;
 pub mod observed_operations;
@@ -57,9 +57,9 @@ mod pre_finalization_cache;
 pub mod proposer_prep_service;
 pub mod schema_change;
 pub mod shuffling_cache;
-pub mod single_attestation;
+pub(crate) mod single_attestation;
 pub mod state_advance_timer;
-pub mod summaries_dag;
+pub(crate) mod summaries_dag;
 pub mod sync_committee_rewards;
 pub mod sync_committee_verification;
 pub mod test_utils;
@@ -67,9 +67,8 @@ pub mod validator_monitor;
 pub mod validator_pubkey_cache;
 
 pub use self::beacon_chain::{
-    AttestationProcessingOutcome, AvailabilityProcessingStatus, BeaconBlockResponse,
-    BeaconBlockResponseWrapper, BeaconChain, BeaconChainTypes, BeaconStore, BlockProcessStatus,
-    ChainSegmentResult, ForkChoiceError, INVALID_FINALIZED_MERGE_TRANSITION_BLOCK_SHUTDOWN_REASON,
+    AvailabilityProcessingStatus, BeaconBlockResponse, BeaconBlockResponseWrapper, BeaconChain,
+    BeaconChainTypes, BeaconStore, BlockProcessStatus, ChainSegmentResult, ForkChoiceError,
     INVALID_JUSTIFIED_PAYLOAD_SHUTDOWN_REASON, LightClientProducerEvent, OverrideForkchoiceUpdate,
     ProduceBlockVerification, StateSkipConfig, WhenSlotSkipped,
 };
@@ -78,9 +77,7 @@ pub use self::chain_config::ChainConfig;
 pub use self::errors::{BeaconChainError, BlockProductionError};
 pub use self::historical_blocks::HistoricalBlockError;
 pub use attestation_verification::Error as AttestationError;
-pub use beacon_fork_choice_store::{
-    BeaconForkChoiceStore, Error as ForkChoiceStoreError, PersistedForkChoiceStore,
-};
+pub use beacon_fork_choice_store::{BeaconForkChoiceStore, Error as ForkChoiceStoreError};
 pub use block_verification::{
     BlockError, ExecutionPayloadError, ExecutionPendingBlock, GossipVerifiedBlock,
     IntoExecutionPendingBlock, IntoGossipVerifiedBlock, InvalidSignature,
@@ -89,7 +86,7 @@ pub use block_verification::{
 };
 pub use block_verification_types::AvailabilityPendingExecutedBlock;
 pub use block_verification_types::ExecutedBlock;
-pub use canonical_head::{CachedHead, CanonicalHead, CanonicalHeadRwLock};
+pub use canonical_head::{CachedHead, CanonicalHead};
 pub use custody_context::CustodyContext;
 pub use events::ServerSentEventHandler;
 pub use execution_layer::EngineState;

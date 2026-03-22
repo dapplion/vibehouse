@@ -107,9 +107,7 @@ use state_processing::{
     epoch_cache::initialize_epoch_cache,
     per_block_processing,
     per_block_processing::{
-        VerifySignatures,
-        errors::AttestationValidationError,
-        get_expected_withdrawals,
+        VerifySignatures, get_expected_withdrawals,
         gloas::{get_indexed_payload_attestation, get_ptc_committee},
         verify_attestation_for_block_inclusion,
     },
@@ -185,9 +183,6 @@ const MAX_PER_SLOT_FORK_CHOICE_DISTANCE: u64 = 256;
 /// Reported to the user when the justified block has an invalid execution payload.
 pub const INVALID_JUSTIFIED_PAYLOAD_SHUTDOWN_REASON: &str =
     "Justified block has an invalid execution payload.";
-
-pub const INVALID_FINALIZED_MERGE_TRANSITION_BLOCK_SHUTDOWN_REASON: &str =
-    "Finalized merge transition block is invalid.";
 
 /// Defines the behaviour when a block/block-root for a skipped slot is requested.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -281,42 +276,6 @@ pub enum OverrideForkchoiceUpdate {
     #[default]
     Yes,
     AlreadyApplied,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum AttestationProcessingOutcome {
-    Processed,
-    EmptyAggregationBitfield,
-    UnknownHeadBlock {
-        beacon_block_root: Hash256,
-    },
-    /// The attestation is attesting to a state that is later than itself. (Viz., attesting to the
-    /// future).
-    AttestsToFutureBlock {
-        block: Slot,
-        attestation: Slot,
-    },
-    /// The slot is finalized, no need to import.
-    FinalizedSlot {
-        attestation: Slot,
-        finalized: Slot,
-    },
-    FutureEpoch {
-        attestation_epoch: Epoch,
-        current_epoch: Epoch,
-    },
-    PastEpoch {
-        attestation_epoch: Epoch,
-        current_epoch: Epoch,
-    },
-    BadTargetEpoch,
-    UnknownTargetRoot(Hash256),
-    InvalidSignature,
-    NoCommitteeForSlotAndIndex {
-        slot: Slot,
-        index: CommitteeIndex,
-    },
-    Invalid(AttestationValidationError),
 }
 
 /// Defines how a `BeaconState` should be "skipped" through skip-slots.
