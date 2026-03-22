@@ -26,7 +26,6 @@ pub(crate) enum CheckCaches {
 }
 
 #[derive(Debug)]
-#[allow(dead_code)]
 pub enum Error {
     PayloadReconstruction(String),
     BlocksByRangeFailure(Box<execution_layer::Error>),

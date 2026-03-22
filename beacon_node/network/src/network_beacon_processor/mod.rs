@@ -323,7 +323,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new `Work` event for a gloas payload attestation (ePBS).
-    pub fn send_gossip_payload_attestation(
+    pub(crate) fn send_gossip_payload_attestation(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -410,7 +410,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
 
     /// Create a new `Work` event for an RPC-received execution payload envelope.
     /// Triggered when an index-1 attestation causes us to request the missing envelope.
-    pub fn send_rpc_payload_envelope(
+    pub(crate) fn send_rpc_payload_envelope(
         self: &Arc<Self>,
         peer_id: PeerId,
         envelope: std::sync::Arc<types::SignedExecutionPayloadEnvelope<T::EthSpec>>,
@@ -761,7 +761,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new work event to process `ExecutionPayloadEnvelopesByRootRequest`s from the RPC network.
-    pub fn send_execution_payload_envelopes_by_roots_request(
+    pub(crate) fn send_execution_payload_envelopes_by_roots_request(
         self: &Arc<Self>,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,

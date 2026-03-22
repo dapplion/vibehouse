@@ -39,8 +39,6 @@ struct Timeouts {
     get_header: Duration,
     post_validators: Duration,
     post_blinded_blocks: Duration,
-    #[allow(dead_code)]
-    get_builder_status: Duration,
 }
 
 impl Timeouts {
@@ -52,7 +50,6 @@ impl Timeouts {
             get_header,
             post_validators: Duration::from_millis(DEFAULT_TIMEOUT_MILLIS),
             post_blinded_blocks: Duration::from_millis(DEFAULT_TIMEOUT_MILLIS),
-            get_builder_status: Duration::from_millis(DEFAULT_TIMEOUT_MILLIS),
         }
     }
 }
@@ -168,19 +165,6 @@ impl BuilderHttpClient {
         !self.disable_ssz && self.ssz_available.load(Ordering::SeqCst)
     }
 
-    #[allow(dead_code)]
-    async fn get_with_timeout<T: DeserializeOwned, U: IntoUrl>(
-        &self,
-        url: U,
-        timeout: Duration,
-    ) -> Result<T, Error> {
-        self.get_response_with_timeout(url, Some(timeout))
-            .await?
-            .json()
-            .await
-            .map_err(Into::into)
-    }
-
     /// Perform a HTTP GET request, returning the `Response` for further processing.
     async fn get_response_with_header<U: IntoUrl>(
         &self,
@@ -193,21 +177,6 @@ impl BuilderHttpClient {
             builder = builder.timeout(timeout);
         }
         let response = builder.headers(headers).send().await.map_err(Error::from)?;
-        ok_or_error(response).await
-    }
-
-    /// Perform a HTTP GET request, returning the `Response` for further processing.
-    #[allow(dead_code)]
-    async fn get_response_with_timeout<U: IntoUrl>(
-        &self,
-        url: U,
-        timeout: Option<Duration>,
-    ) -> Result<Response, Error> {
-        let mut builder = self.client.get(url);
-        if let Some(timeout) = timeout {
-            builder = builder.timeout(timeout);
-        }
-        let response = builder.send().await.map_err(Error::from)?;
         ok_or_error(response).await
     }
 
@@ -521,22 +490,6 @@ impl BuilderHttpClient {
             resp.map(Some)
         }
     }
-
-    /// `GET /eth/v1/builder/status`
-    #[allow(dead_code, clippy::extra_unused_type_parameters)]
-    pub(crate) async fn get_builder_status<E: EthSpec>(&self) -> Result<(), Error> {
-        let mut path = self.server.full.clone();
-
-        path.path_segments_mut()
-            .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("eth")
-            .push("v1")
-            .push("builder")
-            .push("status");
-
-        self.get_with_timeout(path, self.timeouts.get_builder_status)
-            .await
-    }
 }
 
 #[cfg(test)]
@@ -704,10 +657,6 @@ mod tests {
         );
         assert_eq!(
             t.post_blinded_blocks,
-            Duration::from_millis(DEFAULT_TIMEOUT_MILLIS)
-        );
-        assert_eq!(
-            t.get_builder_status,
             Duration::from_millis(DEFAULT_TIMEOUT_MILLIS)
         );
     }

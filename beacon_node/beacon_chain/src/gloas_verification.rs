@@ -378,7 +378,7 @@ impl<T: BeaconChainTypes> VerifiedPayloadEnvelope<T> {
     }
 
     /// Returns a cheap Arc clone of the underlying envelope.
-    pub fn envelope_arc(&self) -> Arc<SignedExecutionPayloadEnvelope<T::EthSpec>> {
+    pub(crate) fn envelope_arc(&self) -> Arc<SignedExecutionPayloadEnvelope<T::EthSpec>> {
         Arc::clone(&self.envelope)
     }
 

@@ -497,7 +497,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         skip_all,
         fields(peer_id = %peer_id, client = tracing::field::Empty)
     )]
-    pub fn handle_execution_payload_envelopes_by_root_request(
+    pub(crate) fn handle_execution_payload_envelopes_by_root_request(
         self: Arc<Self>,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,

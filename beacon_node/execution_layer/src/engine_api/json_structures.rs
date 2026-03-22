@@ -465,13 +465,12 @@ impl<E: EthSpec> From<JsonExecutionPayload<E>> for ExecutionPayload<E> {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub(crate) enum RequestsError {
-    InvalidHex(hex::FromHexError),
-    EmptyRequest(usize),
+    InvalidHex(#[allow(dead_code)] hex::FromHexError),
+    EmptyRequest(#[allow(dead_code)] usize),
     InvalidOrdering,
-    InvalidPrefix(u8),
-    DecodeError(String),
+    InvalidPrefix(#[allow(dead_code)] u8),
+    DecodeError(#[allow(dead_code)] String),
 }
 
 /// Format of `ExecutionRequests` received over the engine api.

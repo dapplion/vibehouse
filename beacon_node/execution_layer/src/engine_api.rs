@@ -362,9 +362,9 @@ impl<E: EthSpec> From<GetPayloadResponse<E>>
     }
 }
 
-#[allow(dead_code)]
 pub(crate) enum GetPayloadResponseType<E: EthSpec> {
     Full(GetPayloadResponse<E>),
+    #[allow(dead_code)]
     Blinded(GetPayloadResponse<E>),
 }
 

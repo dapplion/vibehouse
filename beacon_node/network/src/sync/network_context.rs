@@ -961,7 +961,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
     /// After blocks are coupled, check if any are Gloas blocks that need envelopes.
     /// If so, fire off an `ExecutionPayloadEnvelopesByRoot` request and stash the blocks.
     /// Returns `Some(blocks)` if no envelopes are needed (pass-through), `None` if waiting.
-    pub fn request_envelopes_if_needed(
+    pub(crate) fn request_envelopes_if_needed(
         &mut self,
         blocks: Vec<RpcBlock<T::EthSpec>>,
         parent_request_id: ComponentsByRangeRequestId,
@@ -1038,7 +1038,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
 
     /// Handle an incoming envelope response for a range sync batch.
     /// Returns `Some((blocks, parent_request_id, peer))` when all envelopes are received.
-    pub fn on_envelope_by_root_response(
+    pub(crate) fn on_envelope_by_root_response(
         &mut self,
         id: EnvelopesByRootRequestId,
         _peer_id: PeerId,
@@ -1094,7 +1094,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
 
     /// Request a single envelope for a known block. Triggered when an index-1
     /// attestation arrives but the execution payload envelope hasn't been seen yet.
-    pub fn request_single_envelope(&mut self, peer_id: PeerId, block_root: Hash256) {
+    pub(crate) fn request_single_envelope(&mut self, peer_id: PeerId, block_root: Hash256) {
         let request =
             match ExecutionPayloadEnvelopesByRootRequest::new(vec![block_root], &self.chain.spec) {
                 Ok(req) => req,
@@ -1118,7 +1118,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
 
     /// Send an RPC-received payload envelope to the beacon processor for verification
     /// and fork choice integration. Used for attestation-triggered envelope requests.
-    pub fn send_rpc_payload_envelope(
+    pub(crate) fn send_rpc_payload_envelope(
         &self,
         peer_id: PeerId,
         envelope: Arc<SignedExecutionPayloadEnvelope<T::EthSpec>>,

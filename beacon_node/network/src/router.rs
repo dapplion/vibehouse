@@ -775,7 +775,7 @@ impl<T: BeaconChainTypes> Router<T> {
         }
     }
 
-    pub fn on_envelopes_by_root_response(
+    fn on_envelopes_by_root_response(
         &mut self,
         peer_id: PeerId,
         app_request_id: AppRequestId,
