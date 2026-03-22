@@ -19,7 +19,6 @@ use std::time::Duration;
 use tracing::{info, warn};
 use types::GRAFFITI_BYTES_LEN;
 use validator_http_api::{self, PK_FILENAME};
-use validator_http_metrics;
 use vibehouse_validator_store::Config as ValidatorStoreConfig;
 
 pub(crate) const DEFAULT_BEACON_NODE: &str = "http://localhost:5052/";
