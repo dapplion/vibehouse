@@ -5,7 +5,7 @@ use vibehouse_network::rpc::methods::BlobsByRootRequest;
 use super::{ActiveRequestItems, LookupVerifyError};
 
 #[derive(Debug, Clone)]
-pub struct BlobsByRootSingleBlockRequest {
+pub(crate) struct BlobsByRootSingleBlockRequest {
     pub block_root: Hash256,
     pub indices: Vec<u64>,
 }
@@ -25,7 +25,7 @@ impl BlobsByRootSingleBlockRequest {
     }
 }
 
-pub struct BlobsByRootRequestItems<E: EthSpec> {
+pub(crate) struct BlobsByRootRequestItems<E: EthSpec> {
     request: BlobsByRootSingleBlockRequest,
     items: Vec<Arc<BlobSidecar<E>>>,
 }

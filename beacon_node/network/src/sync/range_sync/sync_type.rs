@@ -6,7 +6,7 @@ use vibehouse_network::SyncInfo;
 
 /// The type of Range sync that should be done relative to our current state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RangeSyncType {
+pub(crate) enum RangeSyncType {
     /// A finalized chain sync should be started with this peer.
     Finalized,
     /// A head chain sync should be started with this peer.

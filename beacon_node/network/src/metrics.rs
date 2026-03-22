@@ -5,7 +5,7 @@ use beacon_chain::{
     sync_committee_verification::Error as SyncCommitteeError,
 };
 use fnv::FnvHashMap;
-pub use metrics::{
+pub(crate) use metrics::{
     Histogram, HistogramVec, IntCounter, IntCounterVec, IntGauge, IntGaugeVec, Result,
     decimal_buckets, get_int_gauge, inc_counter, inc_counter_by, inc_counter_vec,
     inc_counter_vec_by, observe_duration, observe_timer_vec, set_gauge, set_gauge_entry,
@@ -30,7 +30,7 @@ pub(crate) enum BlockSource {
     Rpc,
 }
 
-pub static BEACON_BLOCK_MESH_PEERS_PER_CLIENT: LazyLock<Result<IntGaugeVec>> =
+pub(crate) static BEACON_BLOCK_MESH_PEERS_PER_CLIENT: LazyLock<Result<IntGaugeVec>> =
     LazyLock::new(|| {
         try_create_int_gauge_vec(
             "block_mesh_peers_per_client",
@@ -39,7 +39,7 @@ pub static BEACON_BLOCK_MESH_PEERS_PER_CLIENT: LazyLock<Result<IntGaugeVec>> =
         )
     });
 
-pub static BEACON_AGGREGATE_AND_PROOF_MESH_PEERS_PER_CLIENT: LazyLock<Result<IntGaugeVec>> =
+pub(crate) static BEACON_AGGREGATE_AND_PROOF_MESH_PEERS_PER_CLIENT: LazyLock<Result<IntGaugeVec>> =
     LazyLock::new(|| {
         try_create_int_gauge_vec(
             "beacon_aggregate_and_proof_mesh_peers_per_client",
@@ -51,20 +51,21 @@ pub static BEACON_AGGREGATE_AND_PROOF_MESH_PEERS_PER_CLIENT: LazyLock<Result<Int
 /*
  * Attestation subnet subscriptions
  */
-pub static SUBNET_SUBSCRIPTION_REQUESTS: LazyLock<Result<IntCounter>> = LazyLock::new(|| {
-    try_create_int_counter(
-        "validator_attestation_subnet_subscriptions_total",
-        "Count of validator attestation subscription requests.",
-    )
-});
-pub static SUBNET_SUBSCRIPTION_AGGREGATOR_REQUESTS: LazyLock<Result<IntCounter>> =
+pub(crate) static SUBNET_SUBSCRIPTION_REQUESTS: LazyLock<Result<IntCounter>> =
+    LazyLock::new(|| {
+        try_create_int_counter(
+            "validator_attestation_subnet_subscriptions_total",
+            "Count of validator attestation subscription requests.",
+        )
+    });
+pub(crate) static SUBNET_SUBSCRIPTION_AGGREGATOR_REQUESTS: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "validator_subnet_subscriptions_aggregator_total",
             "Count of validator subscription requests where the subscriber is an aggregator.",
         )
     });
-pub static SYNC_COMMITTEE_SUBSCRIPTION_REQUESTS: LazyLock<Result<IntCounter>> =
+pub(crate) static SYNC_COMMITTEE_SUBSCRIPTION_REQUESTS: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "validator_sync_committee_subnet_subscriptions_total",
@@ -75,16 +76,15 @@ pub static SYNC_COMMITTEE_SUBSCRIPTION_REQUESTS: LazyLock<Result<IntCounter>> =
 /*
  * Beacon processor
  */
-pub static BEACON_PROCESSOR_MISSING_COMPONENTS: LazyLock<Result<IntCounterVec>> = LazyLock::new(
-    || {
+pub(crate) static BEACON_PROCESSOR_MISSING_COMPONENTS: LazyLock<Result<IntCounterVec>> =
+    LazyLock::new(|| {
         try_create_int_counter_vec(
             "beacon_processor_missing_components_total",
             "Total number of imported individual block components that resulted in missing components",
             &["source", "component"],
         )
-    },
-);
-pub static BEACON_PROCESSOR_IMPORT_ERRORS_PER_TYPE: LazyLock<Result<IntCounterVec>> =
+    });
+pub(crate) static BEACON_PROCESSOR_IMPORT_ERRORS_PER_TYPE: LazyLock<Result<IntCounterVec>> =
     LazyLock::new(|| {
         try_create_int_counter_vec(
             "beacon_processor_import_errors_total",
@@ -92,7 +92,7 @@ pub static BEACON_PROCESSOR_IMPORT_ERRORS_PER_TYPE: LazyLock<Result<IntCounterVe
             &["source", "component", "type"],
         )
     });
-pub static BEACON_PROCESSOR_GET_BLOCK_ROOTS_TIME: LazyLock<Result<HistogramVec>> =
+pub(crate) static BEACON_PROCESSOR_GET_BLOCK_ROOTS_TIME: LazyLock<Result<HistogramVec>> =
     LazyLock::new(|| {
         try_create_histogram_vec_with_buckets(
             "beacon_processor_get_block_roots_time_seconds",
@@ -107,43 +107,42 @@ pub static BEACON_PROCESSOR_GET_BLOCK_ROOTS_TIME: LazyLock<Result<HistogramVec>>
  */
 
 // Gossip blocks.
-pub static BEACON_PROCESSOR_GOSSIP_BLOCK_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_PROCESSOR_GOSSIP_BLOCK_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_gossip_block_verified_total",
             "Total number of gossip blocks verified for propagation.",
         )
     });
-pub static BEACON_PROCESSOR_GOSSIP_BLOCK_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_PROCESSOR_GOSSIP_BLOCK_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_gossip_block_imported_total",
             "Total number of gossip blocks imported to fork choice, etc.",
         )
     });
-pub static BEACON_PROCESSOR_GOSSIP_BLOCK_REQUEUED_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_PROCESSOR_GOSSIP_BLOCK_REQUEUED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_gossip_block_requeued_total",
             "Total number of gossip blocks that arrived early and were re-queued for later processing.",
         )
     });
-pub static BEACON_PROCESSOR_GOSSIP_BLOCK_EARLY_SECONDS: LazyLock<Result<Histogram>> = LazyLock::new(
-    || {
+pub(crate) static BEACON_PROCESSOR_GOSSIP_BLOCK_EARLY_SECONDS: LazyLock<Result<Histogram>> =
+    LazyLock::new(|| {
         try_create_histogram(
             "beacon_processor_gossip_block_early_seconds",
             "Whenever a gossip block is received early this metrics is set to how early that block was.",
         )
-    },
-);
-pub static BEACON_PROCESSOR_GOSSIP_BLOB_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
+    });
+pub(crate) static BEACON_PROCESSOR_GOSSIP_BLOB_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_gossip_blob_verified_total",
             "Total number of gossip blob verified for propagation.",
         )
     });
-pub static BEACON_PROCESSOR_GOSSIP_DATA_COLUMN_SIDECAR_VERIFIED_TOTAL: LazyLock<
+pub(crate) static BEACON_PROCESSOR_GOSSIP_DATA_COLUMN_SIDECAR_VERIFIED_TOTAL: LazyLock<
     Result<IntCounter>,
 > = LazyLock::new(|| {
     try_create_int_counter(
@@ -152,14 +151,14 @@ pub static BEACON_PROCESSOR_GOSSIP_DATA_COLUMN_SIDECAR_VERIFIED_TOTAL: LazyLock<
     )
 });
 // Gossip Exits.
-pub static BEACON_PROCESSOR_EXIT_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_PROCESSOR_EXIT_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_exit_verified_total",
             "Total number of voluntary exits verified for propagation.",
         )
     });
-pub static BEACON_PROCESSOR_EXIT_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_PROCESSOR_EXIT_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_exit_imported_total",
@@ -167,14 +166,14 @@ pub static BEACON_PROCESSOR_EXIT_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
         )
     });
 // Gossip proposer slashings.
-pub static BEACON_PROCESSOR_PROPOSER_SLASHING_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_PROCESSOR_PROPOSER_SLASHING_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_proposer_slashing_verified_total",
             "Total number of proposer slashings verified for propagation.",
         )
     });
-pub static BEACON_PROCESSOR_PROPOSER_SLASHING_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_PROCESSOR_PROPOSER_SLASHING_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_proposer_slashing_imported_total",
@@ -182,14 +181,14 @@ pub static BEACON_PROCESSOR_PROPOSER_SLASHING_IMPORTED_TOTAL: LazyLock<Result<In
         )
     });
 // Gossip attester slashings.
-pub static BEACON_PROCESSOR_ATTESTER_SLASHING_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_PROCESSOR_ATTESTER_SLASHING_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_attester_slashing_verified_total",
             "Total number of attester slashings verified for propagation.",
         )
     });
-pub static BEACON_PROCESSOR_ATTESTER_SLASHING_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_PROCESSOR_ATTESTER_SLASHING_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_attester_slashing_imported_total",
@@ -197,44 +196,46 @@ pub static BEACON_PROCESSOR_ATTESTER_SLASHING_IMPORTED_TOTAL: LazyLock<Result<In
         )
     });
 // Gossip BLS to execution changes.
-pub static BEACON_PROCESSOR_BLS_TO_EXECUTION_CHANGE_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
-    LazyLock::new(|| {
-        try_create_int_counter(
-            "beacon_processor_bls_to_execution_change_verified_total",
-            "Total number of address changes verified for propagation.",
-        )
-    });
-pub static BEACON_PROCESSOR_BLS_TO_EXECUTION_CHANGE_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
-    LazyLock::new(|| {
-        try_create_int_counter(
-            "beacon_processor_bls_to_execution_change_imported_total",
-            "Total number of address changes imported to the op pool.",
-        )
-    });
+pub(crate) static BEACON_PROCESSOR_BLS_TO_EXECUTION_CHANGE_VERIFIED_TOTAL: LazyLock<
+    Result<IntCounter>,
+> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_processor_bls_to_execution_change_verified_total",
+        "Total number of address changes verified for propagation.",
+    )
+});
+pub(crate) static BEACON_PROCESSOR_BLS_TO_EXECUTION_CHANGE_IMPORTED_TOTAL: LazyLock<
+    Result<IntCounter>,
+> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_processor_bls_to_execution_change_imported_total",
+        "Total number of address changes imported to the op pool.",
+    )
+});
 
 // Gossip execution bids (gloas ePBS).
-pub static BEACON_PROCESSOR_EXECUTION_BID_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_PROCESSOR_EXECUTION_BID_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_execution_bid_verified_total",
             "Total number of execution bids verified for propagation.",
         )
     });
-pub static BEACON_PROCESSOR_EXECUTION_BID_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_PROCESSOR_EXECUTION_BID_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_execution_bid_imported_total",
             "Total number of execution bids imported to fork choice.",
         )
     });
-pub static BEACON_PROCESSOR_EXECUTION_BID_EQUIVOCATING_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_PROCESSOR_EXECUTION_BID_EQUIVOCATING_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_execution_bid_equivocating_total",
             "Total number of equivocating execution bids rejected.",
         )
     });
-pub static BEACON_PROCESSOR_EXECUTION_BID_REJECTED_TOTAL: LazyLock<Result<IntCounterVec>> =
+pub(crate) static BEACON_PROCESSOR_EXECUTION_BID_REJECTED_TOTAL: LazyLock<Result<IntCounterVec>> =
     LazyLock::new(|| {
         try_create_int_counter_vec(
             "beacon_processor_execution_bid_rejected_total",
@@ -244,52 +245,56 @@ pub static BEACON_PROCESSOR_EXECUTION_BID_REJECTED_TOTAL: LazyLock<Result<IntCou
     });
 
 // Gossip payload attestations (gloas ePBS).
-pub static BEACON_PROCESSOR_PAYLOAD_ATTESTATION_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
-    LazyLock::new(|| {
-        try_create_int_counter(
-            "beacon_processor_payload_attestation_verified_total",
-            "Total number of payload attestations verified for propagation.",
-        )
-    });
-pub static BEACON_PROCESSOR_PAYLOAD_ATTESTATION_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
-    LazyLock::new(|| {
-        try_create_int_counter(
-            "beacon_processor_payload_attestation_imported_total",
-            "Total number of payload attestations imported to fork choice.",
-        )
-    });
-pub static BEACON_PROCESSOR_PAYLOAD_ATTESTATION_EQUIVOCATING_TOTAL: LazyLock<Result<IntCounter>> =
-    LazyLock::new(|| {
-        try_create_int_counter(
-            "beacon_processor_payload_attestation_equivocating_total",
-            "Total number of equivocating payload attestations rejected.",
-        )
-    });
-pub static BEACON_PROCESSOR_PAYLOAD_ATTESTATION_REJECTED_TOTAL: LazyLock<Result<IntCounterVec>> =
-    LazyLock::new(|| {
-        try_create_int_counter_vec(
-            "beacon_processor_payload_attestation_rejected_total",
-            "Total number of payload attestations rejected by reason.",
-            &["reason"],
-        )
-    });
+pub(crate) static BEACON_PROCESSOR_PAYLOAD_ATTESTATION_VERIFIED_TOTAL: LazyLock<
+    Result<IntCounter>,
+> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_processor_payload_attestation_verified_total",
+        "Total number of payload attestations verified for propagation.",
+    )
+});
+pub(crate) static BEACON_PROCESSOR_PAYLOAD_ATTESTATION_IMPORTED_TOTAL: LazyLock<
+    Result<IntCounter>,
+> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_processor_payload_attestation_imported_total",
+        "Total number of payload attestations imported to fork choice.",
+    )
+});
+pub(crate) static BEACON_PROCESSOR_PAYLOAD_ATTESTATION_EQUIVOCATING_TOTAL: LazyLock<
+    Result<IntCounter>,
+> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_processor_payload_attestation_equivocating_total",
+        "Total number of equivocating payload attestations rejected.",
+    )
+});
+pub(crate) static BEACON_PROCESSOR_PAYLOAD_ATTESTATION_REJECTED_TOTAL: LazyLock<
+    Result<IntCounterVec>,
+> = LazyLock::new(|| {
+    try_create_int_counter_vec(
+        "beacon_processor_payload_attestation_rejected_total",
+        "Total number of payload attestations rejected by reason.",
+        &["reason"],
+    )
+});
 
 // Gossip execution payload envelopes (gloas ePBS).
-pub static BEACON_PROCESSOR_PAYLOAD_ENVELOPE_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_PROCESSOR_PAYLOAD_ENVELOPE_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_payload_envelope_verified_total",
             "Total number of execution payload envelopes verified for propagation.",
         )
     });
-pub static BEACON_PROCESSOR_PAYLOAD_ENVELOPE_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_PROCESSOR_PAYLOAD_ENVELOPE_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_payload_envelope_imported_total",
             "Total number of execution payload envelopes imported and processed.",
         )
     });
-pub static BEACON_PROCESSOR_PAYLOAD_ENVELOPE_REJECTED_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_PROCESSOR_PAYLOAD_ENVELOPE_REJECTED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_payload_envelope_rejected_total",
@@ -298,7 +303,7 @@ pub static BEACON_PROCESSOR_PAYLOAD_ENVELOPE_REJECTED_TOTAL: LazyLock<Result<Int
     });
 
 // Rpc blocks.
-pub static BEACON_PROCESSOR_RPC_BLOCK_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_PROCESSOR_RPC_BLOCK_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_rpc_block_imported_total",
@@ -306,7 +311,7 @@ pub static BEACON_PROCESSOR_RPC_BLOCK_IMPORTED_TOTAL: LazyLock<Result<IntCounter
         )
     });
 // Custody Sync.
-pub static BEACON_PROCESSOR_CUSTODY_BACKFILL_COLUMN_IMPORT_SUCCESS_TOTAL: LazyLock<
+pub(crate) static BEACON_PROCESSOR_CUSTODY_BACKFILL_COLUMN_IMPORT_SUCCESS_TOTAL: LazyLock<
     Result<IntCounter>,
 > = LazyLock::new(|| {
     try_create_int_counter(
@@ -314,95 +319,104 @@ pub static BEACON_PROCESSOR_CUSTODY_BACKFILL_COLUMN_IMPORT_SUCCESS_TOTAL: LazyLo
         "Total number of custody backfill sync columns successfully processed.",
     )
 });
-pub static BEACON_PROCESSOR_CUSTODY_BACKFILL_BATCH_FAILED_TOTAL: LazyLock<Result<IntCounter>> =
-    LazyLock::new(|| {
-        try_create_int_counter(
-            "beacon_processor_custody_backfill_batch_failed_total",
-            "Total number of custody backfill batches that failed to be processed.",
-        )
-    });
+pub(crate) static BEACON_PROCESSOR_CUSTODY_BACKFILL_BATCH_FAILED_TOTAL: LazyLock<
+    Result<IntCounter>,
+> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_processor_custody_backfill_batch_failed_total",
+        "Total number of custody backfill batches that failed to be processed.",
+    )
+});
 // Chain segments.
-pub static BEACON_PROCESSOR_CHAIN_SEGMENT_SUCCESS_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_PROCESSOR_CHAIN_SEGMENT_SUCCESS_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_chain_segment_success_total",
             "Total number of chain segments successfully processed.",
         )
     });
-pub static BEACON_PROCESSOR_BACKFILL_CHAIN_SEGMENT_SUCCESS_TOTAL: LazyLock<Result<IntCounter>> =
-    LazyLock::new(|| {
-        try_create_int_counter(
-            "beacon_processor_backfill_chain_segment_success_total",
-            "Total number of chain segments successfully processed.",
-        )
-    });
-pub static BEACON_PROCESSOR_CHAIN_SEGMENT_FAILED_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_PROCESSOR_BACKFILL_CHAIN_SEGMENT_SUCCESS_TOTAL: LazyLock<
+    Result<IntCounter>,
+> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_processor_backfill_chain_segment_success_total",
+        "Total number of chain segments successfully processed.",
+    )
+});
+pub(crate) static BEACON_PROCESSOR_CHAIN_SEGMENT_FAILED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_chain_segment_failed_total",
             "Total number of chain segments that failed processing.",
         )
     });
-pub static BEACON_PROCESSOR_BACKFILL_CHAIN_SEGMENT_FAILED_TOTAL: LazyLock<Result<IntCounter>> =
-    LazyLock::new(|| {
-        try_create_int_counter(
-            "beacon_processor_backfill_chain_segment_failed_total",
-            "Total number of backfill chain segments that failed processing.",
-        )
-    });
+pub(crate) static BEACON_PROCESSOR_BACKFILL_CHAIN_SEGMENT_FAILED_TOTAL: LazyLock<
+    Result<IntCounter>,
+> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_processor_backfill_chain_segment_failed_total",
+        "Total number of backfill chain segments that failed processing.",
+    )
+});
 // Unaggregated attestations.
-pub static BEACON_PROCESSOR_UNAGGREGATED_ATTESTATION_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
-    LazyLock::new(|| {
-        try_create_int_counter(
-            "beacon_processor_unaggregated_attestation_verified_total",
-            "Total number of unaggregated attestations verified for gossip.",
-        )
-    });
-pub static BEACON_PROCESSOR_UNAGGREGATED_ATTESTATION_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
-    LazyLock::new(|| {
-        try_create_int_counter(
-            "beacon_processor_unaggregated_attestation_imported_total",
-            "Total number of unaggregated attestations imported to fork choice, etc.",
-        )
-    });
-pub static BEACON_PROCESSOR_UNAGGREGATED_ATTESTATION_REQUEUED_TOTAL: LazyLock<Result<IntCounter>> =
-    LazyLock::new(|| {
-        try_create_int_counter(
-            "beacon_processor_unaggregated_attestation_requeued_total",
-            "Total number of unaggregated attestations that referenced an unknown block and were re-queued.",
-        )
-    });
+pub(crate) static BEACON_PROCESSOR_UNAGGREGATED_ATTESTATION_VERIFIED_TOTAL: LazyLock<
+    Result<IntCounter>,
+> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_processor_unaggregated_attestation_verified_total",
+        "Total number of unaggregated attestations verified for gossip.",
+    )
+});
+pub(crate) static BEACON_PROCESSOR_UNAGGREGATED_ATTESTATION_IMPORTED_TOTAL: LazyLock<
+    Result<IntCounter>,
+> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_processor_unaggregated_attestation_imported_total",
+        "Total number of unaggregated attestations imported to fork choice, etc.",
+    )
+});
+pub(crate) static BEACON_PROCESSOR_UNAGGREGATED_ATTESTATION_REQUEUED_TOTAL: LazyLock<
+    Result<IntCounter>,
+> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_processor_unaggregated_attestation_requeued_total",
+        "Total number of unaggregated attestations that referenced an unknown block and were re-queued.",
+    )
+});
 // Aggregated attestations.
-pub static BEACON_PROCESSOR_AGGREGATED_ATTESTATION_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
-    LazyLock::new(|| {
-        try_create_int_counter(
-            "beacon_processor_aggregated_attestation_verified_total",
-            "Total number of aggregated attestations verified for gossip.",
-        )
-    });
-pub static BEACON_PROCESSOR_AGGREGATED_ATTESTATION_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
-    LazyLock::new(|| {
-        try_create_int_counter(
-            "beacon_processor_aggregated_attestation_imported_total",
-            "Total number of aggregated attestations imported to fork choice, etc.",
-        )
-    });
-pub static BEACON_PROCESSOR_AGGREGATED_ATTESTATION_REQUEUED_TOTAL: LazyLock<Result<IntCounter>> =
-    LazyLock::new(|| {
-        try_create_int_counter(
-            "beacon_processor_aggregated_attestation_requeued_total",
-            "Total number of aggregated attestations that referenced an unknown block and were re-queued.",
-        )
-    });
+pub(crate) static BEACON_PROCESSOR_AGGREGATED_ATTESTATION_VERIFIED_TOTAL: LazyLock<
+    Result<IntCounter>,
+> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_processor_aggregated_attestation_verified_total",
+        "Total number of aggregated attestations verified for gossip.",
+    )
+});
+pub(crate) static BEACON_PROCESSOR_AGGREGATED_ATTESTATION_IMPORTED_TOTAL: LazyLock<
+    Result<IntCounter>,
+> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_processor_aggregated_attestation_imported_total",
+        "Total number of aggregated attestations imported to fork choice, etc.",
+    )
+});
+pub(crate) static BEACON_PROCESSOR_AGGREGATED_ATTESTATION_REQUEUED_TOTAL: LazyLock<
+    Result<IntCounter>,
+> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_processor_aggregated_attestation_requeued_total",
+        "Total number of aggregated attestations that referenced an unknown block and were re-queued.",
+    )
+});
 // Sync committee messages.
-pub static BEACON_PROCESSOR_SYNC_MESSAGE_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_PROCESSOR_SYNC_MESSAGE_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_sync_message_verified_total",
             "Total number of sync committee messages verified for gossip.",
         )
     });
-pub static BEACON_PROCESSOR_SYNC_MESSAGE_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_PROCESSOR_SYNC_MESSAGE_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_sync_message_imported_total",
@@ -410,7 +424,7 @@ pub static BEACON_PROCESSOR_SYNC_MESSAGE_IMPORTED_TOTAL: LazyLock<Result<IntCoun
         )
     });
 // Sync contribution.
-pub static BEACON_PROCESSOR_SYNC_CONTRIBUTION_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_PROCESSOR_SYNC_CONTRIBUTION_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_sync_contribution_verified_total",
@@ -418,7 +432,7 @@ pub static BEACON_PROCESSOR_SYNC_CONTRIBUTION_VERIFIED_TOTAL: LazyLock<Result<In
         )
     });
 
-pub static BEACON_PROCESSOR_SYNC_CONTRIBUTION_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_PROCESSOR_SYNC_CONTRIBUTION_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_sync_contribution_imported_total",
@@ -427,7 +441,7 @@ pub static BEACON_PROCESSOR_SYNC_CONTRIBUTION_IMPORTED_TOTAL: LazyLock<Result<In
     });
 
 /// Errors and Debugging Stats
-pub static GOSSIP_ATTESTATION_ERRORS_PER_TYPE: LazyLock<Result<IntCounterVec>> =
+pub(crate) static GOSSIP_ATTESTATION_ERRORS_PER_TYPE: LazyLock<Result<IntCounterVec>> =
     LazyLock::new(|| {
         try_create_int_counter_vec(
             "gossipsub_attestation_errors_per_type",
@@ -435,7 +449,7 @@ pub static GOSSIP_ATTESTATION_ERRORS_PER_TYPE: LazyLock<Result<IntCounterVec>> =
             &["type"],
         )
     });
-pub static GOSSIP_SYNC_COMMITTEE_ERRORS_PER_TYPE: LazyLock<Result<IntCounterVec>> =
+pub(crate) static GOSSIP_SYNC_COMMITTEE_ERRORS_PER_TYPE: LazyLock<Result<IntCounterVec>> =
     LazyLock::new(|| {
         try_create_int_counter_vec(
             "gossipsub_sync_committee_errors_per_type",
@@ -443,7 +457,7 @@ pub static GOSSIP_SYNC_COMMITTEE_ERRORS_PER_TYPE: LazyLock<Result<IntCounterVec>
             &["type"],
         )
     });
-pub static GOSSIP_FINALITY_UPDATE_ERRORS_PER_TYPE: LazyLock<Result<IntCounterVec>> =
+pub(crate) static GOSSIP_FINALITY_UPDATE_ERRORS_PER_TYPE: LazyLock<Result<IntCounterVec>> =
     LazyLock::new(|| {
         try_create_int_counter_vec(
             "gossipsub_light_client_finality_update_errors_per_type",
@@ -451,7 +465,7 @@ pub static GOSSIP_FINALITY_UPDATE_ERRORS_PER_TYPE: LazyLock<Result<IntCounterVec
             &["type"],
         )
     });
-pub static GOSSIP_OPTIMISTIC_UPDATE_ERRORS_PER_TYPE: LazyLock<Result<IntCounterVec>> =
+pub(crate) static GOSSIP_OPTIMISTIC_UPDATE_ERRORS_PER_TYPE: LazyLock<Result<IntCounterVec>> =
     LazyLock::new(|| {
         try_create_int_counter_vec(
             "gossipsub_light_client_optimistic_update_errors_per_type",
@@ -463,14 +477,14 @@ pub static GOSSIP_OPTIMISTIC_UPDATE_ERRORS_PER_TYPE: LazyLock<Result<IntCounterV
 /*
  * Network queue metrics
  */
-pub static NETWORK_RECEIVE_EVENTS: LazyLock<Result<IntCounterVec>> = LazyLock::new(|| {
+pub(crate) static NETWORK_RECEIVE_EVENTS: LazyLock<Result<IntCounterVec>> = LazyLock::new(|| {
     try_create_int_counter_vec(
         "network_receive_events",
         "Count of events received by the channel to the network service",
         &["type"],
     )
 });
-pub static NETWORK_RECEIVE_TIMES: LazyLock<Result<HistogramVec>> = LazyLock::new(|| {
+pub(crate) static NETWORK_RECEIVE_TIMES: LazyLock<Result<HistogramVec>> = LazyLock::new(|| {
     try_create_histogram_vec(
         "network_receive_times",
         "Time taken for network to handle an event sent to the network service.",
@@ -481,63 +495,66 @@ pub static NETWORK_RECEIVE_TIMES: LazyLock<Result<HistogramVec>> = LazyLock::new
 /*
  * Sync related metrics
  */
-pub static PEERS_PER_SYNC_TYPE: LazyLock<Result<IntGaugeVec>> = LazyLock::new(|| {
+pub(crate) static PEERS_PER_SYNC_TYPE: LazyLock<Result<IntGaugeVec>> = LazyLock::new(|| {
     try_create_int_gauge_vec(
         "sync_peers_per_status",
         "Number of connected peers per sync status type",
         &["sync_status"],
     )
 });
-pub static PEERS_PER_COLUMN_SUBNET: LazyLock<Result<IntGaugeVec>> = LazyLock::new(|| {
+pub(crate) static PEERS_PER_COLUMN_SUBNET: LazyLock<Result<IntGaugeVec>> = LazyLock::new(|| {
     try_create_int_gauge_vec(
         "sync_peers_per_column_subnet",
         "Number of connected peers per column subnet",
         &["subnet_id"],
     )
 });
-pub static PEERS_PER_CUSTODY_COLUMN_SUBNET: LazyLock<Result<IntGaugeVec>> = LazyLock::new(|| {
-    try_create_int_gauge_vec(
-        "sync_peers_per_custody_column_subnet",
-        "Number of connected peers per custody column subnet",
-        &["subnet_id"],
-    )
-});
-pub static SYNCING_CHAINS_COUNT: LazyLock<Result<IntGaugeVec>> = LazyLock::new(|| {
+pub(crate) static PEERS_PER_CUSTODY_COLUMN_SUBNET: LazyLock<Result<IntGaugeVec>> =
+    LazyLock::new(|| {
+        try_create_int_gauge_vec(
+            "sync_peers_per_custody_column_subnet",
+            "Number of connected peers per custody column subnet",
+            &["subnet_id"],
+        )
+    });
+pub(crate) static SYNCING_CHAINS_COUNT: LazyLock<Result<IntGaugeVec>> = LazyLock::new(|| {
     try_create_int_gauge_vec(
         "sync_range_chains",
         "Number of Syncing chains in range, per range type",
         &["range_type"],
     )
 });
-pub static SYNCING_CHAINS_REMOVED: LazyLock<Result<IntCounterVec>> = LazyLock::new(|| {
+pub(crate) static SYNCING_CHAINS_REMOVED: LazyLock<Result<IntCounterVec>> = LazyLock::new(|| {
     try_create_int_counter_vec(
         "sync_range_removed_chains_total",
         "Total count of range syncing chains removed per range type",
         &["range_type"],
     )
 });
-pub static SYNCING_CHAINS_ADDED: LazyLock<Result<IntCounterVec>> = LazyLock::new(|| {
+pub(crate) static SYNCING_CHAINS_ADDED: LazyLock<Result<IntCounterVec>> = LazyLock::new(|| {
     try_create_int_counter_vec(
         "sync_range_added_chains_total",
         "Total count of range syncing chains added per range type",
         &["range_type"],
     )
 });
-pub static SYNCING_CHAINS_DROPPED_BLOCKS: LazyLock<Result<IntCounterVec>> = LazyLock::new(|| {
-    try_create_int_counter_vec(
-        "sync_range_chains_dropped_blocks_total",
-        "Total count of dropped blocks when removing a syncing chain per range type",
-        &["range_type"],
-    )
-});
-pub static SYNCING_CHAINS_IGNORED_BLOCKS: LazyLock<Result<IntCounterVec>> = LazyLock::new(|| {
-    try_create_int_counter_vec(
-        "sync_range_chains_ignored_blocks_total",
-        "Total count of ignored blocks when processing a syncing chain batch per chain type",
-        &["chain_type"],
-    )
-});
-pub static SYNCING_CHAINS_PROCESSED_BATCHES: LazyLock<Result<IntCounterVec>> =
+pub(crate) static SYNCING_CHAINS_DROPPED_BLOCKS: LazyLock<Result<IntCounterVec>> =
+    LazyLock::new(|| {
+        try_create_int_counter_vec(
+            "sync_range_chains_dropped_blocks_total",
+            "Total count of dropped blocks when removing a syncing chain per range type",
+            &["range_type"],
+        )
+    });
+pub(crate) static SYNCING_CHAINS_IGNORED_BLOCKS: LazyLock<Result<IntCounterVec>> =
+    LazyLock::new(|| {
+        try_create_int_counter_vec(
+            "sync_range_chains_ignored_blocks_total",
+            "Total count of ignored blocks when processing a syncing chain batch per chain type",
+            &["chain_type"],
+        )
+    });
+pub(crate) static SYNCING_CHAINS_PROCESSED_BATCHES: LazyLock<Result<IntCounterVec>> =
     LazyLock::new(|| {
         try_create_int_counter_vec(
             "sync_range_chains_processed_batches_total",
@@ -545,7 +562,7 @@ pub static SYNCING_CHAINS_PROCESSED_BATCHES: LazyLock<Result<IntCounterVec>> =
             &["chain_type"],
         )
     });
-pub static SYNCING_CHAIN_BATCH_AWAITING_PROCESSING: LazyLock<Result<Histogram>> =
+pub(crate) static SYNCING_CHAIN_BATCH_AWAITING_PROCESSING: LazyLock<Result<Histogram>> =
     LazyLock::new(|| {
         try_create_histogram_with_buckets(
             "sync_range_chain_batch_awaiting_processing_seconds",
@@ -555,73 +572,76 @@ pub static SYNCING_CHAIN_BATCH_AWAITING_PROCESSING: LazyLock<Result<Histogram>> 
             ]),
         )
     });
-pub static SYNCING_CHAIN_BATCHES: LazyLock<Result<IntGaugeVec>> = LazyLock::new(|| {
+pub(crate) static SYNCING_CHAIN_BATCHES: LazyLock<Result<IntGaugeVec>> = LazyLock::new(|| {
     try_create_int_gauge_vec(
         "sync_batches",
         "Number of batches in sync chains by sync type and state",
         &["sync_type", "state"],
     )
 });
-pub static SYNC_SINGLE_BLOCK_LOOKUPS: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+pub(crate) static SYNC_SINGLE_BLOCK_LOOKUPS: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge(
         "sync_single_block_lookups",
         "Number of single block lookups underway",
     )
 });
-pub static SYNC_LOOKUP_CREATED: LazyLock<Result<IntCounter>> = LazyLock::new(|| {
+pub(crate) static SYNC_LOOKUP_CREATED: LazyLock<Result<IntCounter>> = LazyLock::new(|| {
     try_create_int_counter(
         "sync_lookups_created_total",
         "Total count of sync lookups created",
     )
 });
-pub static SYNC_LOOKUP_DROPPED: LazyLock<Result<IntCounterVec>> = LazyLock::new(|| {
+pub(crate) static SYNC_LOOKUP_DROPPED: LazyLock<Result<IntCounterVec>> = LazyLock::new(|| {
     try_create_int_counter_vec(
         "sync_lookups_dropped_total",
         "Total count of sync lookups dropped by reason",
         &["reason"],
     )
 });
-pub static SYNC_LOOKUP_COMPLETED: LazyLock<Result<IntCounter>> = LazyLock::new(|| {
+pub(crate) static SYNC_LOOKUP_COMPLETED: LazyLock<Result<IntCounter>> = LazyLock::new(|| {
     try_create_int_counter(
         "sync_lookups_completed_total",
         "Total count of sync lookups completed",
     )
 });
-pub static SYNC_LOOKUPS_STUCK: LazyLock<Result<IntCounter>> = LazyLock::new(|| {
+pub(crate) static SYNC_LOOKUPS_STUCK: LazyLock<Result<IntCounter>> = LazyLock::new(|| {
     try_create_int_counter(
         "sync_lookups_stuck_total",
         "Total count of sync lookups that are stuck and dropped",
     )
 });
-pub static SYNC_ACTIVE_NETWORK_REQUESTS: LazyLock<Result<IntGaugeVec>> = LazyLock::new(|| {
-    try_create_int_gauge_vec(
-        "sync_active_network_requests",
-        "Current count of active network requests from sync",
-        &["type"],
-    )
-});
-pub static SYNC_UNKNOWN_NETWORK_REQUESTS: LazyLock<Result<IntCounterVec>> = LazyLock::new(|| {
-    try_create_int_counter_vec(
-        "sync_unknwon_network_request",
-        "Total count of network messages received for unknown active requests",
-        &["type"],
-    )
-});
-pub static SYNC_RPC_REQUEST_SUCCESSES: LazyLock<Result<IntCounterVec>> = LazyLock::new(|| {
-    try_create_int_counter_vec(
-        "sync_rpc_requests_success_total",
-        "Total count of sync RPC requests successes",
-        &["protocol"],
-    )
-});
-pub static SYNC_RPC_REQUEST_ERRORS: LazyLock<Result<IntCounterVec>> = LazyLock::new(|| {
+pub(crate) static SYNC_ACTIVE_NETWORK_REQUESTS: LazyLock<Result<IntGaugeVec>> =
+    LazyLock::new(|| {
+        try_create_int_gauge_vec(
+            "sync_active_network_requests",
+            "Current count of active network requests from sync",
+            &["type"],
+        )
+    });
+pub(crate) static SYNC_UNKNOWN_NETWORK_REQUESTS: LazyLock<Result<IntCounterVec>> =
+    LazyLock::new(|| {
+        try_create_int_counter_vec(
+            "sync_unknwon_network_request",
+            "Total count of network messages received for unknown active requests",
+            &["type"],
+        )
+    });
+pub(crate) static SYNC_RPC_REQUEST_SUCCESSES: LazyLock<Result<IntCounterVec>> =
+    LazyLock::new(|| {
+        try_create_int_counter_vec(
+            "sync_rpc_requests_success_total",
+            "Total count of sync RPC requests successes",
+            &["protocol"],
+        )
+    });
+pub(crate) static SYNC_RPC_REQUEST_ERRORS: LazyLock<Result<IntCounterVec>> = LazyLock::new(|| {
     try_create_int_counter_vec(
         "sync_rpc_requests_error_total",
         "Total count of sync RPC requests errors",
         &["protocol", "error"],
     )
 });
-pub static SYNC_RPC_REQUEST_TIME: LazyLock<Result<HistogramVec>> = LazyLock::new(|| {
+pub(crate) static SYNC_RPC_REQUEST_TIME: LazyLock<Result<HistogramVec>> = LazyLock::new(|| {
     try_create_histogram_vec_with_buckets(
         "sync_rpc_request_duration_sec",
         "Time to complete a successful sync RPC requesst",
@@ -635,28 +655,28 @@ pub static SYNC_RPC_REQUEST_TIME: LazyLock<Result<HistogramVec>> = LazyLock::new
 /*
  * Block Delay Metrics
  */
-pub static BEACON_BLOCK_DELAY_GOSSIP: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+pub(crate) static BEACON_BLOCK_DELAY_GOSSIP: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge(
         "beacon_block_delay_gossip",
         "The first time we see this block from gossip as a delay from the start of the slot",
     )
 });
-pub static BEACON_BLOCK_DELAY_GOSSIP_VERIFICATION: LazyLock<Result<IntGauge>> = LazyLock::new(
-    || {
+pub(crate) static BEACON_BLOCK_DELAY_GOSSIP_VERIFICATION: LazyLock<Result<IntGauge>> =
+    LazyLock::new(|| {
         try_create_int_gauge(
             "beacon_block_delay_gossip_verification",
             "Keeps track of the time delay from the start of the slot to the point we propagate the block",
         )
-    },
-);
-pub static BEACON_BLOCK_DELAY_FULL_VERIFICATION: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
-    try_create_int_gauge(
-        "beacon_block_delay_full_verification",
-        "The time it takes to verify a beacon block.",
-    )
-});
+    });
+pub(crate) static BEACON_BLOCK_DELAY_FULL_VERIFICATION: LazyLock<Result<IntGauge>> =
+    LazyLock::new(|| {
+        try_create_int_gauge(
+            "beacon_block_delay_full_verification",
+            "The time it takes to verify a beacon block.",
+        )
+    });
 
-pub static BEACON_BLOCK_DELAY_GOSSIP_ARRIVED_LATE_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_BLOCK_DELAY_GOSSIP_ARRIVED_LATE_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_block_delay_gossip_arrived_late_total",
@@ -667,14 +687,14 @@ pub static BEACON_BLOCK_DELAY_GOSSIP_ARRIVED_LATE_TOTAL: LazyLock<Result<IntCoun
 /*
  * Blob Delay Metrics
  */
-pub static BEACON_BLOB_DELAY_GOSSIP: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+pub(crate) static BEACON_BLOB_DELAY_GOSSIP: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge(
         "beacon_blob_delay_gossip_last_delay",
         "The first time we see this blob as a delay from the start of the slot",
     )
 });
 
-pub static BEACON_DATA_COLUMN_GOSSIP_PROPAGATION_VERIFICATION_DELAY_TIME: LazyLock<
+pub(crate) static BEACON_DATA_COLUMN_GOSSIP_PROPAGATION_VERIFICATION_DELAY_TIME: LazyLock<
     Result<Histogram>,
 > = LazyLock::new(|| {
     try_create_histogram_with_buckets(
@@ -684,7 +704,7 @@ pub static BEACON_DATA_COLUMN_GOSSIP_PROPAGATION_VERIFICATION_DELAY_TIME: LazyLo
         decimal_buckets(-3, -1),
     )
 });
-pub static BEACON_DATA_COLUMN_GOSSIP_SLOT_START_DELAY_TIME: LazyLock<Result<Histogram>> =
+pub(crate) static BEACON_DATA_COLUMN_GOSSIP_SLOT_START_DELAY_TIME: LazyLock<Result<Histogram>> =
     LazyLock::new(|| {
         try_create_histogram_with_buckets(
             "beacon_data_column_gossip_slot_start_delay_time",
@@ -699,7 +719,7 @@ pub static BEACON_DATA_COLUMN_GOSSIP_SLOT_START_DELAY_TIME: LazyLock<Result<Hist
         )
     });
 
-pub static BEACON_BLOB_DELAY_GOSSIP_VERIFICATION: LazyLock<Result<IntGauge>> = LazyLock::new(
+pub(crate) static BEACON_BLOB_DELAY_GOSSIP_VERIFICATION: LazyLock<Result<IntGauge>> = LazyLock::new(
     || {
         try_create_int_gauge(
             "beacon_blob_delay_gossip_verification",
@@ -707,15 +727,16 @@ pub static BEACON_BLOB_DELAY_GOSSIP_VERIFICATION: LazyLock<Result<IntGauge>> = L
         )
     },
 );
-pub static BEACON_BLOB_DELAY_FULL_VERIFICATION: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
-    try_create_int_gauge(
-        "beacon_blob_last_full_verification_delay",
-        "The time it takes to verify a beacon blob",
-    )
-});
+pub(crate) static BEACON_BLOB_DELAY_FULL_VERIFICATION: LazyLock<Result<IntGauge>> =
+    LazyLock::new(|| {
+        try_create_int_gauge(
+            "beacon_blob_last_full_verification_delay",
+            "The time it takes to verify a beacon blob",
+        )
+    });
 
-pub static BEACON_BLOB_RPC_SLOT_START_DELAY_TIME: LazyLock<Result<Histogram>> = LazyLock::new(
-    || {
+pub(crate) static BEACON_BLOB_RPC_SLOT_START_DELAY_TIME: LazyLock<Result<Histogram>> =
+    LazyLock::new(|| {
         try_create_histogram_with_buckets(
             "beacon_blob_rpc_slot_start_delay_time",
             "Duration between when a blob is received over rpc and the start of the slot it belongs to.",
@@ -727,22 +748,20 @@ pub static BEACON_BLOB_RPC_SLOT_START_DELAY_TIME: LazyLock<Result<Histogram>> = 
                 // [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50]
                 //decimal_buckets(-1,2)
         )
-    },
-);
+    });
 
-pub static BEACON_BLOB_GOSSIP_ARRIVED_LATE_TOTAL: LazyLock<Result<IntCounter>> = LazyLock::new(
-    || {
+pub(crate) static BEACON_BLOB_GOSSIP_ARRIVED_LATE_TOTAL: LazyLock<Result<IntCounter>> =
+    LazyLock::new(|| {
         try_create_int_counter(
             "beacon_blob_gossip_arrived_late_total",
             "Count of times when a gossip blob arrived from the network later than the attestation deadline.",
         )
-    },
-);
+    });
 
 /*
  * Light client update reprocessing queue metrics.
  */
-pub static BEACON_PROCESSOR_REPROCESSING_QUEUE_SENT_OPTIMISTIC_UPDATES: LazyLock<
+pub(crate) static BEACON_PROCESSOR_REPROCESSING_QUEUE_SENT_OPTIMISTIC_UPDATES: LazyLock<
     Result<IntCounter>,
 > = LazyLock::new(|| {
     try_create_int_counter(

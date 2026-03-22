@@ -30,7 +30,7 @@ use vibehouse_tracing::SPAN_SYNCING_CHAIN;
 /// we will negatively report peers with poor bandwidth. This can be set arbitrarily high, in which
 /// case the responder will fill the response up to the max request size, assuming they have the
 /// bandwidth to do so.
-pub const EPOCHS_PER_BATCH: u64 = 1;
+pub(crate) const EPOCHS_PER_BATCH: u64 = 1;
 
 /// The maximum number of batches to queue before requesting more.
 const BATCH_BUFFER_SIZE: u8 = 5;
@@ -41,7 +41,7 @@ const BATCH_BUFFER_SIZE: u8 = 5;
 ///
 /// Should be checked, since a failed chain must be removed. A chain that requested being removed
 /// and continued is now in an inconsistent state.
-pub type ProcessingResult = Result<KeepChain, RemoveChain>;
+pub(crate) type ProcessingResult = Result<KeepChain, RemoveChain>;
 
 type RpcBlocks<E> = Vec<RpcBlock<E>>;
 type RangeSyncBatchInfo<E> = BatchInfo<E, RangeSyncBatchConfig<E>, RpcBlocks<E>>;
@@ -54,7 +54,7 @@ const MAX_BATCH_DOWNLOAD_ATTEMPTS: u8 = 5;
 /// after `MAX_BATCH_PROCESSING_ATTEMPTS` times, it is considered faulty.
 const MAX_BATCH_PROCESSING_ATTEMPTS: u8 = 3;
 
-pub struct RangeSyncBatchConfig<E: EthSpec> {
+pub(crate) struct RangeSyncBatchConfig<E: EthSpec> {
     marker: PhantomData<E>,
 }
 
@@ -74,7 +74,7 @@ impl<E: EthSpec> BatchConfig for RangeSyncBatchConfig<E> {
 
 /// Reasons for removing a chain
 #[derive(Debug)]
-pub enum RemoveChain {
+pub(crate) enum RemoveChain {
     EmptyPeerPool,
     ChainCompleted,
     /// A chain has failed. This boolean signals whether the chain should be blacklisted.
@@ -88,23 +88,22 @@ pub enum RemoveChain {
 }
 
 #[derive(Debug)]
-pub struct KeepChain;
+pub(crate) struct KeepChain;
 
 /// A chain identifier
-pub type ChainId = Id;
+pub(crate) type ChainId = Id;
 
 #[derive(Debug, Copy, Clone, IntoStaticStr)]
-pub enum SyncingChainType {
+pub(crate) enum SyncingChainType {
     Head,
     Finalized,
-    Backfill,
 }
 
 /// A chain of blocks that need to be downloaded. Peers who claim to contain the target head
 /// root are grouped into the peer pool and queried for batches when downloading the
 /// chain.
 #[derive(Debug)]
-pub struct SyncingChain<T: BeaconChainTypes> {
+pub(crate) struct SyncingChain<T: BeaconChainTypes> {
     /// A random id used to identify this chain.
     id: ChainId,
 
@@ -154,7 +153,7 @@ pub struct SyncingChain<T: BeaconChainTypes> {
 }
 
 #[derive(PartialEq, Eq, Debug)]
-pub enum ChainSyncingState {
+pub(crate) enum ChainSyncingState {
     /// The chain is not being synced.
     Stopped,
     /// The chain is undergoing syncing.

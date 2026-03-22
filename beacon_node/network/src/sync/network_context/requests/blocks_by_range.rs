@@ -5,7 +5,7 @@ use vibehouse_network::rpc::BlocksByRangeRequest;
 
 /// Accumulates results of a blocks_by_range request. Only returns items after receiving the
 /// stream termination.
-pub struct BlocksByRangeRequestItems<E: EthSpec> {
+pub(crate) struct BlocksByRangeRequestItems<E: EthSpec> {
     request: BlocksByRangeRequest,
     items: Vec<Arc<SignedBeaconBlock<E>>>,
 }

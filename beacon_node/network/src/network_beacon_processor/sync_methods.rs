@@ -37,7 +37,7 @@ use vibehouse_tracing::{
 
 /// Id associated to a batch processing request, either a sync batch or a parent lookup.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ChainSegmentProcessId {
+pub(crate) enum ChainSegmentProcessId {
     /// Processing Id of a range syncing batch.
     RangeBatchId(ChainId, Epoch),
     /// Processing ID for a backfill syncing batch.

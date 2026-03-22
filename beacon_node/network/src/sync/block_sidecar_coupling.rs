@@ -19,7 +19,7 @@ use crate::sync::network_context::PeerGroup;
 use crate::sync::network_context::MAX_COLUMN_RETRIES;
 
 /// Result of a completed range block components request: blocks coupled with peer tracking info.
-pub type CouplingResult<E> = Result<(Vec<RpcBlock<E>>, PeerGroup), CouplingError>;
+pub(crate) type CouplingResult<E> = Result<(Vec<RpcBlock<E>>, PeerGroup), CouplingError>;
 
 /// Accumulates and couples beacon blocks with their associated data (blobs or data columns)
 /// from range sync network responses.
@@ -32,7 +32,7 @@ pub type CouplingResult<E> = Result<(Vec<RpcBlock<E>>, PeerGroup), CouplingError
 /// It accumulates responses until all expected components are received, then couples
 /// them together and returns complete `RpcBlock`s ready for processing. Handles validation
 /// and peer failure detection during the coupling process.
-pub struct RangeBlockComponentsRequest<E: EthSpec> {
+pub(crate) struct RangeBlockComponentsRequest<E: EthSpec> {
     /// Blocks we have received awaiting for their corresponding sidecar.
     blocks_request: ByRangeRequest<BlocksByRangeRequestId, Vec<Arc<SignedBeaconBlock<E>>>>,
     /// Sidecars we have received awaiting for their corresponding block.
@@ -43,7 +43,7 @@ pub struct RangeBlockComponentsRequest<E: EthSpec> {
     pub(crate) request_span: Span,
 }
 
-pub enum ByRangeRequest<I: PartialEq + std::fmt::Display, T> {
+pub(crate) enum ByRangeRequest<I: PartialEq + std::fmt::Display, T> {
     Active(I),
     Complete(T),
 }

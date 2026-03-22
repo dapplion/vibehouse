@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 use vibehouse_network::{SyncInfo, SyncStatus as PeerSyncStatus};
 
 /// The type of peer relative to our current state.
-pub enum PeerSyncType {
+pub(crate) enum PeerSyncType {
     /// The peer is on our chain and is fully synced with respect to our chain.
     FullySynced,
     /// The peer has a greater knowledge of the chain than us that warrants a full sync.
@@ -23,7 +23,7 @@ impl PeerSyncType {
     }
 }
 
-pub fn remote_sync_type<T: BeaconChainTypes>(
+pub(crate) fn remote_sync_type<T: BeaconChainTypes>(
     local: &SyncInfo,
     remote: &SyncInfo,
     chain: &BeaconChain<T>,

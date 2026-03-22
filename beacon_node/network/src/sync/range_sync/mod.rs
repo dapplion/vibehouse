@@ -5,8 +5,8 @@ mod chain_collection;
 mod range;
 mod sync_type;
 
-pub use chain::{ChainId, EPOCHS_PER_BATCH};
+pub(crate) use chain::{ChainId, EPOCHS_PER_BATCH};
 #[cfg(test)]
-pub use chain_collection::SyncChainStatus;
-pub use range::RangeSync;
-pub use sync_type::RangeSyncType;
+pub(crate) use chain_collection::SyncChainStatus;
+pub(crate) use range::RangeSync;
+pub(crate) use sync_type::RangeSyncType;

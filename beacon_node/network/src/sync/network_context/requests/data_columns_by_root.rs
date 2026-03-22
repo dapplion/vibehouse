@@ -8,7 +8,7 @@ use vibehouse_network::rpc::methods::DataColumnsByRootRequest;
 use super::{ActiveRequestItems, LookupVerifyError};
 
 #[derive(Debug, Clone)]
-pub struct DataColumnsByRootSingleBlockRequest {
+pub(crate) struct DataColumnsByRootSingleBlockRequest {
     pub block_root: Hash256,
     pub indices: Vec<u64>,
 }
@@ -31,7 +31,7 @@ impl DataColumnsByRootSingleBlockRequest {
     }
 }
 
-pub struct DataColumnsByRootRequestItems<E: EthSpec> {
+pub(crate) struct DataColumnsByRootRequestItems<E: EthSpec> {
     request: DataColumnsByRootSingleBlockRequest,
     items: Vec<Arc<DataColumnSidecar<E>>>,
 }

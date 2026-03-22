@@ -5,7 +5,7 @@ use vibehouse_network::rpc::methods::DataColumnsByRangeRequest;
 
 /// Accumulates results of a data_columns_by_range request. Only returns items after receiving the
 /// stream termination.
-pub struct DataColumnsByRangeRequestItems<E: EthSpec> {
+pub(crate) struct DataColumnsByRangeRequestItems<E: EthSpec> {
     request: DataColumnsByRangeRequest,
     items: Vec<Arc<DataColumnSidecar<E>>>,
 }

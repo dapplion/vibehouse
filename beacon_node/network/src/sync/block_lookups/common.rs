@@ -18,7 +18,7 @@ use super::SingleLookupId;
 use super::single_block_lookup::{ComponentRequests, DownloadResult};
 
 #[derive(Debug, Copy, Clone)]
-pub enum ResponseType {
+pub(crate) enum ResponseType {
     Block,
     Blob,
     CustodyColumn,
@@ -32,7 +32,7 @@ pub enum ResponseType {
 /// The use of the `ResponseType` associated type gives us a degree of type
 /// safety when handling a block/blob response ensuring we only mutate the correct corresponding
 /// state.
-pub trait RequestState<T: BeaconChainTypes> {
+pub(crate) trait RequestState<T: BeaconChainTypes> {
     /// The type created after validation.
     type VerifiedResponseType: Clone;
 

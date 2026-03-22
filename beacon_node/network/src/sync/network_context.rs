@@ -2,7 +2,7 @@
 //! channel and stores a global RPC ID to perform requests.
 
 use self::custody::{ActiveCustodyRequest, Error as CustodyRequestError};
-pub use self::requests::{BlocksByRootSingleRequest, DataColumnsByRootSingleBlockRequest};
+pub(crate) use self::requests::{BlocksByRootSingleRequest, DataColumnsByRootSingleBlockRequest};
 use super::SyncMessage;
 use super::block_sidecar_coupling::RangeBlockComponentsRequest;
 use super::manager::BlockProcessType;
@@ -22,7 +22,7 @@ use beacon_chain::{BeaconChain, BeaconChainTypes, BlockProcessStatus, EngineStat
 use custody::CustodyRequestResult;
 use fnv::FnvHashMap;
 use parking_lot::RwLock;
-pub use requests::LookupVerifyError;
+pub(crate) use requests::LookupVerifyError;
 use requests::{
     ActiveRequests, BlobsByRangeRequestItems, BlobsByRootRequestItems, BlocksByRangeRequestItems,
     BlocksByRootRequestItems, DataColumnsByRangeRequestItems, DataColumnsByRootRequestItems,
@@ -47,7 +47,7 @@ use vibehouse_network::rpc::methods::{
     BlobsByRangeRequest, DataColumnsByRangeRequest, ExecutionPayloadEnvelopesByRootRequest,
 };
 use vibehouse_network::rpc::{BlocksByRangeRequest, GoodbyeReason, RPCError, RequestType};
-pub use vibehouse_network::service::api_types::RangeRequestId;
+pub(crate) use vibehouse_network::service::api_types::RangeRequestId;
 use vibehouse_network::service::api_types::{
     AppRequestId, BlobsByRangeRequestId, BlocksByRangeRequestId, ComponentsByRangeRequestId,
     CustodyBackFillBatchRequestId, CustodyBackfillBatchId, CustodyId, CustodyRequester,
@@ -57,7 +57,7 @@ use vibehouse_network::service::api_types::{
 use vibehouse_network::{Client, NetworkGlobals, PeerAction, PeerId, ReportSource};
 use vibehouse_tracing::{SPAN_OUTGOING_BLOCK_BY_ROOT_REQUEST, SPAN_OUTGOING_RANGE_REQUEST};
 
-pub mod custody;
+pub(crate) mod custody;
 mod requests;
 
 macro_rules! new_range_request_span {
@@ -73,10 +73,10 @@ macro_rules! new_range_request_span {
 }
 
 /// Max retries for block components after which we fail the batch.
-pub const MAX_COLUMN_RETRIES: usize = 3;
+pub(crate) const MAX_COLUMN_RETRIES: usize = 3;
 
 #[derive(Debug)]
-pub enum RpcEvent<T> {
+pub(crate) enum RpcEvent<T> {
     StreamTermination,
     Response(T, Duration),
     RPCError(RPCError),
@@ -91,14 +91,14 @@ impl<T> RpcEvent<T> {
     }
 }
 
-pub type RpcResponseResult<T> = Result<(T, Duration), RpcResponseError>;
+pub(crate) type RpcResponseResult<T> = Result<(T, Duration), RpcResponseError>;
 
 /// Duration = latest seen timestamp of all received data columns
-pub type CustodyByRootResult<T> =
+pub(crate) type CustodyByRootResult<T> =
     Result<(DataColumnSidecarList<T>, PeerGroup, Duration), RpcResponseError>;
 
 #[derive(Debug)]
-pub enum RpcResponseError {
+pub(crate) enum RpcResponseError {
     Rpc(#[allow(dead_code)] RPCError),
     Verify(LookupVerifyError),
     CustodyRequest(#[allow(dead_code)] CustodyRequestError),
@@ -106,7 +106,7 @@ pub enum RpcResponseError {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum RpcRequestSendError {
+pub(crate) enum RpcRequestSendError {
     /// No peer available matching the required criteria
     NoPeer(NoPeerError),
     /// These errors should never happen, including unreachable custody errors or network send
@@ -116,13 +116,13 @@ pub enum RpcRequestSendError {
 
 /// Type of peer missing that caused a `RpcRequestSendError::NoPeers`
 #[derive(Debug, PartialEq, Eq)]
-pub enum NoPeerError {
+pub(crate) enum NoPeerError {
     BlockPeer,
     CustodyPeer(ColumnIndex),
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum SendErrorProcessor {
+pub(crate) enum SendErrorProcessor {
     SendError,
     ProcessorNotAvailable,
 }
@@ -141,7 +141,7 @@ impl From<LookupVerifyError> for RpcResponseError {
 
 /// Represents a group of peers that served a block component.
 #[derive(Clone, Debug)]
-pub struct PeerGroup {
+pub(crate) struct PeerGroup {
     /// Peers group by which indexed section of the block component they served. For example:
     /// - PeerA served = [blob index 0, blob index 2]
     /// - PeerA served = [blob index 1]
@@ -174,9 +174,9 @@ impl PeerGroup {
 }
 
 /// Sequential ID that uniquely identifies ReqResp outgoing requests
-pub type ReqId = u32;
+pub(crate) type ReqId = u32;
 
-pub enum LookupRequestResult<I = ReqId> {
+pub(crate) enum LookupRequestResult<I = ReqId> {
     /// A request is sent. Sync MUST receive an event from the network in the future for either:
     /// completed response or failed request
     RequestSent(I),
@@ -208,7 +208,7 @@ struct PendingEnvelopeBatch<E: EthSpec> {
     peer_group: PeerGroup,
 }
 
-pub struct SyncNetworkContext<T: BeaconChainTypes> {
+pub(crate) struct SyncNetworkContext<T: BeaconChainTypes> {
     /// The network channel to relay messages to the Network service.
     network_send: mpsc::UnboundedSender<NetworkMessage<T::EthSpec>>,
 
@@ -260,7 +260,7 @@ pub struct SyncNetworkContext<T: BeaconChainTypes> {
 }
 
 /// Small enumeration to make dealing with block and blob requests easier.
-pub enum RangeBlockComponent<E: EthSpec> {
+pub(crate) enum RangeBlockComponent<E: EthSpec> {
     Block(
         BlocksByRangeRequestId,
         RpcResponseResult<Vec<Arc<SignedBeaconBlock<E>>>>,

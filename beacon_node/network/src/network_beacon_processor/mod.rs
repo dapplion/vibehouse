@@ -37,7 +37,7 @@ use vibehouse_network::{
     rpc::{BlocksByRangeRequest, BlocksByRootRequest, LightClientBootstrapRequest, StatusMessage},
 };
 
-pub use sync_methods::ChainSegmentProcessId;
+pub(crate) use sync_methods::ChainSegmentProcessId;
 use types::blob_sidecar::FixedBlobSidecarList;
 
 pub(crate) type Error<T> = TrySendError<BeaconWorkEvent<T>>;

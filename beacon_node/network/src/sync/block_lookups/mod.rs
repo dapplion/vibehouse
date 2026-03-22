@@ -21,7 +21,7 @@
 //! returned to this module as `LookupRequestResult` variants.
 
 use self::parent_chain::{NodeChain, compute_parent_chains};
-pub use self::single_block_lookup::DownloadResult;
+pub(crate) use self::single_block_lookup::DownloadResult;
 use self::single_block_lookup::{LookupRequestError, LookupResult, SingleBlockLookup};
 use super::manager::{BlockProcessType, BlockProcessingResult, SLOT_IMPORT_TOLERANCE};
 use super::network_context::{PeerGroup, RpcResponseError, SyncNetworkContext};
@@ -34,10 +34,10 @@ use beacon_chain::data_availability_checker::{
     AvailabilityCheckError, AvailabilityCheckErrorCategory,
 };
 use beacon_chain::{AvailabilityProcessingStatus, BeaconChainTypes, BlockError};
-pub use common::RequestState;
+pub(crate) use common::RequestState;
 use fnv::FnvHashMap;
 use lru_cache::LRUTimeCache;
-pub use single_block_lookup::{BlobRequestState, BlockRequestState, CustodyRequestState};
+pub(crate) use single_block_lookup::{BlobRequestState, BlockRequestState, CustodyRequestState};
 use std::collections::hash_map::Entry;
 use std::sync::Arc;
 use std::time::Duration;
@@ -47,8 +47,8 @@ use types::{BlobSidecar, DataColumnSidecar, EthSpec, SignedBeaconBlock};
 use vibehouse_network::service::api_types::SingleLookupReqId;
 use vibehouse_network::{PeerAction, PeerId};
 
-pub mod common;
-pub mod parent_chain;
+pub(crate) mod common;
+pub(crate) mod parent_chain;
 mod single_block_lookup;
 
 /// The maximum depth we will search for a parent block. In principle we should have sync'd any
@@ -60,7 +60,7 @@ mod single_block_lookup;
 pub(crate) const PARENT_DEPTH_TOLERANCE: usize = SLOT_IMPORT_TOLERANCE;
 
 const IGNORED_CHAINS_CACHE_EXPIRY_SECONDS: u64 = 60;
-pub const SINGLE_BLOCK_LOOKUP_MAX_ATTEMPTS: u8 = 4;
+pub(crate) const SINGLE_BLOCK_LOOKUP_MAX_ATTEMPTS: u8 = 4;
 
 /// Maximum time we allow a lookup to exist before assuming it is stuck and will never make
 /// progress. Assume the worse case processing time per block component set * times max depth.
@@ -77,7 +77,7 @@ const LOOKUP_MAX_DURATION_NO_PEERS_SECS: u64 = 10;
 /// take at most 2 GB. 200 lookups allow 3 parallel chains of depth 64 (current maximum).
 const MAX_LOOKUPS: usize = 200;
 
-pub enum BlockComponent<E: EthSpec> {
+pub(crate) enum BlockComponent<E: EthSpec> {
     Block(DownloadResult<Arc<SignedBeaconBlock<E>>>),
     Blob(DownloadResult<Arc<BlobSidecar<E>>>),
     DataColumn(DownloadResult<Arc<DataColumnSidecar<E>>>),
@@ -102,7 +102,7 @@ impl<E: EthSpec> BlockComponent<E> {
     }
 }
 
-pub type SingleLookupId = u32;
+pub(crate) type SingleLookupId = u32;
 
 enum Action {
     Retry,
@@ -111,7 +111,7 @@ enum Action {
     Continue,
 }
 
-pub struct BlockLookups<T: BeaconChainTypes> {
+pub(crate) struct BlockLookups<T: BeaconChainTypes> {
     /// A cache of block roots that must be ignored for some time to prevent useless searches. For
     /// example if a chain is too long, its lookup chain is dropped, and range sync is expected to
     /// eventually sync those blocks

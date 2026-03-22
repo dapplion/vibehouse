@@ -85,7 +85,7 @@ use vibehouse_network::{PeerAction, PeerId};
 /// This means that we consider ourselves synced (and hence subscribe to all subnets and block
 /// gossip if no peers are further than this range ahead of us that we have not already downloaded
 /// blocks for.
-pub const SLOT_IMPORT_TOLERANCE: usize = 32;
+pub(crate) const SLOT_IMPORT_TOLERANCE: usize = 32;
 
 /// Suppress duplicated `UnknownBlockHashFromAttestation` events for some duration of time. In
 /// practice peers are likely to send the same root during a single slot. 30 seconds is a rather
@@ -94,7 +94,7 @@ const NOTIFIED_UNKNOWN_ROOT_EXPIRY_SECONDS: u64 = 30;
 
 #[derive(Debug)]
 /// A message that can be sent to the sync manager thread.
-pub enum SyncMessage<E: EthSpec> {
+pub(crate) enum SyncMessage<E: EthSpec> {
     /// A useful peer has been discovered.
     AddPeer(PeerId, SyncInfo),
 
@@ -193,14 +193,14 @@ pub enum SyncMessage<E: EthSpec> {
 
 /// The type of processing specified for a received block.
 #[derive(Debug, Clone)]
-pub enum BlockProcessType {
+pub(crate) enum BlockProcessType {
     Block { id: Id },
     Blob { id: Id },
     CustodyColumn(Id),
 }
 
 impl BlockProcessType {
-    pub fn id(&self) -> Id {
+    pub(crate) fn id(&self) -> Id {
         match self {
             BlockProcessType::Block { id }
             | BlockProcessType::Blob { id }
@@ -210,7 +210,7 @@ impl BlockProcessType {
 }
 
 #[derive(Debug)]
-pub enum BlockProcessingResult {
+pub(crate) enum BlockProcessingResult {
     Ok(AvailabilityProcessingStatus),
     Err(BlockError),
     Ignored,
@@ -218,7 +218,7 @@ pub enum BlockProcessingResult {
 
 /// The result of processing multiple blocks (a chain segment).
 #[derive(Debug)]
-pub enum BatchProcessResult {
+pub(crate) enum BatchProcessResult {
     /// The batch was completed successfully. It carries whether the sent batch contained blocks.
     Success {
         sent_blocks: usize,
@@ -234,7 +234,7 @@ pub enum BatchProcessResult {
 
 /// The result of processing multiple data columns.
 #[derive(Debug)]
-pub enum CustodyBatchProcessResult {
+pub(crate) enum CustodyBatchProcessResult {
     /// The custody batch was completed successfully.
     Success { imported_columns: usize },
     /// The custody batch processing failed.
@@ -245,7 +245,7 @@ pub enum CustodyBatchProcessResult {
 /// current state of the syncing process, the number of useful peers, downloaded blocks and
 /// controls the logic behind both the long-range (batch) sync and the on-going potential parent
 /// look-up of blocks.
-pub struct SyncManager<T: BeaconChainTypes> {
+pub(crate) struct SyncManager<T: BeaconChainTypes> {
     /// A reference to the underlying beacon chain.
     chain: Arc<BeaconChain<T>>,
 
@@ -278,7 +278,7 @@ pub struct SyncManager<T: BeaconChainTypes> {
 /// Spawns a new `SyncManager` thread which has a weak reference to underlying beacon
 /// chain. This allows the chain to be
 /// dropped during the syncing process which will gracefully end the `SyncManager`.
-pub fn spawn<T: BeaconChainTypes>(
+pub(crate) fn spawn<T: BeaconChainTypes>(
     executor: task_executor::TaskExecutor,
     beacon_chain: Arc<BeaconChain<T>>,
     network_send: mpsc::UnboundedSender<NetworkMessage<T::EthSpec>>,

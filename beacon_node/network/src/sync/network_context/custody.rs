@@ -20,7 +20,7 @@ use super::{LookupRequestResult, PeerGroup, RpcResponseResult, SyncNetworkContex
 
 const MAX_STALE_NO_PEERS_DURATION: Duration = Duration::from_secs(30);
 
-pub struct ActiveCustodyRequest<T: BeaconChainTypes> {
+pub(crate) struct ActiveCustodyRequest<T: BeaconChainTypes> {
     block_root: Hash256,
     custody_id: CustodyId,
     /// List of column indices this request needs to download to complete successfully
@@ -37,7 +37,7 @@ pub struct ActiveCustodyRequest<T: BeaconChainTypes> {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum Error {
+pub(crate) enum Error {
     SendFailed(&'static str),
     TooManyFailures,
     BadState(String),
@@ -57,7 +57,7 @@ struct ActiveBatchColumnsRequest {
     span: Span,
 }
 
-pub type CustodyRequestResult<E> =
+pub(crate) type CustodyRequestResult<E> =
     Result<Option<(DataColumnSidecarList<E>, PeerGroup, Duration)>, Error>;
 
 impl<T: BeaconChainTypes> ActiveCustodyRequest<T> {

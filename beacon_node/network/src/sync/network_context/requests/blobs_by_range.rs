@@ -5,7 +5,7 @@ use vibehouse_network::rpc::methods::BlobsByRangeRequest;
 
 /// Accumulates results of a blobs_by_range request. Only returns items after receiving the
 /// stream termination.
-pub struct BlobsByRangeRequestItems<E: EthSpec> {
+pub(crate) struct BlobsByRangeRequestItems<E: EthSpec> {
     request: BlobsByRangeRequest,
     items: Vec<Arc<BlobSidecar<E>>>,
     max_blobs_per_block: u64,

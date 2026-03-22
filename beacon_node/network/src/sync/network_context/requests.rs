@@ -8,12 +8,12 @@ use tracing::{Span, debug};
 use types::{Hash256, Slot};
 use vibehouse_network::PeerId;
 
-pub use blobs_by_range::BlobsByRangeRequestItems;
-pub use blobs_by_root::{BlobsByRootRequestItems, BlobsByRootSingleBlockRequest};
-pub use blocks_by_range::BlocksByRangeRequestItems;
-pub use blocks_by_root::{BlocksByRootRequestItems, BlocksByRootSingleRequest};
-pub use data_columns_by_range::DataColumnsByRangeRequestItems;
-pub use data_columns_by_root::{
+pub(crate) use blobs_by_range::BlobsByRangeRequestItems;
+pub(crate) use blobs_by_root::{BlobsByRootRequestItems, BlobsByRootSingleBlockRequest};
+pub(crate) use blocks_by_range::BlocksByRangeRequestItems;
+pub(crate) use blocks_by_root::{BlocksByRootRequestItems, BlocksByRootSingleRequest};
+pub(crate) use data_columns_by_range::DataColumnsByRangeRequestItems;
+pub(crate) use data_columns_by_root::{
     DataColumnsByRootRequestItems, DataColumnsByRootSingleBlockRequest,
 };
 
@@ -29,7 +29,7 @@ mod data_columns_by_range;
 mod data_columns_by_root;
 
 #[derive(Debug, PartialEq, Eq, IntoStaticStr)]
-pub enum LookupVerifyError {
+pub(crate) enum LookupVerifyError {
     NotEnoughResponsesReturned { actual: usize },
     UnrequestedBlockRoot(Hash256),
     UnrequestedIndex(u64),
@@ -40,7 +40,7 @@ pub enum LookupVerifyError {
 }
 
 /// Collection of active requests of a single ReqResp method, i.e. `blocks_by_root`
-pub struct ActiveRequests<K: Eq + Hash, T: ActiveRequestItems> {
+pub(crate) struct ActiveRequests<K: Eq + Hash, T: ActiveRequestItems> {
     requests: FnvHashMap<K, ActiveRequest<T>>,
     name: &'static str,
 }
@@ -242,7 +242,7 @@ impl<K: Copy + Eq + Hash + std::fmt::Display, T: ActiveRequestItems> ActiveReque
     }
 }
 
-pub trait ActiveRequestItems {
+pub(crate) trait ActiveRequestItems {
     type Item;
 
     /// Add a new item into the accumulator. Returns true if all expected items have been received.

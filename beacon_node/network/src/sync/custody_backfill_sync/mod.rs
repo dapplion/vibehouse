@@ -38,14 +38,14 @@ const BACKFILL_BATCH_BUFFER_SIZE: u8 = 5;
 /// we will negatively report peers with poor bandwidth. This can be set arbitrarily high, in which
 /// case the responder will fill the response up to the max request size, assuming they have the
 /// bandwidth to do so.
-pub const CUSTODY_BACKFILL_EPOCHS_PER_BATCH: u64 = 1;
+pub(crate) const CUSTODY_BACKFILL_EPOCHS_PER_BATCH: u64 = 1;
 
 type CustodyBackFillBatchInfo<E> =
     BatchInfo<E, CustodyBackFillBatchConfig<E>, DataColumnSidecarList<E>>;
 type CustodyBackFillBatches<E> = BTreeMap<BatchId, CustodyBackFillBatchInfo<E>>;
 
 #[derive(Debug)]
-pub struct CustodyBackFillBatchConfig<E: EthSpec> {
+pub(crate) struct CustodyBackFillBatchConfig<E: EthSpec> {
     marker: PhantomData<E>,
 }
 
@@ -66,7 +66,7 @@ impl<E: EthSpec> BatchConfig for CustodyBackFillBatchConfig<E> {
 /// The ways a custody backfill sync can fail.
 // The info in the enum variants is displayed in logging, clippy thinks it's dead code.
 #[derive(Debug)]
-pub enum CustodyBackfillError {
+pub(crate) enum CustodyBackfillError {
     /// A batch failed to be downloaded.
     BatchDownloadFailed(#[allow(dead_code)] BatchId),
     /// A batch could not be processed.
@@ -79,7 +79,7 @@ pub enum CustodyBackfillError {
     Paused,
 }
 
-pub struct CustodyBackFillSync<T: BeaconChainTypes> {
+pub(crate) struct CustodyBackFillSync<T: BeaconChainTypes> {
     /// Keeps track of the current progress of the custody backfill.
     /// This only gets refreshed from the beacon chain if we enter a failed state.
     current_start: BatchId,

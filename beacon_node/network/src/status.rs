@@ -6,7 +6,7 @@ use vibehouse_network::rpc::{StatusMessage, methods::StatusMessageV2};
 ///
 /// NOTE: The purpose of this is simply to obtain a `StatusMessage` from the `BeaconChain` without
 /// polluting/coupling the type with RPC concepts.
-pub trait ToStatusMessage {
+pub(crate) trait ToStatusMessage {
     fn status_message(&self) -> StatusMessage;
 }
 

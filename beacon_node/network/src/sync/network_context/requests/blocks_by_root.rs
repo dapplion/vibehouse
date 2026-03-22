@@ -6,7 +6,7 @@ use vibehouse_network::rpc::BlocksByRootRequest;
 use super::{ActiveRequestItems, LookupVerifyError};
 
 #[derive(Debug, Copy, Clone)]
-pub struct BlocksByRootSingleRequest(pub Hash256);
+pub(crate) struct BlocksByRootSingleRequest(pub Hash256);
 
 impl BlocksByRootSingleRequest {
     pub fn into_request(self, fork_context: &ForkContext) -> Result<BlocksByRootRequest, String> {
@@ -15,7 +15,7 @@ impl BlocksByRootSingleRequest {
     }
 }
 
-pub struct BlocksByRootRequestItems<E: EthSpec> {
+pub(crate) struct BlocksByRootRequestItems<E: EthSpec> {
     request: BlocksByRootSingleRequest,
     items: Vec<Arc<SignedBeaconBlock<E>>>,
 }

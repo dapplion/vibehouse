@@ -19,7 +19,7 @@ use crate::sync::network_context::PeerGroup;
 /// Batch states used as metrics labels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter, IntoStaticStr)]
 #[strum(serialize_all = "snake_case")]
-pub enum BatchMetricsState {
+pub(crate) enum BatchMetricsState {
     AwaitingDownload,
     Downloading,
     AwaitingProcessing,
@@ -28,12 +28,12 @@ pub enum BatchMetricsState {
     Failed,
 }
 
-pub type BatchId = Epoch;
+pub(crate) type BatchId = Epoch;
 
 /// Type of expected batch.
 #[derive(Debug, Clone, Display)]
 #[strum(serialize_all = "snake_case")]
-pub enum ByRangeRequestType {
+pub(crate) enum ByRangeRequestType {
     BlocksAndColumns,
     BlocksAndBlobs,
     Blocks,
@@ -41,7 +41,7 @@ pub enum ByRangeRequestType {
 }
 
 /// Allows customisation of the above constants used in other sync methods such as BackFillSync.
-pub trait BatchConfig {
+pub(crate) trait BatchConfig {
     /// The maximum batch download attempts.
     fn max_batch_download_attempts() -> u8;
     /// The max batch processing attempts.
@@ -77,16 +77,16 @@ pub trait BatchConfig {
 }
 
 #[derive(Debug)]
-pub struct WrongState(pub(crate) String);
+pub(crate) struct WrongState(pub(crate) String);
 
 /// After batch operations, we use this to communicate whether a batch can continue or not
-pub enum BatchOperationOutcome {
+pub(crate) enum BatchOperationOutcome {
     Continue,
     Failed { blacklist: bool },
 }
 
 #[derive(Debug)]
-pub enum BatchProcessingResult {
+pub(crate) enum BatchProcessingResult {
     Success,
     FaultyFailure,
     NonFaultyFailure,
@@ -95,7 +95,7 @@ pub enum BatchProcessingResult {
 #[derive(Educe)]
 #[educe(Debug)]
 /// A segment of a chain.
-pub struct BatchInfo<E: EthSpec, B: BatchConfig, D: Hash> {
+pub(crate) struct BatchInfo<E: EthSpec, B: BatchConfig, D: Hash> {
     /// Start slot of the batch.
     start_slot: Slot,
     /// End slot of the batch.
@@ -129,7 +129,7 @@ impl<E: EthSpec, B: BatchConfig, D: std::fmt::Debug + Hash> std::fmt::Display
 
 #[derive(Display)]
 /// Current state of a batch
-pub enum BatchState<D: Hash> {
+pub(crate) enum BatchState<D: Hash> {
     /// The batch has failed either downloading or processing, but can be requested again.
     AwaitingDownload,
     /// The batch is being downloaded.
@@ -500,7 +500,7 @@ impl<E: EthSpec, B: BatchConfig> BatchInfo<E, B, DataColumnSidecarList<E>> {
 }
 
 #[derive(Debug)]
-pub struct Attempt<D: Hash> {
+pub(crate) struct Attempt<D: Hash> {
     /// The peers that contributed to this attempt.
     pub peer_group: PeerGroup,
     /// The hash of the blocks of the attempt.

@@ -9,7 +9,7 @@ use types::{ColumnIndex, DataColumnSidecar, DataColumnSidecarList, Epoch, EthSpe
 use vibehouse_network::PeerId;
 use vibehouse_network::service::api_types::DataColumnsByRangeRequestId;
 
-pub struct RangeDataColumnBatchRequest<T: BeaconChainTypes> {
+pub(crate) struct RangeDataColumnBatchRequest<T: BeaconChainTypes> {
     requests: HashMap<
         DataColumnsByRangeRequestId,
         ByRangeRequest<DataColumnsByRangeRequestId, DataColumnSidecarList<T::EthSpec>>,

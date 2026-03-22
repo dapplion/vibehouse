@@ -43,7 +43,7 @@ use vibehouse_network::{PeerAction, PeerId};
 /// we will negatively report peers with poor bandwidth. This can be set arbitrarily high, in which
 /// case the responder will fill the response up to the max request size, assuming they have the
 /// bandwidth to do so.
-pub const BACKFILL_EPOCHS_PER_BATCH: u64 = 1;
+pub(crate) const BACKFILL_EPOCHS_PER_BATCH: u64 = 1;
 
 /// The maximum number of batches to queue before requesting more.
 const BACKFILL_BATCH_BUFFER_SIZE: u8 = 5;
@@ -81,7 +81,7 @@ impl<E: EthSpec> BatchConfig for BackFillBatchConfig<E> {
 }
 
 /// Return type when attempting to start the backfill sync process.
-pub enum SyncStart {
+pub(crate) enum SyncStart {
     /// The chain started syncing or is already syncing.
     Syncing {
         /// The number of slots that have been processed so far.
@@ -94,7 +94,7 @@ pub enum SyncStart {
 }
 
 /// A standard result from calling public functions on [`BackFillSync`].
-pub enum ProcessResult {
+pub(crate) enum ProcessResult {
     /// The call was successful.
     Successful,
     /// The call resulted in completing the backfill sync.
@@ -104,7 +104,7 @@ pub enum ProcessResult {
 /// The ways a backfill sync can fail.
 // The info in the enum variants is displayed in logging, clippy thinks it's dead code.
 #[derive(Debug)]
-pub enum BackFillError {
+pub(crate) enum BackFillError {
     /// A batch failed to be downloaded.
     BatchDownloadFailed(#[allow(dead_code)] BatchId),
     /// A batch could not be processed.
@@ -117,7 +117,7 @@ pub enum BackFillError {
     Paused,
 }
 
-pub struct BackFillSync<T: BeaconChainTypes> {
+pub(crate) struct BackFillSync<T: BeaconChainTypes> {
     /// Keeps track of the current progress of the backfill.
     /// This only gets refreshed from the beacon chain if we enter a failed state.
     current_start: BatchId,

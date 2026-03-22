@@ -21,7 +21,7 @@ use vibehouse_tracing::SPAN_SINGLE_BLOCK_LOOKUP;
 
 // Dedicated enum for LookupResult to force its usage
 #[must_use = "LookupResult must be handled with on_lookup_result"]
-pub enum LookupResult {
+pub(crate) enum LookupResult {
     /// Lookup completed successfully
     Completed,
     /// Lookup is expecting some future event from the network
@@ -29,7 +29,7 @@ pub enum LookupResult {
 }
 
 #[derive(Debug, PartialEq, Eq, IntoStaticStr)]
-pub enum LookupRequestError {
+pub(crate) enum LookupRequestError {
     /// Too many failed attempts
     TooManyAttempts {
         /// The failed attempts were primarily due to processing failures.
@@ -59,7 +59,7 @@ pub enum LookupRequestError {
 
 #[derive(Educe)]
 #[educe(Debug(bound(T: BeaconChainTypes)))]
-pub struct SingleBlockLookup<T: BeaconChainTypes> {
+pub(crate) struct SingleBlockLookup<T: BeaconChainTypes> {
     pub id: Id,
     pub block_request_state: BlockRequestState<T::EthSpec>,
     pub component_requests: ComponentRequests<T::EthSpec>,
@@ -371,7 +371,7 @@ impl<T: BeaconChainTypes> SingleBlockLookup<T> {
 /// The state of the blob request component of a `SingleBlockLookup`.
 #[derive(Educe)]
 #[educe(Debug)]
-pub struct BlobRequestState<E: EthSpec> {
+pub(crate) struct BlobRequestState<E: EthSpec> {
     #[educe(Debug(ignore))]
     pub block_root: Hash256,
     pub state: SingleLookupRequestState<FixedBlobSidecarList<E>>,
@@ -389,7 +389,7 @@ impl<E: EthSpec> BlobRequestState<E> {
 /// The state of the custody request component of a `SingleBlockLookup`.
 #[derive(Educe)]
 #[educe(Debug)]
-pub struct CustodyRequestState<E: EthSpec> {
+pub(crate) struct CustodyRequestState<E: EthSpec> {
     #[educe(Debug(ignore))]
     pub block_root: Hash256,
     pub state: SingleLookupRequestState<DataColumnSidecarList<E>>,
@@ -407,7 +407,7 @@ impl<E: EthSpec> CustodyRequestState<E> {
 /// The state of the block request component of a `SingleBlockLookup`.
 #[derive(Educe)]
 #[educe(Debug)]
-pub struct BlockRequestState<E: EthSpec> {
+pub(crate) struct BlockRequestState<E: EthSpec> {
     #[educe(Debug(ignore))]
     pub requested_block_root: Hash256,
     pub state: SingleLookupRequestState<Arc<SignedBeaconBlock<E>>>,
@@ -423,7 +423,7 @@ impl<E: EthSpec> BlockRequestState<E> {
 }
 
 #[derive(Debug, Clone)]
-pub struct DownloadResult<T: Clone> {
+pub(crate) struct DownloadResult<T: Clone> {
     pub value: T,
     pub block_root: Hash256,
     pub seen_timestamp: Duration,
@@ -431,7 +431,7 @@ pub struct DownloadResult<T: Clone> {
 }
 
 #[derive(IntoStaticStr)]
-pub enum State<T: Clone> {
+pub(crate) enum State<T: Clone> {
     AwaitingDownload(/* reason */ &'static str),
     Downloading(ReqId),
     AwaitingProcess(DownloadResult<T>),
@@ -443,7 +443,7 @@ pub enum State<T: Clone> {
 
 /// Object representing the state of a single block or blob lookup request.
 #[derive(Debug)]
-pub struct SingleLookupRequestState<T: Clone> {
+pub(crate) struct SingleLookupRequestState<T: Clone> {
     /// State of this request.
     state: State<T>,
     /// How many times have we attempted to process this block or blob.

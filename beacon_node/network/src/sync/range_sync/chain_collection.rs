@@ -31,7 +31,7 @@ const MIN_FINALIZED_CHAIN_PROCESSED_EPOCHS: u64 = 10;
 
 /// The state of the long range/batch sync.
 #[derive(Clone)]
-pub enum RangeSyncState {
+pub(crate) enum RangeSyncState {
     /// A finalized chain is being synced.
     Finalized(Id),
     /// There are no finalized chains and we are syncing one more head chains.
@@ -40,11 +40,11 @@ pub enum RangeSyncState {
     Idle,
 }
 
-pub type SyncChainStatus =
+pub(crate) type SyncChainStatus =
     Result<Option<(RangeSyncType, Slot /* from */, Slot /* to */)>, &'static str>;
 
 /// A collection of finalized and head chains currently being processed.
-pub struct ChainCollection<T: BeaconChainTypes> {
+pub(crate) struct ChainCollection<T: BeaconChainTypes> {
     /// The beacon chain for processing.
     beacon_chain: Arc<BeaconChain<T>>,
     /// The set of finalized chains being synced.
