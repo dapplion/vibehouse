@@ -156,7 +156,10 @@ pub(crate) fn compute_block_rewards<T: BeaconChainTypes>(
                 &chain.spec,
             )
             .no_signature_verification()
-            .state_root_iter([Ok((parent_block.state_root(), parent_block.slot()))].into_iter())
+            .state_root_iter(std::iter::once(Ok((
+                parent_block.state_root(),
+                parent_block.slot(),
+            ))))
             .minimal_block_root_verification()
             .apply_blocks(vec![], Some(block.slot()))
             .map_err(ApiError::unhandled_error)?;

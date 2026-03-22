@@ -42,24 +42,21 @@ impl<E: EthSpec> ExecutionRequests<E> {
         let mut requests_list = Vec::new();
         if !self.deposits.is_empty() {
             requests_list.push(
-                [RequestType::Deposit.to_u8()]
-                    .into_iter()
+                std::iter::once(RequestType::Deposit.to_u8())
                     .chain(self.deposits.as_ssz_bytes())
                     .collect::<Bytes>(),
             );
         }
         if !self.withdrawals.is_empty() {
             requests_list.push(
-                [RequestType::Withdrawal.to_u8()]
-                    .into_iter()
+                std::iter::once(RequestType::Withdrawal.to_u8())
                     .chain(self.withdrawals.as_ssz_bytes())
                     .collect::<Bytes>(),
             );
         }
         if !self.consolidations.is_empty() {
             requests_list.push(
-                [RequestType::Consolidation.to_u8()]
-                    .into_iter()
+                std::iter::once(RequestType::Consolidation.to_u8())
                     .chain(self.consolidations.as_ssz_bytes())
                     .collect::<Bytes>(),
             );

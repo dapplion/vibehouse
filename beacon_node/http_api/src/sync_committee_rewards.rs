@@ -69,7 +69,10 @@ pub(crate) fn get_state_before_applying_block<T: BeaconChainTypes>(
     let replayer =
         BlockReplayer::<_, beacon_chain::BeaconChainError, _>::new(parent_state, &chain.spec)
             .no_signature_verification()
-            .state_root_iter([Ok((parent_block.state_root(), parent_block.slot()))].into_iter())
+            .state_root_iter(std::iter::once(Ok((
+                parent_block.state_root(),
+                parent_block.slot(),
+            ))))
             .minimal_block_root_verification()
             .apply_blocks(vec![], Some(block.slot()))
             .map_err(ApiError::unhandled_error)?;

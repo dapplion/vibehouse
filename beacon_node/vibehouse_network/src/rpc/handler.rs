@@ -421,7 +421,7 @@ where
                     id: *inbound_id.get_ref(),
                 }));
 
-                if info.pending_items.back().map(RpcResponse::close_after) == Some(false) {
+                if info.pending_items.back().is_some_and(|r| !r.close_after()) {
                     // if the last chunk does not close the stream, append an error
                     info.pending_items.push_back(RpcResponse::Error(
                         RpcErrorResponse::ServerError,
@@ -507,9 +507,7 @@ where
                                 // If there are still requests to send, report that we are in the
                                 // process of closing a connection to the peer and that we are not
                                 // processing these excess requests.
-                                if info.pending_items.back().map(RpcResponse::close_after)
-                                    == Some(false)
-                                {
+                                if info.pending_items.back().is_some_and(|r| !r.close_after()) {
                                     // if the request was still active, report back to cancel it
                                     self.events_out.push(HandlerEvent::Err(HandlerErr::Inbound {
                                         error: RPCError::Disconnected,

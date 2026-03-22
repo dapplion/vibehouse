@@ -216,20 +216,16 @@ impl NatState {
 /// Observes if NAT traversal is possible.
 pub fn observe_nat() -> NatState {
     let discv5_ipv4 = metrics::get_int_gauge(&discovery_metrics::NAT_OPEN, &["discv5_ipv4"])
-        .map(|g| g.get() == 1)
-        .unwrap_or_default();
+        .is_some_and(|g| g.get() == 1);
 
     let discv5_ipv6 = metrics::get_int_gauge(&discovery_metrics::NAT_OPEN, &["discv5_ipv6"])
-        .map(|g| g.get() == 1)
-        .unwrap_or_default();
+        .is_some_and(|g| g.get() == 1);
 
     let libp2p_ipv4 = metrics::get_int_gauge(&discovery_metrics::NAT_OPEN, &["libp2p_ipv4"])
-        .map(|g| g.get() == 1)
-        .unwrap_or_default();
+        .is_some_and(|g| g.get() == 1);
 
     let libp2p_ipv6 = metrics::get_int_gauge(&discovery_metrics::NAT_OPEN, &["libp2p_ipv6"])
-        .map(|g| g.get() == 1)
-        .unwrap_or_default();
+        .is_some_and(|g| g.get() == 1);
 
     NatState {
         discv5_ipv4,
