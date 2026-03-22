@@ -72,8 +72,8 @@ pub use engine_api::{
     http::deposit_methods,
     json_structures,
 };
-use engines::{Engine, EngineError};
-pub use engines::{EngineState, ForkchoiceState};
+use engines::Engine;
+pub use engines::{EngineError, EngineState, ForkchoiceState};
 use eth2::types::{BlobsBundle, FullPayloadContents};
 use eth2::types::{ForkVersionedResponse, builder_bid::SignedBuilderBid};
 use fixed_bytes::UintExtended;
@@ -118,13 +118,13 @@ use types::{
 
 mod block_hash;
 mod engine_api;
-pub mod engines;
+pub(crate) mod engines;
 mod keccak;
 mod metrics;
-pub mod payload_cache;
+mod payload_cache;
 mod payload_status;
 pub mod test_utils;
-pub mod versioned_hashes;
+mod versioned_hashes;
 
 /// Indicates the default jwt authenticated execution endpoint.
 pub const DEFAULT_EXECUTION_ENDPOINT: &str = "http://localhost:8551/";

@@ -122,7 +122,7 @@ pub enum EngineError {
 }
 
 /// An execution engine.
-pub struct Engine {
+pub(crate) struct Engine {
     pub api: HttpJsonRpc,
     payload_id_cache: Mutex<LruCache<PayloadIdCacheKey, PayloadId>>,
     state: RwLock<State>,
