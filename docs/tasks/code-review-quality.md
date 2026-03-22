@@ -3898,3 +3898,30 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **account_manager/validator_manager/boot_node modules**: Audited for pub(crate) downgrades but most items must stay pub because vibehouse integration tests (vibehouse/tests/*.rs) import deeply into these crates' internal modules. Only items with no external consumers were downgraded.
 - **Spec check**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since March 15.
 - **Tests**: `make lint-full` clean. Proposer boost boundary test passes. All 999 beacon_chain (gloas) tests expected to pass in CI.
+
+### Run 2184
+
+**Disk cleanup + pub visibility downgrades in slot_clock, account_utils, directory, monitoring_api**
+
+- **Disk cleanup**: Target directory was 274G (112G debug + 160G release). Removed debug artifacts and incremental cache, freed 117G (75% → 25% disk usage).
+- **CI status**: Run 2183 CI fully green — all 6 jobs passed including beacon_chain tests (999/999).
+- **Spec check**: v1.7.0-alpha.3 still latest. Reviewed open Gloas PRs: #5022 (block check in payload attestation), #5008 (field name wording fix), #5023 (test fixture filenames), #5020/#4979 (PTC lookbehind). None merged. No action needed.
+- **Changes — slot_clock/manual_slot_clock.rs** (2 methods downgraded):
+  - `duration_to_next_slot_from()` → `pub(crate)` (only called by SystemTimeSlotClock and ManualSlotClock trait impls within crate)
+  - `duration_to_next_epoch_from()` → `pub(crate)` (same reason)
+- **Changes — account_utils/lib.rs** (5 items downgraded/removed):
+  - `MINIMUM_PASSWORD_LEN` → private (only used within account_utils)
+  - `MNEMONIC_PROMPT` → private (only used within account_utils)
+  - `default_wallet_password_path()` — **removed** (dead code: never called from anywhere)
+  - `default_wallet_password()` — **removed** (dead code: never called from anywhere)
+  - `default_keystore_password_path()` → `pub(crate)` (only used by validator_definitions.rs within crate)
+  - Removed unused `Wallet` import (left over from removed functions)
+- **Changes — account_utils/validator_definitions.rs** (1 constant downgraded):
+  - `CONFIG_TEMP_FILENAME` → private (only used internally in `ValidatorDefinitions::save()`)
+- **Changes — directory/lib.rs** (1 constant downgraded):
+  - `CUSTOM_TESTNET_DIR` → private (only used internally by `get_network_dir()`)
+- **Changes — monitoring_api/lib.rs** (2 constants downgraded):
+  - `DEFAULT_UPDATE_DURATION` → private (only used internally in `MonitoringHttpClient::new()`)
+  - `TIMEOUT_DURATION` → private (only used internally in `MonitoringHttpClient::post()`)
+- **Crates audited with no changes needed**: graffiti_file (all pub items used externally), validator_metrics (all 65+ pub items used across 6 sub-crates), health_metrics (Observe trait + scrape function used externally), lru_cache (LRUTimeCache used in 5 files)
+- **Tests**: 87/87 affected crate tests pass. `make lint` clean, zero warnings.
