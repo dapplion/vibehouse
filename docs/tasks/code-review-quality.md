@@ -3452,3 +3452,18 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Dead code removed**: 3 unused constants exposed by visibility downgrade — `PREV_DEFAULT_SLOTS_PER_RESTORE_POINT`, `DEFAULT_SLOTS_PER_RESTORE_POINT`, `DEFAULT_EPOCHS_PER_STATE_DIFF` (were `pub` but never referenced anywhere)
 - **Preserved as `pub`**: `StoreConfig` struct + all fields/methods (used by beacon_chain, network, http_api), `StoreConfigError` enum (used in public `Error` enum), `OnDiskStoreConfig` (used in `StoreConfigError` variant), `DEFAULT_HISTORIC_STATE_CACHE_SIZE`, `DEFAULT_COLD_HDIFF_BUFFER_CACHE_SIZE`, `DEFAULT_HOT_HDIFF_BUFFER_CACHE_SIZE` (used in vibehouse integration tests), all `hdiff` module items (used by database_manager, hot_cold_store), `scrape_for_metrics` (used by monitoring_api), `metrics` module itself (path-accessed by monitoring_api)
 - **Tests**: 236/236 store tests pass. Full workspace clippy zero warnings. `make lint-full` passes.
+
+### Run 2161 (2026-03-22)
+
+**Visibility downgrades in store crate (round 2) — deeper internal modules**
+
+- **Code changes** — downgraded 15 items from `pub` to `pub(crate)` and removed dead code across 7 files in `beacon_node/store/src/`:
+  - **metadata.rs**: 8 `pub const` → `pub(crate) const` (all Hash256 keys: SCHEMA_VERSION_KEY, CONFIG_KEY, SPLIT_KEY, COMPACTION_TIMESTAMP_KEY, ANCHOR_INFO_KEY, BLOB_INFO_KEY, DATA_COLUMN_INFO_KEY, DATA_COLUMN_CUSTODY_INFO_KEY), 1 `pub const` → `pub(crate) const` (ANCHOR_UNINITIALIZED), `CompactionTimestamp` struct + field → `pub(crate)`
+  - **errors.rs**: `Result<T>` type alias → `pub(crate)`, `HandleUnavailable` trait → `pub(crate)`, `DBError` struct + field → `pub(crate)`, `DBError::new` gated behind `#[cfg(test)]` (only used in test code)
+  - **iter.rs**: removed dead `AncestorIter` trait + 2 impl blocks (~40 lines), removed dead `BlockIterator` struct + impl blocks (~40 lines), `RootsIterator` → `pub(crate)`
+  - **database.rs**: `redb_impl` module → `pub(crate) mod`
+  - **database/redb_impl.rs**: `Redb` struct → `pub(crate)`, `DB_FILE_NAME` → `pub(crate)`, removed dead `put_bytes` method (interface.rs calls `put_bytes_with_options` directly), removed dead `iter_column` method (trait default calls `iter_column_from`)
+  - **database/interface.rs**: `WriteOptions` struct + field → `pub(crate)`
+  - **lib.rs**: removed dead `RawEntryIter` type alias
+- **Preserved as `pub`**: `Error` enum (used by beacon_chain, fork_choice, etc.), all `HotColdDBError`/`StateSummaryIteratorError`/`SplitChange` types (exposed in public API signatures), `BeaconNodeBackend` (used by beacon_node crate)
+- **Tests**: 236/236 store tests pass. Full workspace clippy zero warnings. `make lint-full` passes.
