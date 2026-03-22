@@ -4316,3 +4316,14 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Changes — kzg/src/trusted_setup.rs** (1 method moved to `#[cfg(test)]`):
   - `TrustedSetup::g1_len()` — only used in tests. Changed from `#[allow(dead_code)] pub(crate)` to `#[cfg(test)] pub(crate)`.
 - **Tests**: 128/128 affected crate tests pass. Full workspace compiles clean.
+
+### Run 2199
+
+**Spec check + codebase health audit — no changes needed**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since March 15. Open Gloas PRs: #5022 (payload attestation block check — already implemented in our `on_payload_attestation` at fork_choice.rs:1426-1432), #5023 (block root filenames + comptests — test infra, unmerged), #5008 (field name fix — doc-only), #4979/#4992/#5020 (PTC lookbehind — still debated), #4843 (variable PTC deadline — still open). No EF test fixture releases since alpha.3. Nightly reftests cancelled since March 8-9 upstream.
+- **Nightly CI failure**: op-pool-tests (capella) failed due to transient `cargo-nextest` 0.9.132 binary 404 on GitHub Releases (race between crates.io publish and binary upload). Not a code issue — self-resolving.
+- **Dead code audit**: Reviewed all 114 `#[allow(dead_code)]` annotations. Remaining items are: error enum variants (standard pattern), platform-specific code, test infrastructure, or intentionally kept items (deposit_contract ABI for future testnet tooling, builder_client status endpoint for API completeness).
+- **Performance audit**: Checked clone patterns, Vec/HashMap capacity, unsafe blocks in consensus/ and beacon_chain/. Codebase is well-optimized — all clones in hot paths are Arc clones (cheap), capacity hints already used throughout.
+- **Build**: Zero warnings on `cargo build --release`. CI check+clippy+fmt and ef-tests passing.
+- **Conclusion**: Codebase is in excellent shape. All phases of code review complete. No further improvements found at diminishing returns.
