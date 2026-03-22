@@ -3384,3 +3384,18 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Preserved as `pub`**: All types used as `BeaconChain` struct fields or `BeaconChainError` enum variants, all methods used by integration tests (in `beacon_node/beacon_chain/tests/`) or other crates (http_api, network)
 - **Spec**: v1.7.0-alpha.3 still latest. All 10 tracked Gloas PRs remain open (#4992, #4843, #4979, #5022, #5023, #4898, #4954, #5008, #5020, #4840).
 - **Tests**: 999/999 beacon_chain tests pass (FORK_NAME=gloas). Full workspace clippy zero warnings. `make lint-full` passes.
+
+### Run 2157 (2026-03-22)
+
+**Visibility downgrades in operation_pool crate**
+
+- **Code changes** — downgraded 22 items from `pub` to `pub(crate)` (or private) across 6 files in `beacon_node/operation_pool/src/`:
+  - **sync_aggregate_id.rs**: `SyncAggregateId` struct + 2 fields + `new` method (4 items)
+  - **attester_slashing.rs**: `AttesterSlashingMaxCover::new` method (1 item)
+  - **bls_to_execution_changes.rs**: all 8 methods on `BlsToExecutionChanges` (already `pub(crate)` struct) — `existing_change_equals`, `insert`, `iter_fifo`, `iter_lifo`, `iter_received_pre_capella`, `iter_pre_capella_indices`, `prune`, `register_indices_broadcasted_at_capella`
+  - **reward_cache.rs**: `has_attested_in_epoch` method (only used within crate)
+  - **attestation.rs**: `new_for_base` and `new_for_altair_or_later` → private (only called from `new`)
+  - **persistence.rs**: all 7 `PersistedOperationPool` struct fields → `pub(crate)` (only accessed within crate; SSZ derives work with `pub(crate)`)
+- **Preserved as `pub`**: `PersistedOperationPool` struct itself + `from_operation_pool`/`into_operation_pool` methods (used by beacon_chain), `RewardCache` struct + `update` method (used by http_api and beacon_chain), `AttMaxCover` struct + `new` method (used by beacon_chain/block_reward), `ReceivedPreCapella` enum (re-exported, used by http_api and network), `MaxCover` trait (re-exported), all `AttestationMap`/`CheckpointKey`/`SplitAttestation`/`CompactAttestationRef` types (accessed via `pub mod attestation_storage` or re-exports)
+- **Spec**: v1.7.0-alpha.3 still latest. No new merges since March 15. All 10 tracked Gloas PRs remain open (#4992, #4843, #4979, #5022, #5023, #4898, #4954, #5008, #5020, #4840). New open PRs noted: #4960 (fork choice test), #4932 (sanity/blocks tests), #4892 (remove impossible branch), #4630 (EIP-7688 SSZ), #4704 (remove old deposits in Fulu), #4747 (fast confirmation rule).
+- **Tests**: 72/72 operation_pool tests pass (FORK_NAME=gloas). Full workspace clippy zero warnings. `make lint-full` passes.
