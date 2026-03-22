@@ -3710,3 +3710,34 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Reverted during audit**: `DutyAndProof`, `SubscriptionSlots`, `new_without_selection_proof`, `attesters()` — all leak through public `DutiesService` struct fields; `KeystoreAndPassword` — used by `validator_http_api`; `Inner<S,T>` fields `beacon_nodes`/`proposer_nodes` — used by `validator_http_api`; block_service `Inner<S,T>` itself — exposed via Deref from public `BlockService`
 - **Verified**: 1355/1355 tests pass across all affected crates, `make lint-full` clean, zero compiler warnings
 - **Spec check**: v1.7.0-alpha.3 still latest. No new merges since Mar 15. CI green.
+
+### Run 2176
+
+**Pub visibility downgrades + dead code removal in execution_layer**
+
+- **Scope**: Full visibility audit of execution_layer crate — auth.rs, http.rs, json_structures.rs, lib.rs re-exports.
+- **Changes — auth.rs** (4 items downgraded, 1 gated):
+  - `JWT_SECRET_LENGTH` → `pub(crate)` (only used within crate)
+  - `Auth` struct → `pub(crate)` (only used within crate)
+  - `Claims` struct → `pub(crate)` (only used within crate)
+  - `strip_prefix` fn → `pub(crate)` (only used within crate)
+  - `new_with_path` → gated `#[cfg(test)]` (only called in test functions), removed unused `PathBuf` import
+  - `Error` enum kept `pub` (exposed through `engine_api::Error::Auth` variant)
+  - `JwtKey` kept `pub` (used by lcli, beacon_chain test_utils)
+- **Changes — http.rs** (30+ items downgraded, 466 lines dead code removed):
+  - All timeout constants (6) → private (only used within http.rs)
+  - `RETURN_FULL_TRANSACTION_OBJECTS`, `EIP155_ERROR_STR` → private
+  - `ETH_*` method constants (3) → `pub(crate)` (used by test_utils/handle_rpc.rs)
+  - `ENGINE_*_V1` method constants (5) → `pub(crate)` (not used externally, only by VIBEHOUSE_CAPABILITIES array)
+  - `ENGINE_NEW_PAYLOAD_V5`, `ENGINE_GET_BLOBS_V1/V2`, `ENGINE_*_BODIES_*_V1`, `ENGINE_EXCHANGE_CAPABILITIES` → `pub(crate)`
+  - `VIBEHOUSE_CAPABILITIES`, `VIBEHOUSE_JSON_CLIENT_VERSION` → `pub(crate)`
+  - `JSONRPC_VERSION`, `METHOD_NOT_FOUND_CODE` → `pub(crate)` (used by test_utils)
+  - `HttpJsonRpc` struct → `pub(crate)`, re-export in lib.rs split to `pub(crate) use`
+  - `HttpJsonRpc::new` (no auth) → gated `#[cfg(test)]` (only used in tests)
+  - `CachedResponse` → `pub(crate)`
+  - **Dead code removed**: `deposit_log` module (112 lines) and `deposit_methods` module (345 lines) — legacy eth1 deposit contract interaction code, never imported by any code in the workspace. Included `DepositLog`, `Log`, `Eth1Id`, `Block`, `BlockQuery`, `RpcError`, `DEPOSIT_EVENT_TOPIC`, and 7 `HttpJsonRpc` methods for deposit contract queries.
+  - Kept `pub`: ENGINE_*_V2/V3/V4/V5 (used by beacon_node/client/src/notifier.rs), ENGINE_GET_CLIENT_VERSION_V1 (used by graffiti_calculator.rs), `DepositLog`/`Log` re-exports removed
+- **Changes — lib.rs**: Removed `http::deposit_methods` from pub re-export (dead), split `http::HttpJsonRpc` to `pub(crate) use`
+- **Preserved**: All ENGINE_* constants used by external crates (notifier.rs, graffiti_calculator.rs), `auth` module (JwtKey used externally), `http` module re-export, `json_structures` module re-export
+- **Spec check**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since March 15.
+- **Tests**: 144/144 execution_layer tests pass, 1/1 http_api flaky test passes on retry. Full workspace clippy zero warnings. `make lint-full` passes.
