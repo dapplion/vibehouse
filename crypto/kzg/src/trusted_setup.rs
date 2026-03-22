@@ -9,7 +9,7 @@ const BYTES_PER_G1_POINT: usize = 48;
 // Number of bytes per G2 point.
 const BYTES_PER_G2_POINT: usize = 96;
 
-pub const TRUSTED_SETUP_BYTES: &[u8] = include_bytes!("../trusted_setup.json");
+pub(crate) const TRUSTED_SETUP_BYTES: &[u8] = include_bytes!("../trusted_setup.json");
 
 pub fn get_trusted_setup() -> Vec<u8> {
     TRUSTED_SETUP_BYTES.into()
@@ -50,7 +50,8 @@ impl TrustedSetup {
         self.g2_monomial.iter().flat_map(|p| p.0).collect()
     }
 
-    pub fn g1_len(&self) -> usize {
+    #[allow(dead_code)]
+    pub(crate) fn g1_len(&self) -> usize {
         self.g1_lagrange.len()
     }
 }

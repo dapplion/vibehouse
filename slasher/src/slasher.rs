@@ -99,7 +99,7 @@ impl<E: EthSpec> Slasher<E> {
     /// Apply queued blocks to the on-disk database.
     ///
     /// Return the number of blocks
-    pub fn process_blocks(&self, txn: &mut RwTransaction<'_>) -> Result<BlockStats, Error> {
+    fn process_blocks(&self, txn: &mut RwTransaction<'_>) -> Result<BlockStats, Error> {
         let blocks = self.block_queue.dequeue();
         let num_processed = blocks.len();
         let mut slashings = vec![];
@@ -127,7 +127,7 @@ impl<E: EthSpec> Slasher<E> {
     }
 
     /// Apply queued attestations to the on-disk database.
-    pub fn process_attestations(
+    fn process_attestations(
         &self,
         current_epoch: Epoch,
         txn: &mut RwTransaction<'_>,

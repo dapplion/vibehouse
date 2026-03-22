@@ -375,7 +375,7 @@ impl InitializedValidator {
     }
 
     /// Returns the voting public key for this validator.
-    pub fn voting_public_key(&self) -> &PublicKey {
+    pub(crate) fn voting_public_key(&self) -> &PublicKey {
         match self.signing_method.as_ref() {
             SigningMethod::LocalKeystore { voting_keypair, .. } => &voting_keypair.pk,
             SigningMethod::Web3Signer {

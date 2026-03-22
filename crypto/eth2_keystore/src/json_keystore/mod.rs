@@ -21,28 +21,28 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 /// JSON representation of [EIP-2335](https://eips.ethereum.org/EIPS/eip-2335) keystore.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct JsonKeystore {
-    pub crypto: Crypto,
-    pub uuid: Uuid,
+pub(crate) struct JsonKeystore {
+    pub(crate) crypto: Crypto,
+    pub(crate) uuid: Uuid,
     /// EIP-2335 does not declare this field as optional, but Prysm is omitting it so we must
     /// support it.
-    pub path: Option<String>,
-    pub pubkey: String,
-    pub version: Version,
-    pub description: Option<String>,
+    pub(crate) path: Option<String>,
+    pub(crate) pubkey: String,
+    pub(crate) version: Version,
+    pub(crate) description: Option<String>,
     /// Not part of EIP-2335, but `ethdo` and Prysm have adopted it anyway so we must support it.
-    pub name: Option<String>,
+    pub(crate) name: Option<String>,
 }
 
 /// Version for `JsonKeystore`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
 #[repr(u8)]
-pub enum Version {
+pub(crate) enum Version {
     V4 = 4,
 }
 
 impl Version {
-    pub fn four() -> Self {
+    pub(crate) fn four() -> Self {
         Version::V4
     }
 }

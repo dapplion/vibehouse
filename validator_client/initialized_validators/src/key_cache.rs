@@ -105,7 +105,7 @@ impl KeyCache {
     }
 
     /// Open an existing file, returning an error if the file does not exist.
-    pub fn open<P: AsRef<Path>>(validators_dir: P) -> Result<Self, Error> {
+    pub(crate) fn open<P: AsRef<Path>>(validators_dir: P) -> Result<Self, Error> {
         let cache_path = validators_dir.as_ref().join(CACHE_FILENAME);
         let file = File::options()
             .read(true)
@@ -143,7 +143,7 @@ impl KeyCache {
     ///
     /// Will create a new file if it does not exist or over-write any existing file.
     /// Returns false iff there are no unsaved changes
-    pub fn save<P: AsRef<Path>>(&mut self, validators_dir: P) -> Result<bool, Error> {
+    pub(crate) fn save<P: AsRef<Path>>(&mut self, validators_dir: P) -> Result<bool, Error> {
         if self.is_modified() {
             self.encrypt()?;
 
@@ -176,7 +176,7 @@ impl KeyCache {
         }))
     }
 
-    pub fn decrypt(
+    pub(crate) fn decrypt(
         &mut self,
         passwords: Vec<PlainText>,
         public_keys: Vec<PublicKey>,
@@ -212,7 +212,7 @@ impl KeyCache {
         }
     }
 
-    pub fn remove(&mut self, uuid: &Uuid) {
+    pub(crate) fn remove(&mut self, uuid: &Uuid) {
         //do nothing in not decrypted state
         if let State::NotDecrypted = self.state {
             return;
@@ -225,7 +225,7 @@ impl KeyCache {
         self.state = State::DecryptedWithUnsavedUpdates;
     }
 
-    pub fn add(&mut self, keypair: Keypair, uuid: &Uuid, password: PlainText) {
+    pub(crate) fn add(&mut self, keypair: Keypair, uuid: &Uuid, password: PlainText) {
         //do nothing in not decrypted state
         if let State::NotDecrypted = self.state {
             return;
@@ -236,7 +236,7 @@ impl KeyCache {
         self.state = State::DecryptedWithUnsavedUpdates;
     }
 
-    pub fn get(&self, uuid: &Uuid) -> Option<Keypair> {
+    pub(crate) fn get(&self, uuid: &Uuid) -> Option<Keypair> {
         self.pairs.get(uuid).cloned()
     }
 }

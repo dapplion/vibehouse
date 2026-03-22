@@ -7,27 +7,28 @@ use types::non_zero_usize::new_non_zero_usize;
 use types::{Epoch, EthSpec, IndexedAttestation};
 
 pub const DEFAULT_CHUNK_SIZE: usize = 16;
-pub const DEFAULT_VALIDATOR_CHUNK_SIZE: usize = 256;
-pub const DEFAULT_HISTORY_LENGTH: usize = 4096;
-pub const DEFAULT_UPDATE_PERIOD: u64 = 12;
-pub const DEFAULT_SLOT_OFFSET: f64 = 10.5;
-pub const DEFAULT_MAX_DB_SIZE: usize = 512 * 1024; // 512 GiB
-pub const DEFAULT_ATTESTATION_ROOT_CACHE_SIZE: NonZeroUsize = new_non_zero_usize(100_000);
-pub const DEFAULT_BROADCAST: bool = false;
+pub(crate) const DEFAULT_VALIDATOR_CHUNK_SIZE: usize = 256;
+pub(crate) const DEFAULT_HISTORY_LENGTH: usize = 4096;
+pub(crate) const DEFAULT_UPDATE_PERIOD: u64 = 12;
+pub(crate) const DEFAULT_SLOT_OFFSET: f64 = 10.5;
+pub(crate) const DEFAULT_MAX_DB_SIZE: usize = 512 * 1024; // 512 GiB
+pub(crate) const DEFAULT_ATTESTATION_ROOT_CACHE_SIZE: NonZeroUsize = new_non_zero_usize(100_000);
+pub(crate) const DEFAULT_BROADCAST: bool = false;
 
 #[cfg(all(feature = "mdbx", not(any(feature = "lmdb", feature = "redb"))))]
-pub const DEFAULT_BACKEND: DatabaseBackend = DatabaseBackend::Mdbx;
+pub(crate) const DEFAULT_BACKEND: DatabaseBackend = DatabaseBackend::Mdbx;
 #[cfg(feature = "lmdb")]
-pub const DEFAULT_BACKEND: DatabaseBackend = DatabaseBackend::Lmdb;
+pub(crate) const DEFAULT_BACKEND: DatabaseBackend = DatabaseBackend::Lmdb;
 #[cfg(all(feature = "redb", not(any(feature = "mdbx", feature = "lmdb"))))]
-pub const DEFAULT_BACKEND: DatabaseBackend = DatabaseBackend::Redb;
+pub(crate) const DEFAULT_BACKEND: DatabaseBackend = DatabaseBackend::Redb;
 #[cfg(not(any(feature = "mdbx", feature = "lmdb", feature = "redb")))]
-pub const DEFAULT_BACKEND: DatabaseBackend = DatabaseBackend::Disabled;
+pub(crate) const DEFAULT_BACKEND: DatabaseBackend = DatabaseBackend::Disabled;
 
-pub const MAX_HISTORY_LENGTH: usize = 1 << 16;
-pub const MEGABYTE: usize = 1 << 20;
+pub(crate) const MAX_HISTORY_LENGTH: usize = 1 << 16;
+pub(crate) const MEGABYTE: usize = 1 << 20;
 pub const MDBX_DATA_FILENAME: &str = "mdbx.dat";
-pub const REDB_DATA_FILENAME: &str = "slasher.redb";
+#[allow(dead_code)]
+pub(crate) const REDB_DATA_FILENAME: &str = "slasher.redb";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -127,35 +128,35 @@ impl Config {
         }
     }
 
-    pub fn chunk_index(&self, epoch: Epoch) -> usize {
+    pub(crate) fn chunk_index(&self, epoch: Epoch) -> usize {
         (epoch.as_usize() % self.history_length) / self.chunk_size
     }
 
-    pub fn validator_chunk_index(&self, validator_index: u64) -> usize {
+    pub(crate) fn validator_chunk_index(&self, validator_index: u64) -> usize {
         validator_index as usize / self.validator_chunk_size
     }
 
-    pub fn chunk_offset(&self, epoch: Epoch) -> usize {
+    pub(crate) fn chunk_offset(&self, epoch: Epoch) -> usize {
         epoch.as_usize() % self.chunk_size
     }
 
-    pub fn validator_offset(&self, validator_index: u64) -> usize {
+    pub(crate) fn validator_offset(&self, validator_index: u64) -> usize {
         validator_index as usize % self.validator_chunk_size
     }
 
     /// Map the validator and epoch chunk indexes into a single value for use as a database key.
-    pub fn disk_key(&self, validator_chunk_index: usize, chunk_index: usize) -> usize {
+    pub(crate) fn disk_key(&self, validator_chunk_index: usize, chunk_index: usize) -> usize {
         let width = self.history_length / self.chunk_size;
         validator_chunk_index * width + chunk_index
     }
 
     /// Map the validator and epoch offsets into an index for `Chunk::data`.
-    pub fn cell_index(&self, validator_offset: usize, chunk_offset: usize) -> usize {
+    pub(crate) fn cell_index(&self, validator_offset: usize, chunk_offset: usize) -> usize {
         validator_offset * self.chunk_size + chunk_offset
     }
 
     /// Return an iterator over all the validator indices in a validator chunk.
-    pub fn validator_indices_in_chunk(
+    pub(crate) fn validator_indices_in_chunk(
         &self,
         validator_chunk_index: usize,
     ) -> impl Iterator<Item = u64> {
@@ -165,7 +166,7 @@ impl Config {
     }
 
     /// Iterate over the attesting indices which belong to the `validator_chunk_index` chunk.
-    pub fn attesting_validators_in_chunk<'a, E: EthSpec>(
+    pub(crate) fn attesting_validators_in_chunk<'a, E: EthSpec>(
         &'a self,
         attestation: &'a IndexedAttestation<E>,
         validator_chunk_index: usize,

@@ -6,119 +6,122 @@ use metrics::{
 };
 use std::sync::LazyLock;
 
-pub static PROCESS_NUM_THREADS: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+static PROCESS_NUM_THREADS: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge(
         "process_num_threads",
         "Number of threads used by the current process",
     )
 });
-pub static PROCESS_RES_MEM: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+static PROCESS_RES_MEM: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge(
         "process_resident_memory_bytes",
         "Resident memory used by the current process",
     )
 });
-pub static PROCESS_VIRT_MEM: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+static PROCESS_VIRT_MEM: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge(
         "process_virtual_memory_bytes",
         "Virtual memory used by the current process",
     )
 });
-pub static PROCESS_SHR_MEM: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+static PROCESS_SHR_MEM: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge(
         "process_shared_memory_bytes",
         "Shared memory used by the current process",
     )
 });
-pub static PROCESS_SECONDS: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+static PROCESS_SECONDS: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge(
         "process_cpu_seconds_total",
         "Total cpu time taken by the current process",
     )
 });
-pub static SYSTEM_VIRT_MEM_TOTAL: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+static SYSTEM_VIRT_MEM_TOTAL: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge("system_virt_mem_total_bytes", "Total system virtual memory")
 });
-pub static SYSTEM_VIRT_MEM_AVAILABLE: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+static SYSTEM_VIRT_MEM_AVAILABLE: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge(
         "system_virt_mem_available_bytes",
         "Available system virtual memory",
     )
 });
-pub static SYSTEM_VIRT_MEM_USED: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+static SYSTEM_VIRT_MEM_USED: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge("system_virt_mem_used_bytes", "Used system virtual memory")
 });
-pub static SYSTEM_VIRT_MEM_FREE: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+static SYSTEM_VIRT_MEM_FREE: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge("system_virt_mem_free_bytes", "Free system virtual memory")
 });
-pub static SYSTEM_VIRT_MEM_CACHED: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+#[allow(dead_code)]
+static SYSTEM_VIRT_MEM_CACHED: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge("system_virt_mem_cached_bytes", "Used system virtual memory")
 });
-pub static SYSTEM_VIRT_MEM_BUFFERS: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+#[allow(dead_code)]
+static SYSTEM_VIRT_MEM_BUFFERS: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge("system_virt_mem_buffer_bytes", "Free system virtual memory")
 });
-pub static SYSTEM_VIRT_MEM_PERCENTAGE: LazyLock<Result<Gauge>> = LazyLock::new(|| {
+static SYSTEM_VIRT_MEM_PERCENTAGE: LazyLock<Result<Gauge>> = LazyLock::new(|| {
     try_create_float_gauge(
         "system_virt_mem_percentage",
         "Percentage of used virtual memory",
     )
 });
-pub static SYSTEM_LOADAVG_1: LazyLock<Result<Gauge>> =
+static SYSTEM_LOADAVG_1: LazyLock<Result<Gauge>> =
     LazyLock::new(|| try_create_float_gauge("system_loadavg_1", "Loadavg over 1 minute"));
-pub static SYSTEM_LOADAVG_5: LazyLock<Result<Gauge>> =
+static SYSTEM_LOADAVG_5: LazyLock<Result<Gauge>> =
     LazyLock::new(|| try_create_float_gauge("system_loadavg_5", "Loadavg over 5 minutes"));
-pub static SYSTEM_LOADAVG_15: LazyLock<Result<Gauge>> =
+static SYSTEM_LOADAVG_15: LazyLock<Result<Gauge>> =
     LazyLock::new(|| try_create_float_gauge("system_loadavg_15", "Loadavg over 15 minutes"));
 
-pub static CPU_CORES: LazyLock<Result<IntGauge>> =
+static CPU_CORES: LazyLock<Result<IntGauge>> =
     LazyLock::new(|| try_create_int_gauge("cpu_cores", "Number of physical cpu cores"));
-pub static CPU_THREADS: LazyLock<Result<IntGauge>> =
+static CPU_THREADS: LazyLock<Result<IntGauge>> =
     LazyLock::new(|| try_create_int_gauge("cpu_threads", "Number of logical cpu cores"));
 
-pub static CPU_SYSTEM_SECONDS_TOTAL: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+static CPU_SYSTEM_SECONDS_TOTAL: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge(
         "cpu_system_seconds_total",
         "Total time spent in kernel mode",
     )
 });
-pub static CPU_USER_SECONDS_TOTAL: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+static CPU_USER_SECONDS_TOTAL: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge("cpu_user_seconds_total", "Total time spent in user mode")
 });
-pub static CPU_IOWAIT_SECONDS_TOTAL: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+static CPU_IOWAIT_SECONDS_TOTAL: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge(
         "cpu_iowait_seconds_total",
         "Total time spent waiting for io",
     )
 });
-pub static CPU_IDLE_SECONDS_TOTAL: LazyLock<Result<IntGauge>> =
+static CPU_IDLE_SECONDS_TOTAL: LazyLock<Result<IntGauge>> =
     LazyLock::new(|| try_create_int_gauge("cpu_idle_seconds_total", "Total time spent idle"));
 
-pub static DISK_BYTES_TOTAL: LazyLock<Result<IntGauge>> =
+static DISK_BYTES_TOTAL: LazyLock<Result<IntGauge>> =
     LazyLock::new(|| try_create_int_gauge("disk_node_bytes_total", "Total capacity of disk"));
 
-pub static DISK_BYTES_FREE: LazyLock<Result<IntGauge>> =
+static DISK_BYTES_FREE: LazyLock<Result<IntGauge>> =
     LazyLock::new(|| try_create_int_gauge("disk_node_bytes_free", "Free space in disk"));
 
-pub static DISK_READS: LazyLock<Result<IntGauge>> =
+static DISK_READS: LazyLock<Result<IntGauge>> =
     LazyLock::new(|| try_create_int_gauge("disk_node_reads_total", "Number of disk reads"));
 
-pub static DISK_WRITES: LazyLock<Result<IntGauge>> =
+static DISK_WRITES: LazyLock<Result<IntGauge>> =
     LazyLock::new(|| try_create_int_gauge("disk_node_writes_total", "Number of disk writes"));
 
-pub static NETWORK_BYTES_RECEIVED: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+static NETWORK_BYTES_RECEIVED: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge(
         "network_node_bytes_total_received",
         "Total bytes received over all network interfaces",
     )
 });
-pub static NETWORK_BYTES_SENT: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+static NETWORK_BYTES_SENT: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge(
         "network_node_bytes_total_transmit",
         "Total bytes sent over all network interfaces",
     )
 });
 
-pub static BOOT_TIME: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+#[allow(dead_code)]
+static BOOT_TIME: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge(
         "misc_node_boot_ts_seconds",
         "Boot time as unix epoch timestamp",
@@ -130,7 +133,7 @@ pub fn scrape_health_metrics() {
     scrape_system_health_metrics();
 }
 
-pub fn scrape_process_health_metrics() {
+fn scrape_process_health_metrics() {
     // This will silently fail if we are unable to observe the health. This is desired behaviour
     // since we don't support `Health` for all platforms.
     if let Ok(health) = ProcessHealth::observe() {
@@ -142,7 +145,7 @@ pub fn scrape_process_health_metrics() {
     }
 }
 
-pub fn scrape_system_health_metrics() {
+fn scrape_system_health_metrics() {
     // This will silently fail if we are unable to observe the health. This is desired behaviour
     // since we don't support `Health` for all platforms.
     if let Ok(health) = SystemHealth::observe() {

@@ -208,7 +208,7 @@ pub struct NatState {
 }
 
 impl NatState {
-    pub fn is_anything_open(&self) -> bool {
+    pub(crate) fn is_anything_open(&self) -> bool {
         self.discv5_ipv4 || self.discv5_ipv6 || self.libp2p_ipv4 || self.libp2p_ipv6
     }
 }
