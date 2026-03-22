@@ -4706,3 +4706,24 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
     - `validator_manager/common.rs`: `#[allow(clippy::trivially_copy_pass_by_ref)]` on `bytes_4_without_0x_prefix::serialize`
 - **Tests**: 1026/1026 state_processing, 772/772 vibehouse_network+slasher+store+logging, 43/43 validator_manager, 102/102 ef_tests subset, 37/37 batch tests. `make lint-full` clean.
 - **CI**: Pre-push hook passed with new lint enforcement, push succeeded.
+
+### Run 2222 (2026-03-23)
+
+**Enforce 10 new clippy lints and fix all warnings**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs releases.
+- **CI**: Run from run 2221 had transient EF test failure (GitHub 502 on BLS test vector download), not a real test failure.
+- **10 new lints enforced** (now 30 total extra `-D` lints in Makefile):
+  - `unused_self` — 32 `#[allow]` annotations added on methods that take `self` for API consistency but don't use it
+  - `map_unwrap_or` — prefer `.map_or()`/`.is_some_and()` over `.map().unwrap_or()`
+  - `match_same_arms` — merge match arms with identical bodies
+  - `single_match_else` — prefer `if let` over single-arm match with else
+  - `unnested_or_patterns` — use `A | B` instead of separate match arms
+  - `explicit_into_iter_loop` — prefer `for x in collection` over `for x in collection.into_iter()`
+  - `explicit_iter_loop` — prefer `for x in &collection` over `for x in collection.iter()`
+  - `manual_string_new` — `"".into()`/`"".to_string()` → `String::new()` (8 sites in test code)
+  - `uninlined_format_args` — `format!("{}", x)` → `format!("{x}")` (406 sites auto-fixed across test code)
+  - `needless_raw_string_hashes` — zero existing warnings, regression prevention
+- **Files changed**: 53 files, 569 insertions, 913 deletions (net -344 lines)
+- **Tests**: 923/923 (proto_array+fork_choice+store+slasher+op_pool+keystore+wallet), 407/407 vibehouse_network. `make lint-full` clean.
+- **CI**: Pre-push hook passed, push succeeded.
