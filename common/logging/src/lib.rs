@@ -1,8 +1,6 @@
 use std::time::{Duration, Instant};
 use tracing_subscriber::EnvFilter;
 
-pub const MAX_MESSAGE_WIDTH: usize = 40;
-
 pub mod macros;
 mod sse_logging_components;
 mod tracing_libp2p_discv5_logging_layer;

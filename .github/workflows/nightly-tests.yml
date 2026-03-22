@@ -43,7 +43,9 @@ jobs:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - uses: taiki-e/install-action@cargo-nextest
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest@0.9.131
       - name: Run beacon_chain tests for ${{ matrix.fork }}
         # Gloas-specific integration tests (gloas::*, gloas_verification::*) are
         # already tested on every push via ci.yml with FORK_NAME=gloas. Exclude
@@ -74,7 +76,9 @@ jobs:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - uses: taiki-e/install-action@cargo-nextest
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest@0.9.131
       - name: Run operation_pool tests for ${{ matrix.fork }}
         run: make test-op-pool-${{ matrix.fork }}
         timeout-minutes: 60
@@ -93,7 +97,9 @@ jobs:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - uses: taiki-e/install-action@cargo-nextest
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest@0.9.131
       - name: Run network tests for ${{ matrix.fork }}
         run: make test-network-${{ matrix.fork }}
         timeout-minutes: 60
@@ -112,7 +118,9 @@ jobs:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - uses: taiki-e/install-action@cargo-nextest
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest@0.9.131
       - name: Run http_api tests for ${{ matrix.fork }}
         run: make test-http-api-${{ matrix.fork }}
         timeout-minutes: 60
@@ -126,7 +134,9 @@ jobs:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - uses: taiki-e/install-action@cargo-nextest
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest@0.9.131
       - name: Run slasher tests (all backends)
         run: make test-slasher
         timeout-minutes: 30
@@ -140,7 +150,9 @@ jobs:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - uses: taiki-e/install-action@cargo-nextest
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest@0.9.131
       - name: Run state transition vector tests
         run: cargo nextest run --release -p state_transition_vectors
         timeout-minutes: 30

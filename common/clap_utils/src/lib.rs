@@ -10,7 +10,7 @@ use types::{ChainSpec, Config, EthSpec};
 
 pub mod flags;
 
-pub const BAD_TESTNET_DIR_MESSAGE: &str = "The hard-coded testnet directory was invalid. \
+const BAD_TESTNET_DIR_MESSAGE: &str = "The hard-coded testnet directory was invalid. \
                                         This happens when Vibehouse is migrating between spec versions \
                                         or when there is no default public network to connect to. \
                                         During these times you must specify a --testnet-dir.";
@@ -37,7 +37,7 @@ pub fn get_eth2_network_config(cli_args: &ArgMatches) -> Result<Eth2NetworkConfi
 
 /// Attempts to load the testnet dir at the path if `name` is in `matches`, returning an error if
 /// the path cannot be found or the testnet dir is invalid.
-pub fn parse_testnet_dir(
+fn parse_testnet_dir(
     matches: &ArgMatches,
     name: &'static str,
 ) -> Result<Option<Eth2NetworkConfig>, String> {
@@ -49,7 +49,7 @@ pub fn parse_testnet_dir(
 
 /// Attempts to load a hardcoded network config if `name` is in `matches`, returning an error if
 /// the name is not a valid network name.
-pub fn parse_hardcoded_network(
+fn parse_hardcoded_network(
     matches: &ArgMatches,
     name: &str,
 ) -> Result<Option<Eth2NetworkConfig>, String> {
@@ -119,7 +119,7 @@ pub fn parse_ssz_required<T: Decode>(
 /// `ssz::Decode`.
 ///
 /// Expects the value of `name` (if any) to be 0x-prefixed ASCII-hex.
-pub fn parse_ssz_optional<T: Decode>(
+fn parse_ssz_optional<T: Decode>(
     matches: &ArgMatches,
     name: &'static str,
 ) -> Result<Option<T>, String> {

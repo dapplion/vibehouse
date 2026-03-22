@@ -20,9 +20,9 @@ macro_rules! predefined_networks_dir {
     };
 }
 
-pub const PREDEFINED_NETWORKS_DIR: &str = predefined_networks_dir!();
+const PREDEFINED_NETWORKS_DIR: &str = predefined_networks_dir!();
 pub const GENESIS_FILE_NAME: &str = "genesis.ssz";
-pub const GENESIS_ZIP_FILE_NAME: &str = "genesis.ssz.zip";
+const GENESIS_ZIP_FILE_NAME: &str = "genesis.ssz.zip";
 
 const HOLESKY_GENESIS_STATE_SOURCE: GenesisStateSource = GenesisStateSource::Url {
     urls: &[

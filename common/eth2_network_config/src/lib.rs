@@ -30,10 +30,10 @@ use url::Url;
 
 pub use eth2_config::GenesisStateSource;
 
-pub const DEPLOY_BLOCK_FILE: &str = "deposit_contract_block.txt";
-pub const BOOT_ENR_FILE: &str = "bootstrap_nodes.yaml";
-pub const GENESIS_STATE_FILE: &str = "genesis.ssz";
-pub const BASE_CONFIG_FILE: &str = "config.yaml";
+const DEPLOY_BLOCK_FILE: &str = "deposit_contract_block.txt";
+const BOOT_ENR_FILE: &str = "bootstrap_nodes.yaml";
+const GENESIS_STATE_FILE: &str = "genesis.ssz";
+const BASE_CONFIG_FILE: &str = "config.yaml";
 
 // Creates definitions for:
 //
@@ -260,7 +260,7 @@ impl Eth2NetworkConfig {
     }
 
     /// Write the files to the directory, even if the directory already exists.
-    pub fn force_write_to_file(&self, base_dir: PathBuf) -> Result<(), String> {
+    fn force_write_to_file(&self, base_dir: PathBuf) -> Result<(), String> {
         create_dir_all(&base_dir)
             .map_err(|e| format!("Unable to create testnet directory: {e:?}"))?;
 

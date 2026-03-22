@@ -206,7 +206,7 @@ impl SlashingDatabase {
     /// Register multiple validators inside the given transaction.
     ///
     /// The caller must commit the transaction for the changes to be persisted.
-    pub fn register_validators_in_txn<'a>(
+    pub(crate) fn register_validators_in_txn<'a>(
         &self,
         public_keys: impl Iterator<Item = &'a PublicKeyBytes>,
         txn: &Transaction,
@@ -254,7 +254,7 @@ impl SlashingDatabase {
     }
 
     /// List the internal validator ID and public key of every registered validator.
-    pub fn list_all_registered_validators(
+    pub(crate) fn list_all_registered_validators(
         &self,
         txn: &Transaction,
     ) -> Result<Vec<(i64, PublicKeyBytes)>, InterchangeError> {
@@ -280,7 +280,7 @@ impl SlashingDatabase {
         self.get_validator_id_in_txn(&txn, public_key)
     }
 
-    pub fn get_validator_id_in_txn(
+    pub(crate) fn get_validator_id_in_txn(
         &self,
         txn: &Transaction,
         public_key: &PublicKeyBytes,
@@ -603,7 +603,8 @@ impl SlashingDatabase {
     /// the same result. Therefore:
     ///
     /// DO NOT USE THIS FUNCTION TO DECIDE IF A BLOCK IS SAFE TO SIGN!
-    pub fn preliminary_check_block_proposal(
+    #[allow(dead_code)]
+    pub(crate) fn preliminary_check_block_proposal(
         &self,
         validator_pubkey: &PublicKeyBytes,
         block_header: &BeaconBlockHeader,
@@ -708,7 +709,8 @@ impl SlashingDatabase {
     /// the same result. Therefore:
     ///
     /// DO NOT USE THIS FUNCTION TO DECIDE IF AN ATTESTATION IS SAFE TO SIGN!
-    pub fn preliminary_check_attestation(
+    #[allow(dead_code)]
+    pub(crate) fn preliminary_check_attestation(
         &self,
         validator_pubkey: &PublicKeyBytes,
         attestation: &AttestationData,
@@ -1087,7 +1089,8 @@ impl SlashingDatabase {
         Ok(())
     }
 
-    pub fn num_validator_rows(&self) -> Result<u32, NotSafe> {
+    #[cfg(test)]
+    pub(crate) fn num_validator_rows(&self) -> Result<u32, NotSafe> {
         let mut conn = self.conn_pool.get()?;
         let txn = conn.transaction()?;
         let count = txn

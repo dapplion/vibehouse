@@ -7,9 +7,9 @@ use tracing_appender::non_blocking::{NonBlocking, WorkerGuard};
 use tracing_subscriber::{Layer, layer::Context};
 
 pub struct Libp2pDiscv5TracingLayer {
-    pub libp2p_non_blocking_writer: NonBlocking,
+    libp2p_non_blocking_writer: NonBlocking,
     _libp2p_guard: WorkerGuard,
-    pub discv5_non_blocking_writer: NonBlocking,
+    discv5_non_blocking_writer: NonBlocking,
     _discv5_guard: WorkerGuard,
 }
 

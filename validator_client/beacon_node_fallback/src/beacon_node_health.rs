@@ -54,7 +54,7 @@ impl Default for BeaconNodeSyncDistanceTiers {
 impl BeaconNodeSyncDistanceTiers {
     /// Takes a given sync distance and determines its tier based on the `sync_tolerance` defined by
     /// the CLI.
-    pub fn compute_distance_tier(&self, distance: SyncDistance) -> SyncDistanceTier {
+    pub(crate) fn compute_distance_tier(&self, distance: SyncDistance) -> SyncDistanceTier {
         if distance <= self.synced {
             SyncDistanceTier::Synced
         } else if distance <= self.small {
@@ -95,9 +95,9 @@ pub enum IsOptimistic {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct BeaconNodeHealthTier {
-    pub tier: HealthTier,
-    pub sync_distance: SyncDistance,
-    pub distance_tier: SyncDistanceTier,
+    pub(crate) tier: HealthTier,
+    pub(crate) sync_distance: SyncDistance,
+    pub(crate) distance_tier: SyncDistanceTier,
 }
 
 impl Display for BeaconNodeHealthTier {
@@ -130,7 +130,7 @@ impl PartialOrd for BeaconNodeHealthTier {
 }
 
 impl BeaconNodeHealthTier {
-    pub fn new(
+    pub(crate) fn new(
         tier: HealthTier,
         sync_distance: SyncDistance,
         distance_tier: SyncDistanceTier,
@@ -180,7 +180,7 @@ impl PartialOrd for BeaconNodeHealth {
 }
 
 impl BeaconNodeHealth {
-    pub fn from_status(
+    pub(crate) fn from_status(
         user_index: usize,
         sync_distance: Slot,
         head: Slot,
@@ -204,11 +204,13 @@ impl BeaconNodeHealth {
         }
     }
 
-    pub fn get_index(&self) -> usize {
+    #[cfg(test)]
+    fn get_index(&self) -> usize {
         self.user_index
     }
 
-    pub fn get_health_tier(&self) -> BeaconNodeHealthTier {
+    #[cfg(test)]
+    fn get_health_tier(&self) -> BeaconNodeHealthTier {
         self.health_tier
     }
 

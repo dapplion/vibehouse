@@ -39,6 +39,7 @@ struct Timeouts {
     get_header: Duration,
     post_validators: Duration,
     post_blinded_blocks: Duration,
+    #[allow(dead_code)]
     get_builder_status: Duration,
 }
 
@@ -167,6 +168,7 @@ impl BuilderHttpClient {
         !self.disable_ssz && self.ssz_available.load(Ordering::SeqCst)
     }
 
+    #[allow(dead_code)]
     async fn get_with_timeout<T: DeserializeOwned, U: IntoUrl>(
         &self,
         url: U,
@@ -195,6 +197,7 @@ impl BuilderHttpClient {
     }
 
     /// Perform a HTTP GET request, returning the `Response` for further processing.
+    #[allow(dead_code)]
     async fn get_response_with_timeout<U: IntoUrl>(
         &self,
         url: U,
@@ -520,7 +523,8 @@ impl BuilderHttpClient {
     }
 
     /// `GET /eth/v1/builder/status`
-    pub async fn get_builder_status<E: EthSpec>(&self) -> Result<(), Error> {
+    #[allow(dead_code, clippy::extra_unused_type_parameters)]
+    pub(crate) async fn get_builder_status<E: EthSpec>(&self) -> Result<(), Error> {
         let mut path = self.server.full.clone();
 
         path.path_segments_mut()
