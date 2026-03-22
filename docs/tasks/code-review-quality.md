@@ -4201,3 +4201,32 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - **slot_clock**: All struct fields already private. All pub methods (`set_slot`, `set_current_time`, `advance_time`, `advance_slot`, `genesis_duration`, `duration_to_slot`) used externally by beacon_chain, network, validator_client, http_api tests.
   - **execution_layer**: `ClientCode` is field type of pub `ClientVersionV1` used by beacon_chain. All other pub items re-exported in lib.rs or used by beacon_chain/network.
 - **Tests**: 272/272 affected crate tests pass (fork_choice + execution_layer). Clippy clean, zero warnings. All downstream crates compile.
+
+### Run 2195
+
+**Pub visibility downgrades in eth2, monitoring_api, account_utils, directory, environment; audit of signing_method**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since March 15.
+- **Changes — eth2/types.rs** (3 items downgraded):
+  - `QueryVec<T>` struct → `pub(crate)` (internal deserialization helper, zero external usage)
+  - `BlockContentsTuple<E>` type alias → `pub(crate)` (only used in `deconstruct()` return type within crate; `SignedBlockContentsTuple` stays pub — used by beacon_chain test_utils)
+  - `FullBlockContents::set_execution_payload_envelope()` → `pub(crate)` (zero external usage)
+  - `SseExtendedPayloadAttributesGeneric<T>` — attempted downgrade, **reverted**: used in pub `SseExtendedPayloadAttributes` type alias and `EventKind::PayloadAttributes` variant
+  - `VersionedSsePayloadAttributes` — attempted downgrade, **reverted**: used in pub `EventKind::PayloadAttributes` variant
+- **Changes — monitoring_api/gather.rs** (7 items downgraded):
+  - `JsonMetric` struct → private (only used within gather.rs)
+  - `JsonType` enum → private (only used within gather.rs)
+  - `BEACON_METRICS_MAP` → private static (only used within gather.rs)
+  - `VALIDATOR_METRICS_MAP` → private static (only used within gather.rs)
+  - `gather_metrics()` → private (only called by gather_beacon_metrics/gather_validator_metrics)
+  - `gather_beacon_metrics()` → `pub(crate)` (only called from lib.rs within crate)
+  - `gather_validator_metrics()` → `pub(crate)` (only called from lib.rs within crate)
+- **Changes — account_utils/validator_definitions.rs** (1 function downgraded):
+  - `is_voting_keystore()` → private (only called within same file)
+  - `recursively_find_voting_keystores()` — kept pub (used by account_manager crate)
+- **Changes — directory/lib.rs** (1 constant downgraded):
+  - `DEFAULT_TRACING_DIR` → private + `#[allow(dead_code)]` (zero external usage, dead code)
+- **Changes — environment/lib.rs** (1 method downgraded):
+  - `SignalFuture::new()` → private (struct already private, only used internally)
+- **Crates audited with no changes needed**: signing_method (all pub items used by validator_client), directory (all other pub items used externally)
+- **Tests**: 251/251 affected crate tests pass. `make lint-full` clean, zero warnings.
