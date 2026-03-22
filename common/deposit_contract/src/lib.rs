@@ -9,12 +9,10 @@ sol! {
 
 pub const CONTRACT_DEPLOY_GAS: usize = 4_000_000;
 pub const DEPOSIT_GAS: usize = 400_000;
-#[allow(dead_code)]
-pub(crate) const ABI: &[u8] = include_bytes!("../contracts/v0.12.1_validator_registration.json");
 pub const BYTECODE: &[u8] = include_bytes!("../contracts/v0.12.1_validator_registration.bytecode");
 pub const DEPOSIT_DATA_LEN: usize = 420; // lol
 
-#[allow(dead_code)]
+#[cfg(test)]
 pub(crate) mod testnet {
     pub const ABI: &[u8] =
         include_bytes!("../contracts/v0.12.1_testnet_validator_registration.json");
@@ -270,7 +268,6 @@ mod tests {
 
     #[test]
     fn abi_and_bytecode_are_not_empty() {
-        assert!(!ABI.is_empty());
         assert!(!BYTECODE.is_empty());
         assert!(!testnet::ABI.is_empty());
         assert!(!testnet::BYTECODE.is_empty());

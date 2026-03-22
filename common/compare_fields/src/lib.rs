@@ -108,7 +108,7 @@ impl Comparison {
         }
     }
 
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub(crate) fn from_slice<T: Debug + PartialEq<T>>(
         field_name: String,
         a: &[T],

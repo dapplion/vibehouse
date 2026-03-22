@@ -665,7 +665,7 @@ where
             None
         };
 
-        let http_metrics_listen_addr = if self.http_metrics_config.enabled {
+        let _http_metrics_listen_addr = if self.http_metrics_config.enabled {
             let ctx = Arc::new(http_metrics::Context {
                 config: self.http_metrics_config.clone(),
                 chain: self.beacon_chain.clone(),
@@ -815,7 +815,6 @@ where
             beacon_chain: self.beacon_chain,
             network_globals: self.network_globals,
             http_api_listen_addr,
-            http_metrics_listen_addr,
         })
     }
 }

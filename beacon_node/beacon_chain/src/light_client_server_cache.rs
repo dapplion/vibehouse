@@ -341,7 +341,6 @@ impl<T: BeaconChainTypes> LightClientServerCache<T> {
     /// Checks if we've already broadcasted the latest finality update.
     /// If we haven't, update the `latest_broadcasted_finality_update` cache
     /// and return the latest finality update for broadcasting, else return `None`.
-    #[allow(dead_code)]
     pub fn should_broadcast_latest_finality_update(
         &self,
     ) -> Option<LightClientFinalityUpdate<T::EthSpec>> {

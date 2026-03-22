@@ -9,7 +9,7 @@ mod builder;
 use beacon_chain::BeaconChain;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use vibehouse_network::{Enr, Multiaddr, NetworkGlobals};
+use vibehouse_network::{Enr, NetworkGlobals};
 
 pub use beacon_chain::BeaconChainTypes;
 pub use builder::ClientBuilder;
@@ -24,8 +24,6 @@ pub struct Client<T: BeaconChainTypes> {
     network_globals: Option<Arc<NetworkGlobals<T::EthSpec>>>,
     /// Listen address for the standard eth2.0 API, if the service was started.
     http_api_listen_addr: Option<SocketAddr>,
-    /// Listen address for the HTTP server which serves Prometheus metrics.
-    http_metrics_listen_addr: Option<SocketAddr>,
 }
 
 impl<T: BeaconChainTypes> Client<T> {
@@ -37,18 +35,6 @@ impl<T: BeaconChainTypes> Client<T> {
     /// Returns the address of the client's standard eth2.0 API server, if it was started.
     pub fn http_api_listen_addr(&self) -> Option<SocketAddr> {
         self.http_api_listen_addr
-    }
-
-    /// Returns the address of the client's HTTP Prometheus metrics server, if it was started.
-    #[allow(dead_code)]
-    pub(crate) fn http_metrics_listen_addr(&self) -> Option<SocketAddr> {
-        self.http_metrics_listen_addr
-    }
-
-    /// Returns the list of libp2p addresses the client is listening to.
-    #[allow(dead_code)]
-    pub(crate) fn libp2p_listen_addresses(&self) -> Option<Vec<Multiaddr>> {
-        self.network_globals.as_ref().map(|n| n.listen_multiaddrs())
     }
 
     /// Returns the local libp2p ENR of this node, for network discovery.

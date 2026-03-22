@@ -27,7 +27,7 @@ pub(crate) const DEFAULT_BACKEND: DatabaseBackend = DatabaseBackend::Disabled;
 pub(crate) const MAX_HISTORY_LENGTH: usize = 1 << 16;
 pub(crate) const MEGABYTE: usize = 1 << 20;
 pub const MDBX_DATA_FILENAME: &str = "mdbx.dat";
-#[allow(dead_code)]
+#[cfg(feature = "redb")]
 pub(crate) const REDB_DATA_FILENAME: &str = "slasher.redb";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

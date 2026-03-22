@@ -27,7 +27,7 @@ pub struct ObservedPayloadEnvelopes<E: EthSpec> {
 }
 
 impl<E: EthSpec> ObservedPayloadEnvelopes<E> {
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub(crate) fn new() -> Self {
         Self::default()
     }
@@ -67,7 +67,7 @@ impl<E: EthSpec> ObservedPayloadEnvelopes<E> {
     }
 
     /// Returns true if no roots are tracked.
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub(crate) fn is_empty(&self) -> bool {
         self.observed_roots.is_empty()
     }
