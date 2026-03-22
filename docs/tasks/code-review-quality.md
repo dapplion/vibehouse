@@ -3645,3 +3645,19 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - Cargo check: zero warnings across full workspace
 - **Spec tracking**: No changes from run 2170. Same open PRs tracked (#4892, #4898, #4979, #4843, #4954).
 - **Conclusion**: Codebase remains stable and healthy. No actionable work identified. All priorities 1-6 complete.
+
+### Run 2172 (2026-03-22)
+
+**Health check + spec tracking**
+
+- **Scope**: Full health audit, CI verification, spec tracking, dependency audit.
+- **Findings — all green**:
+  - CI (latest push): check+clippy+fmt ✓, ef-tests ✓, remaining jobs (unit tests, beacon_chain, http_api, network+op_pool) in progress
+  - Nightly CI: 3 consecutive green runs (March 19-21)
+  - Zero compiler warnings (`cargo check --workspace`)
+  - All TODOs reference issue #36 (all blocked on external deps or non-critical)
+  - Spec: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since March 15. No new releases.
+  - Cargo audit: unchanged (1 rsa advisory, no fix available)
+  - Watched PRs: #4892 (is_supporting_vote same-slot fix) still open, #4898 (remove pending tiebreaker) still open
+  - Open Gloas PRs tracked: #5023, #5022, #5020, #5008, #4992, #4979, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4747, #4630, #4558
+- **Conclusion**: Codebase remains stable and healthy. No actionable work identified. All priorities 1-6 complete.
