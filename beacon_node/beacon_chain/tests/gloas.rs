@@ -12423,7 +12423,7 @@ async fn gloas_proposer_boost_four_interval_boundary() {
         );
     }
 
-    // To test the 1500ms case, we need a fresh block that fork choice hasn't seen.
+    // To test the boundary case, we need a fresh block that fork choice hasn't seen.
     // Produce another block at a later slot.
     harness.advance_slot();
     let state2 = harness.chain.head_beacon_state_cloned();
@@ -12434,11 +12434,7 @@ async fn gloas_proposer_boost_four_interval_boundary() {
     let block2 = &block_contents2.0;
     let block2_root = block2.canonical_root();
 
-    // But first we need to import the first block so block2's parent exists in fc
-    // The first block was added to fc via on_block above, so parent is known.
-    // We need to advance fc time to next_slot2 to reset the boost.
-
-    // Test 2: block_delay = 1500ms — should NOT get boost (at the threshold)
+    // Test 2: block_delay = 1500ms — SHOULD get boost (at the threshold, spec uses <=)
     {
         let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
         fc.update_time(next_slot2).unwrap();
@@ -12459,9 +12455,46 @@ async fn gloas_proposer_boost_four_interval_boundary() {
         )
         .expect("on_block should succeed");
 
+        assert_eq!(
+            fc.proposer_boost_root(),
+            block2_root,
+            "proposer boost should be granted at 1500ms (at Gloas threshold, spec uses <=)"
+        );
+    }
+
+    // Test 3: block_delay = 1501ms — should NOT get boost (past the threshold)
+    harness.advance_slot();
+    let state3 = harness.chain.head_beacon_state_cloned();
+    let next_slot3 = next_slot2 + 1;
+    let (block_contents3, new_state3, _envelope3) =
+        harness.make_block_with_envelope(state3, next_slot3).await;
+
+    let block3 = &block_contents3.0;
+    let block3_root = block3.canonical_root();
+
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        fc.update_time(next_slot3).unwrap();
         assert!(
             fc.proposer_boost_root().is_zero(),
-            "proposer boost should NOT be granted at 1500ms (at Gloas threshold)"
+            "pre-condition: proposer boost root should be zero after new slot tick"
+        );
+
+        fc.on_block(
+            next_slot3,
+            block3.message(),
+            block3_root,
+            Duration::from_millis(1501),
+            &new_state3,
+            PayloadVerificationStatus::Optimistic,
+            None,
+            &harness.spec,
+        )
+        .expect("on_block should succeed");
+
+        assert!(
+            fc.proposer_boost_root().is_zero(),
+            "proposer boost should NOT be granted at 1501ms (past Gloas threshold)"
         );
     }
 }
