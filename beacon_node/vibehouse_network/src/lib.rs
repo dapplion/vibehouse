@@ -6,7 +6,7 @@ mod config;
 pub mod service;
 
 pub mod discovery;
-pub mod metrics;
+pub(crate) mod metrics;
 pub mod peer_manager;
 pub mod rpc;
 pub mod types;
