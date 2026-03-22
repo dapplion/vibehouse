@@ -3837,3 +3837,17 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Fix**: Changed `block_delay < Duration::from_millis(attestation_due_ms)` to `block_delay <= Duration::from_millis(attestation_due_ms)`.
 - **Tests**: 79/79 mainnet preset EF tests pass, 139/139 minimal preset EF tests pass, `make lint` clean.
 - **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since March 15.
+
+### Run 2181
+
+**Pub visibility downgrades in operation_pool + dead code removal**
+
+- **Scope**: Visibility audit of fork_choice and operation_pool crates.
+- **fork_choice audit result**: No downgrades possible — `InvalidExecutionBid`/`InvalidPayloadAttestation` enums leak through pub `Error<T>` variant payloads, `queued_attestations()` used by integration tests (separate test crate), `from_anchor()`/`from_persisted()` used by beacon_chain builder.
+- **operation_pool changes** (7 methods downgraded, 2 dead methods + 1 dead re-export removed):
+  - `prune_sync_contributions`, `prune_proposer_slashings`, `prune_attester_slashings`, `prune_voluntary_exits`, `prune_bls_to_execution_changes` → `pub(crate)` (only called by internal `prune_all()` and tests)
+  - `earliest_attestation_validators` → `pub(crate)` in attestation.rs, removed unused re-export from lib.rs (only used within attestation module)
+  - `register_indices_broadcasted_at_capella` — **removed** from both `OperationPool` (lib.rs) and `BlsToExecutionChanges` (bls_to_execution_changes.rs). Dead code: never called from anywhere in the workspace. Was for Capella fork boundary broadcast tracking that was never wired up.
+- **Not downgraded**: `AttestationStats` (used by beacon_chain metrics), `OperationPool`, `OpPoolError`, `RewardCache`, `PersistedOperationPool`, `ReceivedPreCapella`, `CompactAttestationRef`, `SplitAttestation`, `AttMaxCover`, `MaxCover`, `PROPOSER_REWARD_DENOMINATOR`, `attestation_storage` module, all insert/get/num_* methods (all have external callers)
+- **Spec check**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since March 15. All 17 tracked open PRs remain OPEN. CI green.
+- **Tests**: 72/72 operation_pool tests pass, 327/327 fork_choice + proto_array tests pass, 9/9 EF fork choice tests pass. `make lint` clean.
