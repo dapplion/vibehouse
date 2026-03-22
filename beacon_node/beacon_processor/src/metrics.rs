@@ -1,4 +1,4 @@
-pub use metrics::{
+pub(crate) use metrics::{
     Histogram, HistogramTimer, HistogramVec, IntCounter, IntCounterVec, IntGaugeVec, Result,
     dec_gauge_vec, inc_counter, inc_counter_vec, inc_gauge_vec, observe_timer_vec, observe_vec,
     set_gauge_vec, start_timer, start_timer_vec, try_create_histogram, try_create_histogram_vec,
@@ -10,7 +10,7 @@ use std::sync::LazyLock;
 /*
  * Gossip processor
  */
-pub static BEACON_PROCESSOR_WORK_EVENTS_RX_COUNT: LazyLock<Result<IntCounterVec>> =
+pub(crate) static BEACON_PROCESSOR_WORK_EVENTS_RX_COUNT: LazyLock<Result<IntCounterVec>> =
     LazyLock::new(|| {
         try_create_int_counter_vec(
             "beacon_processor_work_events_rx_count",
@@ -18,7 +18,7 @@ pub static BEACON_PROCESSOR_WORK_EVENTS_RX_COUNT: LazyLock<Result<IntCounterVec>
             &["type"],
         )
     });
-pub static BEACON_PROCESSOR_WORK_EVENTS_IGNORED_COUNT: LazyLock<Result<IntCounterVec>> =
+pub(crate) static BEACON_PROCESSOR_WORK_EVENTS_IGNORED_COUNT: LazyLock<Result<IntCounterVec>> =
     LazyLock::new(|| {
         try_create_int_counter_vec(
             "beacon_processor_work_events_ignored_count",
@@ -26,7 +26,7 @@ pub static BEACON_PROCESSOR_WORK_EVENTS_IGNORED_COUNT: LazyLock<Result<IntCounte
             &["type"],
         )
     });
-pub static BEACON_PROCESSOR_WORK_EVENTS_STARTED_COUNT: LazyLock<Result<IntCounterVec>> =
+pub(crate) static BEACON_PROCESSOR_WORK_EVENTS_STARTED_COUNT: LazyLock<Result<IntCounterVec>> =
     LazyLock::new(|| {
         try_create_int_counter_vec(
             "beacon_processor_work_events_started_count",
@@ -34,21 +34,22 @@ pub static BEACON_PROCESSOR_WORK_EVENTS_STARTED_COUNT: LazyLock<Result<IntCounte
             &["type"],
         )
     });
-pub static BEACON_PROCESSOR_WORKER_TIME: LazyLock<Result<HistogramVec>> = LazyLock::new(|| {
-    try_create_histogram_vec(
-        "beacon_processor_worker_time",
-        "Time taken for a worker to fully process some parcel of work.",
-        &["type"],
-    )
-});
-pub static BEACON_PROCESSOR_WORKERS_SPAWNED_TOTAL: LazyLock<Result<IntCounter>> =
+pub(crate) static BEACON_PROCESSOR_WORKER_TIME: LazyLock<Result<HistogramVec>> =
+    LazyLock::new(|| {
+        try_create_histogram_vec(
+            "beacon_processor_worker_time",
+            "Time taken for a worker to fully process some parcel of work.",
+            &["type"],
+        )
+    });
+pub(crate) static BEACON_PROCESSOR_WORKERS_SPAWNED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
         try_create_int_counter(
             "beacon_processor_workers_spawned_total",
             "The number of workers ever spawned by the gossip processing pool.",
         )
     });
-pub static BEACON_PROCESSOR_WORKERS_ACTIVE_GAUGE_BY_TYPE: LazyLock<Result<IntGaugeVec>> =
+pub(crate) static BEACON_PROCESSOR_WORKERS_ACTIVE_GAUGE_BY_TYPE: LazyLock<Result<IntGaugeVec>> =
     LazyLock::new(|| {
         try_create_int_gauge_vec(
             "beacon_processor_workers_active_gauge_by_type",
@@ -56,34 +57,36 @@ pub static BEACON_PROCESSOR_WORKERS_ACTIVE_GAUGE_BY_TYPE: LazyLock<Result<IntGau
             &["type"],
         )
     });
-pub static BEACON_PROCESSOR_IDLE_EVENTS_TOTAL: LazyLock<Result<IntCounter>> = LazyLock::new(|| {
-    try_create_int_counter(
-        "beacon_processor_idle_events_total",
-        "Count of idle events processed by the gossip processor manager.",
-    )
-});
-pub static BEACON_PROCESSOR_EVENT_HANDLING_SECONDS: LazyLock<Result<Histogram>> =
+pub(crate) static BEACON_PROCESSOR_IDLE_EVENTS_TOTAL: LazyLock<Result<IntCounter>> =
+    LazyLock::new(|| {
+        try_create_int_counter(
+            "beacon_processor_idle_events_total",
+            "Count of idle events processed by the gossip processor manager.",
+        )
+    });
+pub(crate) static BEACON_PROCESSOR_EVENT_HANDLING_SECONDS: LazyLock<Result<Histogram>> =
     LazyLock::new(|| {
         try_create_histogram(
             "beacon_processor_event_handling_seconds",
             "Time spent handling a new message and allocating it to a queue or worker.",
         )
     });
-pub static BEACON_PROCESSOR_QUEUE_LENGTH: LazyLock<Result<HistogramVec>> = LazyLock::new(|| {
-    try_create_histogram_vec_with_buckets(
-        "beacon_processor_work_event_queue_length",
-        "Count of work events in queue waiting to be processed.",
-        Ok(vec![
-            0.0, 1.0, 4.0, 16.0, 64.0, 256.0, 1024.0, 4096.0, 16384.0, 65536.0,
-        ]),
-        &["type"],
-    )
-});
+pub(crate) static BEACON_PROCESSOR_QUEUE_LENGTH: LazyLock<Result<HistogramVec>> =
+    LazyLock::new(|| {
+        try_create_histogram_vec_with_buckets(
+            "beacon_processor_work_event_queue_length",
+            "Count of work events in queue waiting to be processed.",
+            Ok(vec![
+                0.0, 1.0, 4.0, 16.0, 64.0, 256.0, 1024.0, 4096.0, 16384.0, 65536.0,
+            ]),
+            &["type"],
+        )
+    });
 
 /*
  * Attestation reprocessing queue metrics.
  */
-pub static BEACON_PROCESSOR_REPROCESSING_QUEUE_TOTAL: LazyLock<Result<IntGaugeVec>> =
+pub(crate) static BEACON_PROCESSOR_REPROCESSING_QUEUE_TOTAL: LazyLock<Result<IntGaugeVec>> =
     LazyLock::new(|| {
         try_create_int_gauge_vec(
             "beacon_processor_reprocessing_queue_total",
@@ -91,25 +94,27 @@ pub static BEACON_PROCESSOR_REPROCESSING_QUEUE_TOTAL: LazyLock<Result<IntGaugeVe
             &["type"],
         )
     });
-pub static BEACON_PROCESSOR_REPROCESSING_QUEUE_EXPIRED_ATTESTATIONS: LazyLock<Result<IntCounter>> =
-    LazyLock::new(|| {
-        try_create_int_counter(
-            "beacon_processor_reprocessing_queue_expired_attestations",
-            "Number of queued attestations which have expired before a matching block has been found.",
-        )
-    });
-pub static BEACON_PROCESSOR_REPROCESSING_QUEUE_MATCHED_ATTESTATIONS: LazyLock<Result<IntCounter>> =
-    LazyLock::new(|| {
-        try_create_int_counter(
-            "beacon_processor_reprocessing_queue_matched_attestations",
-            "Number of queued attestations where as matching block has been imported.",
-        )
-    });
+pub(crate) static BEACON_PROCESSOR_REPROCESSING_QUEUE_EXPIRED_ATTESTATIONS: LazyLock<
+    Result<IntCounter>,
+> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_processor_reprocessing_queue_expired_attestations",
+        "Number of queued attestations which have expired before a matching block has been found.",
+    )
+});
+pub(crate) static BEACON_PROCESSOR_REPROCESSING_QUEUE_MATCHED_ATTESTATIONS: LazyLock<
+    Result<IntCounter>,
+> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_processor_reprocessing_queue_matched_attestations",
+        "Number of queued attestations where as matching block has been imported.",
+    )
+});
 
 /*
  * Light client update reprocessing queue metrics.
  */
-pub static BEACON_PROCESSOR_REPROCESSING_QUEUE_EXPIRED_OPTIMISTIC_UPDATES: LazyLock<
+pub(crate) static BEACON_PROCESSOR_REPROCESSING_QUEUE_EXPIRED_OPTIMISTIC_UPDATES: LazyLock<
     Result<IntCounter>,
 > = LazyLock::new(|| {
     try_create_int_counter(
@@ -117,7 +122,7 @@ pub static BEACON_PROCESSOR_REPROCESSING_QUEUE_EXPIRED_OPTIMISTIC_UPDATES: LazyL
         "Number of queued light client optimistic updates which have expired before a matching block has been found.",
     )
 });
-pub static BEACON_PROCESSOR_REPROCESSING_QUEUE_MATCHED_OPTIMISTIC_UPDATES: LazyLock<
+pub(crate) static BEACON_PROCESSOR_REPROCESSING_QUEUE_MATCHED_OPTIMISTIC_UPDATES: LazyLock<
     Result<IntCounter>,
 > = LazyLock::new(|| {
     try_create_int_counter(
@@ -127,7 +132,7 @@ pub static BEACON_PROCESSOR_REPROCESSING_QUEUE_MATCHED_OPTIMISTIC_UPDATES: LazyL
 });
 
 /// Errors and Debugging Stats
-pub static BEACON_PROCESSOR_SEND_ERROR_PER_WORK_TYPE: LazyLock<Result<IntCounterVec>> =
+pub(crate) static BEACON_PROCESSOR_SEND_ERROR_PER_WORK_TYPE: LazyLock<Result<IntCounterVec>> =
     LazyLock::new(|| {
         try_create_int_counter_vec(
             "beacon_processor_send_error_per_work_type",
@@ -135,10 +140,12 @@ pub static BEACON_PROCESSOR_SEND_ERROR_PER_WORK_TYPE: LazyLock<Result<IntCounter
             &["type"],
         )
     });
-pub static BEACON_PROCESSOR_QUEUE_TIME: LazyLock<Result<HistogramVec>> = LazyLock::new(|| {
-    try_create_histogram_vec(
-        "beacon_processor_queue_time",
-        "The delay between when a work event was queued in the beacon processor and when it was popped from the queue",
-        &["work_type"],
-    )
-});
+pub(crate) static BEACON_PROCESSOR_QUEUE_TIME: LazyLock<Result<HistogramVec>> = LazyLock::new(
+    || {
+        try_create_histogram_vec(
+            "beacon_processor_queue_time",
+            "The delay between when a work event was queued in the beacon processor and when it was popped from the queue",
+            &["work_type"],
+        )
+    },
+);

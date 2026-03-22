@@ -11,7 +11,7 @@ use std::io::Read;
 use std::sync::Arc;
 use types::{AttesterSlashing, Epoch, EthSpec, IndexedAttestation};
 
-pub const MAX_DISTANCE: u16 = u16::MAX;
+pub(crate) const MAX_DISTANCE: u16 = u16::MAX;
 
 /// Terminology:
 ///
@@ -27,12 +27,12 @@ pub const MAX_DISTANCE: u16 = u16::MAX;
 /// `chunk_offset` in [0..C) is the horizontal (epoch) offset of a value within a 2D chunk
 /// `validator_offset` in [0..K) is the vertical (validator) offset of a value within a 2D chunk
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Chunk {
+pub(crate) struct Chunk {
     data: Vec<u16>,
 }
 
 impl Chunk {
-    pub fn get_target(
+    pub(crate) fn get_target(
         &self,
         validator_index: u64,
         epoch: Epoch,
@@ -51,7 +51,7 @@ impl Chunk {
             .ok_or(Error::ChunkIndexOutOfBounds(cell_index))
     }
 
-    pub fn set_target(
+    pub(crate) fn set_target(
         &mut self,
         validator_index: u64,
         epoch: Epoch,
@@ -62,7 +62,7 @@ impl Chunk {
         self.set_raw_distance(validator_index, epoch, distance, config)
     }
 
-    pub fn set_raw_distance(
+    pub(crate) fn set_raw_distance(
         &mut self,
         validator_index: u64,
         epoch: Epoch,
@@ -84,7 +84,7 @@ impl Chunk {
     /// Compute the distance (difference) between two epochs.
     ///
     /// Error if the distance is greater than or equal to `MAX_DISTANCE`.
-    pub fn epoch_distance(epoch: Epoch, base_epoch: Epoch) -> Result<u16, Error> {
+    pub(crate) fn epoch_distance(epoch: Epoch, base_epoch: Epoch) -> Result<u16, Error> {
         let distance_u64 = epoch
             .as_u64()
             .checked_sub(base_epoch.as_u64())
@@ -101,17 +101,19 @@ impl Chunk {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct MinTargetChunk {
+pub(crate) struct MinTargetChunk {
     chunk: Chunk,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct MaxTargetChunk {
+pub(crate) struct MaxTargetChunk {
     chunk: Chunk,
 }
 
-pub trait TargetArrayChunk: Sized + serde::Serialize + serde::de::DeserializeOwned {
+pub(crate) trait TargetArrayChunk:
+    Sized + serde::Serialize + serde::de::DeserializeOwned
+{
     fn name() -> &'static str;
 
     fn empty(config: &Config) -> Self;
@@ -394,7 +396,7 @@ impl TargetArrayChunk for MaxTargetChunk {
     }
 }
 
-pub fn get_chunk_for_update<'a, E: EthSpec, T: TargetArrayChunk>(
+pub(crate) fn get_chunk_for_update<'a, E: EthSpec, T: TargetArrayChunk>(
     db: &SlasherDB<E>,
     txn: &mut RwTransaction<'_>,
     updated_chunks: &'a mut BTreeMap<usize, T>,
@@ -418,7 +420,7 @@ pub fn get_chunk_for_update<'a, E: EthSpec, T: TargetArrayChunk>(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn apply_attestation_for_validator<E: EthSpec, T: TargetArrayChunk>(
+pub(crate) fn apply_attestation_for_validator<E: EthSpec, T: TargetArrayChunk>(
     db: &SlasherDB<E>,
     txn: &mut RwTransaction<'_>,
     updated_chunks: &mut BTreeMap<usize, T>,
@@ -478,7 +480,7 @@ pub fn apply_attestation_for_validator<E: EthSpec, T: TargetArrayChunk>(
     Ok(AttesterSlashingStatus::NotSlashable)
 }
 
-pub fn update<E: EthSpec>(
+pub(crate) fn update<E: EthSpec>(
     db: &SlasherDB<E>,
     txn: &mut RwTransaction<'_>,
     validator_chunk_index: usize,
@@ -522,7 +524,7 @@ pub fn update<E: EthSpec>(
     Ok(slashings)
 }
 
-pub fn epoch_update_for_validator<E: EthSpec, T: TargetArrayChunk>(
+pub(crate) fn epoch_update_for_validator<E: EthSpec, T: TargetArrayChunk>(
     db: &SlasherDB<E>,
     txn: &mut RwTransaction<'_>,
     updated_chunks: &mut BTreeMap<usize, T>,
@@ -563,7 +565,7 @@ pub fn epoch_update_for_validator<E: EthSpec, T: TargetArrayChunk>(
 }
 
 #[allow(clippy::type_complexity)]
-pub fn update_array<E: EthSpec, T: TargetArrayChunk>(
+pub(crate) fn update_array<E: EthSpec, T: TargetArrayChunk>(
     db: &SlasherDB<E>,
     txn: &mut RwTransaction<'_>,
     validator_chunk_index: usize,
