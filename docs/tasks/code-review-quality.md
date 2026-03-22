@@ -4407,3 +4407,16 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **CI** (push): check+clippy+fmt passed. Other jobs in progress.
 - **Build**: Zero warnings on `cargo check`.
 - **Conclusion**: No code changes needed. Spec tracking up to date. Nightly flake is self-resolved.
+
+### Run 2205
+
+**Bug fix: envelope state_root verification missing on gossip and self-build paths**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. #5008 and #4902 merged since last check (both already handled in run 2204). All open Gloas PRs (#5022, #5023, #5020, #4979, #4992, #4898, #4892, #4843, #4747) remain unmerged.
+- **Deep audit of `on_execution_payload` implementation** against consensus-specs revealed two findings:
+  1. **Missing `is_data_available` check** (low practical severity): Spec requires `assert is_data_available(beacon_block_root)` in `on_execution_payload`. Vibehouse unconditionally sets `payload_data_available = true` when the envelope arrives. Low severity because `payload_data_available` is not currently used as a gate for head selection — only `payload_revealed` matters for `node_is_viable_for_head`. The PTC voting mechanism provides committee-level data availability confirmation. Not fixing now — needs design consideration for column sidecar availability tracking.
+  2. **Missing state_root verification** (real bug, **FIXED**): `process_payload_envelope_inner` (gossip path) and `process_self_build_envelope` both called `process_execution_payload_envelope` with `VerifySignatures::False`, which skips the state root check. The sync path (`process_envelope_for_sync`) correctly verified state root separately. A malicious builder could submit an envelope with a garbage `state_root` that would be persisted, corrupting `ColdStateSummary` entries during freezer migration (cold DB indexes by the envelope's claimed state_root). Not consensus-breaking (locally-computed state is correct), but breaks cold DB lookups by post-envelope state root.
+- **Fix**: Added post-envelope state root verification after `update_tree_hash_cache()` on both gossip and self-build paths, matching the sync path's existing pattern. Updated the `gloas_external_builder_revealed_next_block_uses_builder_block_hash` integration test to compute the correct state_root for its manually-constructed envelope (was using `Hash256::zero()`).
+- **Tests**: 999/999 beacon_chain tests pass. `make lint-full` clean, zero warnings.
+- **EL call ordering deviation** (not fixing): Spec processes EL `verify_and_notify_new_payload` inside `process_execution_payload` (between checks and request processing). Vibehouse calls EL *before* state processing, which is more efficient (avoids wasted state transition on invalid payloads) and produces the same end result.
+- **Optimistic execution status** (not fixing): Standard optimistic sync behavior — payloads accepted as `Optimistic` when EL returns `Syncing`/`Accepted`, upgraded to `Valid` later. Consistent with pre-ePBS block handling.
