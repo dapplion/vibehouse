@@ -4606,3 +4606,19 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Remaining Lighthouse references**: 18 occurrences across 3 files — all legitimate (P2P peer client identification for Lighthouse nodes, Engine API `ClientCode::Lighthouse` per spec). Must remain.
 - **Clippy suppressions audit**: Reviewed all `needless_collect` (10, all justified — lock/borrow patterns), `await_holding_lock` (4, 3 in tests, 1 production with TODO), `large_stack_frames` (12, all tests/CLI). None removable.
 - **No code changes** — monitoring-only run.
+
+### Run 2218 (2026-03-22)
+
+**Enforce `redundant_closure_for_method_calls` lint + minor clippy fixes**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs releases. All previously reviewed PRs unchanged.
+- **CI**: Run 23412596593 (from run 2217) in progress.
+- **New lint enforced**: Added `-D clippy::redundant_closure_for_method_calls` to Makefile lint target (now 6 extra `-D` lints). Fixed 33 warnings across 11 files:
+  - `system_health/src/lib.rs`: `|cpu| cpu.frequency()` → `sysinfo::Cpu::frequency`
+  - `state_processing/single_pass.rs`: removed unnecessary `&mut` on `Cow<Validator>` (read-only access)
+  - `beacon_chain/tests/`: `|f| f.gloas_enabled()` → `ForkName::gloas_enabled`, `|l| l.len()` → `List::len`
+  - `network/tests/`: `|v| v.len()` → `Vec::len`, `|l| l.len()` → `RuntimeVariableList::len`
+  - `http_api/tests/`: various method reference cleanups
+  - `vibehouse/tests/`: `|e| e.to_base64()` → `Enr::to_base64`, `|s| s.as_str()` → `String::as_str`
+- **Tests**: 1026/1026 state_processing. `make lint-full` clean.
+- **CI**: Pre-push hook passed, pushed successfully.
