@@ -4500,3 +4500,16 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - `rpc_methods.rs:handle_execution_payload_envelopes_by_root_request` — crate-internal
 - **Tests**: 24/24 builder_client, workspace check clean with zero warnings, clippy clean.
 - **CI**: Push succeeded, pre-push hook (lint-full) passed.
+
+### Run 2210
+
+**Workspace-wide unreachable pub → pub(crate) downgrade**
+
+- **Spec check**: v1.7.0-alpha.3 still latest. Two new merges since last check: #5008 (field name fix, doc-only, our code already correct) and #4902 (phase0 gossip validation, not Gloas-related). Open Gloas PRs unchanged: #5022, #4992, #4979, #5020, #4843, #4954, #4898, #4892.
+- **Nightly CI failure investigation**: `op-pool-tests (capella)` failed at 09:05 UTC due to `cargo-nextest` binary 404 on GitHub download. Transient infra issue — not a code bug. Will self-resolve on next nightly (workflow already pinned to `@v2` with `tool: cargo-nextest@0.9.132`).
+- **Automated `unreachable_pub` lint fix**: Used `RUSTFLAGS="-W unreachable_pub" cargo fix` across the workspace to downgrade `pub` to `pub(crate)` on items in private modules that can't be accessed from outside their crate.
+  - **87 files changed, 637 pub→pub(crate) downgrades** across 25+ crates
+  - Crates fixed: proto_array, state_processing, operation_pool, store, slasher, execution_layer, network, vibehouse_network, beacon_processor, http_api, validator_services, validator_manager, validator_dir, eth2_wallet_manager, eth2_key_derivation, eth2_keystore, bls, task_executor, types, monitoring_api, and more
+  - **Skipped**: beacon_chain (109 warnings) and eth2_wallet (3 warnings) — both have `pub use` re-exports that need manual handling to avoid E0365 errors
+- **Tests**: 1917 core tests pass, 204 network tests pass, 48 validator tests pass. Clippy clean, workspace compiles with zero warnings.
+- **CI**: Pre-push hook (lint-full) passed, push succeeded.
