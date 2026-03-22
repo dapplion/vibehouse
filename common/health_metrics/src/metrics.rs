@@ -51,14 +51,6 @@ static SYSTEM_VIRT_MEM_USED: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
 static SYSTEM_VIRT_MEM_FREE: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge("system_virt_mem_free_bytes", "Free system virtual memory")
 });
-#[allow(dead_code)]
-static SYSTEM_VIRT_MEM_CACHED: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
-    try_create_int_gauge("system_virt_mem_cached_bytes", "Used system virtual memory")
-});
-#[allow(dead_code)]
-static SYSTEM_VIRT_MEM_BUFFERS: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
-    try_create_int_gauge("system_virt_mem_buffer_bytes", "Free system virtual memory")
-});
 static SYSTEM_VIRT_MEM_PERCENTAGE: LazyLock<Result<Gauge>> = LazyLock::new(|| {
     try_create_float_gauge(
         "system_virt_mem_percentage",
@@ -117,14 +109,6 @@ static NETWORK_BYTES_SENT: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge(
         "network_node_bytes_total_transmit",
         "Total bytes sent over all network interfaces",
-    )
-});
-
-#[allow(dead_code)]
-static BOOT_TIME: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
-    try_create_int_gauge(
-        "misc_node_boot_ts_seconds",
-        "Boot time as unix epoch timestamp",
     )
 });
 

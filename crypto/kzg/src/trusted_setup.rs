@@ -50,7 +50,7 @@ impl TrustedSetup {
         self.g2_monomial.iter().flat_map(|p| p.0).collect()
     }
 
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub(crate) fn g1_len(&self) -> usize {
         self.g1_lagrange.len()
     }

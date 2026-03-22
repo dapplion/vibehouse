@@ -348,29 +348,29 @@ pub fn set_float_gauge_vec(gauge_vec: &Result<GaugeVec>, name: &[&str], value: f
     }
 }
 
-#[allow(dead_code)]
-pub(crate) fn inc_gauge(gauge: &Result<IntGauge>) {
+#[cfg(test)]
+fn inc_gauge(gauge: &Result<IntGauge>) {
     if let Ok(gauge) = gauge {
         gauge.inc();
     }
 }
 
-#[allow(dead_code)]
-pub(crate) fn dec_gauge(gauge: &Result<IntGauge>) {
+#[cfg(test)]
+fn dec_gauge(gauge: &Result<IntGauge>) {
     if let Ok(gauge) = gauge {
         gauge.dec();
     }
 }
 
-#[allow(dead_code)]
-pub(crate) fn maybe_set_gauge(gauge: &Result<IntGauge>, value_opt: Option<i64>) {
+#[cfg(test)]
+fn maybe_set_gauge(gauge: &Result<IntGauge>, value_opt: Option<i64>) {
     if let Some(value) = value_opt {
         set_gauge(gauge, value);
     }
 }
 
-#[allow(dead_code)]
-pub(crate) fn maybe_set_float_gauge(gauge: &Result<Gauge>, value_opt: Option<f64>) {
+#[cfg(test)]
+fn maybe_set_float_gauge(gauge: &Result<Gauge>, value_opt: Option<f64>) {
     if let Some(value) = value_opt {
         set_float_gauge(gauge, value);
     }
