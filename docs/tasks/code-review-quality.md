@@ -3741,3 +3741,40 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Preserved**: All ENGINE_* constants used by external crates (notifier.rs, graffiti_calculator.rs), `auth` module (JwtKey used externally), `http` module re-export, `json_structures` module re-export
 - **Spec check**: v1.7.0-alpha.3 still latest. No new Gloas PRs merged since March 15.
 - **Tests**: 144/144 execution_layer tests pass, 1/1 http_api flaky test passes on retry. Full workspace clippy zero warnings. `make lint-full` passes.
+
+### Run 2177
+
+**Pub visibility downgrades in state_processing**
+
+- **Scope**: Full visibility audit of state_processing crate — signature_sets, per_epoch_processing, per_block_processing, common module.
+- **Changes — signature_sets.rs** (10 items downgraded):
+  - `Result<T>` type alias → `pub(crate)`
+  - `block_proposal_signature_set` → `pub(crate)` (only used internally)
+  - `bls_execution_change_signature_set` → `pub(crate)` (only used by verify_bls_to_execution_change.rs)
+  - `randao_signature_set` → `pub(crate)` (only used by per_block_processing.rs)
+  - `proposer_slashing_signature_set` → `pub(crate)` (only used by verify_proposer_slashing.rs)
+  - `indexed_attestation_signature_set` → `pub(crate)` (only used by is_valid_indexed_attestation.rs)
+  - `attester_slashing_signature_sets` → `pub(crate)` (only used by block_signature_verifier.rs)
+  - `deposit_pubkey_signature_message` → `pub(crate)` (only used by verify_deposit.rs)
+  - `exit_signature_set` → `pub(crate)` (only used by verify_exit.rs)
+  - `sync_aggregate_signature_set` → `pub(crate)` (only used by altair/sync_committee.rs)
+  - Kept `pub`: Error, block_proposal_signature_set_from_parts, indexed_attestation_signature_set_from_pubkeys, signed_aggregate_*, signed_sync_aggregate_*, sync_committee_*_from_pubkeys, execution_payload_bid/envelope/payload_attestation sets (all used by beacon_chain)
+- **Changes — per_epoch_processing.rs** (5 items downgraded):
+  - `ParticipationEpochSummary` re-export → `pub(crate)` (0 external uses)
+  - `JustificationAndFinalizationState` re-export + module → `pub(crate)` (0 external uses)
+  - `weigh_justification_and_finalization` re-export + module → `pub(crate)` (0 external uses)
+- **Changes — per_block_processing.rs** (2 items downgraded):
+  - `verify_block_signature` → `pub(crate)` (0 external uses)
+  - `get_new_eth1_data` → `pub(crate)` (0 external uses)
+- **Changes — common/mod.rs** (4 items downgraded):
+  - `increase_balance`, `decrease_balance` → `pub(crate)` (0 external uses)
+  - `initiate_validator_exit`, `slash_validator` re-exports → `pub(crate)` (0 external uses)
+  - `is_attestation_same_slot` re-export → `pub(crate)` (0 external uses)
+- **Changes — common/update_progressive_balances_cache.rs** (4 items downgraded):
+  - `update_progressive_balances_on_attestation` → `pub(crate)` (0 external uses)
+  - `update_progressive_balances_on_slashing` → `pub(crate)` (0 external uses)
+  - `update_progressive_balances_on_epoch_transition` → `pub(crate)` (0 external uses)
+  - `update_progressive_balances_metrics` → `pub(crate)` (0 external uses)
+- **Preserved**: All items used by ef_tests (process_registry_updates, process_slashings, process_operations individual functions, submodules), all items used by beacon_chain (signature sets for attestation/sync/gloas verification, common utilities)
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since March 15. CI green.
+- **Tests**: 1026/1026 state_processing tests pass, 15/15 EF operations tests pass, 20/20 EF epoch+sanity tests pass. `make lint` clean, zero warnings.
