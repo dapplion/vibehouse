@@ -3804,3 +3804,25 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Preserved**: Modules used by integration tests in `tests/` directory kept as `pub` (persisted_beacon_chain, persisted_custody, observed_aggregates, historical_blocks). Re-exports used by integration tests kept as `pub` (BeaconSnapshot, OverrideForkchoiceUpdate, INVALID_JUSTIFIED_PAYLOAD_SHUTDOWN_REASON, ExecutionPendingBlock, IntoExecutionPendingBlock).
 - **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since March 15.
 - **Tests**: 999/999 beacon_chain tests pass, `make lint` clean, zero warnings.
+
+### Run 2179
+
+**Pub visibility downgrades in client, network**
+
+- **Scope**: Visibility audit of client crate (notifier.rs, builder.rs) and network crate (lib.rs).
+- **Changes — client/notifier.rs** (7 items downgraded):
+  - `FORK_READINESS_PREPARATION_SECONDS` → private (only used within notifier.rs)
+  - `ENGINE_CAPABILITIES_REFRESH_INTERVAL` → private (only used within notifier.rs)
+  - `Speedo` struct → private (only used within notifier.rs)
+  - `Speedo::observe`, `slots_per_second`, `estimated_time_till_slot`, `clear` → private (only used within notifier.rs)
+- **Changes — client/builder.rs** (1 item downgraded):
+  - `start_slasher_service()` → `pub(crate)` (only called by `build()` within same crate)
+- **Changes — network/lib.rs** (1 module downgraded):
+  - `pub mod service` → `mod service` (all needed items already re-exported via `pub use service::{...}`, no external `network::service::` accesses)
+- **Investigated but not changed**:
+  - `http_metrics::Error`, `validator_http_api::Error` — must remain `pub` because they appear in `serve()` return type signature which is pub
+  - `builder_client` — all items actively used by execution_layer
+  - `vibehouse_validator_store` — all items actively used by validator_client, validator_http_api, testing crates
+  - `account_manager` — CLI binary, pub items are for CLI submodule assembly
+- **Spec check**: v1.7.0-alpha.3 still latest. No new consensus-specs merges since March 15.
+- **Tests**: 201/201 network tests pass (with FORK_NAME=gloas), `make lint` clean, zero warnings.
