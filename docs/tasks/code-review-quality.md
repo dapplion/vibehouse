@@ -3439,3 +3439,16 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Preserved as `pub`**: `service` module (pub mod in lib.rs), all items re-exported from lib.rs (`NetworkMessage`, `NetworkReceivers`, `NetworkSenders`, `NetworkService`, `ValidatorSubscriptionMessage`, `NetworkConfig`), struct fields and impl methods (accessible wherever their parent type is)
 - **Spec**: v1.7.0-alpha.3 still latest. No new merges since March 15. All 10 tracked Gloas PRs remain open.
 - **Tests**: 204/204 network tests pass (FORK_NAME=gloas). Full workspace clippy zero warnings. `make lint-full` passes.
+
+### Run 2160 (2026-03-22)
+
+**Visibility downgrades in store crate + moka update + dead code removal**
+
+- **Dependency update**: moka 0.12.14 → 0.12.15 (semver-compatible)
+- **Code changes** — downgraded 68 items from `pub` to `pub(crate)` (or private) across 3 files in `beacon_node/store/src/`:
+  - **lib.rs**: 5 module visibility downgrades — `blob_sidecar_list_from_root` and `consensus_context` → `mod` (private, types re-exported via `pub use`); `historic_state_cache`, `reconstruct`, `state_cache` → `pub(crate) mod` (used by hot_cold_store.rs within crate)
+  - **metrics.rs**: 55 `pub static` → `pub(crate) static` (all metrics constants, none used outside store), 1 `pub use` → `pub(crate) use` (re-export of external metrics crate), 2 `pub const` → `pub(crate) const` (`HOT_METRIC`, `COLD_METRIC`)
+  - **config.rs**: 7 `pub const` → `pub(crate) const` (default config values not used outside store: `DEFAULT_BLOCK_CACHE_SIZE`, `DEFAULT_STATE_CACHE_SIZE`, `DEFAULT_STATE_CACHE_HEADROOM`, `DEFAULT_COMPRESSION_LEVEL`, `DEFAULT_EPOCHS_PER_BLOB_PRUNE`, `DEFAULT_BLOB_PUNE_MARGIN_EPOCHS`)
+- **Dead code removed**: 3 unused constants exposed by visibility downgrade — `PREV_DEFAULT_SLOTS_PER_RESTORE_POINT`, `DEFAULT_SLOTS_PER_RESTORE_POINT`, `DEFAULT_EPOCHS_PER_STATE_DIFF` (were `pub` but never referenced anywhere)
+- **Preserved as `pub`**: `StoreConfig` struct + all fields/methods (used by beacon_chain, network, http_api), `StoreConfigError` enum (used in public `Error` enum), `OnDiskStoreConfig` (used in `StoreConfigError` variant), `DEFAULT_HISTORIC_STATE_CACHE_SIZE`, `DEFAULT_COLD_HDIFF_BUFFER_CACHE_SIZE`, `DEFAULT_HOT_HDIFF_BUFFER_CACHE_SIZE` (used in vibehouse integration tests), all `hdiff` module items (used by database_manager, hot_cold_store), `scrape_for_metrics` (used by monitoring_api), `metrics` module itself (path-accessed by monitoring_api)
+- **Tests**: 236/236 store tests pass. Full workspace clippy zero warnings. `make lint-full` passes.
