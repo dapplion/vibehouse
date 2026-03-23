@@ -4889,3 +4889,14 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - `iter_with_drain` — 1 `#[allow]` annotation (rpc_tests — drain in loop intentionally reuses allocation)
   - `from_over_into`, `flat_map_identity`, `unused_io_amount`, `rc_buffer`, `rc_mutex`, `manual_c_str_literals`, `unnecessary_fallible_conversions`, `implied_bounds_in_impls`, `no_effect_replace`, `legacy_numeric_constants`, `manual_pattern_char_comparison`, `single_char_add_str`, `iter_kv_map`, `collapsible_str_replace`, `used_underscore_items`, `while_let_on_iterator`, `unnecessary_filter_map`, `manual_next_back`, `cloned_ref_to_slice_refs` — zero existing warnings, regression prevention
 - **Tests**: 2438/2438 types+state_processing+proto_array+fork_choice, 413/413 store+slasher+operation_pool, 35/35 EF ops+epoch+sanity, 9/9 int_to_bytes+eth2_network_config+database_manager. `make lint-full` clean.
+
+### Run 2229b (2026-03-23)
+
+**Enforce 3 new clippy lints, remove trivial regex usage and fix time subtraction**
+
+- **Spec audit**: checked 3 newly merged consensus-specs PRs (#5001 parent_block_root bid key, #5002 wording, #5008 field name fix). All already implemented or doc-only — no code changes needed.
+- **3 new lints enforced** (now 144 total extra `-D` lints in Makefile):
+  - `unchecked_time_subtraction` — 15 fixes: `Duration` subtraction → `checked_sub().unwrap()` across slot_clock tests, beacon_processor reprocessing queue, validator_client genesis wait, rpc_tests, network gossip tests, http_api tests. Prevents potential panics from time subtraction underflow.
+  - `trivial_regex` — 10 fixes: removed `Regex::new()` wrapper from simple string patterns in validator_test_rig mock_beacon_node, passing string literals directly to `Matcher::Regex`. Removed unused `regex` dependency from validator_test_rig.
+  - `useless_let_if_seq` — 2 fixes: `let mut x; if cond { x = val; }` → `let x = if cond { val } else { default }` in router.rs and mock_builder.rs. 1 `#[allow]` for multi-mutation tracking in ProposerPreparationDataEntry::update.
+- **Tests**: 4991/4991 workspace (excl. ef_tests/beacon_chain/slasher/network/http_api), 24/24 slot_clock, 8/8 beacon_processor. `make lint-full` clean.
