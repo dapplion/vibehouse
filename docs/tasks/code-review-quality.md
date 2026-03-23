@@ -5135,3 +5135,20 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Security**: `cargo audit` unchanged — 1 medium RSA (no fix), 5 unmaintained (transitive). No new advisories.
 - **Rust**: 1.94.0 (latest stable).
 - **No code changes this run** — project in holding pattern, all priorities done, waiting for spec PRs.
+
+### Run 2252 (2026-03-23)
+
+**Spec conformance audit + approved PR pre-check**
+
+- **CI**: Green (run 23451379478). Nightly failure (March 23 09:33 UTC) confirmed on pre-fix commit f4af903e — MEGABYTE dead_code in redb-only build. Fix (5d23ecf85, cfg-gated MEGABYTE) is on HEAD. Tonight's nightly will pass.
+- **Spec tracking**: v1.7.0-alpha.3 still latest. Reviewed 5 open/recently-merged Gloas PRs:
+  - **#5022** (block known assert in `on_payload_attestation_message`) — merged 2026-03-23. Already compliant: fork choice checks `indices.get(&beacon_block_root)` (fork_choice.rs:1426-1432), gossip layer checks `get_block()` (gloas_verification.rs:635-642).
+  - **#5008** (field name `block_root` → `beacon_block_root` in P2P spec) — merged. Doc-only, our code already uses `beacon_block_root`.
+  - **#5014** (EIP-8025 P2P protocol: ExecutionProofStatus/ExecutionProofsByRange RPC) — merged. New P2P RPCs for ZK proof sync. Not urgent (our ZK proofs are stub-level).
+  - **#4892** (remove impossible branch in `is_supporting_vote`) — open, approved. Already correct: our `is_supporting_vote_gloas_at_slot` uses `==` not `<=`.
+  - **#4898** (remove PENDING from tiebreaker) — open, approved. Already correct: our `get_payload_tiebreaker` only checks slot, no PENDING early-return.
+  - **#4954** (millisecond time in fork choice store) — open. Architectural change; our `ForkChoiceStore` trait abstracts time via slot, timeliness uses `Duration`. Would need implementation when merged.
+  - **#5023** (test filename fix + Gloas comptests) — open. May require EF test runner updates when new fixtures released (block root naming change).
+- **Code quality audit**: Reviewed all 55 `#[allow(dead_code)]` annotations — all justified (error enum variants used in Debug/Display derives, platform-conditional code, lifetime holders in tests).
+- **PTC lookbehind (#4979)**: Still open with active review. Memory file has implementation plan ready.
+- **No code changes this run** — codebase healthy, fully spec-compliant, waiting for spec PRs to merge.
