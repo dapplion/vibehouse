@@ -1,18 +1,12 @@
 use clap::ArgMatches;
 use clap_utils::parse_required;
 use state_processing::common::{attesting_indices_base, attesting_indices_electra};
-use std::fs::File;
-use std::io::Read;
+use std::fs;
 use std::path::{Path, PathBuf};
 use types::{Attestation, BeaconState, EthSpec};
 
 fn read_file_bytes(filename: &Path) -> Result<Vec<u8>, String> {
-    let mut bytes = vec![];
-    let mut file = File::open(filename)
-        .map_err(|e| format!("Unable to open {}: {}", filename.display(), e))?;
-    file.read_to_end(&mut bytes)
-        .map_err(|e| format!("Unable to read {}: {}", filename.display(), e))?;
-    Ok(bytes)
+    fs::read(filename).map_err(|e| format!("Unable to read {}: {}", filename.display(), e))
 }
 
 pub(crate) fn run<E: EthSpec>(matches: &ArgMatches) -> Result<(), String> {

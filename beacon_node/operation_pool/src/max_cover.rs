@@ -113,6 +113,7 @@ mod test {
     use super::{MaxCover, maximum_cover, merge_solutions};
     use std::{collections::HashSet, hash::Hash};
 
+    #[allow(clippy::implicit_hasher)]
     impl<T> MaxCover for HashSet<T>
     where
         T: Clone + Eq + Hash,

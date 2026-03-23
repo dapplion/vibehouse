@@ -143,7 +143,7 @@ pub struct CustodyId {
 pub struct CustodyRequester(pub SingleLookupReqId);
 
 /// Application level requests sent to the network.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppRequestId {
     Sync(SyncRequestId),
     Router,

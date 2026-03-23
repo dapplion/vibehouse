@@ -93,6 +93,7 @@ pub fn hashset_intersection(
             .collect::<HashSet<u64>>()
 }
 
+#[allow(clippy::implicit_hasher)]
 pub fn slashed_validators_from_slashings(slashings: &HashSet<AttesterSlashing<E>>) -> HashSet<u64> {
     slashings
         .iter()

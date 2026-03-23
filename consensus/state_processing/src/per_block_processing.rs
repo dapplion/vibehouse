@@ -165,7 +165,7 @@ pub fn per_block_processing<E: EthSpec, Payload: AbstractExecPayload<E>>(
         verify_block_signature(state, signed_block, ctxt, spec)?;
     }
 
-    let verify_randao = if let BlockSignatureStrategy::VerifyRandao = block_signature_strategy {
+    let verify_randao = if block_signature_strategy == BlockSignatureStrategy::VerifyRandao {
         VerifySignatures::True
     } else {
         verify_signatures

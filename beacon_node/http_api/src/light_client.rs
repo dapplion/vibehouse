@@ -26,7 +26,7 @@ pub(crate) fn get_light_client_updates<T: BeaconChainTypes>(
         .get_light_client_updates(query.start_period, query.count)
         .map_err(|_| ApiError::not_found("No LightClientUpdates found".to_string()))?;
 
-    if let Some(api_types::Accept::Ssz) = accept_header {
+    if accept_header == Some(api_types::Accept::Ssz) {
         let response_chunks: Vec<u8> = light_client_updates
             .into_iter()
             .flat_map(|update| {
@@ -66,7 +66,7 @@ pub(crate) fn get_light_client_bootstrap<T: BeaconChainTypes>(
         })?
         .ok_or_else(|| ApiError::not_found("No LightClientBootstrap found".to_string()))?;
 
-    if let Some(api_types::Accept::Ssz) = accept_header {
+    if accept_header == Some(api_types::Accept::Ssz) {
         axum::http::Response::builder()
             .status(200)
             .body(axum::body::Body::from(

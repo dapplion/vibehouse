@@ -46,7 +46,7 @@ impl AttestationDelta {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ProposerRewardCalculation {
     Include,
     Exclude,
@@ -192,7 +192,7 @@ fn get_attestation_deltas<E: EthSpec>(
                 .combine(inactivity_penalty_delta)?;
         }
 
-        if let ProposerRewardCalculation::Include = proposer_reward
+        if proposer_reward == ProposerRewardCalculation::Include
             && let Some((proposer_index, proposer_delta)) = proposer_delta
             && include_validator_delta(proposer_index)
         {

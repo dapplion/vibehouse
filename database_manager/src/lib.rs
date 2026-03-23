@@ -160,7 +160,7 @@ pub(crate) fn inspect_db<E: EthSpec>(
 
     let base_path = &inspect_config.output_dir;
 
-    if let InspectTarget::Values = inspect_config.target {
+    if inspect_config.target == InspectTarget::Values {
         fs::create_dir_all(base_path)
             .map_err(|e| format!("Unable to create import directory: {e:?}"))?;
     }

@@ -1665,6 +1665,7 @@ fn test_active_requests() {
                     }
                     // Introduce a delay in sending responses to trigger request queueing on the sender side.
                     () = sleep(Duration::from_secs(3)) => {
+                        #[allow(clippy::iter_with_drain)]
                         for (peer_id, inbound_request_id) in received_requests.drain(..) {
                             receiver.send_response(peer_id, inbound_request_id, rpc_response.clone());
                         }

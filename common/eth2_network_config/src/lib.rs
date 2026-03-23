@@ -20,7 +20,7 @@ use reqwest::{Client, Error};
 use sensitive_url::SensitiveUrl;
 use sha2::{Digest, Sha256};
 use std::fs::{File, create_dir_all};
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
@@ -340,13 +340,8 @@ impl Eth2NetworkConfig {
         // The genesis state is a special case because it uses SSZ, not YAML.
         let genesis_file_path = base_dir.join(GENESIS_STATE_FILE);
         let (genesis_state_bytes, genesis_state_source) = if genesis_file_path.exists() {
-            let mut bytes = vec![];
-            File::open(&genesis_file_path)
-                .map_err(|e| format!("Unable to open {}: {e:?}", genesis_file_path.display()))
-                .and_then(|mut file| {
-                    file.read_to_end(&mut bytes)
-                        .map_err(|e| format!("Unable to read {file:?}: {e:?}"))
-                })?;
+            let bytes = std::fs::read(&genesis_file_path)
+                .map_err(|e| format!("Unable to read {}: {e:?}", genesis_file_path.display()))?;
 
             let state = Some(bytes).filter(|bytes| !bytes.is_empty());
             let genesis_state_source = if state.is_some() {

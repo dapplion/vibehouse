@@ -182,9 +182,10 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
     }
 
     pub fn process_manual_compaction(&self) {
-        if let Some(Notification::ManualCompaction) =
-            self.send_background_notification(Notification::ManualCompaction)
-        {
+        if matches!(
+            self.send_background_notification(Notification::ManualCompaction),
+            Some(Notification::ManualCompaction)
+        ) {
             Self::run_manual_compaction(self.db.clone());
         }
     }
@@ -198,9 +199,10 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
     }
 
     pub fn process_reconstruction(&self) {
-        if let Some(Notification::Reconstruction) =
-            self.send_background_notification(Notification::Reconstruction)
-        {
+        if matches!(
+            self.send_background_notification(Notification::Reconstruction),
+            Some(Notification::Reconstruction)
+        ) {
             // If we are running in foreground mode (as in tests), then this will just run a single
             // batch. We may need to tweak this in future.
             Self::run_reconstruction(self.db.clone(), None);

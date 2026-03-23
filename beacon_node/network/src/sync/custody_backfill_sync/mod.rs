@@ -151,7 +151,7 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
 
     /// Pauses the custody sync if it's currently syncing.
     pub(super) fn pause(&self, reason: String) {
-        if let CustodyBackFillState::Syncing = self.state() {
+        if self.state() == CustodyBackFillState::Syncing {
             debug!(processed_epochs = %self.validated_batches, to_be_processed = %self.current_start,"Custody backfill sync paused");
             self.set_state(CustodyBackFillState::Pending(reason));
         }

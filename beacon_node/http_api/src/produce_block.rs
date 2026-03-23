@@ -104,7 +104,7 @@ pub(crate) fn build_response_v3<T: BeaconChainTypes>(
 
     let block_contents = build_block_contents::build_block_contents(fork_name, block_response)?;
 
-    if let Some(api_types::Accept::Ssz) = accept_header {
+    if accept_header == Some(api_types::Accept::Ssz) {
         axum::http::Response::builder()
             .status(200)
             .body(axum::body::Body::from(block_contents.as_ssz_bytes()))

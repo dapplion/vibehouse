@@ -188,7 +188,7 @@ impl Case for SszGeneric {
                 ssz_generic_test::<bool>(&self.path, fork_name)?;
             }
             "uints" => {
-                let type_name = "uint".to_owned() + parts[1];
+                let type_name = format!("uint{}", parts[1]);
 
                 type_dispatch!(
                     ssz_generic_test,

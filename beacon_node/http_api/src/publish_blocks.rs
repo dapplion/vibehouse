@@ -215,7 +215,7 @@ pub async fn publish_block<T: BeaconChainTypes, B: IntoGossipVerifiedBlock<T>>(
             .map_err(|_| ApiError::server_error("unable to publish blob sidecars"))?;
         if let Err(e) = Box::pin(chain.process_gossip_blob(blob)).await {
             let msg = format!("Invalid blob: {e}");
-            return if let BroadcastValidation::Gossip = validation_level {
+            return if validation_level == BroadcastValidation::Gossip {
                 Err(ApiError::BroadcastWithoutImport(msg))
             } else {
                 error!(reason = &msg, "Invalid blob provided to HTTP API");
@@ -257,7 +257,7 @@ pub async fn publish_block<T: BeaconChainTypes, B: IntoGossipVerifiedBlock<T>>(
                 Box::pin(chain.process_gossip_data_columns(sampling_columns, publish_fn)).await
             {
                 let msg = format!("Invalid data column: {e}");
-                return if let BroadcastValidation::Gossip = validation_level {
+                return if validation_level == BroadcastValidation::Gossip {
                     Err(ApiError::BroadcastWithoutImport(msg))
                 } else {
                     error!(
@@ -632,7 +632,7 @@ async fn post_block_import_logging_and_response<T: BeaconChainTypes>(
         }
         Ok(AvailabilityProcessingStatus::MissingComponents(_, block_root)) => {
             let msg = format!("Missing parts of block with root {block_root:?}");
-            if let BroadcastValidation::Gossip = validation_level {
+            if validation_level == BroadcastValidation::Gossip {
                 Err(ApiError::BroadcastWithoutImport(msg))
             } else {
                 error!(reason = &msg, "Invalid block provided to HTTP API");
@@ -650,7 +650,7 @@ async fn post_block_import_logging_and_response<T: BeaconChainTypes>(
             "proposal for this slot and proposer has already been seen".to_string(),
         )),
         Err(e) => {
-            if let BroadcastValidation::Gossip = validation_level {
+            if validation_level == BroadcastValidation::Gossip {
                 Err(ApiError::BroadcastWithoutImport(format!("{e}")))
             } else {
                 error!(

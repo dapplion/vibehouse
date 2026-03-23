@@ -192,8 +192,8 @@ async fn node_health_el_online_and_synced() {
         Ok(response) => {
             assert_eq!(response, StatusCode::OK);
         }
-        Err(_) => {
-            panic!("should return 200 status code");
+        Err(e) => {
+            panic!("should return 200 status code: {e:?}");
         }
     }
 }
@@ -223,8 +223,8 @@ async fn node_health_el_online_and_not_synced() {
         Ok(response) => {
             assert_eq!(response, StatusCode::PARTIAL_CONTENT);
         }
-        Err(_) => {
-            panic!("should return 206 status code");
+        Err(e) => {
+            panic!("should return 206 status code: {e:?}");
         }
     }
 }

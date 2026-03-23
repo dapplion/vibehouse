@@ -125,11 +125,8 @@ pub fn load_private_key(config: &NetworkConfig) -> Keypair {
         }
 
         // If hex parsing failed or file couldn't be read as string, try binary format
-        if let Ok(mut network_key_file) = File::open(network_key_f.clone()) {
-            let mut key_bytes: Vec<u8> = Vec::with_capacity(36);
-            if network_key_file.read_to_end(&mut key_bytes).is_err() {
-                debug!("Could not read network key file");
-            } else {
+        if let Ok(mut key_bytes) = std::fs::read(network_key_f.clone()) {
+            {
                 // only accept secp256k1 keys for now
                 if let Ok(secret_key) = secp256k1::SecretKey::try_from_bytes(&mut key_bytes) {
                     let kp: secp256k1::Keypair = secret_key.clone().into();
@@ -205,9 +202,8 @@ pub fn load_or_build_metadata<E: EthSpec>(
 
     // Read metadata from persisted file if available
     let metadata_path = network_dir.join(METADATA_FILENAME);
-    if let Ok(mut metadata_file) = File::open(metadata_path) {
-        let mut metadata_ssz = Vec::new();
-        if metadata_file.read_to_end(&mut metadata_ssz).is_ok() {
+    if let Ok(metadata_ssz) = std::fs::read(metadata_path) {
+        {
             // Attempt to read a MetaDataV3 version from the persisted file,
             // if that fails, read MetaDataV2
             match MetaDataV3::<E>::from_ssz_bytes(&metadata_ssz) {

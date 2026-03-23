@@ -17,7 +17,7 @@ use types::{
 
 /// Wraps `eth2::types::BlockId` and provides a simple way to obtain a block or root for a given
 /// `BlockId`.
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, PartialEq, Eq, serde::Deserialize)]
 #[serde(try_from = "String")]
 pub struct BlockId(pub CoreBlockId);
 

@@ -2865,8 +2865,8 @@ impl ApiTester {
             Ok(status) => {
                 assert_eq!(status, 200);
             }
-            Err(_) => {
-                panic!("should return valid status");
+            Err(e) => {
+                panic!("should return valid status: {e:?}");
             }
         }
         self
@@ -6622,8 +6622,8 @@ impl ApiTester {
                 assert_eq!(withdrawal_response.finalized, Some(false));
                 assert_eq!(withdrawal_response.data, expected_withdrawals.to_vec());
             }
-            Err(_) => {
-                panic!("query failed incorrectly");
+            Err(e) => {
+                panic!("query failed incorrectly: {e:?}");
             }
         }
 

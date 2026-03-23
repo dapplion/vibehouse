@@ -410,6 +410,31 @@ lint:
 		-D clippy::let_and_return \
 		-D clippy::match_single_binding \
 		-D clippy::wildcard_in_or_patterns \
+		-D clippy::match_wild_err_arm \
+		-D clippy::verbose_file_reads \
+		-D clippy::from_over_into \
+		-D clippy::flat_map_identity \
+		-D clippy::iter_with_drain \
+		-D clippy::unused_io_amount \
+		-D clippy::equatable_if_let \
+		-D clippy::rc_buffer \
+		-D clippy::rc_mutex \
+		-D clippy::string_add \
+		-D clippy::implicit_hasher \
+		-D clippy::manual_c_str_literals \
+		-D clippy::unnecessary_fallible_conversions \
+		-D clippy::implied_bounds_in_impls \
+		-D clippy::no_effect_replace \
+		-D clippy::legacy_numeric_constants \
+		-D clippy::manual_pattern_char_comparison \
+		-D clippy::single_char_add_str \
+		-D clippy::iter_kv_map \
+		-D clippy::collapsible_str_replace \
+		-D clippy::used_underscore_items \
+		-D clippy::while_let_on_iterator \
+		-D clippy::unnecessary_filter_map \
+		-D clippy::manual_next_back \
+		-D clippy::cloned_ref_to_slice_refs \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.

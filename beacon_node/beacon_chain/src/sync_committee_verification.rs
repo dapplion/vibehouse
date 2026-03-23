@@ -386,11 +386,12 @@ impl<T: BeaconChainTypes> VerifiedSyncContribution<T> {
         //
         // It's important to double check that the contribution is not already known, otherwise two
         // contribution processed at the same time could be published.
-        if let ObserveOutcome::Subset = chain
+        if chain
             .observed_sync_contributions
             .write()
             .observe_item(contribution, Some(contribution_data_root))
             .map_err(|e| Error::BeaconChainError(Box::new(e.into())))?
+            == ObserveOutcome::Subset
         {
             metrics::inc_counter(&metrics::SYNC_CONTRIBUTION_SUBSETS);
             return Err(Error::SyncContributionSupersetKnown(contribution_data_root));

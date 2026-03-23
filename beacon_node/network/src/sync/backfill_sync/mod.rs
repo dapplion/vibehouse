@@ -201,7 +201,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
 
     /// Pauses the backfill sync if it's currently syncing.
     pub(super) fn pause(&self) {
-        if let BackFillState::Syncing = self.state() {
+        if self.state() == BackFillState::Syncing {
             debug!(processed_epochs = %self.validated_batches, to_be_processed = %self.current_start,"Backfill sync paused");
             self.set_state(BackFillState::Paused);
         }

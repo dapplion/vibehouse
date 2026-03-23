@@ -4874,3 +4874,18 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - `match_single_binding` — zero existing warnings
   - `wildcard_in_or_patterns` — zero existing warnings
 - **Tests**: 2317/2317 types+state_processing+proto_array. `make lint-full` clean. Pre-push hook passed, pushed successfully.
+
+### Run 2229 (2026-03-23)
+
+**Enforce 25 new clippy lints, fix verbose file reads and pattern matching**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new changes since run 2228.
+- **25 new lints enforced** (now 141 total extra `-D` lints in Makefile):
+  - `equatable_if_let` — 20+ fixes across state_processing, beacon_chain, http_api, network, database_manager, initialized_validators: `if let Variant = x` → `if x == Variant` or `matches!(x, Variant)`. Added `PartialEq` to `AppRequestId`, `StateId`, `BlockId`, `ProposerRewardCalculation`. Added `Eq` to `StateId`, `BlockId`.
+  - `verbose_file_reads` — 8 fixes: `File::open` + `read_to_end`/`read_to_string` → `fs::read`/`fs::read_to_string` across int_to_bytes, eth2_network_config, vibehouse_network (utils, enr), beacon_node config, lcli (http_sync, indexed_attestations, parse_ssz, transition_blocks). Cleaned up unused `File`/`Read`/`io::prelude` imports.
+  - `match_wild_err_arm` — 4 fixes: `Err(_) => panic!(...)` → `Err(e) => panic!("...: {e:?}")` in http_api tests (status_tests, tests)
+  - `string_add` — 1 fix: `"uint".to_owned() + parts[1]` → `format!("uint{}", parts[1])` in ef_tests ssz_generic
+  - `implicit_hasher` — 2 `#[allow]` annotations (slasher test_utils, operation_pool max_cover — test/internal code where generalizing hasher is unnecessary)
+  - `iter_with_drain` — 1 `#[allow]` annotation (rpc_tests — drain in loop intentionally reuses allocation)
+  - `from_over_into`, `flat_map_identity`, `unused_io_amount`, `rc_buffer`, `rc_mutex`, `manual_c_str_literals`, `unnecessary_fallible_conversions`, `implied_bounds_in_impls`, `no_effect_replace`, `legacy_numeric_constants`, `manual_pattern_char_comparison`, `single_char_add_str`, `iter_kv_map`, `collapsible_str_replace`, `used_underscore_items`, `while_let_on_iterator`, `unnecessary_filter_map`, `manual_next_back`, `cloned_ref_to_slice_refs` — zero existing warnings, regression prevention
+- **Tests**: 2438/2438 types+state_processing+proto_array+fork_choice, 413/413 store+slasher+operation_pool, 35/35 EF ops+epoch+sanity, 9/9 int_to_bytes+eth2_network_config+database_manager. `make lint-full` clean.

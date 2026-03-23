@@ -9,7 +9,7 @@ use eth2_network_config::Eth2NetworkConfig;
 use ssz::Encode;
 use std::fs;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -112,9 +112,7 @@ async fn get_block_from_source<T: EthSpec>(
     let mut cache_path = cache_dir_path.join(format!("block_{block_id}"));
 
     if cache_path.exists() {
-        let mut f = File::open(&cache_path).unwrap();
-        let mut bytes = vec![];
-        f.read_to_end(&mut bytes).unwrap();
+        let bytes = fs::read(&cache_path).unwrap();
         PublishBlockRequest::from_ssz_bytes(&bytes, ForkName::Deneb).unwrap()
     } else {
         let block_from_source = source

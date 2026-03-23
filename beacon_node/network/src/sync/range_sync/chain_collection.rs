@@ -468,7 +468,7 @@ impl<T: BeaconChainTypes> ChainCollection<T> {
         sync_type: RangeSyncType,
         network: &mut SyncNetworkContext<T>,
     ) {
-        let collection = if let RangeSyncType::Finalized = sync_type {
+        let collection = if sync_type == RangeSyncType::Finalized {
             &mut self.finalized_chains
         } else {
             &mut self.head_chains

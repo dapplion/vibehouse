@@ -35,7 +35,7 @@ pub mod attesting_indices_base {
         let mut indices = Vec::with_capacity(bitlist.num_set_bits());
 
         for (i, validator_index) in committee.iter().enumerate() {
-            if let Ok(true) = bitlist.get(i) {
+            if bitlist.get(i) == Ok(true) {
                 indices.push(*validator_index as u64);
             }
         }

@@ -214,7 +214,7 @@ impl KeyCache {
 
     pub(crate) fn remove(&mut self, uuid: &Uuid) {
         //do nothing in not decrypted state
-        if let State::NotDecrypted = self.state {
+        if self.state == State::NotDecrypted {
             return;
         }
         self.pairs.remove(uuid);
@@ -227,7 +227,7 @@ impl KeyCache {
 
     pub(crate) fn add(&mut self, keypair: Keypair, uuid: &Uuid, password: PlainText) {
         //do nothing in not decrypted state
-        if let State::NotDecrypted = self.state {
+        if self.state == State::NotDecrypted {
             return;
         }
         self.pairs.insert(*uuid, keypair);

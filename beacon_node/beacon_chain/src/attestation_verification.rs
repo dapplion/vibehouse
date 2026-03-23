@@ -741,11 +741,12 @@ impl<'a, T: BeaconChainTypes> VerifiedAggregatedAttestation<'a, T> {
         //
         // It's important to double check that the attestation is not already known, otherwise two
         // attestations processed at the same time could be published.
-        if let ObserveOutcome::Subset = chain
+        if chain
             .observed_attestations
             .write()
             .observe_item(attestation, Some(observed_attestation_key_root))
             .map_err(|e| Error::BeaconChainError(Box::new(e.into())))?
+            == ObserveOutcome::Subset
         {
             metrics::inc_counter(&metrics::AGGREGATED_ATTESTATION_SUBSETS);
             return Err(Error::AttestationSupersetKnown(

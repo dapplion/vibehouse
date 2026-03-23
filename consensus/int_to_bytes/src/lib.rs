@@ -60,7 +60,7 @@ pub fn int_to_bytes96(int: u64) -> [u8; 96] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::{fs::File, io::prelude::*, path::PathBuf};
+    use std::path::PathBuf;
     use yaml_rust2::yaml;
 
     #[test]
@@ -75,16 +75,10 @@ mod tests {
          *
          * https://github.com/ethereum/eth2.0-test-generators
          */
-        let mut file = {
-            let mut file_path_buf = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-            file_path_buf.push("src/specs/test_vector_int_to_bytes.yml");
+        let mut file_path_buf = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        file_path_buf.push("src/specs/test_vector_int_to_bytes.yml");
 
-            File::open(file_path_buf).unwrap()
-        };
-
-        let mut yaml_str = String::new();
-
-        file.read_to_string(&mut yaml_str).unwrap();
+        let yaml_str = std::fs::read_to_string(file_path_buf).unwrap();
 
         let docs = yaml::YamlLoader::load_from_str(&yaml_str).unwrap();
         let doc = &docs[0];

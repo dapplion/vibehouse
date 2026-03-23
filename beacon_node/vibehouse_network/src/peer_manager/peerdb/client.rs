@@ -203,7 +203,7 @@ fn client_from_agent_version(agent_version: &str) -> (ClientKind, String, String
             (kind, version, os_version)
         }
         Some("erigon") => {
-            let client_kind = if let Some("caplin") = agent_split.next() {
+            let client_kind = if agent_split.next() == Some("caplin") {
                 ClientKind::Caplin
             } else {
                 ClientKind::Unknown

@@ -5,8 +5,6 @@ use serde::Serialize;
 use snap::raw::Decoder;
 use ssz::Decode;
 use std::fs;
-use std::fs::File;
-use std::io::Read;
 use std::str::FromStr;
 use tracing::info;
 use types::{
@@ -50,12 +48,7 @@ pub(crate) fn run_parse_ssz<E: EthSpec>(
         let mut decoder = Decoder::new();
         decoder.decompress_vec(&bytes).unwrap()
     } else {
-        let mut bytes = vec![];
-        let mut file =
-            File::open(filename).map_err(|e| format!("Unable to open {filename}: {e}"))?;
-        file.read_to_end(&mut bytes)
-            .map_err(|e| format!("Unable to read {filename}: {e}"))?;
-        bytes
+        fs::read(filename).map_err(|e| format!("Unable to read {filename}: {e}"))?
     };
 
     let spec = &network_config.chain_spec::<E>()?;

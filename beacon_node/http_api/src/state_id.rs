@@ -9,7 +9,7 @@ use types::{BeaconState, Checkpoint, EthSpec, Fork, Hash256, Slot};
 
 /// Wraps `eth2::types::StateId` and provides common state-access functionality. E.g., reading
 /// states or parts of states from the database.
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, PartialEq, Eq, serde::Deserialize)]
 #[serde(try_from = "String")]
 pub struct StateId(pub CoreStateId);
 

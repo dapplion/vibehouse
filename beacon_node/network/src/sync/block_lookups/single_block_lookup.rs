@@ -208,7 +208,7 @@ impl<T: BeaconChainTypes> SingleBlockLookup<T> {
         // Download the block first, then determine data needs from its commitments
         self.continue_request::<BlockRequestState<T::EthSpec>>(cx, 0)?;
 
-        if let ComponentRequests::WaitingForBlock = self.component_requests {
+        if matches!(self.component_requests, ComponentRequests::WaitingForBlock) {
             let downloaded_block = self
                 .block_request_state
                 .state

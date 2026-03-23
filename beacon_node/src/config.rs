@@ -19,7 +19,7 @@ use sensitive_url::SensitiveUrl;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::fs;
-use std::io::{IsTerminal, Read};
+use std::io::IsTerminal;
 use std::net::Ipv6Addr;
 use std::net::{IpAddr, Ipv4Addr, ToSocketAddrs};
 use std::num::NonZeroU16;
@@ -530,15 +530,7 @@ pub fn get_config<E: EthSpec>(
             cli_args.get_one::<String>("checkpoint-blobs"),
         ) {
             let read = |path: &str| {
-                use std::fs::File;
-                use std::io::Read;
-                File::open(Path::new(path))
-                    .and_then(|mut f| {
-                        let mut buffer = vec![];
-                        f.read_to_end(&mut buffer)?;
-                        Ok(buffer)
-                    })
-                    .map_err(|e| format!("Unable to open {path}: {e:?}"))
+                std::fs::read(Path::new(path)).map_err(|e| format!("Unable to open {path}: {e:?}"))
             };
 
             let anchor_state_bytes = read(initial_state_path)?;
@@ -875,11 +867,8 @@ pub fn get_config<E: EthSpec>(
     if let Some(invalid_block_roots_file_path) =
         clap_utils::parse_optional::<String>(cli_args, "invalid-block-roots")?
     {
-        let mut file = std::fs::File::open(invalid_block_roots_file_path)
-            .map_err(|e| format!("Failed to open invalid-block-roots file: {e}"))?;
-        let mut contents = String::new();
-        file.read_to_string(&mut contents)
-            .map_err(|e| format!("Failed to read invalid-block-roots file {e}"))?;
+        let contents = std::fs::read_to_string(invalid_block_roots_file_path)
+            .map_err(|e| format!("Failed to read invalid-block-roots file: {e}"))?;
         let invalid_block_roots: HashSet<Hash256> = contents
             .split(',')
             .filter_map(

@@ -1046,7 +1046,7 @@ async fn post_beacon_state_validator_identities<T: BeaconChainTypes>(
     let chain = state.chain()?;
     let query: ValidatorIdentitiesRequestBody = json_body_or_default(&headers, body).await?;
     let accept = accept_header(&headers);
-    let priority = if let StateId(eth2::types::StateId::Head) = state_id {
+    let priority = if state_id == StateId(eth2::types::StateId::Head) {
         Priority::P0
     } else {
         Priority::P1
@@ -1077,7 +1077,7 @@ async fn get_beacon_state_validators<T: BeaconChainTypes>(
     MultiKeyQuery(query): MultiKeyQuery<api_types::ValidatorsQuery>,
 ) -> Result<Response, ApiError> {
     let chain = state.chain()?;
-    let priority = if let StateId(eth2::types::StateId::Head) = state_id {
+    let priority = if state_id == StateId(eth2::types::StateId::Head) {
         Priority::P0
     } else {
         Priority::P1
@@ -1103,7 +1103,7 @@ async fn post_beacon_state_validators<T: BeaconChainTypes>(
 ) -> Result<Response, ApiError> {
     let chain = state.chain()?;
     let query: ValidatorsRequestBody = json_body(&headers, body).await?;
-    let priority = if let StateId(eth2::types::StateId::Head) = state_id {
+    let priority = if state_id == StateId(eth2::types::StateId::Head) {
         Priority::P0
     } else {
         Priority::P1
@@ -1126,7 +1126,7 @@ async fn get_beacon_state_validators_id<T: BeaconChainTypes>(
     Path((state_id, validator_id)): Path<(StateId, ValidatorId)>,
 ) -> Result<Response, ApiError> {
     let chain = state.chain()?;
-    let priority = if let StateId(eth2::types::StateId::Head) = state_id {
+    let priority = if state_id == StateId(eth2::types::StateId::Head) {
         Priority::P0
     } else {
         Priority::P1
@@ -1928,7 +1928,7 @@ async fn get_beacon_block_root<T: BeaconChainTypes>(
     Path(block_id): Path<BlockId>,
 ) -> Result<Response, ApiError> {
     let chain = state.chain()?;
-    let priority = if let BlockId(eth2::types::BlockId::Head) = block_id {
+    let priority = if block_id == BlockId(eth2::types::BlockId::Head) {
         Priority::P0
     } else {
         Priority::P1
@@ -2039,7 +2039,7 @@ async fn get_blob_sidecars<T: BeaconChainTypes>(
                 .fork_name(&chain.spec)
                 .map_err(inconsistent_fork_rejection)?;
 
-            if let Some(api_types::Accept::Ssz) = accept {
+            if accept == Some(api_types::Accept::Ssz) {
                 axum::http::Response::builder()
                     .status(200)
                     .body(axum::body::Body::from(
@@ -2075,7 +2075,7 @@ async fn get_blobs<T: BeaconChainTypes>(
         .blocking_response_task(Priority::P1, move || {
             let response = block_id.get_blobs_by_versioned_hashes(versioned_hashes, &chain)?;
 
-            if let Some(api_types::Accept::Ssz) = accept {
+            if accept == Some(api_types::Accept::Ssz) {
                 axum::http::Response::builder()
                     .status(200)
                     .body(axum::body::Body::from(response.data.as_ssz_bytes()))
@@ -3050,7 +3050,7 @@ async fn get_debug_data_column_sidecars<T: BeaconChainTypes>(
             let (data_columns, fork_name, execution_optimistic, finalized) =
                 block_id.get_data_columns(indices, &chain)?;
 
-            if let Some(api_types::Accept::Ssz) = accept {
+            if accept == Some(api_types::Accept::Ssz) {
                 Response::builder()
                     .status(200)
                     .body(data_columns.as_ssz_bytes().into())

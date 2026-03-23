@@ -873,7 +873,7 @@ impl<E: EthSpec> Network<E> {
                         }
                     }
 
-                    if let PublishError::NoPeersSubscribedToTopic = e {
+                    if matches!(e, PublishError::NoPeersSubscribedToTopic) {
                         self.gossip_cache.insert(topic, message_data);
                     }
                 }
@@ -1434,7 +1434,7 @@ impl<E: EthSpec> Network<E> {
                             ConnectionDirection::Outgoing,
                         );
                         // inform failures of requests coming outside the behaviour
-                        if let AppRequestId::Internal = id {
+                        if id == AppRequestId::Internal {
                             None
                         } else {
                             Some(NetworkEvent::RPCFailed {

@@ -111,36 +111,30 @@ pub fn use_or_load_enr(
     config: &NetworkConfig,
 ) -> Result<(), String> {
     let enr_f = config.network_dir.join(ENR_FILENAME);
-    if let Ok(mut enr_file) = File::open(enr_f.clone()) {
-        let mut enr_string = String::new();
-        match enr_file.read_to_string(&mut enr_string) {
-            Err(_) => debug!("Could not read ENR from file"),
-            Ok(_) => {
-                match Enr::from_str(&enr_string) {
-                    Ok(disk_enr) => {
-                        // if the same node id, then we may need to update our sequence number
-                        if local_enr.node_id() == disk_enr.node_id() {
-                            if compare_enr(local_enr, &disk_enr) {
-                                debug!(file = ?enr_f,"ENR loaded from disk");
-                                // the stored ENR has the same configuration, use it
-                                *local_enr = disk_enr;
-                                return Ok(());
-                            }
+    if let Ok(enr_string) = std::fs::read_to_string(enr_f.clone()) {
+        match Enr::from_str(&enr_string) {
+            Ok(disk_enr) => {
+                // if the same node id, then we may need to update our sequence number
+                if local_enr.node_id() == disk_enr.node_id() {
+                    if compare_enr(local_enr, &disk_enr) {
+                        debug!(file = ?enr_f,"ENR loaded from disk");
+                        // the stored ENR has the same configuration, use it
+                        *local_enr = disk_enr;
+                        return Ok(());
+                    }
 
-                            // same node id, different configuration - update the sequence number
-                            // Note: local_enr is generated with default(0) attnets value,
-                            // so a non default value in persisted enr will also update sequence number.
-                            let new_seq_no = disk_enr.seq().checked_add(1).ok_or("ENR sequence number on file is too large. Remove it to generate a new NodeId")?;
-                            local_enr.set_seq(new_seq_no, enr_key).map_err(|e| {
-                                format!("Could not update ENR sequence number: {e:?}")
-                            })?;
-                            debug!(seq = new_seq_no, "ENR sequence number increased");
-                        }
-                    }
-                    Err(e) => {
-                        warn!(error = ?e,"ENR from file could not be decoded");
-                    }
+                    // same node id, different configuration - update the sequence number
+                    // Note: local_enr is generated with default(0) attnets value,
+                    // so a non default value in persisted enr will also update sequence number.
+                    let new_seq_no = disk_enr.seq().checked_add(1).ok_or("ENR sequence number on file is too large. Remove it to generate a new NodeId")?;
+                    local_enr
+                        .set_seq(new_seq_no, enr_key)
+                        .map_err(|e| format!("Could not update ENR sequence number: {e:?}"))?;
+                    debug!(seq = new_seq_no, "ENR sequence number increased");
                 }
+            }
+            Err(e) => {
+                warn!(error = ?e,"ENR from file could not be decoded");
             }
         }
     }
@@ -339,13 +333,9 @@ fn compare_enr(local_enr: &Enr, disk_enr: &Enr) -> bool {
 /// Loads enr from the given directory
 pub fn load_enr_from_disk(dir: &Path) -> Result<Enr, String> {
     let enr_f = dir.join(ENR_FILENAME);
-    let mut enr_file = File::open(enr_f).map_err(|e| format!("Failed to open enr file: {e:?}"))?;
-    let mut enr_string = String::new();
-    match enr_file.read_to_string(&mut enr_string) {
-        Err(_) => Err("Could not read ENR from file".to_string()),
-        Ok(_) => Enr::from_str(&enr_string)
-            .map_err(|e| format!("ENR from file could not be decoded: {e:?}")),
-    }
+    let enr_string = std::fs::read_to_string(enr_f)
+        .map_err(|e| format!("Could not read ENR from file: {e:?}"))?;
+    Enr::from_str(&enr_string).map_err(|e| format!("ENR from file could not be decoded: {e:?}"))
 }
 
 /// Saves an ENR to disk
