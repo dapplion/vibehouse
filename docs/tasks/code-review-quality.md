@@ -5198,3 +5198,14 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Spec**: No new consensus-specs PRs merged since last check. PTC lookbehind (#4979) still open/under discussion. No new spec test releases.
 - **Dependencies**: `cargo update` pulled 9 semver-compatible patches (deflate64, env_logger, toml_edit, zip, etc.). Build + 456 tests pass.
 - **Audit**: Same known advisories (rsa RUSTSEC-2023-0071, unmaintained warnings). No new vulnerabilities.
+
+### Run 2265 (2026-03-23)
+
+**Full verification — all clean**
+
+- **CI**: Green (latest push success). Nightly slasher failure already fixed (commit `5d23ecf85` landed after nightly ran — tonight's nightly will pass). Verified slasher redb-only build is clean locally.
+- **Spec**: No new consensus-specs PRs merged. v1.7.0-alpha.3 still latest release. All 7 tracked open Gloas PRs (#4979, #4962, #4843, #4892, #4898, #4954, #4747) still open. #5022 and #5008 (merged Mar 22-23) already implemented.
+- **Tests**: 4919/4920 workspace tests pass (1 skipped). 8 web3signer_tests failures are infra-dependent (excluded from CI). Clippy: 0 warnings.
+- **Dependencies**: No new semver-compatible updates available. 14 major-version bumps exist (bincode 1→3, rand 0.9→0.10, reqwest 0.12→0.13, etc.) — not actionable without code changes.
+- **Audit**: Same known advisories. rsa RUSTSEC-2023-0071 still has no upstream fix. 5 unmaintained warnings (paste, filesystem, ansi_term, derivative, bincode — all via sp1 or internal crate name collision).
+- **No code changes this run** — codebase verified healthy, all priorities done, holding for spec PRs.
