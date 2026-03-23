@@ -265,6 +265,7 @@ lint:
 		-D clippy::collapsible_str_replace \
 		-D clippy::collection_is_never_read \
 		-D clippy::comparison_chain \
+		-D clippy::confusing_method_to_numeric_cast \
 		-D clippy::copy_iterator \
 		-D clippy::dbg_macro \
 		-D clippy::debug_assert_with_mut_call \
@@ -274,6 +275,7 @@ lint:
 		-D clippy::deref_addrof \
 		-D clippy::derive_partial_eq_without_eq \
 		-D clippy::disallowed_methods \
+		-D clippy::doc_broken_link \
 		-D clippy::doc_lazy_continuation \
 		-D clippy::double_parens \
 		-D clippy::elidable_lifetime_names \
@@ -310,9 +312,11 @@ lint:
 		-D clippy::inconsistent_struct_constructor \
 		-D clippy::index_refutable_slice \
 		-D clippy::inefficient_to_string \
+		-D clippy::infallible_try_from \
 		-D clippy::inline_always \
 		-D clippy::into_iter_without_iter \
 		-D clippy::invalid_upcast_comparisons \
+		-D clippy::ip_constant \
 		-D clippy::items_after_statements \
 		-D clippy::iter_filter_is_ok \
 		-D clippy::iter_filter_is_some \
@@ -344,6 +348,7 @@ lint:
 		-D clippy::manual_flatten \
 		-D clippy::manual_hash_one \
 		-D clippy::manual_ilog2 \
+		-D clippy::manual_is_multiple_of \
 		-D clippy::manual_instant_elapsed \
 		-D clippy::manual_midpoint \
 		-D clippy::manual_is_ascii_check \
@@ -414,7 +419,9 @@ lint:
 		-D clippy::panicking_unwrap \
 		-D clippy::partialeq_ne_impl \
 		-D clippy::path_buf_push_overwrite \
+		-D clippy::possible_missing_else \
 		-D clippy::ptr_arg \
+		-D clippy::ptr_offset_by_literal \
 		-D clippy::ptr_as_ptr \
 		-D clippy::range_minus_one \
 		-D clippy::range_plus_one \
@@ -425,6 +432,7 @@ lint:
 		-D clippy::redundant_allocation \
 		-D clippy::redundant_clone \
 		-D clippy::redundant_closure \
+		-D clippy::redundant_iter_cloned \
 		-D clippy::redundant_closure_for_method_calls \
 		-D clippy::redundant_else \
 		-D clippy::redundant_feature_names \
@@ -433,11 +441,14 @@ lint:
 		-D clippy::redundant_type_annotations \
 		-D clippy::ref_as_ptr \
 		-D clippy::ref_binding_to_reference \
+		-D clippy::replace_box \
 		-D clippy::ref_option_ref \
 		-D clippy::rest_pat_in_fully_bound_structs \
 		-D clippy::result_map_unit_fn \
 		-D clippy::same_functions_in_if_condition \
+		-D clippy::same_length_and_capacity \
 		-D clippy::search_is_some \
+		-D clippy::self_only_used_in_recursion \
 		-D clippy::semicolon_if_nothing_returned \
 		-D clippy::set_contains_or_insert \
 		-D clippy::should_panic_without_expect \
@@ -479,6 +490,7 @@ lint:
 		-D clippy::unnecessary_join \
 		-D clippy::unnecessary_lazy_evaluations \
 		-D clippy::unnecessary_map_on_constructor \
+		-D clippy::unnecessary_option_map_or_else \
 		-D clippy::unnecessary_min_or_max \
 		-D clippy::unnecessary_operation \
 		-D clippy::unnecessary_safety_doc \
@@ -496,6 +508,7 @@ lint:
 		-D clippy::unused_self \
 		-D clippy::used_underscore_items \
 		-D clippy::useless_asref \
+		-D clippy::useless_concat \
 		-D clippy::useless_conversion \
 		-D clippy::useless_format \
 		-D clippy::useless_let_if_seq \
