@@ -4727,3 +4727,30 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Files changed**: 53 files, 569 insertions, 913 deletions (net -344 lines)
 - **Tests**: 923/923 (proto_array+fork_choice+store+slasher+op_pool+keystore+wallet), 407/407 vibehouse_network. `make lint-full` clean.
 - **CI**: Pre-push hook passed, push succeeded.
+
+### Run 2223 (2026-03-23)
+
+**Enforce 16 new clippy lints and fix all warnings**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs releases.
+- **CI**: Run from run 2222 had transient EF test failure (GitHub 502), not a real test failure.
+- **16 new lints enforced** (now 36 total extra `-D` lints in Makefile):
+  - `default_trait_access` — prefer `Type::default()` over `Default::default()` (72 fixes across 47 files)
+  - `redundant_closure` — use function pointers directly
+  - `ptr_as_ptr` — use `.cast()` instead of `as *const T`
+  - `macro_use_imports` — prefer explicit imports over `#[macro_use]`
+  - `needless_continue` — remove unnecessary `continue` statements
+  - `map_flatten` — use `.flat_map()` instead of `.map().flatten()`
+  - `manual_assert` — use `assert!()` instead of `if !cond { panic!() }`
+  - `ref_option_ref` — avoid `&Option<&T>`
+  - `option_option` — avoid `Option<Option<T>>`
+  - `verbose_bit_mask` — use `.is_power_of_two()` etc.
+  - `zero_sized_map_values` — use `HashSet` instead of `HashMap<K, ()>`
+  - `stable_sort_primitive` — use `.sort_unstable()` for primitives
+  - `string_add_assign` — use `push_str()` instead of `+= &str`
+  - `naive_bytecount` — use `bytecount` crate or `filter().count()`
+  - `filter_map_next` — use `.find_map()` instead of `.filter_map().next()`
+  - `mut_mut` — avoid `&mut &mut T`
+- **`default_trait_access` was the bulk of the work**: the lint only reports errors one crate at a time (compilation stops at first erroring crate), requiring multiple lint→fix→lint iterations across types, state_processing, beacon_chain, execution_layer, vibehouse_network, operation_pool, client, beacon_node, http_api, validator_services, and test files.
+- **Notable fixes**: 1 `#[allow]` annotation for superstruct macro in `execution_payload_header.rs` (generic `Default::default()` inside `map_execution_payload_header_ref!` macro can't know the concrete type).
+- **Tests**: 1085/1085 types, 1026/1026 state_processing, 635/635 fork_choice+store+op_pool, 143/143 execution_layer, 204/204 network. `make lint-full` clean. Pre-push hook passed, pushed successfully.
