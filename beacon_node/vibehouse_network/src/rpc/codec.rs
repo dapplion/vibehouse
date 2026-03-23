@@ -2239,7 +2239,7 @@ mod tests {
         let mut dst = BytesMut::with_capacity(1024);
 
         // Smallest > 10 byte varint
-        let len: u128 = 2u128.pow(70);
+        let len = 2u128.pow(70);
 
         // Insert length-prefix
         uvi_codec.encode(len, &mut dst).unwrap();

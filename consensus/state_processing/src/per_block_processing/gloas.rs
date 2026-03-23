@@ -409,7 +409,7 @@ pub fn get_ptc_committee<E: EthSpec>(
     }
 
     let max_effective_balance = spec.max_effective_balance_electra;
-    let max_random_value: u64 = (1u64 << 16).saturating_sub(1); // 2^16 - 1
+    let max_random_value = (1u64 << 16).saturating_sub(1); // 2^16 - 1
 
     let mut selected: Vec<u64> = Vec::with_capacity(ptc_size);
     let mut i: u64 = 0;
@@ -417,7 +417,7 @@ pub fn get_ptc_committee<E: EthSpec>(
     hash_input[..32].copy_from_slice(&seed);
     // Cache the hash output — it only changes every 16 iterations since the
     // input uses i/16. Avoids ~15/16 redundant SHA-256 computations.
-    let mut cached_hash_group: u64 = u64::MAX; // impossible initial value
+    let mut cached_hash_group = u64::MAX; // impossible initial value
     let mut random_bytes = [0u8; 32];
     while selected.len() < ptc_size {
         let next_index = i.safe_rem(total as u64)? as usize;

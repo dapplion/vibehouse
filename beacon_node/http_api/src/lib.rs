@@ -887,7 +887,7 @@ pub fn serve<T: BeaconChainTypes>(
         .layer(cors_layer)
         .with_state(state);
 
-    let http_socket: SocketAddr = SocketAddr::new(config.listen_addr, config.listen_port);
+    let http_socket = SocketAddr::new(config.listen_addr, config.listen_port);
 
     let listener = std::net::TcpListener::bind(http_socket).map_err(Error::Io)?;
     listener.set_nonblocking(true).map_err(Error::Io)?;

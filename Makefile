@@ -382,6 +382,34 @@ lint:
 		-D clippy::manual_map \
 		-D clippy::useless_vec \
 		-D clippy::option_as_ref_cloned \
+		-D clippy::redundant_type_annotations \
+		-D clippy::copy_iterator \
+		-D clippy::nonstandard_macro_braces \
+		-D clippy::zero_prefixed_literal \
+		-D clippy::iter_filter_is_some \
+		-D clippy::iter_filter_is_ok \
+		-D clippy::empty_enum_variants_with_brackets \
+		-D clippy::needless_lifetimes \
+		-D clippy::needless_return \
+		-D clippy::needless_borrow \
+		-D clippy::needless_borrows_for_generic_args \
+		-D clippy::needless_range_loop \
+		-D clippy::manual_range_contains \
+		-D clippy::single_component_path_imports \
+		-D clippy::unnecessary_to_owned \
+		-D clippy::ptr_arg \
+		-D clippy::clone_on_copy \
+		-D clippy::unnecessary_cast \
+		-D clippy::map_clone \
+		-D clippy::if_same_then_else \
+		-D clippy::neg_cmp_op_on_partial_ord \
+		-D clippy::no_effect \
+		-D clippy::unnecessary_operation \
+		-D clippy::identity_op \
+		-D clippy::double_parens \
+		-D clippy::let_and_return \
+		-D clippy::match_single_binding \
+		-D clippy::wildcard_in_or_patterns \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.

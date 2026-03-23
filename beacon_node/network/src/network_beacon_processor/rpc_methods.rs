@@ -607,7 +607,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         );
 
         // Should not send more than max light client updates
-        let max_request_size: u64 = req.max_requested();
+        let max_request_size = req.max_requested();
         if req.count > max_request_size {
             return Err((
                 RpcErrorResponse::InvalidRequest,

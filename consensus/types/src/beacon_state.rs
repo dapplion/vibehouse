@@ -1070,7 +1070,7 @@ impl<E: EthSpec> BeaconState<E> {
         hash_input.extend_from_slice(&[0u8; 8]);
 
         // Cache the hash output — only recompute when i/items_per_group changes
-        let mut cached_hash_group: usize = usize::MAX;
+        let mut cached_hash_group = usize::MAX;
         let mut random_bytes = [0u8; 32];
 
         let mut i = 0;
@@ -1394,7 +1394,7 @@ impl<E: EthSpec> BeaconState<E> {
         hash_input.extend_from_slice(seed_slice);
         hash_input.extend_from_slice(&[0u8; 8]);
 
-        let mut cached_hash_group: usize = usize::MAX;
+        let mut cached_hash_group = usize::MAX;
         let mut random_bytes = [0u8; 32];
 
         let mut i = 0;

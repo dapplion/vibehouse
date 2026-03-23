@@ -137,7 +137,7 @@ impl<E: EthSpec> LocalNetwork<E> {
         network_params: LocalNetworkParams,
         context: RuntimeContext<E>,
     ) -> Result<(LocalNetwork<E>, ClientConfig, MockExecutionConfig), String> {
-        let genesis_time: u64 = (SystemTime::now()
+        let genesis_time = (SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_err(|_| "should get system time")?
             + Duration::from_secs(network_params.genesis_delay))
