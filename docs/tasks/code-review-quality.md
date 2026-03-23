@@ -4769,3 +4769,31 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - `suboptimal_flops` — use fused multiply-add (1 fix in gossipsub scoring test)
   - `branches_sharing_code` — extract shared code from if/else branches (5 fixes across state_processing, beacon_block_streamer, peerdb, list_validators, epoch_processing tests)
 - **Tests**: 1085/1085 types, 1026/1026 state_processing, 400/400 store+keystore+validator_manager, 550/550 network+execution_layer, 35/35 EF ops+epoch+sanity, 9/9 fork choice (including new `on_execution_payload`). `make lint-full` clean.
+
+### Run 2225 (2026-03-23)
+
+**Enforce 16 new clippy lints, fix duplicate queue pop bug, remove unused async**
+
+- **Spec**: v1.7.0-alpha.3 still latest. No new consensus-specs releases.
+- **CI**: Run from run 2224 in progress (all jobs building).
+- **Bug found**: `beacon_processor/src/lib.rs` had duplicate `rpc_custody_column_queue.pop()` branches — the second was dead code (unreachable). Caught by `same_functions_in_if_condition` lint. Removed.
+- **19 `unused_async` functions fixed**: removed `async` from functions that never await (and fixed all call sites), or added `#[allow]` where async is required by the caller interface (axum handlers, `Box::pin` callers). Major sites: `eth2/src/lib.rs` (3 path builders), `validator_manager/` (4 test helpers with ~20 `.await` removals), `validator_services/` (block_service, duties_service, sync_committee_service), `beacon_block_streamer`, `network/service`, `vibehouse_network/peer_manager` tests.
+- **`bool_to_int_with_if` fixes**: 11 sites converted `if cond { 1 } else { 0 }` to `u64::from(cond)` or `usize::from(cond)` across test files.
+- **16 new lints enforced** (now 58 total extra `-D` lints in Makefile):
+  - `unused_async` — functions with no await statements (19 fixes)
+  - `same_functions_in_if_condition` — caught real duplicate pop bug
+  - `no_effect_underscore_binding` — unused `_var` assignments (2 fixes)
+  - `manual_is_variant_and` — zero existing warnings
+  - `bool_to_int_with_if` — use `From` trait (11 fixes)
+  - `cast_lossless` — use `From` for lossless casts (1 fix)
+  - `manual_ok_or` — zero existing warnings
+  - `manual_instant_elapsed` — zero existing warnings
+  - `unicode_not_nfc` — zero existing warnings
+  - `transmute_ptr_to_ptr` — zero existing warnings
+  - `ref_as_ptr` — zero existing warnings
+  - `explicit_deref_methods` — zero existing warnings
+  - `invalid_upcast_comparisons` — zero existing warnings
+  - `large_types_passed_by_value` — zero existing warnings
+  - `manual_find_map` — zero existing warnings
+  - `mismatching_type_param_order` — zero existing warnings
+- **Tests**: 2317/2317 types+state_processing+proto_array, 121/121 fork_choice, 8/8 beacon_processor, 645/645 vibehouse_network+eth2+monitoring_api, 47/47 validator_services, 43/43 validator_manager. `make lint-full` clean. Pre-push hook passed, pushed successfully.
