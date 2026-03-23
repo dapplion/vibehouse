@@ -4754,3 +4754,18 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **`default_trait_access` was the bulk of the work**: the lint only reports errors one crate at a time (compilation stops at first erroring crate), requiring multiple lint→fix→lint iterations across types, state_processing, beacon_chain, execution_layer, vibehouse_network, operation_pool, client, beacon_node, http_api, validator_services, and test files.
 - **Notable fixes**: 1 `#[allow]` annotation for superstruct macro in `execution_payload_header.rs` (generic `Default::default()` inside `map_execution_payload_header_ref!` macro can't know the concrete type).
 - **Tests**: 1085/1085 types, 1026/1026 state_processing, 635/635 fork_choice+store+op_pool, 143/143 execution_layer, 204/204 network. `make lint-full` clean. Pre-push hook passed, pushed successfully.
+
+### Run 2224 (2026-03-23)
+
+**Enforce 6 new clippy lints, fix bugs found by suspicious lints**
+
+- **Spec**: v1.7.0-alpha.3 still latest. Checked post-alpha.3 spec commits: #5008 (field name doc fix, no code impact), #4940 (new Gloas fork choice tests — all pass), #5014 (EIP-8025 ZK proof P2P), #4902 (phase0 gossip tests).
+- **CI**: Run from run 2223 in progress, check+clippy passed.
+- **6 new lints enforced** (now 42 total extra `-D` lints in Makefile):
+  - `suspicious_operation_groupings` — catches mismatched field names in comparisons (1 false positive: `committee_index == attestation_data.index` — `index` IS the committee index in AttestationData, allowed with comment)
+  - `literal_string_with_formatting_args` — catches `"{:?}".to_string()` instead of `format!("{:?}", ...)` (1 real bug fixed in `create_validator.rs` — error message had literal `{:?}` text)
+  - `unnecessary_struct_initialization` — catches `Foo { ..Default::default() }` → `Foo::default()` (1 fix in store config test)
+  - `string_lit_as_bytes` — prefer `b"..."` over `"...".as_bytes()` (7 fixes across test files; 1 `#[allow]` for non-ASCII `"é"` which can't be a byte literal)
+  - `suboptimal_flops` — use fused multiply-add (1 fix in gossipsub scoring test)
+  - `branches_sharing_code` — extract shared code from if/else branches (5 fixes across state_processing, beacon_block_streamer, peerdb, list_validators, epoch_processing tests)
+- **Tests**: 1085/1085 types, 1026/1026 state_processing, 400/400 store+keystore+validator_manager, 550/550 network+execution_layer, 35/35 EF ops+epoch+sanity, 9/9 fork choice (including new `on_execution_payload`). `make lint-full` clean.
