@@ -578,13 +578,13 @@ mod tests {
             gas_limit: bid.gas_limit,
             timestamp,
             withdrawals: VariableList::default(), // matches empty payload_expected_withdrawals
-            ..Default::default()
+            ..ExecutionPayloadGloas::default()
         };
 
         SignedExecutionPayloadEnvelope {
             message: ExecutionPayloadEnvelope {
                 payload,
-                execution_requests: Default::default(),
+                execution_requests: ExecutionRequests::default(),
                 builder_index: bid.builder_index,
                 beacon_block_root,
                 slot: state.slot(),
@@ -1295,13 +1295,13 @@ mod tests {
             gas_limit: bid.gas_limit,
             timestamp,
             withdrawals: VariableList::default(),
-            ..Default::default()
+            ..ExecutionPayloadGloas::default()
         };
 
         SignedExecutionPayloadEnvelope {
             message: ExecutionPayloadEnvelope {
                 payload,
-                execution_requests: Default::default(),
+                execution_requests: ExecutionRequests::default(),
                 builder_index: bid.builder_index,
                 beacon_block_root,
                 slot: state.slot(),

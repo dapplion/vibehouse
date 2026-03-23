@@ -47,7 +47,7 @@ impl HistoricalSummary {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::MinimalEthSpec;
+    use crate::{Eth1Data, MinimalEthSpec};
     use tree_hash::TreeHash;
 
     type E = MinimalEthSpec;
@@ -126,7 +126,7 @@ mod tests {
     #[test]
     fn new_from_state() {
         let spec = E::default_spec();
-        let state = BeaconState::<E>::new(0, Default::default(), &spec);
+        let state = BeaconState::<E>::new(0, Eth1Data::default(), &spec);
         let summary = HistoricalSummary::new(&state);
         // block_roots and state_roots are all zeros, but tree_hash_root of them is not zero
         assert_ne!(summary.block_summary_root, Hash256::ZERO);
@@ -136,7 +136,7 @@ mod tests {
     #[test]
     fn new_deterministic() {
         let spec = E::default_spec();
-        let state = BeaconState::<E>::new(0, Default::default(), &spec);
+        let state = BeaconState::<E>::new(0, Eth1Data::default(), &spec);
         let s1 = HistoricalSummary::new(&state);
         let s2 = HistoricalSummary::new(&state);
         assert_eq!(s1, s2);

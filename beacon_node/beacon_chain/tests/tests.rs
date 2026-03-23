@@ -31,7 +31,7 @@ fn get_harness(validator_count: usize) -> BeaconChainHarness<EphemeralHarnessTyp
         validator_count,
         ChainConfig {
             reconstruct_historic_states: true,
-            ..Default::default()
+            ..ChainConfig::default()
         },
     )
 }
@@ -62,7 +62,7 @@ fn massive_skips() {
     // Run per_slot_processing until it returns an error.
     let error = loop {
         match per_slot_processing(&mut state, None, spec) {
-            Ok(_) => continue,
+            Ok(_) => {}
             Err(e) => break e,
         }
     };
@@ -902,7 +902,7 @@ async fn pseudo_finalize_test_generic(
     let chain_config = ChainConfig {
         reconstruct_historic_states: true,
         epochs_per_migration,
-        ..Default::default()
+        ..ChainConfig::default()
     };
     let harness = get_harness_with_config(VALIDATOR_COUNT, chain_config);
 

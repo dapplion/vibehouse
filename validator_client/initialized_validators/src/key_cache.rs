@@ -310,7 +310,7 @@ mod tests {
         let mut new_clone = KeyCache {
             crypto: key_cache.crypto.clone(),
             uuids: key_cache.uuids.clone(),
-            pairs: Default::default(),
+            pairs: HashMap::default(),
             passwords: vec![],
             state: State::NotDecrypted,
         };

@@ -74,6 +74,7 @@ use execution_layer::PayloadStatus;
 #[allow(unreachable_pub)]
 pub use fork_choice::{AttestationFromBlock, PayloadVerificationStatus};
 use metrics::TryExt;
+use operation_pool::RewardCache;
 use parking_lot::RwLockReadGuard;
 use proto_array::Block as ProtoBlock;
 use safe_arith::ArithError;
@@ -1627,7 +1628,7 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
         if let Some(ref event_handler) = chain.event_handler
             && event_handler.has_block_reward_subscribers()
         {
-            let mut reward_cache = Default::default();
+            let mut reward_cache = RewardCache::default();
             let block_reward = chain.compute_block_reward(
                 block.message(),
                 block_root,

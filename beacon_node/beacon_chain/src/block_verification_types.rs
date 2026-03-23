@@ -542,8 +542,9 @@ impl<E: EthSpec> AsBlock<E> for RpcBlock<E> {
 mod tests {
     use super::*;
     use std::sync::Arc;
+    use types::beacon_block_body::KzgCommitments;
     use types::{
-        BeaconBlock, BlobSidecarList, ChainSpec, FixedBytesExtended, MinimalEthSpec,
+        BeaconBlock, BlobSidecarList, ChainSpec, FixedBytesExtended, FixedVector, MinimalEthSpec,
         RuntimeVariableList, Signature, SignedBeaconBlock, SignedExecutionPayloadEnvelope,
     };
 
@@ -572,7 +573,7 @@ mod tests {
                 .blob_kzg_commitments_mut()
                 .expect("deneb has commitments");
 
-            *commitments = Default::default();
+            *commitments = KzgCommitments::<E>::default();
 
             for _ in 0..num_commitments {
                 commitments
@@ -595,7 +596,7 @@ mod tests {
             kzg_commitment: commitment,
             kzg_proof: kzg::KzgProof::empty(),
             signed_block_header: block.signed_block_header(),
-            kzg_commitment_inclusion_proof: Default::default(),
+            kzg_commitment_inclusion_proof: FixedVector::default(),
         })
     }
 

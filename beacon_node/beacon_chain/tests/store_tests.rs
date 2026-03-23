@@ -1262,7 +1262,7 @@ async fn proposer_shuffling_root_consistency_test(
 ) {
     let child_slot = Slot::new(child_slot);
     let db_path = tempdir().unwrap();
-    let store = get_store_generic(&db_path, Default::default(), spec.clone());
+    let store = get_store_generic(&db_path, StoreConfig::default(), spec.clone());
     let validators_keypairs =
         types::test_utils::generate_deterministic_keypairs(LOW_VALIDATOR_COUNT);
     let harness = TestHarness::builder(MinimalEthSpec)
@@ -1407,7 +1407,7 @@ async fn proposer_shuffling_changing_with_lookahead() {
 
     let spec = ForkName::Fulu.make_genesis_spec(E::default_spec());
     let db_path = tempdir().unwrap();
-    let store = get_store_generic(&db_path, Default::default(), spec.clone());
+    let store = get_store_generic(&db_path, StoreConfig::default(), spec.clone());
     let validators_keypairs =
         types::test_utils::generate_deterministic_keypairs(LOW_VALIDATOR_COUNT);
     let harness = TestHarness::builder(MinimalEthSpec)
@@ -1581,7 +1581,7 @@ async fn proposer_duties_from_head_fulu() {
     let spec = ForkName::Fulu.make_genesis_spec(E::default_spec());
 
     let db_path = tempdir().unwrap();
-    let store = get_store_generic(&db_path, Default::default(), spec.clone());
+    let store = get_store_generic(&db_path, StoreConfig::default(), spec.clone());
     let validators_keypairs =
         types::test_utils::generate_deterministic_keypairs(LOW_VALIDATOR_COUNT);
     let harness = TestHarness::builder(MinimalEthSpec)
@@ -1626,7 +1626,7 @@ async fn proposer_lookahead_gloas_fork_epoch() {
     spec.gloas_fork_epoch = Some(gloas_fork_epoch);
 
     let db_path = tempdir().unwrap();
-    let store = get_store_generic(&db_path, Default::default(), spec.clone());
+    let store = get_store_generic(&db_path, StoreConfig::default(), spec.clone());
     let validators_keypairs =
         types::test_utils::generate_deterministic_keypairs(LOW_VALIDATOR_COUNT);
     let harness = TestHarness::builder(E::default())
@@ -4431,11 +4431,10 @@ async fn fulu_prune_data_columns_fork_boundary() {
     let db_path = tempdir().unwrap();
     let store = get_store_generic(&db_path, StoreConfig::default(), spec);
 
-    if !store.get_chain_spec().is_peer_das_scheduled() {
-        // No-op if PeerDAS not scheduled.
-        panic!("PeerDAS not scheduled");
-        //return;
-    }
+    assert!(
+        store.get_chain_spec().is_peer_das_scheduled(),
+        "PeerDAS not scheduled"
+    );
 
     let harness = get_harness(store.clone(), LOW_VALIDATOR_COUNT);
 
@@ -4502,10 +4501,10 @@ async fn test_column_da_boundary() {
     let db_path = tempdir().unwrap();
     let store = get_store_generic(&db_path, StoreConfig::default(), spec);
 
-    if !store.get_chain_spec().is_peer_das_scheduled() {
-        // No-op if PeerDAS not scheduled.
-        panic!("PeerDAS not scheduled");
-    }
+    assert!(
+        store.get_chain_spec().is_peer_das_scheduled(),
+        "PeerDAS not scheduled"
+    );
 
     let harness = get_harness(store.clone(), LOW_VALIDATOR_COUNT);
 
@@ -4523,10 +4522,10 @@ async fn test_earliest_custodied_data_column_epoch() {
     let store = get_store_generic(&db_path, StoreConfig::default(), spec);
     let custody_info_epoch = Epoch::new(4);
 
-    if !store.get_chain_spec().is_peer_das_scheduled() {
-        // No-op if PeerDAS not scheduled.
-        panic!("PeerDAS not scheduled");
-    }
+    assert!(
+        store.get_chain_spec().is_peer_das_scheduled(),
+        "PeerDAS not scheduled"
+    );
 
     let harness = get_harness(store.clone(), LOW_VALIDATOR_COUNT);
 
@@ -5916,7 +5915,7 @@ async fn gloas_reconstruct_states_with_empty_path_block() {
         fee_recipient: Address::zero(),
         gas_limit: 30_000_000,
         execution_payment: 0,
-        blob_kzg_commitments: Default::default(),
+        blob_kzg_commitments: VariableList::default(),
     };
     let epoch = empty_path_slot.epoch(slots_per_epoch);
     let domain = spec.get_domain(

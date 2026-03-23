@@ -161,9 +161,9 @@ mod tests {
             state_root: Hash256::repeat_byte(0xbb),
             payload: ExecutionPayloadGloas {
                 block_hash: ExecutionBlockHash::repeat_byte(0xcc),
-                ..Default::default()
+                ..ExecutionPayloadGloas::default()
             },
-            ..Default::default()
+            ..ExecutionPayloadEnvelope::default()
         };
 
         let blinded = BlindedExecutionPayloadEnvelope::from_full(&full);
@@ -241,13 +241,13 @@ mod tests {
             builder_index: 10,
             payload: ExecutionPayloadGloas {
                 block_hash: ExecutionBlockHash::repeat_byte(0xff),
-                ..Default::default()
+                ..ExecutionPayloadGloas::default()
             },
-            ..Default::default()
+            ..ExecutionPayloadEnvelope::default()
         };
 
         let blinded = BlindedExecutionPayloadEnvelope::from_full(&full);
-        let reconstructed = blinded.into_full_with_withdrawals(Default::default());
+        let reconstructed = blinded.into_full_with_withdrawals(Withdrawals::<E>::default());
         assert_eq!(reconstructed.builder_index, 10);
         assert_eq!(
             reconstructed.payload.block_hash,
@@ -419,7 +419,7 @@ mod tests {
         assert_eq!(blinded.execution_requests.deposits[0].index, 42);
 
         // Roundtrip via into_full preserves execution_requests
-        let reconstructed = blinded.into_full_with_withdrawals(Default::default());
+        let reconstructed = blinded.into_full_with_withdrawals(Withdrawals::<E>::default());
         assert_eq!(reconstructed.execution_requests.deposits.len(), 1);
         assert_eq!(
             reconstructed.execution_requests.deposits[0].amount,

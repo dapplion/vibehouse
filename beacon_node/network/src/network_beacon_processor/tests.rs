@@ -43,6 +43,7 @@ use types::{
     ProposerPreferences, ProposerSlashing, RuntimeVariableList, SignedAggregateAndProof,
     SignedBeaconBlock, SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope,
     SignedProposerPreferences, SignedRoot, SignedVoluntaryExit, SingleAttestation, Slot, SubnetId,
+    VariableList,
 };
 use vibehouse_network::rpc::InboundRequestId;
 use vibehouse_network::rpc::methods::{
@@ -1824,7 +1825,7 @@ async fn test_backfill_sync_processing() {
 async fn test_backfill_sync_processing_rate_limiting_disabled() {
     let beacon_processor_config = BeaconProcessorConfig {
         enable_backfill_rate_limiting: false,
-        ..Default::default()
+        ..BeaconProcessorConfig::default()
     };
     let mut rig = TestRig::new_parametric(
         SMALL_CHAIN,
@@ -2298,7 +2299,7 @@ async fn drain_validation_result(
                     Some(NetworkMessage::ValidationResult { validation_result, .. }) => {
                         return validation_result;
                     }
-                    Some(_) => continue, // skip ReportPeer etc.
+                    Some(_) => {} // skip ReportPeer etc.
                     None => panic!("network_rx channel closed"),
                 }
             }
@@ -3556,7 +3557,7 @@ async fn test_gloas_gossip_payload_envelope_slot_mismatch_rejected() {
         message: ExecutionPayloadEnvelope {
             payload: ExecutionPayloadGloas {
                 block_hash: bid.message.block_hash,
-                ..Default::default()
+                ..ExecutionPayloadGloas::default()
             },
             execution_requests: <_>::default(),
             builder_index: bid.message.builder_index,
@@ -3604,7 +3605,7 @@ async fn test_gloas_gossip_payload_envelope_builder_index_mismatch_rejected() {
         message: ExecutionPayloadEnvelope {
             payload: ExecutionPayloadGloas {
                 block_hash: bid.message.block_hash,
-                ..Default::default()
+                ..ExecutionPayloadGloas::default()
             },
             execution_requests: <_>::default(),
             builder_index: 42, // wrong builder (bid has BUILDER_INDEX_SELF_BUILD)
@@ -3652,7 +3653,7 @@ async fn test_gloas_gossip_payload_envelope_block_hash_mismatch_rejected() {
         message: ExecutionPayloadEnvelope {
             payload: ExecutionPayloadGloas {
                 block_hash: ExecutionBlockHash::repeat_byte(0xdd), // wrong hash
-                ..Default::default()
+                ..ExecutionPayloadGloas::default()
             },
             execution_requests: <_>::default(),
             builder_index: bid.message.builder_index, // correct builder
@@ -3702,7 +3703,7 @@ async fn test_gloas_gossip_payload_envelope_self_build_accepted() {
     let envelope_msg = ExecutionPayloadEnvelope {
         payload: ExecutionPayloadGloas {
             block_hash: bid.message.block_hash,
-            ..Default::default()
+            ..ExecutionPayloadGloas::default()
         },
         execution_requests: <_>::default(),
         builder_index: bid.message.builder_index, // BUILDER_INDEX_SELF_BUILD
@@ -3777,7 +3778,7 @@ async fn test_gloas_gossip_payload_envelope_duplicate_ignored() {
         let message = ExecutionPayloadEnvelope {
             payload: ExecutionPayloadGloas {
                 block_hash: bid.message.block_hash,
-                ..Default::default()
+                ..ExecutionPayloadGloas::default()
             },
             execution_requests: <_>::default(),
             builder_index: bid.message.builder_index,
@@ -4251,7 +4252,7 @@ async fn test_gloas_gossip_bid_duplicate_ignored() {
         builder_index: 0,
         value: 100,
         parent_block_root: head.beacon_block_root,
-        ..Default::default()
+        ..ExecutionPayloadBid::default()
     };
     let bid = sign_bid(&rig, 0, bid_msg);
 
@@ -4301,7 +4302,7 @@ async fn test_gloas_gossip_bid_equivocation_rejected() {
         value: 100,
         parent_block_root: head.beacon_block_root,
         block_hash: ExecutionBlockHash::repeat_byte(0xaa),
-        ..Default::default()
+        ..ExecutionPayloadBid::default()
     };
     let bid1 = sign_bid(&rig, 0, bid_msg1);
 
@@ -4313,7 +4314,7 @@ async fn test_gloas_gossip_bid_equivocation_rejected() {
         value: 200, // different value → different bid root
         parent_block_root: head.beacon_block_root,
         block_hash: ExecutionBlockHash::repeat_byte(0xbb),
-        ..Default::default()
+        ..ExecutionPayloadBid::default()
     };
     let bid2 = sign_bid(&rig, 0, bid_msg2);
 
@@ -4356,7 +4357,7 @@ async fn test_gloas_gossip_bid_invalid_parent_root_ignored() {
         builder_index: 0,
         value: 100,
         parent_block_root: Hash256::repeat_byte(0xff), // wrong parent root
-        ..Default::default()
+        ..ExecutionPayloadBid::default()
     };
     let bid = sign_bid(&rig, 0, bid_msg);
 
@@ -4392,7 +4393,7 @@ async fn test_gloas_gossip_bid_unknown_parent_block_hash_ignored() {
         value: 100,
         parent_block_root: head.beacon_block_root, // valid root
         parent_block_hash: ExecutionBlockHash::repeat_byte(0xba), // unknown hash
-        ..Default::default()
+        ..ExecutionPayloadBid::default()
     };
     let bid = sign_bid(&rig, 0, bid_msg);
 
@@ -4428,7 +4429,7 @@ async fn test_gloas_gossip_bid_insufficient_balance_ignored() {
         builder_index: 0,
         value: 1_000_000, // exceeds builder excess balance of 0
         parent_block_root: head.beacon_block_root,
-        ..Default::default()
+        ..ExecutionPayloadBid::default()
     };
     let bid = sign_bid(&rig, 0, bid_msg);
 
@@ -4465,7 +4466,7 @@ async fn test_gloas_gossip_bid_invalid_signature_rejected() {
         builder_index: 0,
         value: 100,
         parent_block_root: head.beacon_block_root,
-        ..Default::default()
+        ..ExecutionPayloadBid::default()
     };
 
     // Sign with the WRONG builder's key (builder 1's key for builder 0's bid)
@@ -4519,7 +4520,7 @@ async fn test_gloas_gossip_bid_valid_accepted() {
         builder_index: 0,
         value: 100,
         parent_block_root: head.beacon_block_root,
-        ..Default::default()
+        ..ExecutionPayloadBid::default()
     };
     let bid = sign_bid(&rig, 0, bid_msg);
 
@@ -4567,7 +4568,7 @@ async fn test_gloas_gossip_bid_valid_inserted_into_pool() {
         builder_index: 0,
         value: 100,
         parent_block_root: head_root,
-        ..Default::default()
+        ..ExecutionPayloadBid::default()
     };
     let bid = sign_bid(&rig, 0, bid_msg);
 
@@ -4622,7 +4623,7 @@ async fn test_gloas_gossip_multiple_bids_best_selected_from_pool() {
         builder_index: 0,
         value: 100,
         parent_block_root: head_root,
-        ..Default::default()
+        ..ExecutionPayloadBid::default()
     };
     let bid_0 = sign_bid(&rig, 0, bid_msg_0);
 
@@ -4641,7 +4642,7 @@ async fn test_gloas_gossip_multiple_bids_best_selected_from_pool() {
         builder_index: 1,
         value: 500,
         parent_block_root: head_root,
-        ..Default::default()
+        ..ExecutionPayloadBid::default()
     };
     let bid_1 = sign_bid(&rig, 1, bid_msg_1);
 
@@ -4685,7 +4686,7 @@ async fn test_gloas_gossip_bid_no_preferences_ignored() {
         builder_index: 0,
         value: 100,
         parent_block_root: head.beacon_block_root,
-        ..Default::default()
+        ..ExecutionPayloadBid::default()
     };
     let bid = sign_bid(&rig, 0, bid_msg);
 
@@ -4726,7 +4727,7 @@ async fn test_gloas_gossip_bid_fee_recipient_mismatch_rejected() {
         value: 100,
         parent_block_root: head.beacon_block_root,
         fee_recipient: Address::repeat_byte(0xbb), // mismatched
-        ..Default::default()
+        ..ExecutionPayloadBid::default()
     };
     let bid = sign_bid(&rig, 0, bid_msg);
 
@@ -4767,7 +4768,7 @@ async fn test_gloas_gossip_bid_gas_limit_mismatch_rejected() {
         value: 100,
         parent_block_root: head.beacon_block_root,
         gas_limit: 15_000_000, // mismatched
-        ..Default::default()
+        ..ExecutionPayloadBid::default()
     };
     let bid = sign_bid(&rig, 0, bid_msg);
 
@@ -4812,7 +4813,7 @@ async fn test_gloas_gossip_bid_not_highest_value_ignored() {
         builder_index: 0,
         value: 500,
         parent_block_root: head.beacon_block_root,
-        ..Default::default()
+        ..ExecutionPayloadBid::default()
     };
     let bid_high = sign_bid(&rig, 0, bid_msg_high);
 
@@ -4831,7 +4832,7 @@ async fn test_gloas_gossip_bid_not_highest_value_ignored() {
         builder_index: 1,
         value: 100,
         parent_block_root: head.beacon_block_root,
-        ..Default::default()
+        ..ExecutionPayloadBid::default()
     };
     let bid_low = sign_bid(&rig, 1, bid_msg_low);
 
@@ -4875,7 +4876,7 @@ async fn test_gloas_gossip_bid_inactive_builder_rejected() {
         builder_index: 1,
         value: 100,
         parent_block_root: head.beacon_block_root,
-        ..Default::default()
+        ..ExecutionPayloadBid::default()
     };
     let bid = sign_bid(&rig, 1, bid_msg);
 
@@ -4918,7 +4919,7 @@ async fn drain_envelopes_by_root_responses(
                             None => return envelopes, // stream terminator
                         }
                     }
-                    Some(_) => continue, // skip other messages
+                    Some(_) => {} // skip other messages
                     None => panic!("network_rx channel closed"),
                 }
             }
@@ -5082,7 +5083,7 @@ async fn test_gloas_sse_event_execution_bid() {
         builder_index: 0,
         value: 100,
         parent_block_root: head.beacon_block_root,
-        ..Default::default()
+        ..ExecutionPayloadBid::default()
     };
     let bid = sign_bid(&rig, 0, bid_msg.clone());
 
@@ -6057,7 +6058,7 @@ async fn test_gloas_gossip_payload_envelope_invalid_signature_rejected() {
         fee_recipient: Address::ZERO,
         gas_limit: 30_000_000,
         execution_payment: 5000,
-        blob_kzg_commitments: Default::default(),
+        blob_kzg_commitments: VariableList::default(),
     };
     let bid = sign_bid(&rig, 0, bid_msg);
 
@@ -6104,7 +6105,7 @@ async fn test_gloas_gossip_payload_envelope_invalid_signature_rejected() {
         message: ExecutionPayloadEnvelope {
             payload: ExecutionPayloadGloas {
                 block_hash: bid.message.block_hash, // zero — matches committed bid
-                ..Default::default()
+                ..ExecutionPayloadGloas::default()
             },
             execution_requests: <_>::default(),
             builder_index: 0, // matches committed bid
@@ -6126,7 +6127,7 @@ async fn test_gloas_gossip_payload_envelope_invalid_signature_rejected() {
             let msg = ExecutionPayloadEnvelope::<E> {
                 payload: ExecutionPayloadGloas {
                     block_hash: bid.message.block_hash,
-                    ..Default::default()
+                    ..ExecutionPayloadGloas::default()
                 },
                 execution_requests: <_>::default(),
                 builder_index: 0,

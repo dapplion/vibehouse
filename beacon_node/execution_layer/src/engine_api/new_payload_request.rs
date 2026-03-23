@@ -253,7 +253,7 @@ mod test {
     use state_processing::per_block_processing::deneb::kzg_commitment_to_versioned_hash;
     use types::{
         BeaconBlock, BeaconStateError, EthSpec, ExecPayload, ExecutionBlockHash, ExecutionPayload,
-        ExecutionPayloadRef, ForkName, Hash256, MainnetEthSpec,
+        ExecutionPayloadRef, ExecutionRequests, ForkName, Hash256, MainnetEthSpec,
     };
 
     #[test]
@@ -424,7 +424,7 @@ mod test {
             execution_payload: &payload,
             versioned_hashes: vec![],
             parent_beacon_block_root: Hash256::repeat_byte(0x03),
-            execution_requests: &Default::default(),
+            execution_requests: &ExecutionRequests::default(),
         });
 
         assert_eq!(

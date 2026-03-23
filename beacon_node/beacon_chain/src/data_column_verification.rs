@@ -275,7 +275,7 @@ impl<T: BeaconChainTypes, O: ObservationStrategy> GossipVerifiedDataColumn<T, O>
         Ok(Self {
             block_root: column_sidecar.block_root(),
             data_column: KzgVerifiedDataColumn::from_execution_verified(column_sidecar),
-            _phantom: Default::default(),
+            _phantom: PhantomData,
         })
     }
 
@@ -284,7 +284,7 @@ impl<T: BeaconChainTypes, O: ObservationStrategy> GossipVerifiedDataColumn<T, O>
         Self {
             block_root: column_sidecar.block_root(),
             data_column: KzgVerifiedDataColumn::__new_for_testing(column_sidecar),
-            _phantom: Default::default(),
+            _phantom: PhantomData,
         }
     }
 

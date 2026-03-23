@@ -4,7 +4,7 @@ use safe_arith::SafeArith;
 use std::mem;
 use types::{
     BeaconState, BeaconStateElectra, BeaconStateError as Error, BuilderPubkeyCache, ChainSpec,
-    Epoch, EpochCache, EthSpec, Fork, PendingDeposit,
+    Epoch, EpochCache, EthSpec, Fork, List, PendingDeposit,
 };
 
 /// Transform a `Deneb` state into an `Electra` state.
@@ -162,9 +162,9 @@ pub fn upgrade_state_to_electra<E: EthSpec>(
         earliest_exit_epoch,
         consolidation_balance_to_consume: 0,
         earliest_consolidation_epoch,
-        pending_deposits: Default::default(),
-        pending_partial_withdrawals: Default::default(),
-        pending_consolidations: Default::default(),
+        pending_deposits: List::default(),
+        pending_partial_withdrawals: List::default(),
+        pending_consolidations: List::default(),
         // Caches
         total_active_balance: pre.total_active_balance,
         progressive_balances_cache: mem::take(&mut pre.progressive_balances_cache),

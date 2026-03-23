@@ -2097,9 +2097,11 @@ impl ApiTester {
             .map(|attn| {
                 let aggregation_bits = attn.get_aggregation_bits();
 
-                if aggregation_bits.len() != 1 {
-                    panic!("Must be an unaggregated attestation")
-                }
+                assert_eq!(
+                    aggregation_bits.len(),
+                    1,
+                    "Must be an unaggregated attestation"
+                );
 
                 let aggregation_bit = *aggregation_bits.first().unwrap();
 
@@ -2168,9 +2170,11 @@ impl ApiTester {
             // Convert valid attestation into valid `SingleAttestation`
             let aggregation_bits = attestation.get_aggregation_bits();
 
-            if aggregation_bits.len() != 1 {
-                panic!("Must be an unaggregated attestation")
-            }
+            assert_eq!(
+                aggregation_bits.len(),
+                1,
+                "Must be an unaggregated attestation"
+            );
 
             let aggregation_bit = *aggregation_bits.first().unwrap();
 
@@ -2199,9 +2203,11 @@ impl ApiTester {
             // Convert invalid attestation to invalid `SingleAttestation`
             let aggregation_bits = invalid_attestation.get_aggregation_bits();
 
-            if aggregation_bits.len() != 1 {
-                panic!("Must be an unaggregated attestation")
-            }
+            assert_eq!(
+                aggregation_bits.len(),
+                1,
+                "Must be an unaggregated attestation"
+            );
 
             let aggregation_bit = *aggregation_bits.first().unwrap();
 
@@ -4487,9 +4493,11 @@ impl ApiTester {
             .map(|attn| {
                 let aggregation_bits = attn.get_aggregation_bits();
 
-                if aggregation_bits.len() != 1 {
-                    panic!("Must be an unaggregated attestation")
-                }
+                assert_eq!(
+                    aggregation_bits.len(),
+                    1,
+                    "Must be an unaggregated attestation"
+                );
 
                 let aggregation_bit = *aggregation_bits.first().unwrap();
 
@@ -6250,9 +6258,11 @@ impl ApiTester {
             .map(|attn| {
                 let aggregation_bits = attn.get_aggregation_bits();
 
-                if aggregation_bits.len() != 1 {
-                    panic!("Must be an unaggregated attestation")
-                }
+                assert_eq!(
+                    aggregation_bits.len(),
+                    1,
+                    "Must be an unaggregated attestation"
+                );
 
                 let aggregation_bit = *aggregation_bits.first().unwrap();
 
@@ -6346,9 +6356,11 @@ impl ApiTester {
             .map(|attn| {
                 let aggregation_bits = attn.get_aggregation_bits();
 
-                if aggregation_bits.len() != 1 {
-                    panic!("Must be an unaggregated attestation")
-                }
+                assert_eq!(
+                    aggregation_bits.len(),
+                    1,
+                    "Must be an unaggregated attestation"
+                );
 
                 let aggregation_bit = *aggregation_bits.first().unwrap();
 

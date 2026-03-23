@@ -36,6 +36,7 @@ use state_processing::per_block_processing::gloas::get_ptc_committee;
 use std::sync::Arc;
 use std::time::Duration;
 use tree_hash::TreeHash;
+use types::beacon_block_body::KzgCommitments;
 use types::*;
 
 const VALIDATOR_COUNT: usize = 32;
@@ -996,7 +997,7 @@ fn make_external_bid(
         fee_recipient: Address::zero(),
         gas_limit: 30_000_000,
         execution_payment: value,
-        blob_kzg_commitments: Default::default(),
+        blob_kzg_commitments: KzgCommitments::<E>::default(),
     };
 
     let spec = E::default_spec();
@@ -16678,7 +16679,7 @@ async fn gloas_external_builder_revealed_next_block_uses_builder_block_hash() {
         fee_recipient: Address::zero(),
         gas_limit: 30_000_000,
         execution_payment: 5000,
-        blob_kzg_commitments: Default::default(),
+        blob_kzg_commitments: KzgCommitments::<E>::default(),
     };
     let spec = E::default_spec();
     let epoch = ext_slot.epoch(E::slots_per_epoch());

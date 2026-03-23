@@ -135,7 +135,7 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
             ignored_chains: LRUTimeCache::new(Duration::from_secs(
                 IGNORED_CHAINS_CACHE_EXPIRY_SECONDS,
             )),
-            single_block_lookups: Default::default(),
+            single_block_lookups: FnvHashMap::default(),
         }
     }
 

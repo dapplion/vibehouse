@@ -1368,7 +1368,7 @@ mod pending_components_tests {
     use state_processing::ConsensusContext;
     use types::test_utils::TestRandom;
     use types::{
-        BeaconState, ExecutionBlockHash, FixedBytesExtended, ForkName, MainnetEthSpec,
+        BeaconState, Eth1Data, ExecutionBlockHash, FixedBytesExtended, ForkName, MainnetEthSpec,
         SignedBeaconBlock, Slot,
     };
 
@@ -1444,8 +1444,8 @@ mod pending_components_tests {
         let block = AvailabilityPendingExecutedBlock {
             block: Arc::new(block),
             import_data: BlockImportData {
-                block_root: Default::default(),
-                state: BeaconState::new(0, Default::default(), &ChainSpec::minimal()),
+                block_root: Hash256::default(),
+                state: BeaconState::new(0, Eth1Data::default(), &ChainSpec::minimal()),
                 parent_block: dummy_parent,
                 consensus_context: ConsensusContext::new(Slot::new(0)),
             },

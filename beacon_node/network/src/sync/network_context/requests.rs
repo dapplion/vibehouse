@@ -118,7 +118,7 @@ impl<K: Copy + Eq + Hash + std::fmt::Display, T: ActiveRequestItems> ActiveReque
             // Handler of a success ReqResp chunk. Adds the item to the request accumulator.
             // `ActiveRequestItems` validates the item before appending to its internal state.
             RpcEvent::Response(item, seen_timestamp) => {
-                let request = &mut entry.get_mut();
+                let request = &mut *entry.get_mut();
                 let _guard = request.span.clone().entered();
                 match &mut request.state {
                     State::Active(items) => {

@@ -198,8 +198,8 @@ impl<T, M> From<UnversionedResponse<T, M>> for BeaconResponse<T, M> {
 mod fork_version_response_tests {
     use crate::beacon_response::ExecutionOptimisticFinalizedMetadata;
     use crate::{
-        ExecutionPayload, ExecutionPayloadBellatrix, ForkName, ForkVersionedResponse,
-        MainnetEthSpec, UnversionedResponse,
+        EmptyMetadata, ExecutionPayload, ExecutionPayloadBellatrix, ForkName,
+        ForkVersionedResponse, MainnetEthSpec, UnversionedResponse,
     };
     use serde_json::json;
 
@@ -210,7 +210,7 @@ mod fork_version_response_tests {
         let response_json =
             serde_json::to_string(&json!(ForkVersionedResponse::<ExecutionPayload<E>> {
                 version: ForkName::Bellatrix,
-                metadata: Default::default(),
+                metadata: EmptyMetadata::default(),
                 data: ExecutionPayload::Bellatrix(ExecutionPayloadBellatrix::default()),
             }))
             .unwrap();
@@ -228,7 +228,7 @@ mod fork_version_response_tests {
         let response_json =
             serde_json::to_string(&json!(ForkVersionedResponse::<ExecutionPayload<E>> {
                 version: ForkName::Capella,
-                metadata: Default::default(),
+                metadata: EmptyMetadata::default(),
                 data: ExecutionPayload::Bellatrix(ExecutionPayloadBellatrix::default()),
             }))
             .unwrap();

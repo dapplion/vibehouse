@@ -136,8 +136,8 @@ impl Engine {
         Self {
             api,
             payload_id_cache: Mutex::new(LruCache::new(PAYLOAD_ID_LRU_CACHE_SIZE)),
-            state: Default::default(),
-            latest_forkchoice_state: Default::default(),
+            state: RwLock::default(),
+            latest_forkchoice_state: RwLock::default(),
             executor,
         }
     }

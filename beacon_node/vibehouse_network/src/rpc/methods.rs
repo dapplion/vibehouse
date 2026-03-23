@@ -202,7 +202,7 @@ impl<E: EthSpec> MetaData<E> {
             MetaData::V1(metadata) => MetaData::V2(MetaDataV2 {
                 seq_number: metadata.seq_number,
                 attnets: metadata.attnets.clone(),
-                syncnets: Default::default(),
+                syncnets: EnrSyncCommitteeBitfield::<E>::default(),
             }),
             md @ MetaData::V2(_) => md.clone(),
             MetaData::V3(metadata) => MetaData::V2(MetaDataV2 {
@@ -219,7 +219,7 @@ impl<E: EthSpec> MetaData<E> {
             MetaData::V1(metadata) => MetaData::V3(MetaDataV3 {
                 seq_number: metadata.seq_number,
                 attnets: metadata.attnets.clone(),
-                syncnets: Default::default(),
+                syncnets: EnrSyncCommitteeBitfield::<E>::default(),
                 custody_group_count: spec.custody_requirement,
             }),
             MetaData::V2(metadata) => MetaData::V3(MetaDataV3 {

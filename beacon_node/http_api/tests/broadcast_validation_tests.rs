@@ -13,6 +13,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use types::{
     ColumnIndex, Epoch, EthSpec, FixedBytesExtended, ForkName, Hash256, MainnetEthSpec, Slot,
+    VariableList,
 };
 
 type E = MainnetEthSpec;
@@ -1863,7 +1864,7 @@ async fn blobs_or_columns_seen_on_gossip_without_block_and_no_http_blobs_or_colu
         .post_beacon_blocks_v2_ssz(
             &PublishBlockRequest::new(
                 block.clone(),
-                Some((Default::default(), Default::default())),
+                Some((VariableList::default(), VariableList::default())),
             ),
             validation_level,
         )

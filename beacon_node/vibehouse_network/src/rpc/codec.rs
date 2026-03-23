@@ -918,8 +918,8 @@ mod tests {
     use types::{
         BeaconBlock, BeaconBlockAltair, BeaconBlockBase, BeaconBlockBellatrix, BeaconBlockHeader,
         DataColumnSidecarFulu, DataColumnsByRootIdentifier, EmptyBlock, Epoch, FixedBytesExtended,
-        FullPayload, KzgCommitment, KzgProof, Signature, SignedBeaconBlockHeader, Slot,
-        blob_sidecar::BlobIdentifier, data_column_sidecar::Cell,
+        FixedVector, FullPayload, KzgCommitment, KzgProof, Signature, SignedBeaconBlockHeader,
+        Slot, blob_sidecar::BlobIdentifier, data_column_sidecar::Cell,
     };
 
     type Spec = types::MainnetEthSpec;
@@ -997,7 +997,7 @@ mod tests {
                 },
                 signature: Signature::empty(),
             },
-            kzg_commitments_inclusion_proof: Default::default(),
+            kzg_commitments_inclusion_proof: FixedVector::default(),
         });
         Arc::new(data_column_sidecar)
     }

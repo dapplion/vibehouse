@@ -143,6 +143,7 @@ impl<E: EthSpec> ExecutionPayloadHeader<E> {
 }
 
 impl<'a, E: EthSpec> ExecutionPayloadHeaderRef<'a, E> {
+    #[allow(clippy::default_trait_access)]
     pub fn is_default_with_zero_roots(self) -> bool {
         map_execution_payload_header_ref!(&'a _, self, |inner, cons| {
             cons(inner);

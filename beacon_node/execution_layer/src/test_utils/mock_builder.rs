@@ -28,6 +28,7 @@ use tempfile::NamedTempFile;
 use tokio_stream::StreamExt;
 use tracing::{debug, error, info, warn};
 use tree_hash::TreeHash;
+use types::beacon_response::EmptyMetadata;
 use types::builder_bid::{
     BuilderBid, BuilderBidBellatrix, BuilderBidCapella, BuilderBidDeneb, BuilderBidElectra,
     BuilderBidFulu, BuilderBidGloas, SignedBuilderBid,
@@ -1044,7 +1045,7 @@ async fn header_handler<E: EthSpec>(
         eth2::types::Accept::Json | eth2::types::Accept::Any => {
             let resp: ForkVersionedResponse<_> = ForkVersionedResponse {
                 version: fork_name,
-                metadata: Default::default(),
+                metadata: EmptyMetadata::default(),
                 data: signed_bid,
             };
             Ok((
@@ -1164,7 +1165,7 @@ async fn blinded_blocks_dispatch<E: EthSpec>(
         };
         let resp: ForkVersionedResponse<_> = ForkVersionedResponse {
             version: fork_name,
-            metadata: Default::default(),
+            metadata: EmptyMetadata::default(),
             data: payload,
         };
 

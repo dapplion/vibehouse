@@ -353,7 +353,7 @@ impl<E: EthSpec> CustodyContext<E> {
         let custody_context = CustodyContext {
             validator_custody_count: AtomicU64::new(validator_custody_at_head),
             validator_registrations: RwLock::new(ValidatorRegistrations {
-                validators: Default::default(),
+                validators: HashMap::default(),
                 epoch_validator_custody_requirements: epoch_validator_custody_requirements
                     .into_iter()
                     .collect(),

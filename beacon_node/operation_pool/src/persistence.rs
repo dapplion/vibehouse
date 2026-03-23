@@ -8,6 +8,7 @@ use ssz::{Decode, Encode};
 use ssz_derive::{Decode, Encode};
 use state_processing::SigVerifiedOp;
 use std::collections::HashSet;
+use std::marker::PhantomData;
 use std::mem;
 use store::{DBColumn, Error as StoreError, StoreItem};
 use types::attestation::AttestationOnDisk;
@@ -166,8 +167,8 @@ impl<E: EthSpec> PersistedOperationPool<E> {
             proposer_slashings,
             voluntary_exits,
             bls_to_execution_changes: RwLock::new(bls_to_execution_changes),
-            reward_cache: Default::default(),
-            _phantom: Default::default(),
+            reward_cache: RwLock::default(),
+            _phantom: PhantomData,
         }
     }
 }

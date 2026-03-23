@@ -192,19 +192,19 @@ impl<E: EthSpec> PeerManager<E> {
         Ok(PeerManager {
             network_globals,
             events: SmallVec::new(),
-            peers_to_dial: Default::default(),
+            peers_to_dial: Vec::default(),
             inbound_ping_peers: HashSetDelay::new(Duration::from_secs(ping_interval_inbound)),
             outbound_ping_peers: HashSetDelay::new(Duration::from_secs(ping_interval_outbound)),
             status_peers: HashSetDelay::new(Duration::from_secs(status_interval)),
             target_peers: target_peer_count,
             temporary_banned_peers: LRUTimeCache::new(PEER_RECONNECTION_TIMEOUT),
-            sync_committee_subnets: Default::default(),
+            sync_committee_subnets: HashMap::default(),
             subnets_by_custody_group,
             heartbeat,
             discovery_enabled,
             metrics_enabled,
             quic_enabled,
-            trusted_peers: Default::default(),
+            trusted_peers: HashSet::default(),
         })
     }
 
@@ -1705,7 +1705,7 @@ mod tests {
     use super::*;
     use crate::NetworkConfig;
     use crate::rpc::MetaDataV3;
-    use types::{ChainSpec, ForkName, MainnetEthSpec as E};
+    use types::{ChainSpec, Epoch, ForkName, Hash256, MainnetEthSpec as E, Slot};
 
     async fn build_peer_manager(target_peer_count: usize) -> PeerManager<E> {
         build_peer_manager_with_trusted_peers(vec![], target_peer_count).await
@@ -1745,10 +1745,10 @@ mod tests {
 
     fn empty_sync_info() -> SyncInfo {
         SyncInfo {
-            head_slot: Default::default(),
-            head_root: Default::default(),
-            finalized_epoch: Default::default(),
-            finalized_root: Default::default(),
+            head_slot: Slot::default(),
+            head_root: Hash256::default(),
+            finalized_epoch: Epoch::default(),
+            finalized_root: Hash256::default(),
             earliest_available_slot: None,
         }
     }
@@ -2024,7 +2024,7 @@ mod tests {
         let metadata = MetaDataV3 {
             seq_number: 0,
             attnets,
-            syncnets: Default::default(),
+            syncnets: crate::types::EnrSyncCommitteeBitfield::<E>::default(),
             custody_group_count: spec.custody_requirement,
         };
         peer_manager
@@ -2045,7 +2045,7 @@ mod tests {
         let metadata = MetaDataV3 {
             seq_number: 0,
             attnets,
-            syncnets: Default::default(),
+            syncnets: crate::types::EnrSyncCommitteeBitfield::<E>::default(),
             custody_group_count: spec.custody_requirement,
         };
         peer_manager
@@ -2065,7 +2065,7 @@ mod tests {
         syncnets.set(3, true).unwrap();
         let metadata = MetaDataV3 {
             seq_number: 0,
-            attnets: Default::default(),
+            attnets: crate::types::EnrAttestationBitfield::<E>::default(),
             syncnets,
             custody_group_count: spec.custody_requirement,
         };
@@ -2133,8 +2133,8 @@ mod tests {
         let peer_cgc = 4;
         let meta_data = MetaData::V3(MetaDataV3 {
             seq_number: 0,
-            attnets: Default::default(),
-            syncnets: Default::default(),
+            attnets: crate::types::EnrAttestationBitfield::<E>::default(),
+            syncnets: crate::types::EnrSyncCommitteeBitfield::<E>::default(),
             custody_group_count: peer_cgc,
         });
         let cgc_updated = peer_manager.meta_data_response(&peer_id, meta_data.clone());
@@ -2380,7 +2380,7 @@ mod tests {
                 let peer_info = peer_db.peer_info_mut(&peer).unwrap();
                 peer_info.set_meta_data(MetaData::V3(MetaDataV3 {
                     seq_number: 0,
-                    attnets: Default::default(),
+                    attnets: crate::types::EnrAttestationBitfield::<E>::default(),
                     syncnets,
                     custody_group_count: 0, // unused in this test, as pruning logic uses `custody_subnets`
                 }));
@@ -2618,7 +2618,7 @@ mod tests {
 
             let metadata = MetaDataV3 {
                 seq_number: 0,
-                attnets: Default::default(),
+                attnets: crate::types::EnrAttestationBitfield::<E>::default(),
                 syncnets,
                 custody_group_count: 0, // unused in this test, as pruning logic uses `custody_subnets`
             };
@@ -2701,7 +2701,7 @@ mod tests {
             let metadata = MetaDataV3 {
                 seq_number: 0,
                 attnets,
-                syncnets: Default::default(),
+                syncnets: crate::types::EnrSyncCommitteeBitfield::<E>::default(),
                 custody_group_count: spec.custody_requirement,
             };
             peer_manager
@@ -2896,7 +2896,7 @@ mod tests {
                     syncnets.set(0, true).unwrap();
                     peer_info.set_meta_data(MetaData::V3(MetaDataV3 {
                         seq_number: 0,
-                        attnets: Default::default(),
+                        attnets: crate::types::EnrAttestationBitfield::<E>::default(),
                         syncnets,
                         custody_group_count: 0,
                     }));

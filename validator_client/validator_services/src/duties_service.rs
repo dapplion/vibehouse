@@ -375,14 +375,14 @@ impl<S, T> DutiesServiceBuilder<S, T> {
 
     pub fn build(self) -> Result<DutiesService<S, T>, String> {
         Ok(DutiesService {
-            attesters: Default::default(),
-            proposers: Default::default(),
+            attesters: RwLock::default(),
+            proposers: RwLock::default(),
             sync_duties: SyncDutiesMap::new(self.sync_selection_proof_config),
             ptc_duties: PtcDutiesMap::new(),
             validator_store: self
                 .validator_store
                 .ok_or("Cannot build DutiesService without validator_store")?,
-            unknown_validator_next_poll_slots: Default::default(),
+            unknown_validator_next_poll_slots: RwLock::default(),
             slot_clock: self
                 .slot_clock
                 .ok_or("Cannot build DutiesService without slot_clock")?,
@@ -1918,7 +1918,7 @@ mod test {
 #[cfg(test)]
 mod broadcast_preferences_tests {
     use super::*;
-    use beacon_node_fallback::{ApiTopic, BeaconNodeFallback, CandidateBeaconNode};
+    use beacon_node_fallback::{ApiTopic, BeaconNodeFallback, CandidateBeaconNode, Config};
     use eth2::types::ProposerData;
     use slot_clock::{SlotClock, TestingSlotClock};
     use std::collections::HashMap;
@@ -2163,7 +2163,7 @@ mod broadcast_preferences_tests {
         let spec_arc = Arc::new(spec.clone());
         let mut fallback = BeaconNodeFallback::new(
             vec![candidate],
-            Default::default(),
+            Config::default(),
             vec![ApiTopic::Attestations],
             spec_arc.clone(),
         );

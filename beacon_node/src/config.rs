@@ -29,7 +29,11 @@ use std::time::Duration;
 use tracing::{error, info, warn};
 use types::graffiti::GraffitiString;
 use types::{Checkpoint, Epoch, EthSpec, Hash256, PublicKeyBytes};
-use vibehouse_network::{Enr, Multiaddr, NetworkConfig, PeerIdSerialized, multiaddr::Protocol};
+use vibehouse_network::{
+    Enr, Multiaddr, NetworkConfig, PeerIdSerialized,
+    multiaddr::Protocol,
+    rpc::config::{InboundRateLimiterConfig, OutboundRateLimiterConfig},
+};
 
 const PURGE_DB_CONFIRMATION: &str = "confirm";
 
@@ -1456,7 +1460,7 @@ pub fn set_network_config(
     } else if let Some(protocols) = cli_args.get_one::<String>("self-limiter-protocols") {
         Some(protocols.parse()?)
     } else {
-        Some(Default::default())
+        Some(OutboundRateLimiterConfig::default())
     };
 
     // Proposer-only mode overrides a number of previous configuration parameters.
@@ -1480,7 +1484,7 @@ pub fn set_network_config(
         if let Some(protocols) = cli_args.get_one::<String>("inbound-rate-limiter-protocols") {
             Some(protocols.parse()?)
         } else {
-            Some(Default::default())
+            Some(InboundRateLimiterConfig::default())
         }
     };
 

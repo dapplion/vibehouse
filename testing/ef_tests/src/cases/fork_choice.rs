@@ -27,8 +27,8 @@ use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 use types::{
-    Attestation, AttestationRef, AttesterSlashing, AttesterSlashingRef, BeaconBlock, BeaconState,
-    BlobSidecar, BlobsList, BlockImportSource, Checkpoint, DataColumnSidecar,
+    Address, Attestation, AttestationRef, AttesterSlashing, AttesterSlashingRef, BeaconBlock,
+    BeaconState, BlobSidecar, BlobsList, BlockImportSource, Checkpoint, DataColumnSidecar,
     DataColumnSidecarList, DataColumnSubnetId, ExecutionBlockHash, Hash256, IndexedAttestation,
     KzgProof, ProposerPreparationData, SignedBeaconBlock, SignedExecutionPayloadEnvelope, Slot,
     Uint256,
@@ -1080,7 +1080,7 @@ impl<E: EthSpec> Tester<E> {
                     [(
                         &ProposerPreparationData {
                             validator_index: dbg!(proposer_index) as u64,
-                            fee_recipient: Default::default(),
+                            fee_recipient: Address::default(),
                         },
                         &None,
                     )],

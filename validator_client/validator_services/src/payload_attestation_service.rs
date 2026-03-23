@@ -323,7 +323,7 @@ mod produce_tests {
     use super::*;
     use crate::duties_service::DutiesServiceBuilder;
     use crate::ptc::PtcDutiesMap;
-    use beacon_node_fallback::{ApiTopic, BeaconNodeFallback, CandidateBeaconNode};
+    use beacon_node_fallback::{ApiTopic, BeaconNodeFallback, CandidateBeaconNode, Config};
     use eth2::types::{PayloadAttestationData as ApiPayloadAttestationData, PtcDutyData};
     use slot_clock::TestingSlotClock;
     use std::collections::HashMap;
@@ -578,7 +578,7 @@ mod produce_tests {
         let spec_arc = Arc::new(spec.clone());
         let mut fallback = BeaconNodeFallback::new(
             vec![candidate],
-            Default::default(),
+            Config::default(),
             vec![ApiTopic::Attestations],
             spec_arc.clone(),
         );
@@ -821,7 +821,7 @@ mod produce_tests {
         let spec_arc = Arc::new(spec.clone());
         let mut fallback = BeaconNodeFallback::new(
             vec![candidate],
-            Default::default(),
+            Config::default(),
             vec![ApiTopic::Attestations],
             spec_arc.clone(),
         );
@@ -955,7 +955,7 @@ mod produce_tests {
         let spec_arc = Arc::new(spec.clone());
         let mut fallback = BeaconNodeFallback::new(
             vec![candidate],
-            Default::default(),
+            Config::default(),
             vec![ApiTopic::Attestations],
             spec_arc.clone(),
         );

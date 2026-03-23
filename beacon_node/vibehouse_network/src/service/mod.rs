@@ -348,7 +348,7 @@ impl<E: EthSpec> Network<E> {
             if let Some(ref mut registry) = ctx.libp2p_registry {
                 gossipsub = gossipsub.with_metrics(
                     registry.sub_registry_with_prefix("gossipsub"),
-                    Default::default(),
+                    gossipsub::MetricsConfig::default(),
                 );
             }
 

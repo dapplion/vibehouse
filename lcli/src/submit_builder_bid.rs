@@ -33,7 +33,7 @@ use tracing::info;
 use types::{
     Address, ChainSpec, Domain, Epoch, EthSpec, ExecutionBlockHash, ExecutionPayloadBid, Hash256,
     ProposerPreferences, SignedExecutionPayloadBid, SignedProposerPreferences, SignedRoot, Slot,
-    test_utils::generate_deterministic_keypairs,
+    beacon_block_body::KzgCommitments, test_utils::generate_deterministic_keypairs,
 };
 
 const HTTP_TIMEOUT: Duration = Duration::from_secs(10);
@@ -269,7 +269,7 @@ async fn run_async<E: EthSpec>(
         fee_recipient,
         gas_limit,
         execution_payment: bid_value,
-        blob_kzg_commitments: Default::default(),
+        blob_kzg_commitments: KzgCommitments::<E>::default(),
     };
 
     let bid_epoch = target_slot.epoch(E::slots_per_epoch());

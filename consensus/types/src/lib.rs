@@ -153,7 +153,7 @@ pub use crate::beacon_block_body::{
 pub use crate::beacon_block_header::BeaconBlockHeader;
 pub use crate::beacon_committee::{BeaconCommittee, OwnedBeaconCommittee};
 pub use crate::beacon_response::{
-    BeaconResponse, ForkVersionDecode, ForkVersionedResponse, UnversionedResponse,
+    BeaconResponse, EmptyMetadata, ForkVersionDecode, ForkVersionedResponse, UnversionedResponse,
 };
 pub use crate::beacon_state::{Error as BeaconStateError, *};
 pub use crate::blinded_execution_payload_envelope::{

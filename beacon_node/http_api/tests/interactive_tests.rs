@@ -11,6 +11,7 @@ use beacon_processor::{Work, WorkEvent, work_reprocessing_queue::ReprocessQueueM
 use eth2::types::ProduceBlockV3Response;
 use eth2::types::{DepositContractData, StateId};
 use execution_layer::{ForkchoiceState, PayloadAttributes};
+use http_api::Config;
 use http_api::test_utils::InteractiveTester;
 use parking_lot::Mutex;
 use slot_clock::SlotClock;
@@ -76,7 +77,7 @@ async fn state_by_root_pruned_from_fork_choice() {
                 })
         })),
         None,
-        Default::default(),
+        Config::default(),
         false,
         NodeCustodyType::Fullnode,
     )
@@ -437,7 +438,7 @@ pub async fn proposer_boost_re_org_test(
                     DisallowedReOrgOffsets::new::<E>(disallowed_offsets).unwrap(),
                 )
         })),
-        Default::default(),
+        Config::default(),
         false,
         NodeCustodyType::Fullnode,
     )

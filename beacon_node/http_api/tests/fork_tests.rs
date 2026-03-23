@@ -9,6 +9,7 @@ use eth2::types::{
 };
 use execution_layer::test_utils::generate_genesis_header;
 use genesis::{InteropGenesisBuilder, bls_withdrawal_credentials};
+use http_api::Config;
 use http_api::test_utils::*;
 use std::collections::HashSet;
 use types::{
@@ -158,9 +159,11 @@ async fn attestations_across_fork_with_skip_slots() {
         .map(|attn| {
             let aggregation_bits = attn.get_aggregation_bits();
 
-            if aggregation_bits.len() != 1 {
-                panic!("Must be an unaggregated attestation")
-            }
+            assert_eq!(
+                aggregation_bits.len(),
+                1,
+                "Must be an unaggregated attestation"
+            );
 
             let aggregation_bit = *aggregation_bits.first().unwrap();
 
@@ -429,7 +432,7 @@ async fn bls_to_execution_changes_update_all_around_capella_fork() {
                 .genesis_state_ephemeral_store(genesis_state)
         })),
         None,
-        Default::default(),
+        Config::default(),
         true,
         NodeCustodyType::Fullnode,
     )
@@ -2514,7 +2517,7 @@ async fn expected_withdrawals_gloas_includes_builder_withdrawals() {
                 .genesis_state_ephemeral_store(state)
         })),
         None,
-        Default::default(),
+        Config::default(),
         true,
         NodeCustodyType::Fullnode,
     )
@@ -2857,7 +2860,7 @@ async fn gloas_tester_with_builders(
                 .genesis_state_ephemeral_store(state)
         })),
         None,
-        Default::default(),
+        Config::default(),
         true,
         NodeCustodyType::Fullnode,
     )

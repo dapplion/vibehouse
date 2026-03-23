@@ -1779,7 +1779,7 @@ mod test {
                         excess_blob_gas: 0,
                     };
                     let execution_requests: types::ExecutionRequests<MainnetEthSpec> =
-                        Default::default();
+                        types::ExecutionRequests::default();
                     let _ = client
                         .new_payload_v5_gloas(NewPayloadRequestGloas {
                             execution_payload: &payload,
@@ -1824,7 +1824,7 @@ mod test {
             .assert_auth_failure(|client| async move {
                 let payload = types::ExecutionPayloadGloas::<MainnetEthSpec>::default();
                 let execution_requests: types::ExecutionRequests<MainnetEthSpec> =
-                    Default::default();
+                    types::ExecutionRequests::default();
                 client
                     .new_payload_v5_gloas(NewPayloadRequestGloas {
                         execution_payload: &payload,

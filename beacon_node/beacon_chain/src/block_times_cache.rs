@@ -115,8 +115,8 @@ impl BlockTimesCacheValue {
     fn new(slot: Slot) -> Self {
         BlockTimesCacheValue {
             slot,
-            timestamps: Default::default(),
-            peer_info: Default::default(),
+            timestamps: Timestamps::default(),
+            peer_info: BlockPeerInfo::default(),
         }
     }
 }

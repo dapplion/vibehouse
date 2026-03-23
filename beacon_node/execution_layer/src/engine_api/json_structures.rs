@@ -1427,9 +1427,9 @@ mod tests {
             execution_payload: payload.clone().into(),
             block_value,
             blobs_bundle: JsonBlobsBundleV1 {
-                commitments: Default::default(),
-                proofs: Default::default(),
-                blobs: Default::default(),
+                commitments: KzgCommitments::<MainnetEthSpec>::default(),
+                proofs: KzgProofs::<MainnetEthSpec>::default(),
+                blobs: BlobsList::<MainnetEthSpec>::default(),
             },
             should_override_builder: true,
             execution_requests: JsonExecutionRequests(vec![]),
@@ -1466,7 +1466,7 @@ mod tests {
             block_value,
             blobs_bundle: BlobsBundle::default(),
             should_override_builder: false,
-            requests: Default::default(),
+            requests: ExecutionRequests::default(),
         });
 
         let (ep, value, blobs, requests) = response.into();

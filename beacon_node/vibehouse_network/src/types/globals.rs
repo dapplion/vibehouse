@@ -2,7 +2,7 @@
 use super::TopicConfig;
 use crate::peer_manager::peerdb::PeerDB;
 use crate::rpc::{MetaData, MetaDataV3};
-use crate::types::{BackFillState, SyncState};
+use crate::types::{BackFillState, EnrAttestationBitfield, EnrSyncCommitteeBitfield, SyncState};
 use crate::{Client, Enr, GossipTopic, Multiaddr, NetworkConfig, PeerId};
 use eth2::vibehouse::sync_state::CustodyBackFillState;
 use network_utils::enr_ext::EnrExt;
@@ -241,8 +241,8 @@ impl<E: EthSpec> NetworkGlobals<E> {
     ) -> NetworkGlobals<E> {
         let metadata = MetaData::V3(MetaDataV3 {
             seq_number: 0,
-            attnets: Default::default(),
-            syncnets: Default::default(),
+            attnets: EnrAttestationBitfield::<E>::default(),
+            syncnets: EnrSyncCommitteeBitfield::<E>::default(),
             custody_group_count: spec.custody_requirement,
         });
         Self::new_test_globals_with_metadata(trusted_peers, metadata, config, spec, None)
@@ -257,8 +257,8 @@ impl<E: EthSpec> NetworkGlobals<E> {
     ) -> NetworkGlobals<E> {
         let metadata = MetaData::V3(MetaDataV3 {
             seq_number: 0,
-            attnets: Default::default(),
-            syncnets: Default::default(),
+            attnets: EnrAttestationBitfield::<E>::default(),
+            syncnets: EnrSyncCommitteeBitfield::<E>::default(),
             custody_group_count: spec.custody_requirement,
         });
         Self::new_test_globals_with_metadata(trusted_peers, metadata, config, spec, Some(enr_key))
@@ -320,8 +320,8 @@ mod test {
     fn get_metadata(custody_group_count: u64) -> MetaData<E> {
         MetaData::V3(MetaDataV3 {
             seq_number: 0,
-            attnets: Default::default(),
-            syncnets: Default::default(),
+            attnets: EnrAttestationBitfield::<E>::default(),
+            syncnets: EnrSyncCommitteeBitfield::<E>::default(),
             custody_group_count,
         })
     }

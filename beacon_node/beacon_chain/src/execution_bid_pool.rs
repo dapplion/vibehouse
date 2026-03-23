@@ -97,9 +97,10 @@ impl<E: EthSpec> ExecutionBidPool<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use types::beacon_block_body::KzgCommitments;
     use types::{
-        ExecutionBlockHash, ExecutionPayloadBid, FixedBytesExtended, Hash256, MainnetEthSpec,
-        Signature,
+        Address, ExecutionBlockHash, ExecutionPayloadBid, FixedBytesExtended, Hash256,
+        MainnetEthSpec, Signature,
     };
 
     type E = MainnetEthSpec;
@@ -114,10 +115,10 @@ mod tests {
                 parent_block_root: Hash256::zero(),
                 block_hash: ExecutionBlockHash(Hash256::zero()),
                 prev_randao: Hash256::zero(),
-                fee_recipient: Default::default(),
+                fee_recipient: Address::default(),
                 gas_limit: 30_000_000,
                 execution_payment: value,
-                blob_kzg_commitments: Default::default(),
+                blob_kzg_commitments: KzgCommitments::<E>::default(),
             },
             signature: Signature::empty(),
         }
@@ -314,10 +315,10 @@ mod tests {
                 parent_block_root,
                 block_hash: ExecutionBlockHash(Hash256::zero()),
                 prev_randao: Hash256::zero(),
-                fee_recipient: Default::default(),
+                fee_recipient: Address::default(),
                 gas_limit: 30_000_000,
                 execution_payment: value,
-                blob_kzg_commitments: Default::default(),
+                blob_kzg_commitments: KzgCommitments::<E>::default(),
             },
             signature: Signature::empty(),
         }
@@ -339,10 +340,10 @@ mod tests {
                 parent_block_root,
                 block_hash: ExecutionBlockHash(Hash256::zero()),
                 prev_randao: Hash256::zero(),
-                fee_recipient: Default::default(),
+                fee_recipient: Address::default(),
                 gas_limit: 30_000_000,
                 execution_payment: value,
-                blob_kzg_commitments: Default::default(),
+                blob_kzg_commitments: KzgCommitments::<E>::default(),
             },
             signature: Signature::empty(),
         }

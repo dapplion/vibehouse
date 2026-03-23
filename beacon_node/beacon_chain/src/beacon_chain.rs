@@ -142,8 +142,8 @@ use types::{
     BeaconBlockElectra, BeaconBlockFulu, BeaconBlockGloas, BeaconBlockRef, BeaconState,
     BeaconStateError, BitVector, BlindedPayload, BlobSidecar, BlobSidecarList, BlobsList,
     BlockImportSource, ChainSpec, Checkpoint, CommitteeCache, CommitteeIndex, DataColumnSidecar,
-    DataColumnSidecarList, DataColumnSubnetId, Deposit, EnrForkId, Epoch, Eth1Data, EthSpec,
-    ExecPayload, ExecutionBlockHash, ExecutionPayloadBid, ExecutionPayloadEnvelope,
+    DataColumnSidecarList, DataColumnSubnetId, Deposit, EmptyMetadata, EnrForkId, Epoch, Eth1Data,
+    EthSpec, ExecPayload, ExecutionBlockHash, ExecutionPayloadBid, ExecutionPayloadEnvelope,
     ExecutionPayloadGloas, ExecutionPayloadHeader, ExecutionRequests, FixedBytesExtended, ForkName,
     ForkVersionedResponse, FullPayload, Graffiti, Hash256, InconsistentFork, KzgProofs,
     LightClientBootstrap, LightClientFinalityUpdate, LightClientOptimisticUpdate,
@@ -7928,7 +7928,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     parent_block_hash: forkchoice_update_params.head_hash.unwrap_or_default(),
                     payload_attributes: payload_attributes.into(),
                 },
-                metadata: Default::default(),
+                metadata: EmptyMetadata {},
                 version: prepare_slot_fork,
             }));
         }

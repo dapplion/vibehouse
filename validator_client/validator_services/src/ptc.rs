@@ -412,7 +412,7 @@ mod tests {
 #[cfg(test)]
 mod poll_tests {
     use super::*;
-    use beacon_node_fallback::{ApiTopic, BeaconNodeFallback, CandidateBeaconNode};
+    use beacon_node_fallback::{ApiTopic, BeaconNodeFallback, CandidateBeaconNode, Config};
     use eth2::types::PtcDutyData;
     use slot_clock::{SlotClock, TestingSlotClock};
     use std::collections::HashMap;
@@ -625,7 +625,7 @@ mod poll_tests {
         let spec_arc = Arc::new(spec.clone());
         let mut fallback = BeaconNodeFallback::new(
             vec![candidate],
-            Default::default(),
+            Config::default(),
             vec![ApiTopic::Attestations],
             spec_arc.clone(),
         );

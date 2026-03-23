@@ -275,6 +275,22 @@ lint:
 		-D clippy::manual_string_new \
 		-D clippy::uninlined_format_args \
 		-D clippy::needless_raw_string_hashes \
+		-D clippy::default_trait_access \
+		-D clippy::redundant_closure \
+		-D clippy::ptr_as_ptr \
+		-D clippy::macro_use_imports \
+		-D clippy::needless_continue \
+		-D clippy::map_flatten \
+		-D clippy::manual_assert \
+		-D clippy::ref_option_ref \
+		-D clippy::option_option \
+		-D clippy::verbose_bit_mask \
+		-D clippy::zero_sized_map_values \
+		-D clippy::stable_sort_primitive \
+		-D clippy::string_add_assign \
+		-D clippy::naive_bytecount \
+		-D clippy::filter_map_next \
+		-D clippy::mut_mut \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.

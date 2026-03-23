@@ -1249,8 +1249,8 @@ mod tests {
             enr,
             MetaData::V3(MetaDataV3 {
                 seq_number: 0,
-                attnets: Default::default(),
-                syncnets: Default::default(),
+                attnets: BitVector::default(),
+                syncnets: BitVector::default(),
                 custody_group_count: spec.custody_requirement,
             }),
             vec![],

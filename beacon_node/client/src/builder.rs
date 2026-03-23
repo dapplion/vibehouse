@@ -10,7 +10,8 @@ use beacon_chain::graffiti_calculator::start_engine_version_cache_refresh_servic
 use beacon_chain::proposer_prep_service::start_proposer_prep_service;
 use beacon_chain::schema_change::migrate_schema;
 use beacon_chain::{
-    BeaconChain, BeaconChainTypes, MigratorConfig, ServerSentEventHandler,
+    BeaconChain, BeaconChainTypes, MigratorConfig, OverrideForkchoiceUpdate,
+    ServerSentEventHandler,
     builder::{BeaconChainBuilder, Witness},
     slot_clock::{SlotClock, SystemTimeSlotClock},
     state_advance_timer::spawn_state_advance_timer,
@@ -740,7 +741,7 @@ where
                                     .update_execution_engine_forkchoice(
                                         current_slot,
                                         params,
-                                        Default::default(),
+                                        OverrideForkchoiceUpdate::default(),
                                     )
                                     .await;
 
