@@ -4145,7 +4145,7 @@ async fn prune_blobs_across_fork_boundary() {
             check_blob_existence(&harness, oldest_slot, harness.head_slot(), false);
             // Data columns should exist post-Fulu
             check_data_column_existence(&harness, oldest_slot, harness.head_slot(), true);
-        };
+        }
     }
 }
 

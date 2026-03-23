@@ -338,7 +338,7 @@ impl InvalidPayloadRig {
                             Payload::Valid | Payload::Syncing
                         ));
                     }
-                };
+                }
 
                 let block_in_forkchoice = self
                     .harness
@@ -386,7 +386,7 @@ impl InvalidPayloadRig {
         {
             Err(ForkChoiceError::ProtoArrayStringError(e)) if e.contains(s) => (),
             other => panic!("expected {s} error, got {other:?}"),
-        };
+        }
     }
 }
 

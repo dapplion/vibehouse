@@ -360,7 +360,7 @@ mod tests {
         match LockedWallet::open(base_dir, &uuid_a) {
             Err(Error::LockfileError(_)) => {}
             _ => panic!("did not get locked error"),
-        };
+        }
 
         drop(locked_a);
 
@@ -370,7 +370,7 @@ mod tests {
         match LockedWallet::open(base_dir, &uuid_b) {
             Err(Error::LockfileError(_)) => {}
             _ => panic!("did not get locked error"),
-        };
+        }
 
         drop(locked_b);
 

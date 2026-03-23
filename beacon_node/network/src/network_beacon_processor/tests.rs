@@ -1004,7 +1004,7 @@ fn junk_message_id() -> MessageId {
 async fn data_column_reconstruction_at_slot_start() {
     if test_spec::<E>().fulu_fork_epoch.is_none() {
         return;
-    };
+    }
     // Gloas (ePBS): data columns come via envelope, not block body
     if fork_name_from_env().is_some_and(types::ForkName::gloas_enabled) {
         return;
@@ -1061,7 +1061,7 @@ async fn data_column_reconstruction_at_slot_start() {
 async fn data_column_reconstruction_at_deadline() {
     if test_spec::<E>().fulu_fork_epoch.is_none() {
         return;
-    };
+    }
     if fork_name_from_env().is_some_and(types::ForkName::gloas_enabled) {
         return;
     }
@@ -1143,7 +1143,7 @@ async fn data_column_reconstruction_at_deadline() {
 async fn data_column_reconstruction_at_next_slot() {
     if test_spec::<E>().fulu_fork_epoch.is_none() {
         return;
-    };
+    }
     if fork_name_from_env().is_some_and(types::ForkName::gloas_enabled) {
         return;
     }
@@ -1311,7 +1311,7 @@ async fn import_gossip_block_unacceptably_early() {
 async fn accept_processed_gossip_data_columns_without_import() {
     if test_spec::<E>().fulu_fork_epoch.is_none() {
         return;
-    };
+    }
     if fork_name_from_env().is_some_and(types::ForkName::gloas_enabled) {
         return;
     }
@@ -1480,7 +1480,7 @@ async fn attestation_to_unknown_block_processed(import_method: BlockImportMethod
                 events.push(WorkType::RpcCustodyColumn);
             }
         }
-    };
+    }
 
     events.push(WorkType::UnknownBlockAttestation);
 
@@ -1569,7 +1569,7 @@ async fn aggregate_attestation_to_unknown_block(import_method: BlockImportMethod
                 events.push(WorkType::RpcCustodyColumn);
             }
         }
-    };
+    }
 
     events.push(WorkType::UnknownBlockAggregate);
 
@@ -1869,7 +1869,7 @@ async fn test_backfill_sync_processing_rate_limiting_disabled() {
 async fn test_blobs_by_range() {
     if test_spec::<E>().deneb_fork_epoch.is_none() {
         return;
-    };
+    }
     let mut rig = TestRig::new(64).await;
     let start_slot = 0;
     let slot_count = 32;
@@ -1917,7 +1917,7 @@ async fn test_blobs_by_range_spans_fulu_fork() {
     // Only test for Electra & Fulu fork transition
     if test_spec::<E>().electra_fork_epoch.is_none() {
         return;
-    };
+    }
     let mut spec = test_spec::<E>();
     spec.fulu_fork_epoch = Some(Epoch::new(1));
     spec.gloas_fork_epoch = Some(Epoch::new(2));
@@ -1975,7 +1975,7 @@ async fn test_blobs_by_range_spans_fulu_fork() {
 async fn test_blobs_by_root() {
     if test_spec::<E>().deneb_fork_epoch.is_none() {
         return;
-    };
+    }
 
     let mut rig = TestRig::new(64).await;
 
@@ -2038,7 +2038,7 @@ async fn test_blobs_by_root_post_fulu_should_return_empty() {
     // Only test for Fulu fork
     if test_spec::<E>().fulu_fork_epoch.is_none() {
         return;
-    };
+    }
 
     let mut rig = TestRig::new(64).await;
 
@@ -2145,7 +2145,7 @@ async fn test_data_column_import_notifies_sync() {
 async fn test_data_columns_by_range_request_only_returns_requested_columns() {
     if test_spec::<E>().fulu_fork_epoch.is_none() {
         return;
-    };
+    }
     if fork_name_from_env().is_some_and(types::ForkName::gloas_enabled) {
         return;
     }

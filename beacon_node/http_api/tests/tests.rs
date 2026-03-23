@@ -1955,7 +1955,7 @@ impl ApiTester {
             Ok(result) => panic!("Full node are unable to return blobs post-Fulu: {result:?}"),
             // Post-Fulu, full nodes don't store blobs and return error 500
             Err(e) => assert_eq!(e.status().unwrap(), 500),
-        };
+        }
 
         self
     }
@@ -5331,7 +5331,7 @@ impl ApiTester {
         match payload_type.data {
             ProduceBlockV3Response::Full(_) => (),
             ProduceBlockV3Response::Blinded(_) => panic!("Expecting a full payload"),
-        };
+        }
 
         self
     }
@@ -5402,7 +5402,7 @@ impl ApiTester {
         match payload_type.data {
             ProduceBlockV3Response::Full(_) => (),
             ProduceBlockV3Response::Blinded(_) => panic!("Expecting a full payload"),
-        };
+        }
 
         self
     }
@@ -5517,7 +5517,7 @@ impl ApiTester {
         match payload_type.data {
             ProduceBlockV3Response::Blinded(_) => (),
             ProduceBlockV3Response::Full(_) => panic!("Expecting a blinded payload"),
-        };
+        }
 
         // Without proposing, advance into the next slot, this should make us cross the threshold
         // number of skips, causing us to use the fallback.
@@ -5538,7 +5538,7 @@ impl ApiTester {
         match payload_type.data {
             ProduceBlockV3Response::Full(_) => (),
             ProduceBlockV3Response::Blinded(_) => panic!("Expecting a full payload"),
-        };
+        }
 
         self
     }
@@ -5673,7 +5673,7 @@ impl ApiTester {
         match payload_type.data {
             ProduceBlockV3Response::Full(_) => (),
             ProduceBlockV3Response::Blinded(_) => panic!("Expecting a full payload"),
-        };
+        }
 
         // Fill another epoch with blocks, should be enough to finalize. (Sneaky plus 1 because this
         // scenario starts at an epoch boundary).
@@ -5704,7 +5704,7 @@ impl ApiTester {
         match payload_type.data {
             ProduceBlockV3Response::Blinded(_) => (),
             ProduceBlockV3Response::Full(_) => panic!("Expecting a blinded payload"),
-        };
+        }
 
         self
     }
@@ -5860,7 +5860,7 @@ impl ApiTester {
         match payload_type.data {
             ProduceBlockV3Response::Blinded(_) => (),
             ProduceBlockV3Response::Full(_) => panic!("Expecting a blinded payload"),
-        };
+        }
 
         self
     }
@@ -5929,7 +5929,7 @@ impl ApiTester {
         match payload_type.data {
             ProduceBlockV3Response::Full(_) => (),
             ProduceBlockV3Response::Blinded(_) => panic!("Expecting a full payload"),
-        };
+        }
 
         self
     }
@@ -5998,7 +5998,7 @@ impl ApiTester {
         match payload_type.data {
             ProduceBlockV3Response::Full(_) => (),
             ProduceBlockV3Response::Blinded(_) => panic!("Expecting a full payload"),
-        };
+        }
 
         self
     }
@@ -6139,7 +6139,7 @@ impl ApiTester {
         match payload_type.data {
             ProduceBlockV3Response::Full(_) => (),
             ProduceBlockV3Response::Blinded(_) => panic!("Expecting a full payload"),
-        };
+        }
 
         self
     }

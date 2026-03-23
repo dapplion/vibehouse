@@ -507,7 +507,7 @@ impl ApiTester {
             assert_eq!(self.vals_enabled(), initial_enabled_vals + s.count);
         } else {
             assert_eq!(self.vals_enabled(), initial_enabled_vals);
-        };
+        }
 
         self
     }
