@@ -4971,4 +4971,4 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - **#4960** (fork choice test: new validator deposit) — new test vectors, runner ready
   - **#4932** (sanity/blocks tests with payload attestation) — new test vectors, runner ready
 - **Test coverage audit**: Verified `prune_gloas_pools` has 3 dedicated tests (buffer cap enforcement, slot boundary retention, at-cap-not-cleared). Range sync Gloas skip (`state_update_while_purging`) is test infra limitation (cross-harness bid parent_block_hash mismatch), not a coverage gap.
-- **No code changes this run** — codebase healthy, CI fully green, spec fully tracked.
+- **Fix**: Escaped `[IGNORE]` and `[REJECT]` in doc comments in `attestation_verification.rs:1350` and `gloas_verification.rs:193` — rustdoc was parsing them as broken intra-doc links. `cargo doc --workspace --no-deps -D warnings` now passes clean.
