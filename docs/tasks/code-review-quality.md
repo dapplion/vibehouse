@@ -4934,3 +4934,14 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Devnet verification**: Ran full devnet test (`kurtosis-run.sh`) to verify no behavioral regressions from runs 2223-2231 (8 runs of lint changes including removing async, changing function signatures, removing clones). Result: 4 nodes, finalized_epoch=8, Gloas fork transition clean. No regressions.
 - **Codebase audit**: Confirmed zero warnings from `clippy::suspicious`, `clippy::complexity`, and `clippy::correctness` categories. `cargo audit` shows only 1 medium-severity advisory (RSA timing side-channel in transitive dep `jsonwebtoken→rsa`, no fix available) and 5 unmaintained crate warnings (all transitive).
 - **Tests**: Devnet 4-node chain health pass. `make lint` clean. CI run 2231: check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, http_api ✓ (beacon_chain+unit still running).
+
+### Run 2233 (2026-03-23)
+
+**Verification run — all systems green**
+
+- **CI status**: Run 23434476265 in progress — check+clippy+fmt ✓, network+op_pool ✓, ef-tests ✓. Nightly failure (slasher redb-only) already fixed in run 2231 commit `5d23ecf85`.
+- **Spec tracking**: v1.7.0-alpha.3 still latest. PR #5008 (field name doc fix) and PR #5022 (block known check) both already tracked and aligned. No new merged Gloas spec changes.
+- **Local tests**: workspace unit tests 4991/4991 pass (4 web3signer failures are external infra — Java binary timeout, pre-existing). EF spec tests: 139/139 (fake_crypto) + 79/79 (real crypto) pass.
+- **Correctness audit**: Reviewed `process_withdrawals_gloas` and `compute_withdrawals_gloas` — verified BUILDER_INDEX_FLAG handling is safe (sections 1-3 capped at MAX-1, guaranteeing last item in full list is always from validator sweep). All safe math used. No issues found.
+- **Clippy**: `cargo clippy --workspace -- -D warnings` clean (176 enforced lints).
+- **No code changes this run** — everything is healthy.
