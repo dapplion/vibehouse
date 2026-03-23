@@ -2074,3 +2074,11 @@ Repeated spec tracking checks, all stable. Key facts from this period:
 - Prep branch `cached-ptc` remains ready on origin.
 - All stable. No action needed.
 
+### Run 2256 (2026-03-23) — health check
+- **Spec**: v1.7.0-alpha.3 still latest. Recently merged: #5022 (block known assert in on_payload_attestation_message — already compliant), #5008 (field name correction — doc-only), #5014 (EIP-8025 P2P protocol for ZK proofs — not urgent, stub proofs). All dependency/tooling PRs only.
+- **Open Gloas PRs**: #4979 (PTC lookbehind, active discussion — renaming to `ptc_window`, still open), #5023 (block root filenames + Gloas comptests), #4843 (variable PTC deadline), #4939 (envelope request — already implemented), #4630 (EIP-7688 SSZ), #4840 (EIP-7843).
+- **CI**: all green. Nightly slasher failure (Mar 23 09:33 UTC) confirmed on pre-fix commit; tonight's nightly will pass.
+- **Build**: zero warnings. cargo audit unchanged (1 rsa advisory, 5 unmaintained — all transitive).
+- **Rust**: 1.94.0 (latest stable).
+- All stable. No action needed.
+
