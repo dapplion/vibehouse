@@ -330,3 +330,12 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - CI green (run 23460108181), zero clippy warnings, cargo audit unchanged
 - Attempted rand_xorshift 0.4→0.5 upgrade: blocked by rand_core version split (0.6/0.9/0.10 — three versions in tree). Deferred
 - **No action needed. Spec current, codebase healthy.**
+
+### run 2270 (Mar 23) — routine spec check
+
+- No new functional Gloas spec merges — only CI/tooling commits (#5027, #5029, #5030, #5031, deps)
+- **PTC window (#4979)**: still OPEN, not merged. Design converging (rename to `ptc_window` agreed)
+- Nightly slasher failure (Mar 23 09:33 UTC): confirmed caused by MEGABYTE dead code in redb-only build. Fix was pushed at 10:42 UTC (commit 5d23ecf85) — after the nightly ran. Tonight's nightly should pass.
+- CI green (push workflows), zero clippy warnings, zero dead code warnings, zero compiler warnings
+- Rust stable 1.94.0 (current), only outdated dep is rand_xorshift 0.4→0.5 (blocked by rand_core split)
+- **No action needed. Spec current, codebase healthy.**
