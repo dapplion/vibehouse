@@ -342,7 +342,7 @@ fn eth1_data() {
     let harness = Harness::new();
 
     let config = BuildConfig {
-        deposit_amount: Some(123456),
+        deposit_amount: Some(123_456),
         ..BuildConfig::default()
     };
 
@@ -370,7 +370,7 @@ fn store_withdrawal_keystore_with_eth1_data() {
     let config = BuildConfig {
         store_withdrawal_keystore: false,
         random_withdrawal_keystore: true,
-        deposit_amount: Some(32000000000),
+        deposit_amount: Some(32_000_000_000),
         ..BuildConfig::default()
     };
 

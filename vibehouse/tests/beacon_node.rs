@@ -564,7 +564,7 @@ fn run_payload_builder_flag_test(flag: &str, builders: &str) {
     use sensitive_url::SensitiveUrl;
 
     let all_builders: Vec<_> = builders
-        .split(",")
+        .split(',')
         .map(|builder| SensitiveUrl::parse(builder).expect("valid builder url"))
         .collect();
     run_payload_builder_flag_test_with_config(flag, builders, None, None, |config| {

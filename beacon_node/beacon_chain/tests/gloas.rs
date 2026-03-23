@@ -18828,7 +18828,8 @@ async fn gloas_range_sync_mixed_full_empty_chain() {
     let harness1 = gloas_harness_at_epoch(0);
 
     // Block indices where envelope is skipped (0-indexed, block 3 = index 2)
-    let skip_envelope_indices: std::collections::HashSet<usize> = [2].into_iter().collect();
+    let skip_envelope_indices: std::collections::HashSet<usize> =
+        std::collections::HashSet::from([2]);
 
     let mut block_roots = Vec::new();
     for i in 0..5 {

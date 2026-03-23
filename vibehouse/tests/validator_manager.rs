@@ -594,7 +594,7 @@ pub(crate) fn validator_exit_exit_epoch_and_presign_flags() {
                     PublicKeyBytes::from_str(EXAMPLE_PUBKEY_1).unwrap(),
                 ],
                 beacon_url: None,
-                exit_epoch: Some(Epoch::new(1234567)),
+                exit_epoch: Some(Epoch::new(1_234_567)),
                 presign: true,
             };
             assert_eq!(expected, config);

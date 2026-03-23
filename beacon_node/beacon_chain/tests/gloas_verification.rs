@@ -563,7 +563,7 @@ async fn bid_invalid_parent_root() {
     bid.message.execution_payment = 1;
     bid.message.builder_index = 0;
     bid.message.value = 100;
-    bid.message.parent_block_root = Hash256::from_low_u64_be(0xbadbeef);
+    bid.message.parent_block_root = Hash256::from_low_u64_be(0x0bad_beef);
 
     let err = unwrap_err(
         harness.chain.verify_execution_bid_for_gossip(bid),
@@ -762,7 +762,7 @@ async fn attestation_unknown_beacon_block_root() {
 
     let mut attestation = PayloadAttestation::<E>::empty();
     attestation.data.slot = current_slot;
-    attestation.data.beacon_block_root = Hash256::from_low_u64_be(0xdeadbeef);
+    attestation.data.beacon_block_root = Hash256::from_low_u64_be(0xdead_beef);
     attestation.aggregation_bits.set(0, true).unwrap();
 
     let err = unwrap_err(
@@ -872,7 +872,7 @@ async fn envelope_block_root_unknown() {
     let harness = gloas_harness(1).await;
 
     let mut envelope = SignedExecutionPayloadEnvelope::<E>::empty();
-    envelope.message.beacon_block_root = Hash256::from_low_u64_be(0xdeadbeef);
+    envelope.message.beacon_block_root = Hash256::from_low_u64_be(0xdead_beef);
     envelope.message.slot = harness.chain.slot().unwrap();
 
     let err = unwrap_err(
@@ -889,7 +889,7 @@ async fn envelope_block_root_unknown() {
     // Verify the envelope was buffered in pending_gossip_envelopes
     let pending = harness.chain.pending_gossip_envelopes.lock();
     assert!(
-        pending.contains_key(&Hash256::from_low_u64_be(0xdeadbeef)),
+        pending.contains_key(&Hash256::from_low_u64_be(0xdead_beef)),
         "envelope should be buffered for later processing"
     );
 }

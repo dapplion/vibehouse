@@ -648,7 +648,7 @@ async fn unaggregated_gossip_verification() {
         {
             let mut sync_message = valid_sync_committee_message.clone();
 
-            sync_message.signature = validator_sk.sign(Hash256::from_low_u64_le(424242));
+            sync_message.signature = validator_sk.sign(Hash256::from_low_u64_le(424_242));
 
             sync_message
         },

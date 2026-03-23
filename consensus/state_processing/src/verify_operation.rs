@@ -391,7 +391,7 @@ mod test {
 
     fn roundtrip_test<T: TestRandom + TransformPersist + PartialEq + std::fmt::Debug>() {
         let runs = 10;
-        let mut rng = XorShiftRng::seed_from_u64(0xff0af5a356af1123);
+        let mut rng = XorShiftRng::seed_from_u64(0xff0a_f5a3_56af_1123);
 
         for _ in 0..runs {
             let op = T::random_for_test(&mut rng);

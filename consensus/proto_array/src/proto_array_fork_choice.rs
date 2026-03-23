@@ -6635,7 +6635,7 @@ mod test_gloas_fork_choice {
         // Now add enough equivocating indices to make the parent strong.
         // Reorg threshold = 672e9 / 8 * 20 / 100 = 16.8e9
         // 1 equivocating validator at 32e9 > 16.8e9 → parent becomes strong.
-        let equivocators: BTreeSet<u64> = [0u64].into_iter().collect();
+        let equivocators: BTreeSet<u64> = BTreeSet::from([0u64]);
         let apply_boost_with_equivocators = fc
             .should_apply_proposer_boost_gloas_test::<MinimalEthSpec>(
                 root(2),

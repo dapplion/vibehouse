@@ -313,6 +313,45 @@ lint:
 		-D clippy::large_types_passed_by_value \
 		-D clippy::manual_find_map \
 		-D clippy::mismatching_type_param_order \
+		-D clippy::collection_is_never_read \
+		-D clippy::debug_assert_with_mut_call \
+		-D clippy::empty_line_after_doc_comments \
+		-D clippy::empty_line_after_outer_attr \
+		-D clippy::format_push_string \
+		-D clippy::imprecise_flops \
+		-D clippy::index_refutable_slice \
+		-D clippy::iter_not_returning_iterator \
+		-D clippy::iter_on_empty_collections \
+		-D clippy::iter_on_single_items \
+		-D clippy::large_digit_groups \
+		-D clippy::large_include_file \
+		-D clippy::lossy_float_literal \
+		-D clippy::manual_clamp \
+		-D clippy::manual_filter_map \
+		-D clippy::manual_is_ascii_check \
+		-D clippy::manual_is_power_of_two \
+		-D clippy::map_identity \
+		-D clippy::match_wildcard_for_single_variants \
+		-D clippy::maybe_infinite_iter \
+		-D clippy::mixed_read_write_in_expression \
+		-D clippy::needless_bitwise_bool \
+		-D clippy::neg_multiply \
+		-D clippy::no_mangle_with_rust_abi \
+		-D clippy::path_buf_push_overwrite \
+		-D clippy::range_minus_one \
+		-D clippy::readonly_write_lock \
+		-D clippy::redundant_feature_names \
+		-D clippy::rest_pat_in_fully_bound_structs \
+		-D clippy::single_char_pattern \
+		-D clippy::suspicious_xor_used_as_pow \
+		-D clippy::transmute_undefined_repr \
+		-D clippy::tuple_array_conversions \
+		-D clippy::type_id_on_box \
+		-D clippy::unnecessary_join \
+		-D clippy::unnecessary_safety_doc \
+		-D clippy::unreadable_literal \
+		-D clippy::unused_peekable \
+		-D clippy::unused_rounding \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.

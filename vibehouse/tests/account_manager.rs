@@ -98,7 +98,7 @@ fn list_wallets<P: AsRef<Path>>(base_dir: P) -> Vec<String> {
         .to_string();
 
     stdout[..stdout.len() - 1]
-        .split("\n")
+        .split('\n')
         .map(Into::into)
         .collect()
 }
@@ -283,9 +283,9 @@ impl TestValidator {
         }
 
         let pubkeys = stdout[..stdout.len() - 1]
-            .split("\n")
+            .split('\n')
             .map(|line| {
-                let tab = line.find("\t").expect("line must have tab");
+                let tab = line.find('\t').expect("line must have tab");
                 let (_, pubkey) = line.split_at(tab + 1);
                 pubkey.to_string()
             })
