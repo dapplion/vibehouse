@@ -4982,3 +4982,19 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - Investigated PTC epoch boundary issue: when processing a block at first slot of new epoch, `get_ptc` uses post-epoch-transition effective_balance values for the previous slot's PTC. This is a known spec-level issue (not vibehouse-specific) — all clients using the spec as-is have the same behavior. No consensus disagreement between nodes. Gossip validation could reject valid attestations at epoch boundaries (liveness, not safety).
 - **Devnet verification**: Full devnet test passed — 4 nodes, Gloas fork at epoch 1, finalized_epoch=8 (slot 81, epoch 10). No stalls. Confirms no regressions from runs 2223-2236 (8 runs of lint changes: 30+ clone removals, function signature changes, 225 clippy lints enforced).
 - **No code changes this run** — codebase is healthy, CI green, devnet verified, spec tracked.
+
+### Run 2238 (2026-03-23)
+
+**Clippy lint enforcement: 8 new lints (previous run), nightly fix verification**
+
+- Previous run (2238 doc update) enforced `dbg_macro`, `todo`, `try_err`, `unnecessary_self_imports`, `mem_forget`, `rc_buffer`, `rc_mutex`, `default_union_representation`.
+
+### Run 2239 (2026-03-23)
+
+**Enforce 6 new clippy lints, audit codebase health**
+
+- Enforced 6 additional clippy lints: `needless_borrowed_reference`, `negative_feature_names`, `set_contains_or_insert`, `str_split_at_newline`, `unnecessary_min_or_max`, `useless_format` — all at zero violations (free to enforce).
+- **Nightly CI failure** (slasher-tests, run 23430551707): `MEGABYTE` dead_code in redb-only build. Already fixed by commit `5d23ecf85` (ancestor of HEAD). Tomorrow's nightly will pass.
+- **Spec tracking**: v1.7.0-alpha.3 still latest. One post-alpha.3 PR merged: #5008 (doc-only fix: `block_root` → `beacon_block_root` in prose). Our implementation already uses the correct field name — no code change needed.
+- **Codebase audit**: Zero unwrap() calls in production Gloas code paths. All ForkName match statements properly handle Gloas. No missing arms found.
+- CI run 23440545701 in progress (check+clippy passed, integration tests running).
