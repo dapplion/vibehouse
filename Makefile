@@ -488,6 +488,43 @@ lint:
 		-D clippy::panicking_unwrap \
 		-D clippy::missing_safety_doc \
 		-D clippy::as_underscore \
+		-D clippy::manual_is_ascii_check \
+		-D clippy::needless_bool \
+		-D clippy::redundant_pattern_matching \
+		-D clippy::collapsible_if \
+		-D clippy::single_component_path_imports \
+		-D clippy::bool_to_int_with_if \
+		-D clippy::manual_range_contains \
+		-D clippy::manual_find \
+		-D clippy::unused_io_amount \
+		-D clippy::redundant_guards \
+		-D clippy::match_wildcard_for_single_variants \
+		-D clippy::manual_is_variant_and \
+		-D clippy::unnecessary_wraps \
+		-D clippy::unused_async \
+		-D clippy::map_collect_result_unit \
+		-D clippy::iter_on_single_items \
+		-D clippy::iter_on_empty_collections \
+		-D clippy::manual_ok_or \
+		-D clippy::borrow_as_ptr \
+		-D clippy::large_types_passed_by_value \
+		-D clippy::case_sensitive_file_extension_comparisons \
+		-D clippy::ref_as_ptr \
+		-D clippy::cast_lossless \
+		-D clippy::collection_is_never_read \
+		-D clippy::manual_instant_elapsed \
+		-D clippy::implicit_saturating_sub \
+		-D clippy::read_zero_byte_vec \
+		-D clippy::manual_while_let_some \
+		-D clippy::format_push_string \
+		-D clippy::from_over_into \
+		-D clippy::equatable_if_let \
+		-D clippy::get_first \
+		-D clippy::manual_flatten \
+		-D clippy::bytes_count_to_len \
+		-D clippy::needless_option_as_deref \
+		-D clippy::needless_option_take \
+		-D clippy::manual_strip \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.
