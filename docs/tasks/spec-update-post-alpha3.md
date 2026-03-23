@@ -320,3 +320,13 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - Codebase audit: zero actionable TODOs (all blocked on external factors), zero production unwrap()/expect() outside tests, zero clippy warnings
 - cargo audit: same known advisories (RUSTSEC-2023-0071 rsa unfixable, plus unmaintained transitive deps: bincode, ansi_term, derivative, filesystem, paste — all not actionable)
 - **No action needed. Spec current, codebase healthy.**
+
+### run 2267 (Mar 23) — routine spec check
+
+- No new functional Gloas spec merges since run 2266 — only CI/tooling PRs (#5029, #5030, #5028, #5031)
+- **PTC window (#4979)**: still OPEN, 0 approvals, rename to `ptc_window` agreed. Design converging but not merged
+- Open Gloas PRs unchanged: #4979 (PTC window), #4954 (milliseconds), #4843 (variable PTC deadline), #4898 (1 approval), #4892 (2 approvals), #4939, #4840, #4747, #4630, #4558
+- Nightly slasher failure (Mar 22-23): already fixed in 5d23ecf85 (cfg guard on MEGABYTE). Tonight's nightly should pass
+- CI green (run 23460108181), zero clippy warnings, cargo audit unchanged
+- Attempted rand_xorshift 0.4→0.5 upgrade: blocked by rand_core version split (0.6/0.9/0.10 — three versions in tree). Deferred
+- **No action needed. Spec current, codebase healthy.**
