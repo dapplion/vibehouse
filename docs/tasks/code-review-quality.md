@@ -4998,3 +4998,21 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Spec tracking**: v1.7.0-alpha.3 still latest. One post-alpha.3 PR merged: #5008 (doc-only fix: `block_root` → `beacon_block_root` in prose). Our implementation already uses the correct field name — no code change needed.
 - **Codebase audit**: Zero unwrap() calls in production Gloas code paths. All ForkName match statements properly handle Gloas. No missing arms found.
 - CI run 23440545701 in progress (check+clippy passed, integration tests running).
+
+### Run 2240 (2026-03-23)
+
+**Add SAFETY comments to all unsafe blocks, enforce 4 new clippy lints**
+
+- **Safety documentation**: Added `// SAFETY:` comments to all 6 undocumented unsafe blocks:
+  - `health_metrics/observe.rs`: `libc::statvfs` call + `mem::zeroed()` for statvfs struct
+  - `malloc_utils/jemalloc.rs`: jemalloc `raw::read` stat queries (2 blocks)
+  - `crypto/bls/blst.rs`: `blst_scalar_from_uint64` FFI + `assume_init`
+  - `vibehouse/main.rs`: `env::set_var` (restructured existing comment to SAFETY convention)
+- **4 new lints enforced** (now 243 total `-D` lints in Makefile):
+  - `undocumented_unsafe_blocks` — requires `// SAFETY:` comment on every unsafe block
+  - `panicking_unwrap` — catches `.unwrap()` after an `is_some()` check in the wrong branch
+  - `missing_safety_doc` — requires `# Safety` doc section on unsafe functions
+  - `as_underscore` — prevents opaque `as _` type casts
+- **Spec tracking**: v1.7.0-alpha.3 still latest. PR #5022 (block known check in `on_payload_attestation_message`) now merged — verified our implementation already has this check at `fork_choice.rs:1432`.
+- **CI**: Run 23442761586 — check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, http_api ✓ (beacon_chain + unit still running).
+- **Tests**: 4991/5000 workspace tests pass (8 web3signer timeouts = pre-existing infra). `make lint` clean.
