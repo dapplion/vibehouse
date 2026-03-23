@@ -147,8 +147,6 @@ impl<E: EthSpec> ConsensusContext<E> {
         }
     }
 
-    #[allow(unknown_lints)]
-    #[allow(mismatched_lifetime_syntaxes)]
     pub fn get_indexed_attestation<'a>(
         &'a mut self,
         state: &BeaconState<E>,
