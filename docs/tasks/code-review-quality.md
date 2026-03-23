@@ -5101,6 +5101,14 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **CI**: Green. Nightly slasher failure was pre-fix (already resolved in run 2246). Tonight's nightly should pass.
 - **Spec tracking**: No new Gloas spec changes. PTC lookbehind (#4979) still open. v1.7.0-alpha.3 still latest release.
 
+### Run 2250 (2026-03-23)
+
+**CI fully green, spec stable**
+
+- **CI**: Run 23451379478 — all 7 jobs passed. Full green across check+clippy+fmt, ef-tests, network+op_pool, http_api, beacon_chain, unit tests.
+- **Spec tracking**: #5022 (block known check) merged today — already handled. Two approved Gloas PRs (#4892 remove impossible branch, #4898 remove pending tiebreaker) pre-checked: our implementation already matches the proposed behavior. #4979 (PTC lookbehind) still REVIEW_REQUIRED.
+- **No code changes this run** — project in holding pattern, all priorities done.
+
 ### Run 2248 (2026-03-23)
 
 **Verification + spec tracking**

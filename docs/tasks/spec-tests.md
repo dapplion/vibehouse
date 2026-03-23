@@ -30,6 +30,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2250 (Mar 23) — CI green, spec stable, holding pattern
+
+- CI: Run 23451379478 — all 7 jobs passed (check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, http_api ✓, beacon_chain ✓, unit tests ✓, ci-success ✓). Full green.
+- Spec: v1.7.0-alpha.3 still latest. #5022 merged today (block known check) — confirmed already handled at fork_choice.rs:1426-1432.
+- Open Gloas PRs: #4979 (PTC lookbehind, REVIEW_REQUIRED), #5023 (test fixture fix), #4962 (withdrawal tests), #4843 (variable PTC deadline), #4892 (remove impossible fork choice branch, APPROVED), #4898 (remove pending tiebreaker, APPROVED), #4954 (milliseconds in fork choice store, REVIEW_REQUIRED), #4747 (fast confirmation rule) — all still open.
+- Pre-implementation check: #4892 (assert message.slot >= block.slot) — our code already implements the correct behavior at proto_array_fork_choice.rs:1687-1691. #4898 (remove pending tiebreaker) — our tiebreaker function at line 1813-1829 already omits the pending early-return for is_previous_slot case (spec says this case is impossible anyway).
+- Nightly: tonight's run should be green (MEGABYTE fix confirmed in a4f999735).
+- Security: cargo audit unchanged (1 rsa advisory, 5 unmaintained — all non-actionable).
+- No code changes this run — codebase healthy, CI fully green, waiting for spec PRs.
+
 ### run 2249 (Mar 23) — maintenance check, all stable
 
 - Spec: v1.7.0-alpha.3 still latest. #5022 (block known check in `on_payload_attestation_message`) now merged — our implementation already has the check at `fork_choice.rs:1426-1432` with `UnknownBeaconBlockRoot` error. #5008 (field name fix) already confirmed correct.
