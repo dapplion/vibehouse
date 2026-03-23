@@ -5209,3 +5209,32 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Dependencies**: No new semver-compatible updates available. 14 major-version bumps exist (bincode 1→3, rand 0.9→0.10, reqwest 0.12→0.13, etc.) — not actionable without code changes.
 - **Audit**: Same known advisories. rsa RUSTSEC-2023-0071 still has no upstream fix. 5 unmaintained warnings (paste, filesystem, ansi_term, derivative, bincode — all via sp1 or internal crate name collision).
 - **No code changes this run** — codebase verified healthy, all priorities done, holding for spec PRs.
+
+### Run 2272 (2026-03-23)
+
+**Enforce 12 new clippy lints + code fixes**
+
+Added 12 allow-by-default clippy lints to the Makefile (276→288 total enforced):
+- **Safety**: `cast_ptr_alignment`, `non_send_fields_in_send_ty`, `unsafe_derive_deserialize`
+- **Code quality**: `collapsible_else_if`, `empty_enums`, `format_collect`, `iter_without_into_iter`, `large_stack_arrays`, `non_std_lazy_statics`, `ptr_cast_constness`, `unnecessary_debug_formatting`, `unnecessary_literal_bound`
+
+Code fixes to satisfy existing lints exposed by these additions:
+- `hkdf_expand`: pass `Prk` by reference instead of by value (crypto/eth2_key_derivation)
+- `verify_cell_proof_batch`: pass `indices` as `&[CellIndex]` instead of `Vec` (crypto/kzg + 4 call sites)
+- `build_sidecars`: pass `kzg_proofs` by reference (types + 3 call sites)
+- `ssz_round_trip` test: pass by reference (crypto/bls)
+- `test_build_log_text`: pass slices instead of owned Vecs (common/logging)
+- `unused_port`: tighten lock scope with block scoping (common/network_utils)
+- Derive `Copy` on `KeyType` (crypto/eth2_wallet) and `RayonPoolType` (common/task_executor)
+
+Lints tested but excluded (too many violations from macro-generated or third-party code):
+- `expl_impl_clone_on_copy` (21 superstruct-generated violations)
+- `wildcard_imports` (28 violations)
+- `float_cmp` (18 violations in tests)
+- `needless_pass_by_value` (many violations in trait impls and DB code)
+- `large_futures` (14 violations in RPC test futures)
+- `significant_drop_in_scrutinee` (14 violations in store)
+- `significant_drop_tightening` (50 violations)
+- `future_not_send` (3 violations in generic async methods)
+
+Also tracked: 2 new post-alpha.3 spec PRs (#5014 EIP-8025 p2p protocol, #5023 block root filename fix + Gloas comptests). Neither requires code changes — #5014 is an EIP-8025 feature, #5023 is test-generator-only.
