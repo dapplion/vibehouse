@@ -30,6 +30,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2238 (Mar 23) — spec check + 8 new clippy lints
+
+- Spec: v1.7.0-alpha.3 still latest. Two post-alpha.3 PRs merged (Mar 22): #5008 (doc fix: `block_root` → `beacon_block_root` in ExecutionPayloadEnvelopesByRoot — our code already correct), #5014 (EIP-8025 p2p protocol — not Gloas, not relevant).
+- Open Gloas PRs: #5022 (block known check, approved/mergeable — our `on_payload_attestation` already handles unknown blocks correctly), #5023 (test fixture fix), #5020/#4979 (PTC lookbehind), #4992 (cached PTCs), #4962 (withdrawal interaction tests), #4843 (variable PTC deadline) — all still open/unmerged.
+- Nightly: Mar 22 failure was transient CI infra (404 downloading cargo-nextest). Mar 23 failure was slasher dead code (already fixed in `5d23ecf85`). Next nightly should be green.
+- Enforced 8 new clippy lints: dbg_macro, todo, try_err, unnecessary_self_imports, mem_forget, rc_buffer, rc_mutex, default_union_representation. Fixed all violations (8 dbg! calls, 4 try_err patterns, 6 unnecessary self imports, 1 bug in move_validators error message).
+- Total enforced clippy lints: 233 (was 225).
+
 ### run 2123 (Mar 21) — sysinfo 0.26→0.33 update
 
 - Updated `sysinfo` crate from 0.26 to 0.33 across workspace (system_health, http_api, validator http_api).
