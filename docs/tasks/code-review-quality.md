@@ -5176,3 +5176,16 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **CI**: Green (run 23451379478, all 7 jobs passed). Nightly failure (09:33 UTC) confirmed on pre-fix commit — tonight's nightly will pass.
 - **Spec tracking**: v1.7.0-alpha.3 still latest. Recently closed without merging: #5020 (PTC lookbehind minimal state change, nflaig), #4992 (cached PTCs, potuz) — both superseded by #4979 which remains open. #4892, #4898, #4954 all still open. All recent merges are dependency/tooling updates only.
 - **No code changes this run** — project in holding pattern, all priorities done.
+
+### Run 2258 (2026-03-23)
+
+**Nightly CI fix + 13 new clippy lints**
+
+- **Nightly failure**: Diagnosed slasher `MEGABYTE` dead_code error in redb-only build — already fixed (commit `5d23ecf85`, after nightly ran). Tonight's nightly will pass.
+- **New clippy lints**: Enabled 13 new Rust 1.94 lints for regression prevention:
+  - Bug-catching: `infallible_try_from`, `possible_missing_else`, `confusing_method_to_numeric_cast`
+  - Performance: `replace_box`, `redundant_iter_cloned`
+  - Code quality: `manual_is_multiple_of`, `self_only_used_in_recursion`, `unnecessary_option_map_or_else`, `useless_concat`, `ip_constant`, `doc_broken_link`, `same_length_and_capacity`, `ptr_offset_by_literal`
+- **Fix**: `Ipv4Addr::new(127,0,0,1)` → `Ipv4Addr::LOCALHOST` in validator HTTP API tests (caught by `ip_constant` lint during pre-push hook)
+- **Spec**: v1.7.0-alpha.3 still latest. #5022 (block known check in `on_payload_attestation_message`) merged — already implemented. PTC lookbehind (#4979) still open.
+- **Total enforced lints**: ~275 (up from ~262)
