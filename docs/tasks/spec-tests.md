@@ -30,6 +30,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2257 (Mar 23) — maintenance check, all stable
+
+- CI: Latest run green (all 7 jobs passed). Nightly Mar 23 slasher failure confirmed as MEGABYTE cfg gate issue — fix in HEAD (a4f999735). Tonight's nightly should pass.
+- Spec: v1.7.0-alpha.3 still latest. All 8 tracked Gloas PRs still open: #4979 (PTC lookbehind), #5023 (test fixtures), #4962 (withdrawal tests), #4843 (variable PTC deadline), #4892 (remove impossible branch, APPROVED), #4898 (remove pending tiebreaker, APPROVED), #4954 (milliseconds in fork choice), #4747 (fast confirmation rule). No new merges since last check.
+- Dependencies: only `rand_xorshift` outdated (0.4→0.5) — minor test dep, not worth updating now.
+- TODO audit: all 9 TODOs in codebase tracked in issue #36, all either blocked on external deps or non-critical. Zero untracked TODOs.
+- cargo audit unchanged (1 rsa vulnerability, 5 unmaintained — all non-actionable).
+- No code changes — codebase healthy, holding pattern until spec PRs merge.
+
 ### run 2253 (Mar 23) — maintenance check, nightly fix confirmed
 
 - CI: Latest run green (all 7 jobs passed). Nightly Mar 23 failed on slasher `MEGABYTE` dead code in redb-only build — fix already in HEAD (a4f999735, cfg gate). Nightly ran on older commit f4af903eb. Mar 24 nightly will be green.
