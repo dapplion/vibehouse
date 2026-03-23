@@ -5016,3 +5016,16 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Spec tracking**: v1.7.0-alpha.3 still latest. PR #5022 (block known check in `on_payload_attestation_message`) now merged — verified our implementation already has this check at `fork_choice.rs:1432`.
 - **CI**: Run 23442761586 — check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, http_api ✓ (beacon_chain + unit still running).
 - **Tests**: 4991/5000 workspace tests pass (8 web3signer timeouts = pre-existing infra). `make lint` clean.
+
+### Run 2241 (2026-03-23)
+
+**Enforce 37 new clippy lints (total: 280)**
+
+- Added 37 new `-D clippy::*` lints to Makefile, all already clean (zero violations):
+  - Correctness: `unused_io_amount`, `collection_is_never_read`, `read_zero_byte_vec`, `unused_async`, `unnecessary_wraps`
+  - Safety: `borrow_as_ptr`, `ref_as_ptr`, `cast_lossless`
+  - Code quality: `needless_bool`, `redundant_pattern_matching`, `collapsible_if`, `redundant_guards`, `manual_is_variant_and`, `manual_ok_or`, `manual_find`, `manual_range_contains`, `manual_is_ascii_check`, `manual_instant_elapsed`, `manual_while_let_some`, `manual_flatten`, `manual_strip`, `equatable_if_let`, `from_over_into`, `get_first`, `bool_to_int_with_if`, `implicit_saturating_sub`
+  - Style: `single_component_path_imports`, `match_wildcard_for_single_variants`, `format_push_string`, `large_types_passed_by_value`, `case_sensitive_file_extension_comparisons`, `map_collect_result_unit`, `iter_on_single_items`, `iter_on_empty_collections`, `bytes_count_to_len`, `needless_option_as_deref`, `needless_option_take`
+- **Nightly failure investigated**: slasher-tests failed on runs 23430551707 and 23399597034 because they ran on commits before the `MEGABYTE` cfg fix (5d23ecf85). Fix is already merged; tonight's nightly should pass.
+- **Spec tracking**: v1.7.0-alpha.3 still latest. All recent merges (#5027 tooling, #5014 EIP-8025, #5022 block check) assessed — no action needed.
+- `make lint` and `make lint-full` clean.
