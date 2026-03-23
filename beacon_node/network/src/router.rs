@@ -208,10 +208,11 @@ impl<T: BeaconChainTypes> Router<T> {
                 self.on_status_request(peer_id, inbound_request_id, status_message);
             }
             RequestType::BlocksByRange(request) => {
-                let mut count = *request.count();
-                if *request.step() > 1 {
-                    count = 1;
-                }
+                let count = if *request.step() > 1 {
+                    1
+                } else {
+                    *request.count()
+                };
                 let blocks_request = match request {
                     methods::OldBlocksByRangeRequest::V1(req) => {
                         BlocksByRangeRequest::new_v1(req.start_slot, count)

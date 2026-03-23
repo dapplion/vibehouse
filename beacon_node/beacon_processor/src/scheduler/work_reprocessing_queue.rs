@@ -1001,10 +1001,13 @@ impl<S: SlotClock> ReprocessQueue<S> {
                     .map(|next_event_time| {
                         if duration_from_slot_start >= next_event_time {
                             // event is in the next slot, add duration to next slot
-                            let duration_to_next_slot = slot_duration - duration_from_slot_start;
+                            let duration_to_next_slot =
+                                slot_duration.checked_sub(duration_from_slot_start).unwrap();
                             duration_to_next_slot + next_event_time
                         } else {
-                            next_event_time - duration_from_slot_start
+                            next_event_time
+                                .checked_sub(duration_from_slot_start)
+                                .unwrap()
                         }
                     })
             })
@@ -1043,7 +1046,9 @@ mod tests {
 
             assert_eq!(
                 duration_to_next_event,
-                event_duration_from_slot_start - current_time
+                event_duration_from_slot_start
+                    .checked_sub(current_time)
+                    .unwrap()
             );
 
             slot_clock.set_current_time(current_slot_start + event_duration_from_slot_start);

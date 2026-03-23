@@ -3155,7 +3155,13 @@ where
 
     /// Advance the clock to `lookahead` before the start of `slot`.
     pub fn advance_to_slot_lookahead(&self, slot: Slot, lookahead: Duration) {
-        let time = self.chain.slot_clock.start_of(slot).unwrap() - lookahead;
+        let time = self
+            .chain
+            .slot_clock
+            .start_of(slot)
+            .unwrap()
+            .checked_sub(lookahead)
+            .unwrap();
         self.chain.slot_clock.set_current_time(time);
     }
 

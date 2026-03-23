@@ -359,6 +359,7 @@ pub(crate) struct ProposerPreparationDataEntry {
 }
 
 impl ProposerPreparationDataEntry {
+    #[allow(clippy::useless_let_if_seq)] // tracking multiple side-effect mutations
     pub(crate) fn update(&mut self, updated: Self) -> bool {
         let mut changed = false;
         // Update `gas_limit` if `updated.gas_limit` is `Some` and:

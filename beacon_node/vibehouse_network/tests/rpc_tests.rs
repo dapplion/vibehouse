@@ -1515,8 +1515,7 @@ fn test_delayed_rpc_response() {
                                 let margin = 500;
                                 assert!(
                                     request_sent_at.elapsed()
-                                        > (Duration::from_secs(QUOTA_SEC)
-                                            - Duration::from_millis(margin))
+                                        > Duration::from_secs(QUOTA_SEC).checked_sub(Duration::from_millis(margin)).unwrap()
                                 );
                                 if request_id == 5 {
                                     // End the test

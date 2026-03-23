@@ -10874,7 +10874,6 @@ version = "0.1.0"
 dependencies = [
  "eth2",
  "mockito",
- "regex",
  "sensitive_url",
  "serde_json",
  "tracing",

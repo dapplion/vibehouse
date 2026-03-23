@@ -435,6 +435,9 @@ lint:
 		-D clippy::unnecessary_filter_map \
 		-D clippy::manual_next_back \
 		-D clippy::cloned_ref_to_slice_refs \
+		-D clippy::unchecked_time_subtraction \
+		-D clippy::trivial_regex \
+		-D clippy::useless_let_if_seq \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.

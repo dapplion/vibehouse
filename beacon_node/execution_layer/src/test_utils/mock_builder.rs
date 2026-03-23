@@ -693,11 +693,11 @@ impl<E: EthSpec> MockBuilder<E> {
         }
         info!("Signing builder message");
 
-        let mut signature = message.sign_builder_message(&self.builder_sk, &self.spec);
-
-        if *self.invalidate_signatures.read() {
-            signature = Signature::empty();
-        }
+        let signature = if *self.invalidate_signatures.read() {
+            Signature::empty()
+        } else {
+            message.sign_builder_message(&self.builder_sk, &self.spec)
+        };
         let signed_bid = SignedBuilderBid { message, signature };
         info!("Builder bid {:?}", &signed_bid.message.value());
         Ok(signed_bid)

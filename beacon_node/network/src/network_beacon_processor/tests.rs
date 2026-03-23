@@ -1018,9 +1018,11 @@ async fn data_column_reconstruction_at_slot_start() {
         .start_of(rig.next_block.slot())
         .unwrap();
 
-    rig.chain
-        .slot_clock
-        .set_current_time(slot_start - rig.chain.spec.maximum_gossip_clock_disparity());
+    rig.chain.slot_clock.set_current_time(
+        slot_start
+            .checked_sub(rig.chain.spec.maximum_gossip_clock_disparity())
+            .unwrap(),
+    );
 
     assert_eq!(
         rig.chain.slot().unwrap(),
@@ -1072,9 +1074,11 @@ async fn data_column_reconstruction_at_deadline() {
         .start_of(rig.next_block.slot())
         .unwrap();
 
-    rig.chain
-        .slot_clock
-        .set_current_time(slot_start - rig.chain.spec.maximum_gossip_clock_disparity());
+    rig.chain.slot_clock.set_current_time(
+        slot_start
+            .checked_sub(rig.chain.spec.maximum_gossip_clock_disparity())
+            .unwrap(),
+    );
 
     assert_eq!(
         rig.chain.slot().unwrap(),
@@ -1152,9 +1156,11 @@ async fn data_column_reconstruction_at_next_slot() {
         .start_of(rig.next_block.slot())
         .unwrap();
 
-    rig.chain
-        .slot_clock
-        .set_current_time(slot_start - rig.chain.spec.maximum_gossip_clock_disparity());
+    rig.chain.slot_clock.set_current_time(
+        slot_start
+            .checked_sub(rig.chain.spec.maximum_gossip_clock_disparity())
+            .unwrap(),
+    );
 
     assert_eq!(
         rig.chain.slot().unwrap(),
@@ -1202,9 +1208,11 @@ async fn import_gossip_block_acceptably_early() {
         .start_of(rig.next_block.slot())
         .unwrap();
 
-    rig.chain
-        .slot_clock
-        .set_current_time(slot_start - rig.chain.spec.maximum_gossip_clock_disparity());
+    rig.chain.slot_clock.set_current_time(
+        slot_start
+            .checked_sub(rig.chain.spec.maximum_gossip_clock_disparity())
+            .unwrap(),
+    );
 
     assert_eq!(
         rig.chain.slot().unwrap(),
@@ -1270,7 +1278,11 @@ async fn import_gossip_block_unacceptably_early() {
         .unwrap();
 
     rig.chain.slot_clock.set_current_time(
-        slot_start - rig.chain.spec.maximum_gossip_clock_disparity() - Duration::from_millis(1),
+        slot_start
+            .checked_sub(rig.chain.spec.maximum_gossip_clock_disparity())
+            .unwrap()
+            .checked_sub(Duration::from_millis(1))
+            .unwrap(),
     );
 
     assert_eq!(

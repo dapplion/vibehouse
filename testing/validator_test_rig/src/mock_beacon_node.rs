@@ -3,7 +3,6 @@ use eth2::types::{
 };
 use eth2::{BeaconNodeHttpClient, StatusCode, Timeouts};
 use mockito::{Matcher, Mock, Server, ServerGuard};
-use regex::Regex;
 use sensitive_url::SensitiveUrl;
 use std::marker::PhantomData;
 use std::str::FromStr;
@@ -36,23 +35,20 @@ impl<E: EthSpec> MockBeaconNode<E> {
     }
 
     pub fn mock_config_spec(&mut self, spec: &ChainSpec) {
-        let path_pattern = Regex::new(r"^/eth/v1/config/spec$").unwrap();
         let config_and_preset = ConfigAndPreset::from_chain_spec::<E>(spec);
         let data = GenericResponse::from(config_and_preset);
         self.server
-            .mock("GET", Matcher::Regex(path_pattern.to_string()))
+            .mock("GET", Matcher::Regex(r"^/eth/v1/config/spec$".to_string()))
             .with_status(200)
             .with_body(serde_json::to_string(&data).unwrap())
             .create();
     }
 
     pub fn mock_get_node_syncing(&mut self, response: SyncingData) {
-        let path_pattern = Regex::new(r"^/eth/v1/node/syncing$").unwrap();
-
         let data = GenericResponse::from(response);
 
         self.server
-            .mock("GET", Matcher::Regex(path_pattern.to_string()))
+            .mock("GET", Matcher::Regex(r"^/eth/v1/node/syncing$".to_string()))
             .with_status(200)
             .with_body(serde_json::to_string(&data).unwrap())
             .create();
@@ -60,13 +56,15 @@ impl<E: EthSpec> MockBeaconNode<E> {
 
     /// Mocks the `post_beacon_blinded_blocks_v2_ssz` response with an optional `delay`.
     pub fn mock_post_beacon_blinded_blocks_v2_ssz(&mut self, delay: Duration) -> Mock {
-        let path_pattern = Regex::new(r"^/eth/v2/beacon/blinded_blocks$").unwrap();
         let url = self.server.url();
 
         let received_blocks = Arc::clone(&self.received_blocks);
 
         self.server
-            .mock("POST", Matcher::Regex(path_pattern.to_string()))
+            .mock(
+                "POST",
+                Matcher::Regex(r"^/eth/v2/beacon/blinded_blocks$".to_string()),
+            )
             .match_header("content-type", "application/octet-stream")
             .with_status(200)
             .with_body_from_request(move |request| {
@@ -93,10 +91,8 @@ impl<E: EthSpec> MockBeaconNode<E> {
     }
 
     pub fn mock_offline_node(&mut self) -> Mock {
-        let path_pattern = Regex::new(r"^/eth/v1/node/version$").unwrap();
-
         self.server
-            .mock("GET", Matcher::Regex(path_pattern.to_string()))
+            .mock("GET", Matcher::Regex(r"^/eth/v1/node/version$".to_string()))
             .with_status(StatusCode::INTERNAL_SERVER_ERROR.as_u16() as usize)
             .with_header("content-type", "application/json")
             .with_body(r#"{"message":"Internal Server Error"}"#)
@@ -104,10 +100,8 @@ impl<E: EthSpec> MockBeaconNode<E> {
     }
 
     pub fn mock_online_node(&mut self) -> Mock {
-        let path_pattern = Regex::new(r"^/eth/v1/node/version$").unwrap();
-
         self.server
-            .mock("GET", Matcher::Regex(path_pattern.to_string()))
+            .mock("GET", Matcher::Regex(r"^/eth/v1/node/version$".to_string()))
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(
@@ -126,11 +120,7 @@ impl<E: EthSpec> MockBeaconNode<E> {
         epoch: Epoch,
         duties: Vec<PtcDutyData>,
     ) -> Mock {
-        let path_pattern = Regex::new(&format!(
-            r"^/eth/v1/validator/duties/ptc/{}$",
-            epoch.as_u64()
-        ))
-        .unwrap();
+        let path_pattern = format!(r"^/eth/v1/validator/duties/ptc/{}$", epoch.as_u64());
 
         let response = DutiesResponse {
             dependent_root: Hash256::ZERO,
@@ -139,7 +129,7 @@ impl<E: EthSpec> MockBeaconNode<E> {
         };
 
         self.server
-            .mock("POST", Matcher::Regex(path_pattern.to_string()))
+            .mock("POST", Matcher::Regex(path_pattern))
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(serde_json::to_string(&response).unwrap())
@@ -151,12 +141,13 @@ impl<E: EthSpec> MockBeaconNode<E> {
         &mut self,
         data: PayloadAttestationData,
     ) -> Mock {
-        let path_pattern = Regex::new(r"^/eth/v1/validator/payload_attestation_data").unwrap();
-
         let response = GenericResponse::from(data);
 
         self.server
-            .mock("GET", Matcher::Regex(path_pattern.to_string()))
+            .mock(
+                "GET",
+                Matcher::Regex(r"^/eth/v1/validator/payload_attestation_data".to_string()),
+            )
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(serde_json::to_string(&response).unwrap())
@@ -165,10 +156,11 @@ impl<E: EthSpec> MockBeaconNode<E> {
 
     /// Mocks `POST /eth/v1/beacon/pool/payload_attestations` to return 200 OK.
     pub fn mock_post_beacon_pool_payload_attestations(&mut self) -> Mock {
-        let path_pattern = Regex::new(r"^/eth/v1/beacon/pool/payload_attestations$").unwrap();
-
         self.server
-            .mock("POST", Matcher::Regex(path_pattern.to_string()))
+            .mock(
+                "POST",
+                Matcher::Regex(r"^/eth/v1/beacon/pool/payload_attestations$".to_string()),
+            )
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body("{}")
@@ -181,11 +173,7 @@ impl<E: EthSpec> MockBeaconNode<E> {
         epoch: Epoch,
         duties: Vec<ProposerData>,
     ) -> Mock {
-        let path_pattern = Regex::new(&format!(
-            r"^/eth/v1/validator/duties/proposer/{}$",
-            epoch.as_u64()
-        ))
-        .unwrap();
+        let path_pattern = format!(r"^/eth/v1/validator/duties/proposer/{}$", epoch.as_u64());
 
         let response = DutiesResponse {
             dependent_root: Hash256::ZERO,
@@ -194,7 +182,7 @@ impl<E: EthSpec> MockBeaconNode<E> {
         };
 
         self.server
-            .mock("GET", Matcher::Regex(path_pattern.to_string()))
+            .mock("GET", Matcher::Regex(path_pattern))
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(serde_json::to_string(&response).unwrap())
@@ -203,10 +191,11 @@ impl<E: EthSpec> MockBeaconNode<E> {
 
     /// Mocks `POST /eth/v1/beacon/pool/proposer_preferences` to return 200 OK.
     pub fn mock_post_beacon_pool_proposer_preferences(&mut self) -> Mock {
-        let path_pattern = Regex::new(r"^/eth/v1/beacon/pool/proposer_preferences$").unwrap();
-
         self.server
-            .mock("POST", Matcher::Regex(path_pattern.to_string()))
+            .mock(
+                "POST",
+                Matcher::Regex(r"^/eth/v1/beacon/pool/proposer_preferences$".to_string()),
+            )
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body("{}")
@@ -215,10 +204,11 @@ impl<E: EthSpec> MockBeaconNode<E> {
 
     /// Mocks `POST /eth/v1/beacon/pool/payload_attestations` to return a 500 error.
     pub fn mock_post_beacon_pool_payload_attestations_error(&mut self) -> Mock {
-        let path_pattern = Regex::new(r"^/eth/v1/beacon/pool/payload_attestations$").unwrap();
-
         self.server
-            .mock("POST", Matcher::Regex(path_pattern.to_string()))
+            .mock(
+                "POST",
+                Matcher::Regex(r"^/eth/v1/beacon/pool/payload_attestations$".to_string()),
+            )
             .with_status(500)
             .with_header("content-type", "application/json")
             .with_body(r#"{"message":"Internal Server Error"}"#)
@@ -227,10 +217,11 @@ impl<E: EthSpec> MockBeaconNode<E> {
 
     /// Mocks `POST /eth/v1/beacon/pool/proposer_preferences` to return a 500 error.
     pub fn mock_post_beacon_pool_proposer_preferences_error(&mut self) -> Mock {
-        let path_pattern = Regex::new(r"^/eth/v1/beacon/pool/proposer_preferences$").unwrap();
-
         self.server
-            .mock("POST", Matcher::Regex(path_pattern.to_string()))
+            .mock(
+                "POST",
+                Matcher::Regex(r"^/eth/v1/beacon/pool/proposer_preferences$".to_string()),
+            )
             .with_status(500)
             .with_header("content-type", "application/json")
             .with_body(r#"{"message":"Internal Server Error"}"#)

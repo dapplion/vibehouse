@@ -980,7 +980,9 @@ async fn proposer_duties_with_gossip_tolerance() {
 
     // Set the clock to just before the next epoch.
     harness.chain.slot_clock.advance_time(
-        Duration::from_secs(spec.seconds_per_slot) - spec.maximum_gossip_clock_disparity(),
+        Duration::from_secs(spec.seconds_per_slot)
+            .checked_sub(spec.maximum_gossip_clock_disparity())
+            .unwrap(),
     );
     assert_eq!(
         harness

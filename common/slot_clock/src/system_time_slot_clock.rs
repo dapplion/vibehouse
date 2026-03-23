@@ -89,7 +89,8 @@ mod tests {
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .expect("should get system time")
-                - Duration::from_millis(milliseconds_prior)
+                .checked_sub(Duration::from_millis(milliseconds_prior))
+                .unwrap()
         };
 
         let clock =

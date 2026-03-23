@@ -3373,8 +3373,10 @@ impl ApiTester {
 
         self.chain.slot_clock.set_current_time(
             current_epoch_start
-                - self.chain.spec.maximum_gossip_clock_disparity()
-                - Duration::from_millis(1),
+                .checked_sub(self.chain.spec.maximum_gossip_clock_disparity())
+                .unwrap()
+                .checked_sub(Duration::from_millis(1))
+                .unwrap(),
         );
 
         let dependent_root = self
@@ -3412,7 +3414,9 @@ impl ApiTester {
         );
 
         self.chain.slot_clock.set_current_time(
-            current_epoch_start - self.chain.spec.maximum_gossip_clock_disparity(),
+            current_epoch_start
+                .checked_sub(self.chain.spec.maximum_gossip_clock_disparity())
+                .unwrap(),
         );
 
         self.client
