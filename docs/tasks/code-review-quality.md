@@ -4924,3 +4924,13 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Disk cleanup**: disk was 100% full (443/467G). Freed ~100G by cleaning cargo target/debug, target/release/incremental, old claude session data, and kurtosis logs.
 - **CI fix**: nightly-tests `slasher-tests` job failed because `MEGABYTE` constant in `slasher/src/config.rs` was dead code when compiled with `--features "redb"` only (no lmdb/mdbx). Added `#[cfg(any(feature = "lmdb", feature = "mdbx"))]` gate since the constant is only used by those backends.
 - **Tests**: slasher 105/105 (default lmdb), 104/104 (redb-only), 104/104 (mdbx-only). `make lint` clean.
+
+### Run 2232 (2026-03-23)
+
+**CI lint enforcement gap fix + devnet verification**
+
+- **Spec**: v1.7.0-alpha.3 still latest. Only new post-alpha.3 commit is #5008 (doc-only field name fix).
+- **CI fix**: Discovered that CI was running `cargo clippy --workspace --tests -- -D warnings` which only checks default clippy lints, while the Makefile `lint` target enforces 176 additional `-D clippy::*` lints. This meant lint violations could pass CI but fail locally. Changed CI to use `make lint` so CI and local development use identical lint rules.
+- **Devnet verification**: Ran full devnet test (`kurtosis-run.sh`) to verify no behavioral regressions from runs 2223-2231 (8 runs of lint changes including removing async, changing function signatures, removing clones). Result: 4 nodes, finalized_epoch=8, Gloas fork transition clean. No regressions.
+- **Codebase audit**: Confirmed zero warnings from `clippy::suspicious`, `clippy::complexity`, and `clippy::correctness` categories. `cargo audit` shows only 1 medium-severity advisory (RSA timing side-channel in transitive dep `jsonwebtoken→rsa`, no fix available) and 5 unmaintained crate warnings (all transitive).
+- **Tests**: Devnet 4-node chain health pass. `make lint` clean. CI run 2231: check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, http_api ✓ (beacon_chain+unit still running).
