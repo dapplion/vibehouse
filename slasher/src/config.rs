@@ -25,6 +25,7 @@ pub(crate) const DEFAULT_BACKEND: DatabaseBackend = DatabaseBackend::Redb;
 pub(crate) const DEFAULT_BACKEND: DatabaseBackend = DatabaseBackend::Disabled;
 
 pub(crate) const MAX_HISTORY_LENGTH: usize = 1 << 16;
+#[cfg(any(feature = "lmdb", feature = "mdbx"))]
 pub(crate) const MEGABYTE: usize = 1 << 20;
 pub const MDBX_DATA_FILENAME: &str = "mdbx.dat";
 #[cfg(feature = "redb")]
