@@ -5123,3 +5123,15 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Rust**: 1.94.0 (latest stable). No update needed.
 - **Issue #36 review**: 2 non-critical items remain (EL error enum refactor, pool persistence). 5 blocked (EIP-7892 ×3, blst, PeerDAS). No action — both remaining items are substantial refactors with minimal gain.
 - **No code changes this run** — codebase healthy, CI green, waiting for spec PRs.
+
+### Run 2251 (2026-03-23)
+
+**Verification + nightly fix confirmation**
+
+- **CI**: Run 23451379478 — all 7 jobs passed (full green).
+- **Nightly fix confirmed**: Slasher tests pass on all backends — lmdb (105/105), redb (104/104). Tonight's nightly will be green.
+- **Build**: `cargo build --release` clean, no warnings.
+- **Spec tracking**: v1.7.0-alpha.3 still latest. No new Gloas-relevant merges. PTC lookbehind (#4979) still open. #4892 (remove impossible branch) and #4898 (remove pending tiebreaker) still open — both approved, our code already matches proposed behavior.
+- **Security**: `cargo audit` unchanged — 1 medium RSA (no fix), 5 unmaintained (transitive). No new advisories.
+- **Rust**: 1.94.0 (latest stable).
+- **No code changes this run** — project in holding pattern, all priorities done, waiting for spec PRs.
