@@ -3,7 +3,7 @@
 use crate::api_error::ApiError;
 use crate::state_id::StateId;
 use beacon_chain::{BeaconChain, BeaconChainError, BeaconChainTypes};
-use eth2::types::{self as api_types};
+use eth2::types as api_types;
 use slot_clock::SlotClock;
 use state_processing::state_advance::partial_state_advance;
 use types::{AttestationDuty, BeaconState, ChainSpec, Epoch, EthSpec, Hash256, RelativeEpoch};

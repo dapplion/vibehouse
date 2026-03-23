@@ -2,7 +2,7 @@
 
 use crate::api_error::ApiError;
 use beacon_chain::{BeaconChain, BeaconChainTypes};
-use eth2::types::{self as api_types};
+use eth2::types as api_types;
 use slot_clock::SlotClock;
 use types::{Epoch, EthSpec, Slot};
 

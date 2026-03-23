@@ -2,7 +2,7 @@ use super::*;
 use context_deserialize::ContextDeserialize;
 use fs2::FileExt;
 use snap::raw::Decoder;
-use std::fs::{self};
+use std::fs;
 use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;

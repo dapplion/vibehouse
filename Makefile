@@ -470,6 +470,14 @@ lint:
 		-D clippy::deref_addrof \
 		-D clippy::unit_arg \
 		-D clippy::linkedlist \
+		-D clippy::dbg_macro \
+		-D clippy::todo \
+		-D clippy::try_err \
+		-D clippy::unnecessary_self_imports \
+		-D clippy::mem_forget \
+		-D clippy::rc_buffer \
+		-D clippy::rc_mutex \
+		-D clippy::default_union_representation \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.

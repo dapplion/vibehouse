@@ -8,7 +8,7 @@ use beacon_chain::{
         compute_proposer_duties_from_head, ensure_state_can_determine_proposers_for_epoch,
     },
 };
-use eth2::types::{self as api_types};
+use eth2::types as api_types;
 use safe_arith::SafeArith;
 use slot_clock::SlotClock;
 use tracing::debug;

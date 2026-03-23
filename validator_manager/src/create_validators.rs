@@ -438,7 +438,7 @@ impl ValidatorsAndDeposits {
                             This indicates a slashing risk, be sure to never run the same validator on two \
                             different validator clients. If you understand the risks and are certain you \
                             wish to generate this validator again, omit the --{BEACON_NODE_FLAG} flag."
-                        ))?;
+                        ));
                     }
                     Ok(None) => {
                         eprintln!("{voting_public_key:?} was not found in the beacon chain");

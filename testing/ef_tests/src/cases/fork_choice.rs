@@ -1079,7 +1079,7 @@ impl<E: EthSpec> Tester<E> {
                     next_slot_epoch,
                     [(
                         &ProposerPreparationData {
-                            validator_index: dbg!(proposer_index) as u64,
+                            validator_index: proposer_index as u64,
                             fee_recipient: Address::default(),
                         },
                         &None,

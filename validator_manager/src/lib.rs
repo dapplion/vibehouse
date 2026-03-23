@@ -33,7 +33,6 @@ impl DumpConfig {
         match self {
             DumpConfig::Disabled => Ok(false),
             DumpConfig::Enabled(dump_path) => {
-                dbg!(dump_path);
                 write_to_json_file(dump_path, config)?;
                 Ok(true)
             }

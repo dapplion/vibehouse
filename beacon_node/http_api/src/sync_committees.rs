@@ -9,7 +9,7 @@ use beacon_chain::{
     BeaconChain, BeaconChainError, BeaconChainTypes, StateSkipConfig,
     validator_monitor::timestamp_now,
 };
-use eth2::types::{self as api_types};
+use eth2::types as api_types;
 use network::NetworkMessage;
 use slot_clock::SlotClock;
 use std::cmp::max;

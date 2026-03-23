@@ -719,9 +719,9 @@ pub async fn reconstruct_block<T: BeaconChainTypes>(
                 let payload: FullPayload<T::EthSpec> = FullPayloadBellatrix::default().into();
                 ProvenancedPayload::Local(FullPayloadContents::Payload(payload.into()))
             } else {
-                Err(ApiError::server_error(
+                return Err(ApiError::server_error(
                     "Failed to construct full payload - block hash must be non-zero after Bellatrix.".to_string()
-                ))?
+                ));
             }
         // If we already have an execution payload with this transactions root cached, use it.
         } else if let Some(cached_payload) =

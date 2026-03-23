@@ -116,8 +116,8 @@ where
 {
     if !output.status.success() {
         if !SUPPRESS_LOGS {
-            dbg!(String::from_utf8_lossy(&output.stdout));
-            dbg!(String::from_utf8_lossy(&output.stderr));
+            eprintln!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+            eprintln!("stderr: {}", String::from_utf8_lossy(&output.stderr));
         }
         panic!("{}", failure_msg());
     }

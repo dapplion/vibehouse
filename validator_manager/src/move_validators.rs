@@ -238,11 +238,15 @@ impl MoveConfig {
                     .collect::<Result<Vec<_>, _>>()
                     .map(Validators::Specific)?,
             },
-            (None, None) => Err(format!(
-                "Must supply either --{VALIDATORS_FLAG} or --{COUNT_FLAG}."
-            ))?,
+            (None, None) => {
+                return Err(format!(
+                    "Must supply either --{VALIDATORS_FLAG} or --{COUNT_FLAG}."
+                ));
+            }
             (Some(_), Some(_)) => {
-                Err("Cannot supply both --{VALIDATORS_FLAG} and --{COUNT_FLAG}.")?
+                return Err(format!(
+                    "Cannot supply both --{VALIDATORS_FLAG} and --{COUNT_FLAG}."
+                ));
             }
         };
 

@@ -593,8 +593,7 @@ mod test {
             .duration_to_slot(subscription_slot)
             .unwrap();
 
-        let no_events =
-            dbg!(get_events_until_timeout(&mut subnet_service, None, wait_duration).await);
+        let no_events = get_events_until_timeout(&mut subnet_service, None, wait_duration).await;
 
         assert_eq!(no_events, []);
 
@@ -626,8 +625,7 @@ mod test {
             .duration_to_slot(subscription_slot)
             .unwrap();
 
-        let no_events =
-            dbg!(get_events_until_timeout(&mut subnet_service, None, wait_duration).await);
+        let no_events = get_events_until_timeout(&mut subnet_service, None, wait_duration).await;
 
         assert_eq!(no_events, []);
 
