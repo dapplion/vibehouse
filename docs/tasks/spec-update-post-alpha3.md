@@ -285,3 +285,15 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - Nightly failure (Mar 23): `MEGABYTE` dead code in slasher redb-only build — already fixed in commit 5d23ecf85; nightly failure (Mar 22): transient nextest 404 (not our issue)
 - CI: check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, remaining jobs in progress
 - **No action needed. Spec current, codebase healthy.**
+
+### run 2262 (Mar 23) — spec audit, 4 new merged PRs
+
+- **4 new Gloas-related PRs merged** since last spec audit:
+  - **#5022** (block-known check in `on_payload_attestation_message`): already implemented — `UnknownBeaconBlockRoot` error at fork_choice.rs:1426-1432
+  - **#5014** (EIP-8025 P2P protocol update): removes MetaData v4, adds `ExecutionProofStatus` and `ExecutionProofsByRange` RPCs. Not yet implemented — our ZK proof infrastructure uses gossip+HTTP; P2P sync RPCs deferred until real SP1 devnet
+  - **#5008** (field name fix `block_root` → `beacon_block_root` in EnvelopesByRoot spec prose): doc-only, our code already uses `beacon_block_root`
+  - **#5023** (fix block root filenames + Gloas comptests): test infrastructure only — changes how fixtures name block files (BeaconBlock root, not SignedBeaconBlock root), adds `head_payload_status` to `output_store_checks`, and adds `on_execution_payload` step support to compliance runner. Our EF test runner already handles all three: `head_payload_status` checks, `on_execution_payload` steps, and `execution_payload_envelope_*.ssz_snappy` file loading. No action needed until new fixtures are generated.
+- PTC window (#4979): still OPEN, actively discussed (updated today). Will implement when merged.
+- Nightly failures (Mar 22, 23): both resolved — nextest 404 (transient), MEGABYTE dead code (fixed in 5d23ecf85)
+- CI green, zero clippy warnings, zero compiler warnings
+- **No action needed. Spec current, codebase healthy.**
