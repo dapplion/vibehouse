@@ -4797,3 +4797,29 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - `manual_find_map` — zero existing warnings
   - `mismatching_type_param_order` — zero existing warnings
 - **Tests**: 2317/2317 types+state_processing+proto_array, 121/121 fork_choice, 8/8 beacon_processor, 645/645 vibehouse_network+eth2+monitoring_api, 47/47 validator_services, 43/43 validator_manager. `make lint-full` clean. Pre-push hook passed, pushed successfully.
+
+### Run 2226 (2026-03-23)
+
+**Enforce 16 new clippy lints and fix all warnings**
+
+- **Spec**: v1.7.0-alpha.3 still latest. Only merged gloas change since last check is PR #5008 (doc-only field name fix in p2p-interface).
+- **CI**: Run from run 2225 in progress.
+- **16 new lints enforced** (now 74 total extra `-D` lints in Makefile):
+  - `enum_glob_use` — zero existing warnings, regression prevention
+  - `ignored_unit_patterns` — 18 fixes across network/http_api/beacon_chain/fork_choice test files (`_` → `()` in select!/match arms)
+  - `borrow_as_ptr` — 1 fix: `&mut stat` → `std::ptr::addr_of_mut!(stat)` in health_metrics
+  - `case_sensitive_file_extension_comparisons` — 1 fix: case-insensitive `.json` check in validator_definitions
+  - `comparison_chain` — 2 fixes: if/else-if chains → `match` with `Ordering` in beacon_chain attestation slot comparison; also simplified >= comparison for block root lookup
+  - `elidable_lifetime_names` — 1 fix: `impl<'a> Key<'a>` → `impl Key<'_>` in hot_cold_store
+  - `inline_always` — 1 fix: `#[inline(always)]` → `#[inline]` on `bls_hardware_acceleration`
+  - `into_iter_without_iter` — 1 fix: added `iter()` method to `BlobSchedule` matching `IntoIterator` impl
+  - `manual_ilog2` — 1 fix: `31 - x.leading_zeros()` → `x.ilog2()` in eth2_keystore
+  - `missing_fields_in_debug` — 1 fix: `RateLimiterConfig` Debug impl was missing 5 fields (light_client_*, execution_payload_envelopes_by_root)
+  - `assigning_clones` — 2 fixes: `x = y.clone()` → `x.clone_from(&y)` in environment and config
+  - `should_panic_without_expect` — 15 fixes: added `expected` strings to all bare `#[should_panic]` attributes across slot_epoch_macros, fork_choice, bellatrix, validator_manager, CLI tests
+  - `ignore_without_reason` — 6 fixes: added reasons to all `#[ignore]` attributes (slasher fuzz tests, shuffle fuzz test, lookups pending-refactor tests)
+  - `ref_binding_to_reference` — 2 fixes: `ref source` → `source` in pretty_reqwest_error and rpc/protocol
+  - `fn_params_excessive_bools` — 2 `#[allow]` annotations (mock_builder, account_manager — existing too_many_arguments functions)
+  - `decimal_bitwise_operands` — 1 hex conversion + 3 `#[allow]` annotations (builder index test values are validator indices, not bitmasks)
+- **Notable improvement**: `RateLimiterConfig` Debug output now includes all 15 rate limit quotas (was only showing 10).
+- **Tests**: 2779/2779 types+state_processing+proto_array+fork_choice+store+slasher, 91/91 network beacon_processor, 35/35 EF ops+epoch+sanity, 1/1 validator_manager should_panic. `make lint-full` clean. Pre-push hook passed, pushed successfully.
