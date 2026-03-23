@@ -297,3 +297,15 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - Nightly failures (Mar 22, 23): both resolved — nextest 404 (transient), MEGABYTE dead code (fixed in 5d23ecf85)
 - CI green, zero clippy warnings, zero compiler warnings
 - **No action needed. Spec current, codebase healthy.**
+
+### run 2264 (Mar 23) — spec compliance verification + PTC window update
+
+- Verified compliance with all recently merged spec PRs via deep code audit:
+  - **#5022** (block-known check): fork choice validates at line 1426-1432, gossip validates at gloas_verification.rs check 3 — both return explicit errors for unknown blocks ✓
+  - **#5008** (field name): `ExecutionPayloadEnvelope` struct correctly uses `beacon_block_root` field name throughout ✓
+- **PTC window (#4979)**: rename discussion today — `ptc_lookbehind` → `ptc_window` agreed upon (terencechain, jtraglia, Mar 23). Design converging but not merged.
+- Local test verification after dependency update: types 1085/1085, state_processing 1026/1026, fork_choice 327/327 — all pass
+- CI: check+clippy+fmt ✓, ef-tests ✓, remaining jobs in progress
+- Clean build, zero clippy warnings, zero compiler warnings, cargo fmt clean
+- cargo audit: same known advisory (RUSTSEC-2023-0071 rsa, unfixable), no new issues
+- **No action needed. Spec current, codebase healthy.**
