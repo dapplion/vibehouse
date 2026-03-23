@@ -1197,7 +1197,7 @@ impl<E: EthSpec> Network<E> {
     #[must_use = "return the response"]
     #[allow(clippy::unused_self)]
     fn build_response(
-        &mut self,
+        &self,
         app_request_id: AppRequestId,
         peer_id: PeerId,
         response: Response<E>,

@@ -150,7 +150,7 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
     }
 
     /// Pauses the custody sync if it's currently syncing.
-    pub(super) fn pause(&mut self, reason: String) {
+    pub(super) fn pause(&self, reason: String) {
         if let CustodyBackFillState::Syncing = self.state() {
             debug!(processed_epochs = %self.validated_batches, to_be_processed = %self.current_start,"Custody backfill sync paused");
             self.set_state(CustodyBackFillState::Pending(reason));
@@ -162,7 +162,7 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
     /// The criteria to start custody sync is:
     /// - The earliest data column epoch's custodied columns != previous epoch's custodied columns
     /// - The earliest data column epoch is a finalied epoch
-    pub(super) fn should_start_custody_backfill_sync(&mut self) -> bool {
+    pub(super) fn should_start_custody_backfill_sync(&self) -> bool {
         let Some(da_boundary_epoch) = self.beacon_chain.get_column_da_boundary() else {
             return false;
         };
@@ -957,7 +957,7 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
     }
 
     /// Checks with the beacon chain if custody sync has completed.
-    fn check_completed(&mut self) -> bool {
+    fn check_completed(&self) -> bool {
         if self.would_complete(self.current_start) {
             // Check that the data column custody info `earliest_available_slot`
             // is in an epoch that is less than or equal to the current DA boundary

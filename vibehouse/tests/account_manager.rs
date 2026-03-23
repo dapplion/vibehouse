@@ -250,7 +250,7 @@ impl TestValidator {
         quantity_flag: &str,
         quantity: usize,
         store_withdrawal_key: bool,
-    ) -> Result<Vec<String>, String> {
+    ) -> Vec<String> {
         let mut cmd = validator_cmd();
         cmd.arg(format!("--{VALIDATOR_DIR_FLAG}"))
             .arg(self.validator_dir.clone().into_os_string())
@@ -279,19 +279,17 @@ impl TestValidator {
             .to_string();
 
         if stdout.is_empty() {
-            return Ok(vec![]);
+            return vec![];
         }
 
-        let pubkeys = stdout[..stdout.len() - 1]
+        stdout[..stdout.len() - 1]
             .split('\n')
             .map(|line| {
                 let tab = line.find('\t').expect("line must have tab");
                 let (_, pubkey) = line.split_at(tab + 1);
                 pubkey.to_string()
             })
-            .collect::<Vec<_>>();
-
-        Ok(pubkeys)
+            .collect::<Vec<_>>()
     }
 
     /// Create a validators, expecting success.
@@ -301,9 +299,7 @@ impl TestValidator {
         quantity: usize,
         store_withdrawal_key: bool,
     ) -> Vec<ValidatorDir> {
-        let pubkeys = self
-            .create(quantity_flag, quantity, store_withdrawal_key)
-            .unwrap();
+        let pubkeys = self.create(quantity_flag, quantity, store_withdrawal_key);
 
         pubkeys
             .into_iter()

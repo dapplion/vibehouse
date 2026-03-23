@@ -108,6 +108,7 @@ mod tests {
         ExecutionBlockHash::from_root(types::Hash256::repeat_byte(byte))
     }
 
+    #[allow(clippy::unnecessary_wraps)] // Returns Result to match process_payload_status signature
     fn ok_status(
         status: PayloadStatusV1Status,
         latest_valid_hash: Option<ExecutionBlockHash>,

@@ -319,7 +319,7 @@ impl<T: BeaconChainTypes> NetworkService<T> {
             invalid_block_storage,
             beacon_processor_send,
             fork_context.clone(),
-        )?;
+        );
 
         // attestation and sync committee subnet service
         let subnet_service = SubnetService::new(
@@ -410,7 +410,7 @@ impl<T: BeaconChainTypes> NetworkService<T> {
         result
     }
 
-    fn send_to_router(&mut self, msg: RouterMessage<T::EthSpec>) {
+    fn send_to_router(&self, msg: RouterMessage<T::EthSpec>) {
         if let Err(mpsc::error::SendError(msg)) = self.router_send.send(msg) {
             debug!(?msg, "Failed to send msg to router");
         }
@@ -474,6 +474,7 @@ impl<T: BeaconChainTypes> NetworkService<T> {
     }
 
     /// Handle an event received from the network.
+    #[allow(clippy::needless_pass_by_ref_mut)] // &mut self required for Send in async context
     async fn on_libp2p_event(
         &mut self,
         ev: NetworkEvent<T::EthSpec>,

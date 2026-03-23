@@ -139,6 +139,9 @@ impl<'env> RwTransaction<'env> {
     }
 }
 
+// Cursor methods take &mut self because the underlying LMDB C API mutates cursor
+// position state, even though the Rust wrapper's type system doesn't reflect this.
+#[allow(clippy::needless_pass_by_ref_mut)]
 impl<'env> Cursor<'env> {
     pub fn first_key(&mut self) -> Result<Option<Key<'_>>, Error> {
         let opt_key = self

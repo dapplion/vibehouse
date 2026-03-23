@@ -90,7 +90,7 @@ impl<T: BeaconChainTypes> Router<T> {
         invalid_block_storage: InvalidBlockStorage,
         beacon_processor_send: BeaconProcessorSend<T::EthSpec>,
         fork_context: Arc<ForkContext>,
-    ) -> Result<mpsc::UnboundedSender<RouterMessage<T::EthSpec>>, String> {
+    ) -> mpsc::UnboundedSender<RouterMessage<T::EthSpec>> {
         trace!("Service starting");
 
         let (handler_send, handler_recv) = mpsc::unbounded_channel();
@@ -144,7 +144,7 @@ impl<T: BeaconChainTypes> Router<T> {
             "router",
         );
 
-        Ok(handler_send)
+        handler_send
     }
 
     /// Handle all messages incoming from the network service.
@@ -537,14 +537,14 @@ impl<T: BeaconChainTypes> Router<T> {
         }
     }
 
-    fn send_status(&mut self, peer_id: PeerId) {
+    fn send_status(&self, peer_id: PeerId) {
         let status_message = status_message(&self.chain);
         debug!(%peer_id, ?status_message, "Sending Status Request");
         self.network
             .send_processor_request(peer_id, RequestType::Status(status_message));
     }
 
-    fn send_to_sync(&mut self, message: SyncMessage<T::EthSpec>) {
+    fn send_to_sync(&self, message: SyncMessage<T::EthSpec>) {
         self.sync_send.send(message).unwrap_or_else(|e| {
             warn!(
                 error = %e,
@@ -556,7 +556,7 @@ impl<T: BeaconChainTypes> Router<T> {
     /// An error occurred during an RPC request. The state is maintained by the sync manager, so
     /// this function notifies the sync manager of the error.
     pub(crate) fn on_rpc_error(
-        &mut self,
+        &self,
         peer_id: PeerId,
         app_request_id: AppRequestId,
         error: RPCError,
@@ -598,7 +598,7 @@ impl<T: BeaconChainTypes> Router<T> {
     /// Handle a `BlocksByRange` response from the peer.
     /// A `beacon_block` behaves as a stream which is terminated on a `None` response.
     pub(crate) fn on_blocks_by_range_response(
-        &mut self,
+        &self,
         peer_id: PeerId,
         app_request_id: AppRequestId,
         beacon_block: Option<Arc<SignedBeaconBlock<T::EthSpec>>>,
@@ -633,7 +633,7 @@ impl<T: BeaconChainTypes> Router<T> {
     }
 
     pub(crate) fn on_blobs_by_range_response(
-        &mut self,
+        &self,
         peer_id: PeerId,
         app_request_id: AppRequestId,
         blob_sidecar: Option<Arc<BlobSidecar<T::EthSpec>>>,
@@ -657,7 +657,7 @@ impl<T: BeaconChainTypes> Router<T> {
 
     /// Handle a `BlocksByRoot` response from the peer.
     pub(crate) fn on_blocks_by_root_response(
-        &mut self,
+        &self,
         peer_id: PeerId,
         app_request_id: AppRequestId,
         beacon_block: Option<Arc<SignedBeaconBlock<T::EthSpec>>>,
@@ -691,7 +691,7 @@ impl<T: BeaconChainTypes> Router<T> {
 
     /// Handle a `BlobsByRoot` response from the peer.
     pub(crate) fn on_blobs_by_root_response(
-        &mut self,
+        &self,
         peer_id: PeerId,
         app_request_id: AppRequestId,
         blob_sidecar: Option<Arc<BlobSidecar<T::EthSpec>>>,
@@ -725,7 +725,7 @@ impl<T: BeaconChainTypes> Router<T> {
 
     /// Handle a `DataColumnsByRoot` response from the peer.
     pub(crate) fn on_data_columns_by_root_response(
-        &mut self,
+        &self,
         peer_id: PeerId,
         app_request_id: AppRequestId,
         data_column: Option<Arc<DataColumnSidecar<T::EthSpec>>>,
@@ -758,7 +758,7 @@ impl<T: BeaconChainTypes> Router<T> {
     }
 
     pub(crate) fn on_data_columns_by_range_response(
-        &mut self,
+        &self,
         peer_id: PeerId,
         app_request_id: AppRequestId,
         data_column: Option<Arc<DataColumnSidecar<T::EthSpec>>>,
@@ -781,7 +781,7 @@ impl<T: BeaconChainTypes> Router<T> {
     }
 
     fn on_envelopes_by_root_response(
-        &mut self,
+        &self,
         peer_id: PeerId,
         app_request_id: AppRequestId,
         envelope: Option<Arc<SignedExecutionPayloadEnvelope<T::EthSpec>>>,
@@ -846,14 +846,14 @@ impl<E: EthSpec> HandlerNetworkContext<E> {
     }
 
     /// Sends a message to the network task.
-    fn inform_network(&mut self, msg: NetworkMessage<E>) {
+    fn inform_network(&self, msg: NetworkMessage<E>) {
         self.network_send
             .send(msg)
             .unwrap_or_else(|e| warn!(error = %e,"Could not send message to the network service"));
     }
 
     /// Sends a request to the network task.
-    pub(crate) fn send_processor_request(&mut self, peer_id: PeerId, request: RequestType<E>) {
+    pub(crate) fn send_processor_request(&self, peer_id: PeerId, request: RequestType<E>) {
         self.inform_network(NetworkMessage::SendRequest {
             peer_id,
             app_request_id: AppRequestId::Router,
@@ -863,7 +863,7 @@ impl<E: EthSpec> HandlerNetworkContext<E> {
 
     /// Sends a response to the network task.
     pub(crate) fn send_response(
-        &mut self,
+        &self,
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,
         response: Response<E>,

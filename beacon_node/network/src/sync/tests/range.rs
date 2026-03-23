@@ -372,7 +372,7 @@ impl TestRig {
         }
     }
 
-    async fn create_canonical_block(&mut self) -> (SignedBeaconBlock<E>, Option<DataSidecars<E>>) {
+    async fn create_canonical_block(&self) -> (SignedBeaconBlock<E>, Option<DataSidecars<E>>) {
         self.harness.advance_slot();
 
         let block_root = self
@@ -413,7 +413,7 @@ impl TestRig {
     }
 
     async fn remember_block(
-        &mut self,
+        &self,
         (block, data_sidecars): (SignedBeaconBlock<E>, Option<DataSidecars<E>>),
     ) {
         // This code is kind of duplicated from Harness::process_block, but takes sidecars directly.
@@ -487,7 +487,7 @@ async fn state_update_while_purging() {
     let mut rig = TestRig::test_setup();
 
     // Create blocks on a separate harness
-    let mut rig_2 = TestRig::test_setup();
+    let rig_2 = TestRig::test_setup();
     // Need to create blocks that can be inserted into the fork-choice and fit the "known
     // conditions" below.
     let head_peer_block = rig_2.create_canonical_block().await;

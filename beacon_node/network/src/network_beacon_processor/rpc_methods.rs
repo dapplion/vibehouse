@@ -286,7 +286,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         self.terminate_response_stream(
             peer_id,
             inbound_request_id,
-            self.handle_blobs_by_root_request_inner(peer_id, inbound_request_id, request),
+            {
+                self.handle_blobs_by_root_request_inner(peer_id, inbound_request_id, request);
+                Ok(())
+            },
             Response::BlobsByRoot,
         );
     }
@@ -297,7 +300,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,
         request: BlobsByRootRequest,
-    ) -> Result<(), (RpcErrorResponse, &'static str)> {
+    ) {
         let requested_roots: HashSet<Hash256> =
             request.blob_ids.iter().map(|id| id.block_root).collect();
 
@@ -391,8 +394,6 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             returned = send_blob_count,
             "BlobsByRoot outgoing response processed"
         );
-
-        Ok(())
     }
 
     /// Handle a `DataColumnsByRoot` request from the peer.
@@ -509,11 +510,14 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         self.terminate_response_stream(
             peer_id,
             inbound_request_id,
-            self.handle_execution_payload_envelopes_by_root_request_inner(
-                peer_id,
-                inbound_request_id,
-                request,
-            ),
+            {
+                self.handle_execution_payload_envelopes_by_root_request_inner(
+                    peer_id,
+                    inbound_request_id,
+                    request,
+                );
+                Ok(())
+            },
             Response::ExecutionPayloadEnvelopesByRoot,
         );
     }
@@ -524,7 +528,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         peer_id: PeerId,
         inbound_request_id: InboundRequestId,
         request: ExecutionPayloadEnvelopesByRootRequest,
-    ) -> Result<(), (RpcErrorResponse, &'static str)> {
+    ) {
         let mut send_count = 0;
 
         for block_root in request.block_roots.as_slice() {
@@ -557,8 +561,6 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             returned = send_count,
             "ExecutionPayloadEnvelopesByRoot outgoing response processed"
         );
-
-        Ok(())
     }
 
     #[instrument(

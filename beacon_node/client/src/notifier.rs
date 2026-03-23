@@ -45,7 +45,7 @@ pub(crate) fn spawn_notifier<T: BeaconChainTypes>(
     beacon_chain: Arc<BeaconChain<T>>,
     network: Arc<NetworkGlobals<T::EthSpec>>,
     seconds_per_slot: u64,
-) -> Result<(), String> {
+) {
     let slot_duration = Duration::from_secs(seconds_per_slot);
 
     let speedo = Mutex::new(Speedo::default());
@@ -418,8 +418,6 @@ pub(crate) fn spawn_notifier<T: BeaconChainTypes>(
 
     // run the notifier on the current executor
     executor.spawn(interval_future, "notifier");
-
-    Ok(())
 }
 
 /// Provides some helpful logging to users to indicate if their node is ready for the Bellatrix

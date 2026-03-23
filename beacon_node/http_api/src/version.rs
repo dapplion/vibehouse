@@ -44,6 +44,7 @@ pub(crate) fn beacon_response<T: Serialize>(
     }
 }
 
+#[allow(clippy::unnecessary_wraps)] // Returns Result to match blocking_json closure signature
 pub(crate) fn execution_optimistic_finalized_beacon_response<T: Serialize>(
     require_version: ResponseIncludesVersion,
     execution_optimistic: bool,

@@ -908,7 +908,7 @@ impl ApiTester {
                         ValidatorId::PublicKey(
                             validators
                                 .get(i as usize)
-                                .map_or(PublicKeyBytes::empty(), |val| val.pubkey),
+                                .map_or_else(PublicKeyBytes::empty, |val| val.pubkey),
                         )
                     })
                     .collect::<Vec<ValidatorId>>();
@@ -1007,7 +1007,7 @@ impl ApiTester {
                         ValidatorId::PublicKey(
                             validators
                                 .get(i as usize)
-                                .map_or(PublicKeyBytes::empty(), |val| val.pubkey),
+                                .map_or_else(PublicKeyBytes::empty, |val| val.pubkey),
                         )
                     })
                     .collect::<Vec<ValidatorId>>();
@@ -1088,7 +1088,7 @@ impl ApiTester {
                             ValidatorId::PublicKey(
                                 validators
                                     .get(i as usize)
-                                    .map_or(PublicKeyBytes::empty(), |val| val.pubkey),
+                                    .map_or_else(PublicKeyBytes::empty, |val| val.pubkey),
                             )
                         })
                         .collect::<Vec<ValidatorId>>();
@@ -3179,7 +3179,7 @@ impl ApiTester {
                         WhenSlotSkipped::Prev,
                     )
                     .unwrap()
-                    .unwrap_or(self.chain.head_beacon_block_root());
+                    .unwrap_or_else(|| self.chain.head_beacon_block_root());
 
                 assert_eq!(results.dependent_root, dependent_root);
 
@@ -3253,7 +3253,7 @@ impl ApiTester {
                     WhenSlotSkipped::Prev,
                 )
                 .unwrap()
-                .unwrap_or(self.chain.head_beacon_block_root());
+                .unwrap_or_else(|| self.chain.head_beacon_block_root());
 
             // Presently, the beacon chain harness never runs the code that primes the proposer
             // cache. If this changes in the future then we'll need some smarter logic here, but
@@ -3384,7 +3384,7 @@ impl ApiTester {
                 WhenSlotSkipped::Prev,
             )
             .unwrap()
-            .unwrap_or(self.chain.head_beacon_block_root());
+            .unwrap_or_else(|| self.chain.head_beacon_block_root());
 
         self.client
             .get_validator_duties_proposer(current_epoch)
@@ -4079,7 +4079,7 @@ impl ApiTester {
         self
     }
 
-    pub(crate) async fn get_aggregate(&mut self) -> SignedAggregateAndProof<E> {
+    pub(crate) async fn get_aggregate(&self) -> SignedAggregateAndProof<E> {
         let slot = self.chain.slot().unwrap();
         let epoch = self.chain.epoch().unwrap();
 
@@ -6759,7 +6759,7 @@ impl ApiTester {
         self
     }
 
-    pub(crate) async fn test_check_optimistic_responses(&mut self) {
+    pub(crate) async fn test_check_optimistic_responses(&self) {
         // Check responses are not optimistic.
         let result = self
             .client

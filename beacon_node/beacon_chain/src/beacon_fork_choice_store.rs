@@ -106,7 +106,7 @@ impl BalancesCache {
     /// Get the balances for the given `block_root`, if any.
     ///
     /// If some balances are found, they are cloned from the cache.
-    pub(crate) fn get(&mut self, block_root: Hash256, epoch: Epoch) -> Option<Vec<u64>> {
+    pub(crate) fn get(&self, block_root: Hash256, epoch: Epoch) -> Option<Vec<u64>> {
         let i = self.position(block_root, epoch)?;
         Some(self.items[i].balances.clone())
     }
@@ -398,13 +398,13 @@ mod tests {
 
     #[test]
     fn empty_cache_get_returns_none() {
-        let mut cache = BalancesCache::default();
+        let cache = BalancesCache::default();
         assert!(cache.get(hash(1), Epoch::new(0)).is_none());
     }
 
     #[test]
     fn get_returns_matching_balances() {
-        let mut cache = BalancesCache {
+        let cache = BalancesCache {
             items: vec![make_item(1, 5, vec![100, 200, 300])],
         };
         let result = cache.get(hash(1), Epoch::new(5));
@@ -413,7 +413,7 @@ mod tests {
 
     #[test]
     fn get_returns_none_for_wrong_block_root() {
-        let mut cache = BalancesCache {
+        let cache = BalancesCache {
             items: vec![make_item(1, 5, vec![100])],
         };
         assert!(cache.get(hash(2), Epoch::new(5)).is_none());
@@ -421,7 +421,7 @@ mod tests {
 
     #[test]
     fn get_returns_none_for_wrong_epoch() {
-        let mut cache = BalancesCache {
+        let cache = BalancesCache {
             items: vec![make_item(1, 5, vec![100])],
         };
         assert!(cache.get(hash(1), Epoch::new(6)).is_none());
@@ -429,7 +429,7 @@ mod tests {
 
     #[test]
     fn get_requires_both_root_and_epoch_match() {
-        let mut cache = BalancesCache {
+        let cache = BalancesCache {
             items: vec![
                 make_item(1, 5, vec![10]),
                 make_item(1, 6, vec![20]),
@@ -503,7 +503,7 @@ mod tests {
 
     #[test]
     fn same_root_different_epochs_are_separate_entries() {
-        let mut cache = BalancesCache {
+        let cache = BalancesCache {
             items: vec![make_item(1, 5, vec![100]), make_item(1, 6, vec![200])],
         };
         assert_eq!(cache.items.len(), 2);
@@ -513,7 +513,7 @@ mod tests {
 
     #[test]
     fn same_epoch_different_roots_are_separate_entries() {
-        let mut cache = BalancesCache {
+        let cache = BalancesCache {
             items: vec![make_item(1, 5, vec![100]), make_item(2, 5, vec![200])],
         };
         assert_eq!(cache.items.len(), 2);
@@ -523,7 +523,7 @@ mod tests {
 
     #[test]
     fn empty_balances_are_valid() {
-        let mut cache = BalancesCache {
+        let cache = BalancesCache {
             items: vec![make_item(1, 0, vec![])],
         };
         assert_eq!(cache.get(hash(1), Epoch::new(0)), Some(vec![]));
@@ -531,7 +531,7 @@ mod tests {
 
     #[test]
     fn get_clones_balances() {
-        let mut cache = BalancesCache {
+        let cache = BalancesCache {
             items: vec![make_item(1, 0, vec![100, 200])],
         };
         let balances1 = cache.get(hash(1), Epoch::new(0)).unwrap();

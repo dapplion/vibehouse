@@ -2873,7 +2873,7 @@ async fn gloas_execution_proof_prior_to_finalization() {
         .store
         .get_blinded_payload_envelope(&block_root)
         .unwrap();
-    let block_hash = envelope.map_or(ExecutionBlockHash::zero(), |e| {
+    let block_hash = envelope.map_or_else(ExecutionBlockHash::zero, |e| {
         e.message.payload_header.block_hash
     });
 

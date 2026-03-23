@@ -1,6 +1,5 @@
 //! Contains the types required to make JSON requests to Web3Signer servers.
 
-use super::Error;
 use serde::{Deserialize, Serialize};
 use types::{
     AbstractExecPayload, AggregateAndProofRef, AttestationData, BeaconBlock, BeaconBlockHeader,
@@ -81,48 +80,48 @@ pub(crate) enum Web3SignerObject<'a, E: EthSpec, Payload: AbstractExecPayload<E>
 }
 
 impl<'a, E: EthSpec, Payload: AbstractExecPayload<E>> Web3SignerObject<'a, E, Payload> {
-    pub(crate) fn beacon_block(block: &'a BeaconBlock<E, Payload>) -> Result<Self, Error> {
+    pub(crate) fn beacon_block(block: &'a BeaconBlock<E, Payload>) -> Self {
         match block {
-            BeaconBlock::Base(_) => Ok(Web3SignerObject::BeaconBlock {
+            BeaconBlock::Base(_) => Web3SignerObject::BeaconBlock {
                 version: ForkName::Phase0,
                 block: Some(block),
                 block_header: None,
-            }),
-            BeaconBlock::Altair(_) => Ok(Web3SignerObject::BeaconBlock {
+            },
+            BeaconBlock::Altair(_) => Web3SignerObject::BeaconBlock {
                 version: ForkName::Altair,
                 block: Some(block),
                 block_header: None,
-            }),
-            BeaconBlock::Bellatrix(_) => Ok(Web3SignerObject::BeaconBlock {
+            },
+            BeaconBlock::Bellatrix(_) => Web3SignerObject::BeaconBlock {
                 version: ForkName::Bellatrix,
                 block: None,
                 block_header: Some(block.block_header()),
-            }),
-            BeaconBlock::Capella(_) => Ok(Web3SignerObject::BeaconBlock {
+            },
+            BeaconBlock::Capella(_) => Web3SignerObject::BeaconBlock {
                 version: ForkName::Capella,
                 block: None,
                 block_header: Some(block.block_header()),
-            }),
-            BeaconBlock::Deneb(_) => Ok(Web3SignerObject::BeaconBlock {
+            },
+            BeaconBlock::Deneb(_) => Web3SignerObject::BeaconBlock {
                 version: ForkName::Deneb,
                 block: None,
                 block_header: Some(block.block_header()),
-            }),
-            BeaconBlock::Electra(_) => Ok(Web3SignerObject::BeaconBlock {
+            },
+            BeaconBlock::Electra(_) => Web3SignerObject::BeaconBlock {
                 version: ForkName::Electra,
                 block: None,
                 block_header: Some(block.block_header()),
-            }),
-            BeaconBlock::Fulu(_) => Ok(Web3SignerObject::BeaconBlock {
+            },
+            BeaconBlock::Fulu(_) => Web3SignerObject::BeaconBlock {
                 version: ForkName::Fulu,
                 block: None,
                 block_header: Some(block.block_header()),
-            }),
-            BeaconBlock::Gloas(_) => Ok(Web3SignerObject::BeaconBlock {
+            },
+            BeaconBlock::Gloas(_) => Web3SignerObject::BeaconBlock {
                 version: ForkName::Gloas,
                 block: None,
                 block_header: Some(block.block_header()),
-            }),
+            },
         }
     }
 

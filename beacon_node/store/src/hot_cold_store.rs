@@ -2089,14 +2089,13 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         state_root: &Hash256,
         slot: Slot,
         ops: &mut Vec<KeyValueStoreOp>,
-    ) -> Result<(), Error> {
+    ) {
         ops.push(ColdStateSummary { slot }.as_kv_store_op(*state_root));
         ops.push(KeyValueStoreOp::PutKeyValue(
             DBColumn::BeaconStateRoots,
             slot.as_u64().to_be_bytes().to_vec(),
             state_root.as_slice().to_vec(),
         ));
-        Ok(())
     }
 
     /// Store a pre-finalization state in the freezer database.
@@ -2106,7 +2105,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         state: &BeaconState<E>,
         ops: &mut Vec<KeyValueStoreOp>,
     ) -> Result<(), Error> {
-        self.store_cold_state_summary(state_root, state.slot(), ops)?;
+        self.store_cold_state_summary(state_root, state.slot(), ops);
 
         let slot = state.slot();
         match self.cold_storage_strategy(slot)? {
@@ -3695,7 +3694,7 @@ pub fn migrate_database<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
                 %slot,
                 "Storing cold state"
             );
-            store.store_cold_state_summary(&state_root, slot, &mut cold_db_state_ops)?;
+            store.store_cold_state_summary(&state_root, slot, &mut cold_db_state_ops);
         } else {
             // This is some state that we want to migrate to the freezer db.
             // There is no reason to cache this state.

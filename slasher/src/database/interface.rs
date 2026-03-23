@@ -140,6 +140,8 @@ impl<'env> RwTransaction<'env> {
         }
     }
 
+    // Backend implementations (LMDB/MDBX/redb) mutate transaction state via FFI
+    #[allow(clippy::needless_pass_by_ref_mut)]
     pub fn put<K: AsRef<[u8]>, V: AsRef<[u8]>>(
         &mut self,
         db: &Database,
@@ -157,6 +159,7 @@ impl<'env> RwTransaction<'env> {
         }
     }
 
+    #[allow(clippy::needless_pass_by_ref_mut)]
     pub fn del<K: AsRef<[u8]>>(&mut self, db: &Database, key: K) -> Result<(), Error> {
         match (self, db) {
             #[cfg(feature = "mdbx")]
@@ -194,6 +197,9 @@ impl<'env> RwTransaction<'env> {
     }
 }
 
+// The &mut self on cursor methods is required by the underlying database implementations
+// (mdbx, lmdb, redb), but clippy can't see through the cfg-gated variants.
+#[allow(clippy::needless_pass_by_ref_mut)]
 impl Cursor<'_> {
     /// Return the first key in the current database while advancing the cursor's position.
     pub fn first_key(&mut self) -> Result<Option<Key<'_>>, Error> {

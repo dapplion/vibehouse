@@ -138,14 +138,8 @@ pub fn serve<T: BeaconChainTypes>(
 async fn metrics_handler<T: BeaconChainTypes>(
     State(ctx): State<Arc<Context<T>>>,
 ) -> impl IntoResponse {
-    match metrics::gather_prometheus_metrics(&ctx) {
-        Ok(body) => (StatusCode::OK, [("Content-Type", "text/plain")], body),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            [("Content-Type", "text/plain")],
-            format!("Unable to gather metrics: {e:?}"),
-        ),
-    }
+    let body = metrics::gather_prometheus_metrics(&ctx);
+    (StatusCode::OK, [("Content-Type", "text/plain")], body)
 }
 
 fn build_cors_layer(

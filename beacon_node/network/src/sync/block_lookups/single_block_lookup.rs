@@ -356,12 +356,12 @@ impl<T: BeaconChainTypes> SingleBlockLookup<T> {
 
     /// Add peer to all request states. The peer must be able to serve this request.
     /// Returns true if the peer was newly inserted into some request state.
-    pub(crate) fn add_peer(&mut self, peer_id: PeerId) -> bool {
+    pub(crate) fn add_peer(&self, peer_id: PeerId) -> bool {
         self.peers.write().insert(peer_id)
     }
 
     /// Remove peer from available peers.
-    pub(crate) fn remove_peer(&mut self, peer_id: &PeerId) {
+    pub(crate) fn remove_peer(&self, peer_id: &PeerId) {
         self.peers.write().remove(peer_id);
     }
 

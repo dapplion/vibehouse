@@ -335,7 +335,7 @@ impl<T: BeaconChainTypes> ActiveCustodyRequest<T> {
 
     fn select_column_peer(
         &self,
-        cx: &mut SyncNetworkContext<T>,
+        cx: &SyncNetworkContext<T>,
         active_request_count_by_peer: &HashMap<PeerId, usize>,
         lookup_peers: &HashSet<PeerId>,
         column_index: ColumnIndex,

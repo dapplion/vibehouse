@@ -190,6 +190,7 @@ impl<E: EthSpec> PendingComponents<E> {
     }
 
     /// Merges a given set of data columns into the cache.
+    #[allow(clippy::unnecessary_wraps)] // Returns Result to match update_or_insert_pending_components closure signature
     fn merge_data_columns<I: IntoIterator<Item = KzgVerifiedCustodyDataColumn<E>>>(
         &mut self,
         kzg_verified_data_columns: I,
@@ -453,14 +454,14 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
         custody_context: Arc<CustodyContext<T::EthSpec>>,
         spec: Arc<ChainSpec>,
         min_execution_proofs_required: usize,
-    ) -> Result<Self, AvailabilityCheckError> {
-        Ok(Self {
+    ) -> Self {
+        Self {
             critical: RwLock::new(LruCache::new(capacity)),
             state_cache: StateLRUCache::new(beacon_store, spec.clone()),
             custody_context,
             spec,
             min_execution_proofs_required,
-        })
+        }
     }
 
     /// Returns true if the block root is known, without altering the LRU ordering
@@ -880,7 +881,7 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
     }
 
     /// maintain the cache
-    pub(crate) fn do_maintenance(&self, cutoff_epoch: Epoch) -> Result<(), AvailabilityCheckError> {
+    pub(crate) fn do_maintenance(&self, cutoff_epoch: Epoch) {
         // clean up any lingering states in the state cache
         self.state_cache.do_maintenance(cutoff_epoch);
 
@@ -898,8 +899,6 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
         for key in keys_to_remove {
             write_lock.pop(&key);
         }
-
-        Ok(())
     }
 
     #[cfg(test)]
@@ -1129,16 +1128,13 @@ mod test {
             generate_data_column_indices_rand_order::<E>(),
             &spec,
         ));
-        let cache = Arc::new(
-            DataAvailabilityCheckerInner::<T>::new(
-                capacity_non_zero,
-                test_store,
-                custody_context,
-                spec,
-                0, // no execution proofs required in tests
-            )
-            .expect("should create cache"),
-        );
+        let cache = Arc::new(DataAvailabilityCheckerInner::<T>::new(
+            capacity_non_zero,
+            test_store,
+            custody_context,
+            spec,
+            0, // no execution proofs required in tests
+        ));
         (harness, cache, chain_db_path)
     }
 

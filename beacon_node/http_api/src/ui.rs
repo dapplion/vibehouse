@@ -172,6 +172,7 @@ pub(crate) struct ValidatorMetricsResponse {
     validators: HashMap<String, ValidatorMetrics>,
 }
 
+#[allow(clippy::unnecessary_wraps)] // Returns Result to match blocking_json closure signature
 pub(crate) fn post_validator_monitor_metrics<T: BeaconChainTypes>(
     request_data: ValidatorMetricsRequestData,
     chain: Arc<BeaconChain<T>>,

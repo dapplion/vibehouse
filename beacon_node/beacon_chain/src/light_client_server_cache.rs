@@ -65,7 +65,7 @@ impl<T: BeaconChainTypes> LightClientServerCache<T> {
         spec: &ChainSpec,
         block: BeaconBlockRef<T::EthSpec>,
         block_root: Hash256,
-        block_post_state: &mut BeaconState<T::EthSpec>,
+        block_post_state: &BeaconState<T::EthSpec>,
     ) -> Result<(), BeaconChainError> {
         let _timer = metrics::start_timer(&metrics::LIGHT_CLIENT_SERVER_CACHE_STATE_DATA_TIMES);
         let fork_name = spec.fork_name_at_slot::<T::EthSpec>(block.slot());
@@ -325,12 +325,12 @@ impl<T: BeaconChainTypes> LightClientServerCache<T> {
         // This state should already be cached. By electing not to cache it here
         // we remove any chance of the light client server from affecting the state cache.
         // We'd like the light client server to be as minimally invasive as possible.
-        let mut state = store
+        let state = store
             .get_state(block_state_root, Some(block_slot), false)?
             .ok_or_else(|| {
                 BeaconChainError::DBInconsistent(format!("Missing state {block_state_root:?}"))
             })?;
-        let new_value = LightClientCachedData::from_state(&mut state)?;
+        let new_value = LightClientCachedData::from_state(&state)?;
 
         // Insert value and return owned
         self.prev_block_cache
@@ -497,7 +497,7 @@ struct LightClientCachedData<E: EthSpec> {
 }
 
 impl<E: EthSpec> LightClientCachedData<E> {
-    fn from_state(state: &mut BeaconState<E>) -> Result<Self, BeaconChainError> {
+    fn from_state(state: &BeaconState<E>) -> Result<Self, BeaconChainError> {
         Ok(Self {
             finalized_checkpoint: state.finalized_checkpoint(),
             finality_branch: state.compute_finalized_root_proof()?,

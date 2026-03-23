@@ -4172,7 +4172,7 @@ async fn test_gloas_gossip_execution_proof_prior_to_finalization_ignored() {
         );
         // Use the bid block hash if available, otherwise use a zero hash.
         // Genesis-era Gloas blocks have bids with zero block_hash.
-        node.bid_block_hash.unwrap_or(ExecutionBlockHash::zero())
+        node.bid_block_hash.unwrap_or_else(ExecutionBlockHash::zero)
     };
 
     let proof = Arc::new(ExecutionProof::new(

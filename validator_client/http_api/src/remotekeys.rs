@@ -47,6 +47,7 @@ pub(crate) fn list<T: SlotClock + 'static, E: EthSpec>(
     ListRemotekeysResponse { data: keystores }
 }
 
+#[allow(clippy::unnecessary_wraps)] // Returns Result to match blocking_json closure signature
 pub(crate) fn import<T: SlotClock + 'static, E: EthSpec>(
     request: ImportRemotekeysRequest,
     validator_store: Arc<VibehouseValidatorStore<T, E>>,

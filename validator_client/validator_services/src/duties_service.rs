@@ -558,7 +558,7 @@ impl<S: ValidatorStore, T: SlotClock + 'static> DutiesService<S, T> {
 /// overload it even more.
 pub fn start_update_service<S: ValidatorStore + 'static, T: SlotClock + 'static>(
     core_duties_service: Arc<DutiesService<S, T>>,
-    mut block_service_tx: Sender<BlockServiceNotification>,
+    block_service_tx: Sender<BlockServiceNotification>,
 ) {
     /*
      * Spawn the task which updates the map of pubkey to validator index.
@@ -599,8 +599,7 @@ pub fn start_update_service<S: ValidatorStore + 'static, T: SlotClock + 'static>
                     continue;
                 }
 
-                if let Err(e) = poll_beacon_proposers(&duties_service, &mut block_service_tx).await
-                {
+                if let Err(e) = poll_beacon_proposers(&duties_service, &block_service_tx).await {
                     error!(
                         error = ?e,
                        "Failed to poll beacon proposers"
@@ -1500,7 +1499,7 @@ async fn fill_in_selection_proofs<S: ValidatorStore + 'static, T: SlotClock + 's
 /// function is as fast as possible.
 async fn poll_beacon_proposers<S: ValidatorStore, T: SlotClock + 'static>(
     duties_service: &DutiesService<S, T>,
-    block_service_tx: &mut Sender<BlockServiceNotification>,
+    block_service_tx: &Sender<BlockServiceNotification>,
 ) -> Result<(), Error<S::Error>> {
     let _timer = validator_metrics::start_timer_vec(
         &validator_metrics::DUTIES_SERVICE_TIMES,
@@ -1805,7 +1804,7 @@ async fn broadcast_proposer_preferences<S: ValidatorStore + 'static, T: SlotCloc
 async fn notify_block_production_service<S: ValidatorStore>(
     current_slot: Slot,
     block_proposers: &HashSet<PublicKeyBytes>,
-    block_service_tx: &mut Sender<BlockServiceNotification>,
+    block_service_tx: &Sender<BlockServiceNotification>,
     validator_store: &S,
 ) {
     let non_doppelganger_proposers = block_proposers

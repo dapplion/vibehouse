@@ -200,7 +200,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
     }
 
     /// Pauses the backfill sync if it's currently syncing.
-    pub(super) fn pause(&mut self) {
+    pub(super) fn pause(&self) {
         if let BackFillState::Syncing = self.state() {
             debug!(processed_epochs = %self.validated_batches, to_be_processed = %self.current_start,"Backfill sync paused");
             self.set_state(BackFillState::Paused);
@@ -296,15 +296,13 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
 
     /// A peer has disconnected.
     /// If the peer has active batches, those are considered failed and re-requested.
-    #[must_use = "A failure here indicates the backfill sync has failed and the global sync state should be updated"]
-    pub(super) fn peer_disconnected(&mut self, peer_id: &PeerId) -> Result<(), BackFillError> {
+    pub(super) fn peer_disconnected(&mut self, peer_id: &PeerId) {
         if matches!(self.state(), BackFillState::Failed) {
-            return Ok(());
+            return;
         }
 
         // Remove the peer from the participation list
         self.participating_peers.remove(peer_id);
-        Ok(())
     }
 
     /// An RPC error has occurred.
@@ -736,7 +734,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
     ///
     /// If a previous batch has been validated and it had been re-processed, penalize the original
     /// peer.
-    fn advance_chain(&mut self, network: &mut SyncNetworkContext<T>, validating_epoch: Epoch) {
+    fn advance_chain(&mut self, network: &SyncNetworkContext<T>, validating_epoch: Epoch) {
         // make sure this epoch produces an advancement
         if validating_epoch >= self.current_start {
             return;
@@ -1162,7 +1160,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
     }
 
     /// Checks with the beacon chain if backfill sync has completed.
-    fn check_completed(&mut self) -> bool {
+    fn check_completed(&self) -> bool {
         if self.would_complete(self.current_start) {
             // Check that the beacon chain agrees
             let anchor_info = self.beacon_chain.store.get_anchor_info();

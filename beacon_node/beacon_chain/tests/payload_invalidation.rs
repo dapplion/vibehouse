@@ -161,7 +161,7 @@ impl InvalidPayloadRig {
             .block_hash
     }
 
-    async fn build_blocks(&mut self, num_blocks: u64, is_valid: Payload) -> Vec<Hash256> {
+    async fn build_blocks(&self, num_blocks: u64, is_valid: Payload) -> Vec<Hash256> {
         let mut roots = Vec::with_capacity(num_blocks as usize);
         for _ in 0..num_blocks {
             roots.push(self.import_block(is_valid).await);
@@ -169,7 +169,7 @@ impl InvalidPayloadRig {
         roots
     }
 
-    async fn move_to_first_justification(&mut self, is_valid: Payload) {
+    async fn move_to_first_justification(&self, is_valid: Payload) {
         let slots_till_justification = E::slots_per_epoch() * 3;
         self.build_blocks(slots_till_justification, is_valid).await;
 
@@ -178,7 +178,7 @@ impl InvalidPayloadRig {
     }
 
     /// Import a block while setting the newPayload and forkchoiceUpdated responses to `is_valid`.
-    async fn import_block(&mut self, is_valid: Payload) -> Hash256 {
+    async fn import_block(&self, is_valid: Payload) -> Hash256 {
         self.import_block_parametric(is_valid, is_valid, None, |error| {
             matches!(
                 error,
@@ -207,7 +207,7 @@ impl InvalidPayloadRig {
     }
 
     async fn import_block_parametric<F: Fn(&BlockError) -> bool>(
-        &mut self,
+        &self,
         new_payload_response: Payload,
         forkchoice_response: Payload,
         slot_override: Option<Slot>,
@@ -217,7 +217,7 @@ impl InvalidPayloadRig {
 
         let head = self.harness.chain.head_snapshot();
         let state = head.beacon_state.clone();
-        let slot = slot_override.unwrap_or(state.slot() + 1);
+        let slot = slot_override.unwrap_or_else(|| state.slot() + 1);
         let ((block, blobs), post_state) = self.harness.make_block(state, slot).await;
         let block_root = block.canonical_root();
 
@@ -396,7 +396,7 @@ async fn valid_invalid_syncing() {
     if fork_name_from_env().is_some_and(|f| !f.bellatrix_enabled()) {
         return;
     }
-    let mut rig = InvalidPayloadRig::new();
+    let rig = InvalidPayloadRig::new();
     rig.move_to_terminal_block();
 
     rig.import_block(Payload::Valid).await;
@@ -415,7 +415,7 @@ async fn invalid_payload_invalidates_parent() {
     if fork_name_from_env().is_some_and(|f| !f.bellatrix_enabled()) {
         return;
     }
-    let mut rig = InvalidPayloadRig::new().enable_attestations();
+    let rig = InvalidPayloadRig::new().enable_attestations();
     rig.move_to_terminal_block();
     rig.import_block(Payload::Valid).await; // Import a valid transition block.
     rig.move_to_first_justification(Payload::Syncing).await;
@@ -447,7 +447,7 @@ async fn invalid_payload_invalidates_parent() {
 async fn immediate_forkchoice_update_invalid_test(
     invalid_payload: impl FnOnce(Option<ExecutionBlockHash>) -> Payload,
 ) {
-    let mut rig = InvalidPayloadRig::new().enable_attestations();
+    let rig = InvalidPayloadRig::new().enable_attestations();
     rig.move_to_terminal_block();
     rig.import_block(Payload::Valid).await; // Import a valid transition block.
     rig.move_to_first_justification(Payload::Syncing).await;
@@ -505,7 +505,7 @@ async fn justified_checkpoint_becomes_invalid() {
     if fork_name_from_env().is_some_and(|f| !f.bellatrix_enabled()) {
         return;
     }
-    let mut rig = InvalidPayloadRig::new().enable_attestations();
+    let rig = InvalidPayloadRig::new().enable_attestations();
     rig.move_to_terminal_block();
     rig.import_block(Payload::Valid).await; // Import a valid transition block.
     rig.move_to_first_justification(Payload::Syncing).await;
@@ -553,7 +553,7 @@ async fn pre_finalized_latest_valid_hash() {
     let num_blocks = E::slots_per_epoch() * 4;
     let finalized_epoch = 2;
 
-    let mut rig = InvalidPayloadRig::new().enable_attestations();
+    let rig = InvalidPayloadRig::new().enable_attestations();
     rig.move_to_terminal_block();
     let mut blocks = vec![];
     blocks.push(rig.import_block(Payload::Valid).await); // Import a valid transition block.
@@ -603,7 +603,7 @@ async fn latest_valid_hash_will_not_validate() {
         return;
     }
 
-    let mut rig = InvalidPayloadRig::new().enable_attestations();
+    let rig = InvalidPayloadRig::new().enable_attestations();
     rig.move_to_terminal_block();
 
     let mut blocks = vec![];
@@ -654,7 +654,7 @@ async fn latest_valid_hash_is_junk() {
     let num_blocks = E::slots_per_epoch() * 5;
     let finalized_epoch = 3;
 
-    let mut rig = InvalidPayloadRig::new().enable_attestations();
+    let rig = InvalidPayloadRig::new().enable_attestations();
     rig.move_to_terminal_block();
     let mut blocks = vec![];
     blocks.push(rig.import_block(Payload::Valid).await); // Import a valid transition block.
@@ -699,7 +699,7 @@ async fn invalidates_all_descendants() {
     let finalized_epoch = 2;
     let finalized_slot = E::slots_per_epoch() * 2;
 
-    let mut rig = InvalidPayloadRig::new().enable_attestations();
+    let rig = InvalidPayloadRig::new().enable_attestations();
     rig.move_to_terminal_block();
     rig.import_block(Payload::Valid).await; // Import a valid transition block.
     let blocks = rig.build_blocks(num_blocks, Payload::Syncing).await;
@@ -803,7 +803,7 @@ async fn switches_heads() {
     let finalized_epoch = 2;
     let finalized_slot = E::slots_per_epoch() * 2;
 
-    let mut rig = InvalidPayloadRig::new().enable_attestations();
+    let rig = InvalidPayloadRig::new().enable_attestations();
     rig.move_to_terminal_block();
     rig.import_block(Payload::Valid).await; // Import a valid transition block.
     let blocks = rig.build_blocks(num_blocks, Payload::Syncing).await;
@@ -899,7 +899,7 @@ async fn invalid_during_processing() {
     if fork_name_from_env().is_some_and(|f| !f.bellatrix_enabled()) {
         return;
     }
-    let mut rig = InvalidPayloadRig::new();
+    let rig = InvalidPayloadRig::new();
     rig.move_to_terminal_block();
 
     let roots = &[
@@ -934,7 +934,7 @@ async fn invalid_after_optimistic_sync() {
     if fork_name_from_env().is_some_and(|f| !f.bellatrix_enabled()) {
         return;
     }
-    let mut rig = InvalidPayloadRig::new().enable_attestations();
+    let rig = InvalidPayloadRig::new().enable_attestations();
     rig.move_to_terminal_block();
     rig.import_block(Payload::Valid).await; // Import a valid transition block.
 
@@ -975,7 +975,7 @@ async fn manually_validate_child() {
     if fork_name_from_env().is_some_and(|f| !f.bellatrix_enabled()) {
         return;
     }
-    let mut rig = InvalidPayloadRig::new().enable_attestations();
+    let rig = InvalidPayloadRig::new().enable_attestations();
     rig.move_to_terminal_block();
     rig.import_block(Payload::Valid).await; // Import a valid transition block.
 
@@ -996,7 +996,7 @@ async fn manually_validate_parent() {
     if fork_name_from_env().is_some_and(|f| !f.bellatrix_enabled()) {
         return;
     }
-    let mut rig = InvalidPayloadRig::new().enable_attestations();
+    let rig = InvalidPayloadRig::new().enable_attestations();
     rig.move_to_terminal_block();
     rig.import_block(Payload::Valid).await; // Import a valid transition block.
 
@@ -1017,7 +1017,7 @@ async fn payload_preparation() {
     if fork_name_from_env().is_some_and(|f| !f.bellatrix_enabled()) {
         return;
     }
-    let mut rig = InvalidPayloadRig::new();
+    let rig = InvalidPayloadRig::new();
     rig.move_to_terminal_block();
     rig.import_block(Payload::Valid).await;
 
@@ -1081,7 +1081,7 @@ async fn invalid_parent() {
     if fork_name_from_env().is_some_and(|f| !f.bellatrix_enabled()) {
         return;
     }
-    let mut rig = InvalidPayloadRig::new();
+    let rig = InvalidPayloadRig::new();
     rig.move_to_terminal_block();
     rig.import_block(Payload::Valid).await; // Import a valid transition block.
 
@@ -1226,7 +1226,7 @@ async fn attesting_to_optimistic_head() {
     if fork_name_from_env().is_some_and(|f| !f.bellatrix_enabled()) {
         return;
     }
-    let mut rig = InvalidPayloadRig::new();
+    let rig = InvalidPayloadRig::new();
     rig.move_to_terminal_block();
     rig.import_block(Payload::Valid).await; // Import a valid transition block.
 
@@ -1349,7 +1349,7 @@ impl InvalidHeadSetup {
     ///    it is imported.
     async fn new() -> InvalidHeadSetup {
         let slots_per_epoch = E::slots_per_epoch();
-        let mut rig = InvalidPayloadRig::new().enable_attestations();
+        let rig = InvalidPayloadRig::new().enable_attestations();
         rig.move_to_terminal_block();
         rig.import_block(Payload::Valid).await; // Import a valid transition block.
 
@@ -1528,7 +1528,7 @@ async fn weights_after_resetting_optimistic_status() {
     if fork_name_from_env().is_some_and(|f| !f.bellatrix_enabled()) {
         return;
     }
-    let mut rig = InvalidPayloadRig::new().enable_attestations();
+    let rig = InvalidPayloadRig::new().enable_attestations();
     rig.move_to_terminal_block();
     rig.import_block(Payload::Valid).await; // Import a valid transition block.
 

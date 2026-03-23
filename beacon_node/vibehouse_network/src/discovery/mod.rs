@@ -741,7 +741,7 @@ impl<E: EthSpec> Discovery<E> {
     }
 
     /// Runs a discovery request for a given group of subnets.
-    fn start_subnet_query(&mut self, subnet_queries: Vec<SubnetQuery>) {
+    fn start_subnet_query(&self, subnet_queries: Vec<SubnetQuery>) {
         let mut filtered_subnets: Vec<Subnet> = Vec::new();
 
         // find subnet queries that are still necessary
@@ -802,7 +802,7 @@ impl<E: EthSpec> Discovery<E> {
     /// given, this will only search for peers on the same enr_fork_id as specified in the local
     /// ENR.
     fn start_query(
-        &mut self,
+        &self,
         query: QueryType,
         target_peers: usize,
         additional_predicate: impl Fn(&Enr) -> bool + Send + 'static,

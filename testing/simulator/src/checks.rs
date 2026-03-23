@@ -431,27 +431,25 @@ pub(crate) async fn verify_full_blob_production_up_to<E: EthSpec>(
 pub(crate) fn disconnect_from_execution_layer<E: EthSpec>(
     network: LocalNetwork<E>,
     node_index: usize,
-) -> Result<(), String> {
+) {
     eprintln!("Disabling Execution Node {node_index}");
 
     // Force the execution node to return the `syncing` status.
     network.execution_nodes.read()[node_index]
         .server
         .all_payloads_syncing(false);
-    Ok(())
 }
 
 // Causes the beacon node at `node_index` to reconnect from the execution layer.
 pub(crate) fn reconnect_to_execution_layer<E: EthSpec>(
     network: LocalNetwork<E>,
     node_index: usize,
-) -> Result<(), String> {
+) {
     network.execution_nodes.read()[node_index]
         .server
         .all_payloads_valid();
 
     eprintln!("Enabling Execution Node {node_index}");
-    Ok(())
 }
 
 /// Ensure all validators have attested correctly.

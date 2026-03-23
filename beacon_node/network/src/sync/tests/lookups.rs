@@ -1109,7 +1109,7 @@ impl TestRig {
         }
     }
 
-    fn insert_blob_to_da_checker(&mut self, blob: BlobSidecar<E>) {
+    fn insert_blob_to_da_checker(&self, blob: BlobSidecar<E>) {
         match self
             .harness
             .chain
@@ -1129,7 +1129,7 @@ impl TestRig {
         }
     }
 
-    fn insert_block_to_availability_cache(&mut self, block: Arc<SignedBeaconBlock<E>>) {
+    fn insert_block_to_availability_cache(&self, block: Arc<SignedBeaconBlock<E>>) {
         self.harness
             .chain
             .data_availability_checker

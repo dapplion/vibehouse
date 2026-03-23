@@ -331,7 +331,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
         }
     }
 
-    pub(super) fn send_sync_message(&mut self, sync_message: SyncMessage<T::EthSpec>) {
+    pub(super) fn send_sync_message(&self, sync_message: SyncMessage<T::EthSpec>) {
         self.network_beacon_processor
             .send_sync_message(sync_message);
     }
@@ -1625,7 +1625,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
     }
 
     /// Terminates the connection with the peer and bans them.
-    pub(super) fn goodbye_peer(&mut self, peer_id: PeerId, reason: GoodbyeReason) {
+    pub(super) fn goodbye_peer(&self, peer_id: PeerId, reason: GoodbyeReason) {
         self.network_send
             .send(NetworkMessage::GoodbyePeer {
                 peer_id,
@@ -1840,7 +1840,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
 
     /// Common handler for consistent scoring of RpcResponseError
     fn on_rpc_response_result<R>(
-        &mut self,
+        &self,
         resp: Option<RpcResponseResult<R>>,
         peer_id: PeerId,
     ) -> Option<RpcResponseResult<R>> {

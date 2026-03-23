@@ -591,7 +591,7 @@ impl<T: BeaconChainTypes> SyncManager<T> {
 
         // Remove peer from all data structures
         self.range_sync.peer_disconnect(&mut self.network, peer_id);
-        let _ = self.backfill_sync.peer_disconnected(peer_id);
+        self.backfill_sync.peer_disconnected(peer_id);
         self.block_lookups.peer_disconnected(peer_id);
 
         // Regardless of the outcome, we update the sync status.
@@ -1108,7 +1108,7 @@ impl<T: BeaconChainTypes> SyncManager<T> {
     }
 
     fn should_search_for_block(
-        &mut self,
+        &self,
         block_slot: Option<Slot>,
         peer_id: &PeerId,
     ) -> Result<(), &'static str> {

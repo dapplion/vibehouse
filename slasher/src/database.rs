@@ -462,6 +462,8 @@ impl<E: EthSpec> SlasherDB<E> {
         Ok(())
     }
 
+    // Takes &mut RwTransaction for API consistency with put/del methods in the same transaction
+    #[allow(clippy::needless_pass_by_ref_mut)]
     fn get_indexed_attestation_id(
         &self,
         txn: &mut RwTransaction<'_>,

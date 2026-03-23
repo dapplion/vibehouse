@@ -608,8 +608,7 @@ where
             beacon_chain,
             network_globals,
             seconds_per_slot,
-        )
-        .map_err(|e| format!("Unable to start slot notifier: {e}"))?;
+        );
 
         Ok(self)
     }

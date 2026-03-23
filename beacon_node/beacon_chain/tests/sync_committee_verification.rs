@@ -110,8 +110,7 @@ fn get_valid_sync_contribution(
         .first()
         .expect("sync contributions should exist");
     let contribution = contribution_opt
-        .as_ref()
-        .cloned()
+        .clone()
         .expect("signed contribution and proof should exist");
 
     let aggregator_index = contribution.message.aggregator_index as usize;

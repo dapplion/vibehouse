@@ -389,7 +389,7 @@ impl<E: EthSpec> MockBuilder<E> {
         );
         let host: Ipv4Addr = Ipv4Addr::LOCALHOST;
         let port = 0;
-        let server = serve(host, port, builder.clone()).expect("mock builder server should start");
+        let server = serve(host, port, builder.clone());
         (builder, server)
     }
 
@@ -1214,7 +1214,7 @@ pub(super) fn serve<E: EthSpec>(
     listen_addr: Ipv4Addr,
     listen_port: u16,
     builder: MockBuilder<E>,
-) -> Result<(SocketAddr, impl Future<Output = ()>), crate::test_utils::Error> {
+) -> (SocketAddr, impl Future<Output = ()>) {
     let app = Router::<MockBuilder<E>>::new()
         .route(
             "/eth/v1/builder/validators",
@@ -1257,5 +1257,5 @@ pub(super) fn serve<E: EthSpec>(
         axum::serve(listener, app).await.ok();
     };
 
-    Ok((listening_socket, server))
+    (listening_socket, server)
 }

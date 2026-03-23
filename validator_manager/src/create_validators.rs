@@ -598,8 +598,8 @@ pub mod tests {
 
     const TEST_VECTOR_DEPOSIT_CLI_VERSION: &str = "1.2.2"; // Update to ethstaker-deposit-cli version
 
-    fn junk_execution_address() -> Option<Address> {
-        Some(Address::from_str("0x0f51bb10119727a7e5ea3538074fb341f56b09ad").unwrap())
+    fn junk_execution_address() -> Address {
+        Address::from_str("0x0f51bb10119727a7e5ea3538074fb341f56b09ad").unwrap()
     }
 
     pub struct TestBuilder {
@@ -635,7 +635,7 @@ pub mod tests {
                 stdin_inputs: false,
                 disable_deposits: false,
                 specify_voting_keystore_password: false,
-                eth1_withdrawal_address: junk_execution_address(),
+                eth1_withdrawal_address: Some(junk_execution_address()),
                 builder_proposals: None,
                 builder_boost_factor: None,
                 prefer_builder_proposals: None,
@@ -832,7 +832,7 @@ pub mod tests {
         TestBuilder::default()
             .mutate_config(|config| {
                 config.count = 2;
-                config.eth1_withdrawal_address = junk_execution_address();
+                config.eth1_withdrawal_address = Some(junk_execution_address());
             })
             .run_test()
             .await

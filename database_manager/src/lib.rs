@@ -29,7 +29,7 @@ fn parse_client_config<E: EthSpec>(
     cli_args: &ArgMatches,
     database_manager_config: &DatabaseManager,
     _env: &Environment<E>,
-) -> Result<ClientConfig, String> {
+) -> ClientConfig {
     let mut client_config = ClientConfig::default();
 
     client_config.set_data_dir(get_data_dir(cli_args));
@@ -41,7 +41,7 @@ fn parse_client_config<E: EthSpec>(
         .clone_from(&database_manager_config.blobs_dir);
     client_config.store.blob_prune_margin_epochs = database_manager_config.blob_prune_margin_epochs;
     client_config.store.hierarchy_config = database_manager_config.hierarchy_exponents.clone();
-    Ok(client_config)
+    client_config
 }
 
 pub(crate) fn display_db_version<E: EthSpec>(
@@ -238,18 +238,18 @@ pub(crate) struct CompactConfig {
     blobs_db: bool,
 }
 
-fn parse_compact_config(compact_config: &Compact) -> Result<CompactConfig, String> {
+fn parse_compact_config(compact_config: &Compact) -> CompactConfig {
     let column: DBColumn = compact_config
         .column
         .parse()
         .expect("column is a required field");
     let freezer = compact_config.freezer;
     let blobs_db = compact_config.blobs_db;
-    Ok(CompactConfig {
+    CompactConfig {
         column,
         freezer,
         blobs_db,
-    })
+    }
 }
 
 pub(crate) fn compact_db<E: EthSpec>(
@@ -281,10 +281,9 @@ pub(crate) struct MigrateConfig {
     to: SchemaVersion,
 }
 
-fn parse_migrate_config(migrate_config: &Migrate) -> Result<MigrateConfig, String> {
+fn parse_migrate_config(migrate_config: &Migrate) -> MigrateConfig {
     let to = SchemaVersion(migrate_config.to);
-
-    Ok(MigrateConfig { to })
+    MigrateConfig { to }
 }
 
 pub(crate) fn migrate_db<E: EthSpec>(
@@ -370,11 +369,9 @@ pub(crate) fn prune_blobs<E: EthSpec>(
 pub(crate) struct PruneStatesConfig {
     confirm: bool,
 }
-fn parse_prune_states_config(
-    prune_states_config: &PruneStates,
-) -> Result<PruneStatesConfig, String> {
+fn parse_prune_states_config(prune_states_config: &PruneStates) -> PruneStatesConfig {
     let confirm = prune_states_config.confirm;
-    Ok(PruneStatesConfig { confirm })
+    PruneStatesConfig { confirm }
 }
 
 pub(crate) fn prune_states<E: EthSpec>(
@@ -442,7 +439,7 @@ pub fn run<E: EthSpec>(
     db_manager_config: &DatabaseManager,
     env: Environment<E>,
 ) -> Result<(), String> {
-    let client_config = parse_client_config(cli_args, db_manager_config, &env)?;
+    let client_config = parse_client_config(cli_args, db_manager_config, &env);
     let context = env.core_context();
     let format_err = |e| format!("Fatal error: {e:?}");
 
@@ -468,7 +465,7 @@ pub fn run<E: EthSpec>(
 
     match &db_manager_config.subcommand {
         cli::DatabaseManagerSubcommand::Migrate(migrate_config) => {
-            let migrate_config = parse_migrate_config(migrate_config)?;
+            let migrate_config = parse_migrate_config(migrate_config);
             migrate_db(migrate_config, client_config, &context).map_err(format_err)
         }
         cli::DatabaseManagerSubcommand::Inspect(inspect_config) => {
@@ -485,12 +482,12 @@ pub fn run<E: EthSpec>(
             prune_blobs(client_config, &context).map_err(format_err)
         }
         cli::DatabaseManagerSubcommand::PruneStates(prune_states_config) => {
-            let prune_config = parse_prune_states_config(prune_states_config)?;
+            let prune_config = parse_prune_states_config(prune_states_config);
             let genesis_state = get_genesis_state()?;
             prune_states(client_config, prune_config, genesis_state, &context)
         }
         cli::DatabaseManagerSubcommand::Compact(compact_config) => {
-            let compact_config = parse_compact_config(compact_config)?;
+            let compact_config = parse_compact_config(compact_config);
             compact_db::<E>(compact_config, client_config).map_err(format_err)
         }
     }

@@ -133,7 +133,7 @@ impl<T: BeaconChainTypes> DataAvailabilityChecker<T> {
             custody_context.clone(),
             spec.clone(),
             min_execution_proofs_required,
-        )?;
+        );
         Ok(Self {
             complete_blob_backfill,
             availability_cache: Arc::new(inner),
@@ -781,9 +781,7 @@ async fn availability_cache_maintenance_service<T: BeaconChainTypes>(
             // any data belonging to an epoch before this should be pruned
             let cutoff_epoch = std::cmp::max(finalized_epoch + 1, min_epochs_for_blobs);
 
-            if let Err(e) = overflow_cache.do_maintenance(cutoff_epoch) {
-                error!(error = ?e,"Failed to maintain availability cache");
-            }
+            overflow_cache.do_maintenance(cutoff_epoch);
         } else {
             error!("Failed to read slot clock");
             // If we can't read the slot clock, just wait another slot.

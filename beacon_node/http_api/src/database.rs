@@ -14,6 +14,7 @@ pub(crate) struct DatabaseInfo {
     pub(crate) blob_info: BlobInfo,
 }
 
+#[allow(clippy::unnecessary_wraps)] // Returns Result to match blocking_json closure signature
 pub(crate) fn info<T: BeaconChainTypes>(
     chain: Arc<BeaconChain<T>>,
 ) -> Result<DatabaseInfo, ApiError> {

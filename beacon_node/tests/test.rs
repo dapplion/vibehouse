@@ -13,7 +13,7 @@ fn env_builder() -> EnvironmentBuilder<MinimalEthSpec> {
     EnvironmentBuilder::minimal()
 }
 
-fn build_node<E: EthSpec>(env: &mut Environment<E>) -> LocalBeaconNode<E> {
+fn build_node<E: EthSpec>(env: &Environment<E>) -> LocalBeaconNode<E> {
     let context = env.core_context();
     env.runtime()
         .block_on(LocalBeaconNode::production(
@@ -33,7 +33,7 @@ fn http_server_genesis_state() {
 
     // build a runtime guard
 
-    let node = build_node(&mut env);
+    let node = build_node(&env);
 
     let remote_node = node.remote_node().expect("should produce remote node");
 

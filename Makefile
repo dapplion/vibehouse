@@ -368,6 +368,20 @@ lint:
 		-D clippy::ref_binding_to_reference \
 		-D clippy::fn_params_excessive_bools \
 		-D clippy::decimal_bitwise_operands \
+		-D clippy::needless_pass_by_ref_mut \
+		-D clippy::unnecessary_wraps \
+		-D clippy::manual_flatten \
+		-D clippy::map_entry \
+		-D clippy::unnecessary_lazy_evaluations \
+		-D clippy::or_fun_call \
+		-D clippy::manual_strip \
+		-D clippy::match_bool \
+		-D clippy::search_is_some \
+		-D clippy::len_zero \
+		-D clippy::redundant_guards \
+		-D clippy::manual_map \
+		-D clippy::useless_vec \
+		-D clippy::option_as_ref_cloned \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.

@@ -680,7 +680,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
     }
 
     fn get_proposers_by_epoch_from_cache(
-        &mut self,
+        &self,
         epoch: Epoch,
         shuffling_decision_block: Hash256,
     ) -> Option<SmallVec<[usize; TYPICAL_SLOTS_PER_EPOCH]>> {
