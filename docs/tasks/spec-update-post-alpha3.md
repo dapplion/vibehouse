@@ -261,3 +261,14 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - `RUSTFLAGS="-W dead_code" cargo check --release`: zero warnings
 - Production `.expect()` audit: all 64 occurrences in state_processing are in `#[cfg(test)]` blocks — zero production panics
 - **No action needed. Spec current, codebase healthy.**
+
+### run 2236 (Mar 23) — spec audit + CI health + deep conformance verification
+
+- **#5014** merged (Mar 22): EIP-8025 P2P protocol update — removes Metadata/GetMetaData changes, adds `ExecutionProofStatus` and `ExecutionProofsByRange` RPCs. Not yet implemented (our ZK proofs use gossip subnets + HTTP API only; P2P sync RPCs deferred until real SP1 devnet).
+- Open Gloas PRs reviewed: #4892, #4898, #5022 all approved/clean — vibehouse already aligned with all three
+- PTC caching bug (#4992): understood the epoch-boundary PTC divergence. Spec-level bug, fix not merged yet; will implement when it lands.
+- **Deep fork choice conformance**: verified `is_supporting_vote_gloas_at_slot` uses `==` (not `<=`) with assertion comment; `get_payload_tiebreaker` omits PENDING check (equivalent because `collect_gloas_children` never places PENDING in tiebreaker position); `get_head` comparison order (weight, root, tiebreaker) matches spec exactly.
+- Local tests: fork choice 327/327, state_processing 1026/1026, proto_array all pass
+- Nightly failure (Mar 23): `MEGABYTE` dead code in slasher redb-only build — already fixed in commit 5d23ecf85; nightly failure (Mar 22): transient nextest 404 (not our issue)
+- CI: check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, remaining jobs in progress
+- **No action needed. Spec current, codebase healthy.**
