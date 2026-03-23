@@ -30,6 +30,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2261 (Mar 23) — maintenance check, all stable
+
+- CI: run 23457496246 progressing (check+clippy+fmt, ef-tests, http_api, network+op_pool all green; beacon_chain + unit tests still running).
+- Spec: v1.7.0-alpha.3 still latest. No new spec test release.
+- Recently merged: #5030, #5028, #5031 (CI/infra only), #5014 (EIP-8025 execution proofs p2p — separate from Gloas, not actionable now).
+- All 7 tracked Gloas PRs still open: #4979 (PTC window), #4962 (withdrawal tests), #4843 (variable PTC deadline), #4892 (remove impossible branch, APPROVED), #4898 (remove pending tiebreaker, APPROVED), #4954 (ms in fork choice), #4747 (fast confirmation rule).
+- Codebase audit: 0 clippy warnings (--all-targets), cargo doc clean, no new TODOs. All production consensus code uses proper error handling (no unwrap in hot paths).
+- cargo audit unchanged (1 rsa vuln via jsonwebtoken — no fix available upstream).
+- No code changes — codebase healthy, holding pattern.
+
 ### run 2260 (Mar 23) — maintenance check, #4979 actively refactoring
 
 - CI: run 23457496246 in progress (check+clippy green, 5 jobs still running).
