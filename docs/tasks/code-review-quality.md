@@ -5093,3 +5093,10 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Codebase**: 3 TODOs remain, all blocked on external specs (EIP-7892 blob schedule ×2, pool persistence). Zero FIXME/HACK. Zero `todo!()`/`unimplemented!()` in production code.
 - **Cargo.lock**: Restored accidental dependency drift (syn 1→2, getrandom 0.3→0.4) — working tree clean.
 - **No code changes this run** — devnet regression verified, codebase healthy.
+
+### Run 2247
+
+- **Makefile lint cleanup**: Deduplicated clippy lint list (280 → 253 unique), sorted alphabetically for maintainability.
+- **New clippy lints**: Enforced 10 new Rust 1.94 clippy lints as regression guards: `doc_lazy_continuation`, `manual_contains`, `manual_div_ceil`, `manual_midpoint`, `map_all_any_identity`, `needless_as_bytes`, `unnecessary_get_then_check`, `unnecessary_map_on_constructor`, `unnecessary_semicolon`, `zombie_processes`. Fixed 28 `unnecessary_semicolon` instances in 6 test files.
+- **CI**: Green. Nightly slasher failure was pre-fix (already resolved in run 2246). Tonight's nightly should pass.
+- **Spec tracking**: No new Gloas spec changes. PTC lookbehind (#4979) still open. v1.7.0-alpha.3 still latest release.
