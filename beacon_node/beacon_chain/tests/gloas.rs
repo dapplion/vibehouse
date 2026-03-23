@@ -650,9 +650,7 @@ async fn gloas_payload_attestation_pool_insert_and_get() {
     let att = make_payload_attestation(head_root, head_slot, true, true);
 
     // Insert into pool
-    harness
-        .chain
-        .insert_payload_attestation_to_pool(att.clone());
+    harness.chain.insert_payload_attestation_to_pool(att);
 
     // Query for the next slot's block (block_slot = head_slot + 1, targets head_slot)
     let result = harness
@@ -679,9 +677,7 @@ async fn gloas_payload_attestation_pool_filters_by_root() {
     let non_matching =
         make_payload_attestation(Hash256::repeat_byte(0xff), head_slot, false, false);
 
-    harness
-        .chain
-        .insert_payload_attestation_to_pool(matching.clone());
+    harness.chain.insert_payload_attestation_to_pool(matching);
     harness
         .chain
         .insert_payload_attestation_to_pool(non_matching);
@@ -846,7 +842,7 @@ async fn gloas_get_best_execution_bid_returns_inserted() {
         },
         signature: Signature::empty(),
     };
-    harness.chain.execution_bid_pool.lock().insert(bid.clone());
+    harness.chain.execution_bid_pool.lock().insert(bid);
 
     let result = harness
         .chain
@@ -12002,7 +11998,7 @@ async fn gloas_persist_load_fork_choice_preserves_head_hash() {
     );
 
     let head_block_root = cached_head_before.head_block_root();
-    let head_snapshot = cached_head_before.snapshot.clone();
+    let head_snapshot = cached_head_before.snapshot;
 
     // Persist fork choice to the store
     harness
@@ -19739,7 +19735,7 @@ async fn gloas_builder_exit_op_pool_retrieval() {
     // Step 1: Gossip verification
     let outcome = harness
         .chain
-        .verify_voluntary_exit_for_gossip(signed_exit.clone())
+        .verify_voluntary_exit_for_gossip(signed_exit)
         .expect("gossip verification should succeed");
 
     let verified_exit = match outcome {
@@ -19896,7 +19892,7 @@ async fn gloas_proposer_slashing_op_pool_retrieval() {
     // Step 2: Gossip verification
     let outcome = harness
         .chain
-        .verify_proposer_slashing_for_gossip(slashing.clone())
+        .verify_proposer_slashing_for_gossip(slashing)
         .expect("gossip verification should succeed");
 
     let verified = match outcome {
@@ -19963,7 +19959,7 @@ async fn gloas_attester_slashing_op_pool_retrieval() {
     // Step 2: Gossip verification
     let outcome = harness
         .chain
-        .verify_attester_slashing_for_gossip(slashing.clone())
+        .verify_attester_slashing_for_gossip(slashing)
         .expect("gossip verification should succeed");
 
     let verified = match outcome {

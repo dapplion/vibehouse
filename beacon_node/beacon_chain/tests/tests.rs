@@ -538,7 +538,7 @@ async fn unaggregated_attestations_added_to_fork_choice_some_none() {
         })
         .collect();
 
-    for (validator, slot) in validator_slots.clone() {
+    for (validator, slot) in validator_slots {
         let latest_message = fork_choice.latest_message(validator);
 
         if slot <= num_blocks_produced && slot != 0 {

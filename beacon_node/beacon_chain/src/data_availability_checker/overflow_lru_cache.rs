@@ -1450,7 +1450,11 @@ mod pending_components_tests {
                 is_valid_merge_transition_block: false,
             },
         };
-        (block.into(), blobs, invalid_blobs)
+        (
+            DietAvailabilityPendingExecutedBlock::from_pending(block),
+            blobs,
+            invalid_blobs,
+        )
     }
 
     pub(crate) fn assert_cache_consistent(cache: PendingComponents<E>, max_len: usize) {

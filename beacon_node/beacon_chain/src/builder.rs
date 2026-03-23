@@ -1528,7 +1528,7 @@ mod test {
 
         let builder = Builder::new(MinimalEthSpec, kzg)
             .node_custody_type(NodeCustodyType::SemiSupernode)
-            .ordered_custody_column_indices(ordered.clone());
+            .ordered_custody_column_indices(ordered);
 
         let indices = builder
             .custody_column_indices_for_checkpoint_sync()

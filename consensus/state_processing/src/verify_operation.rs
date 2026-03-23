@@ -661,7 +661,7 @@ mod test {
     #[test]
     fn into_inner_returns_original_op() {
         let exit = make_exit(7);
-        let verified = make_verified_op(exit.clone(), smallvec![[1, 0, 0, 0]]);
+        let verified = make_verified_op(exit, smallvec![[1, 0, 0, 0]]);
         let recovered = verified.into_inner();
         assert_eq!(recovered.message.epoch, Epoch::new(7));
         assert_eq!(recovered.message.validator_index, 0);
@@ -670,7 +670,7 @@ mod test {
     #[test]
     fn as_inner_returns_reference_to_op() {
         let exit = make_exit(7);
-        let verified = make_verified_op(exit.clone(), smallvec![[1, 0, 0, 0]]);
+        let verified = make_verified_op(exit, smallvec![[1, 0, 0, 0]]);
         assert_eq!(verified.as_inner().message.epoch, Epoch::new(7));
     }
 

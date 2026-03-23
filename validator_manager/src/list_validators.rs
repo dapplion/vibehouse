@@ -262,7 +262,7 @@ mod test {
                 serde_json::from_str(&contents).unwrap()
             };
 
-            self.validators = local_validators.clone();
+            self.validators = local_validators;
             self.src_import_builder = Some(builder);
             self
         }

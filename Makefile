@@ -438,6 +438,38 @@ lint:
 		-D clippy::unchecked_time_subtraction \
 		-D clippy::trivial_regex \
 		-D clippy::useless_let_if_seq \
+		-D clippy::fallible_impl_from \
+		-D clippy::redundant_clone \
+		-D clippy::explicit_write \
+		-D clippy::match_overlapping_arm \
+		-D clippy::absurd_extreme_comparisons \
+		-D clippy::modulo_one \
+		-D clippy::suspicious_else_formatting \
+		-D clippy::partialeq_ne_impl \
+		-D clippy::suspicious_arithmetic_impl \
+		-D clippy::enum_clike_unportable_variant \
+		-D clippy::redundant_allocation \
+		-D clippy::manual_hash_one \
+		-D clippy::transmute_bytes_to_str \
+		-D clippy::unnecessary_box_returns \
+		-D clippy::string_lit_chars_any \
+		-D clippy::manual_saturating_arithmetic \
+		-D clippy::uninhabited_references \
+		-D clippy::as_ptr_cast_mut \
+		-D clippy::manual_is_finite \
+		-D clippy::bool_comparison \
+		-D clippy::iter_next_slice \
+		-D clippy::option_map_unit_fn \
+		-D clippy::result_map_unit_fn \
+		-D clippy::useless_asref \
+		-D clippy::nonminimal_bool \
+		-D clippy::needless_collect \
+		-D clippy::clear_with_drain \
+		-D clippy::vec_init_then_push \
+		-D clippy::useless_conversion \
+		-D clippy::deref_addrof \
+		-D clippy::unit_arg \
+		-D clippy::linkedlist \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.

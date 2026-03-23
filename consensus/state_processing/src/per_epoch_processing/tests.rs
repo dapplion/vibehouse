@@ -99,10 +99,13 @@ mod release_tests {
             process_epoch(&mut altair_state.clone(), &spec),
             Err(EpochProcessingError::InconsistentStateFork(expected_err))
         );
-        assert_eq!(
-            per_slot_processing(&mut altair_state.clone(), None, &spec),
-            Err(SlotProcessingError::InconsistentStateFork(expected_err))
-        );
+        {
+            let mut altair_state = altair_state;
+            assert_eq!(
+                per_slot_processing(&mut altair_state, None, &spec),
+                Err(SlotProcessingError::InconsistentStateFork(expected_err))
+            );
+        }
     }
 
     #[tokio::test]
@@ -159,9 +162,12 @@ mod release_tests {
             process_epoch(&mut base_state.clone(), &spec),
             Err(EpochProcessingError::InconsistentStateFork(expected_err))
         );
-        assert_eq!(
-            per_slot_processing(&mut base_state.clone(), None, &spec),
-            Err(SlotProcessingError::InconsistentStateFork(expected_err))
-        );
+        {
+            let mut base_state = base_state;
+            assert_eq!(
+                per_slot_processing(&mut base_state, None, &spec),
+                Err(SlotProcessingError::InconsistentStateFork(expected_err))
+            );
+        }
     }
 }

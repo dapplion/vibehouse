@@ -226,17 +226,19 @@ impl<T: BeaconChainTypes> StateLRUCache<T> {
     }
 }
 
-/// This can only be used during testing. The intended way to
-/// obtain a `DietAvailabilityPendingExecutedBlock` is to call
+/// Test-only conversion. The intended way to obtain a
+/// `DietAvailabilityPendingExecutedBlock` is to call
 /// `register_pending_executed_block` on the `StateLRUCache`.
 #[cfg(test)]
-impl<E: EthSpec> From<AvailabilityPendingExecutedBlock<E>>
-    for DietAvailabilityPendingExecutedBlock<E>
-{
-    fn from(mut value: AvailabilityPendingExecutedBlock<E>) -> Self {
+impl<E: EthSpec> DietAvailabilityPendingExecutedBlock<E> {
+    pub(crate) fn from_pending(mut value: AvailabilityPendingExecutedBlock<E>) -> Self {
         Self {
             block: value.block,
-            state_root: value.import_data.state.canonical_root().unwrap(),
+            state_root: value
+                .import_data
+                .state
+                .canonical_root()
+                .expect("test state should have valid canonical root"),
             parent_block: value.import_data.parent_block,
             consensus_context: OnDiskConsensusContext::from_consensus_context(
                 value.import_data.consensus_context,

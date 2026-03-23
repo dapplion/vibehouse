@@ -1063,12 +1063,7 @@ mod release_tests {
         let op_pool = OperationPool::<MainnetEthSpec>::new();
 
         let slot = state.slot();
-        let committees = state
-            .get_beacon_committees_at_slot(slot)
-            .unwrap()
-            .into_iter()
-            .map(BeaconCommittee::into_owned)
-            .collect::<Vec<_>>();
+        let num_committees = state.get_beacon_committees_at_slot(slot).unwrap().len();
 
         let num_validators =
             MainnetEthSpec::slots_per_epoch() as usize * spec.target_committee_size;
@@ -1092,7 +1087,7 @@ mod release_tests {
                 .unwrap();
         }
 
-        assert_eq!(op_pool.num_attestations(), committees.len());
+        assert_eq!(op_pool.num_attestations(), num_committees);
     }
 
     /// Adding lots of attestations that only intersect pairwise should lead to two aggregate
@@ -1106,12 +1101,7 @@ mod release_tests {
         let op_pool = OperationPool::<MainnetEthSpec>::new();
 
         let slot = state.slot();
-        let committees = state
-            .get_beacon_committees_at_slot(slot)
-            .unwrap()
-            .into_iter()
-            .map(BeaconCommittee::into_owned)
-            .collect::<Vec<_>>();
+        let num_committees = state.get_beacon_committees_at_slot(slot).unwrap().len();
 
         let num_validators =
             MainnetEthSpec::slots_per_epoch() as usize * spec.target_committee_size;
@@ -1129,27 +1119,8 @@ mod release_tests {
         // {0,1,2,3}, {2,3,4,5}, {4,5,6,7}, ...
         for (atts1, _) in attestations {
             let atts2 = atts1.clone();
-            let aggs1 = atts1
-                .chunks_exact(step_size * 2)
-                .map(|chunk| {
-                    let agg = chunk
-                        .iter()
-                        .map(|(att, _)| att)
-                        .fold::<Option<Attestation<MainnetEthSpec>>, _>(None, |att, new_att| {
-                            if let Some(mut a) = att {
-                                a.aggregate(new_att.to_ref());
-                                Some(a)
-                            } else {
-                                Some(new_att.clone())
-                            }
-                        });
-                    agg.unwrap()
-                })
-                .collect::<Vec<_>>();
-            let aggs2 = atts2
-                .into_iter()
-                .skip(step_size)
-                .collect::<Vec<_>>()
+            let aggs2_source: Vec<_> = atts2.into_iter().skip(step_size).collect();
+            let aggs2 = aggs2_source
                 .as_slice()
                 .chunks_exact(step_size * 2)
                 .map(|chunk| {
@@ -1165,10 +1136,24 @@ mod release_tests {
                             }
                         });
                     agg.unwrap()
-                })
-                .collect::<Vec<_>>();
+                });
 
-            for att in aggs1.into_iter().chain(aggs2.into_iter()) {
+            let aggs1 = atts1.chunks_exact(step_size * 2).map(|chunk| {
+                let agg = chunk
+                    .iter()
+                    .map(|(att, _)| att)
+                    .fold::<Option<Attestation<MainnetEthSpec>>, _>(None, |att, new_att| {
+                        if let Some(mut a) = att {
+                            a.aggregate(new_att.to_ref());
+                            Some(a)
+                        } else {
+                            Some(new_att.clone())
+                        }
+                    });
+                agg.unwrap()
+            });
+
+            for att in aggs1.chain(aggs2) {
                 let attesting_indices =
                     get_attesting_indices_from_state(&state, att.to_ref()).unwrap();
                 op_pool.insert_attestation(att, attesting_indices).unwrap();
@@ -1178,8 +1163,8 @@ mod release_tests {
         // The attestations should get aggregated into two attestations that comprise all
         // validators.
         let stats = op_pool.attestation_stats();
-        assert_eq!(stats.num_attestation_data, committees.len());
-        assert_eq!(stats.num_attestations, 2 * committees.len());
+        assert_eq!(stats.num_attestation_data, num_committees);
+        assert_eq!(stats.num_attestations, 2 * num_committees);
         assert_eq!(stats.max_aggregates_per_data, 2);
     }
 
@@ -1449,8 +1434,7 @@ mod release_tests {
         };
 
         // Both slashings should be valid and accepted by the pool.
-        op_pool
-            .insert_proposer_slashing(slashing1.clone().validate(&state, &harness.spec).unwrap());
+        op_pool.insert_proposer_slashing(slashing1.validate(&state, &harness.spec).unwrap());
         op_pool
             .insert_proposer_slashing(slashing2.clone().validate(&state, &harness.spec).unwrap());
 
@@ -1507,8 +1491,8 @@ mod release_tests {
         let slashing_3 = harness.make_attester_slashing(vec![4, 5, 6]);
         let slashing_4 = harness.make_attester_slashing(vec![7, 8, 9, 10]);
 
-        op_pool.insert_attester_slashing(slashing_1.clone().validate(&state, spec).unwrap());
-        op_pool.insert_attester_slashing(slashing_2.clone().validate(&state, spec).unwrap());
+        op_pool.insert_attester_slashing(slashing_1.validate(&state, spec).unwrap());
+        op_pool.insert_attester_slashing(slashing_2.validate(&state, spec).unwrap());
         op_pool.insert_attester_slashing(slashing_3.clone().validate(&state, spec).unwrap());
         op_pool.insert_attester_slashing(slashing_4.clone().validate(&state, spec).unwrap());
 
@@ -1530,9 +1514,9 @@ mod release_tests {
         let slashing_4 = harness.make_attester_slashing(vec![6]);
 
         op_pool.insert_attester_slashing(slashing_1.clone().validate(&state, spec).unwrap());
-        op_pool.insert_attester_slashing(slashing_2.clone().validate(&state, spec).unwrap());
+        op_pool.insert_attester_slashing(slashing_2.validate(&state, spec).unwrap());
         op_pool.insert_attester_slashing(slashing_3.clone().validate(&state, spec).unwrap());
-        op_pool.insert_attester_slashing(slashing_4.clone().validate(&state, spec).unwrap());
+        op_pool.insert_attester_slashing(slashing_4.validate(&state, spec).unwrap());
 
         let best_slashings = op_pool.get_slashings_and_exits(&state, &harness.spec);
         assert_eq!(best_slashings.1, vec![slashing_1, slashing_3]);
@@ -1551,9 +1535,9 @@ mod release_tests {
         let a_slashing_2 = harness.make_attester_slashing(vec![1, 3, 4]);
         let a_slashing_3 = harness.make_attester_slashing(vec![5, 6]);
 
-        op_pool.insert_proposer_slashing(p_slashing.clone().validate(&state, spec).unwrap());
+        op_pool.insert_proposer_slashing(p_slashing.validate(&state, spec).unwrap());
         op_pool.insert_attester_slashing(a_slashing_1.clone().validate(&state, spec).unwrap());
-        op_pool.insert_attester_slashing(a_slashing_2.clone().validate(&state, spec).unwrap());
+        op_pool.insert_attester_slashing(a_slashing_2.validate(&state, spec).unwrap());
         op_pool.insert_attester_slashing(a_slashing_3.clone().validate(&state, spec).unwrap());
 
         let best_slashings = op_pool.get_slashings_and_exits(&state, &harness.spec);
@@ -1576,7 +1560,7 @@ mod release_tests {
         let slashing_3 = harness.make_attester_slashing(vec![1, 2, 3]);
 
         op_pool.insert_attester_slashing(slashing_1.clone().validate(&state, spec).unwrap());
-        op_pool.insert_attester_slashing(slashing_2.clone().validate(&state, spec).unwrap());
+        op_pool.insert_attester_slashing(slashing_2.validate(&state, spec).unwrap());
         op_pool.insert_attester_slashing(slashing_3.clone().validate(&state, spec).unwrap());
 
         let best_slashings = op_pool.get_slashings_and_exits(&state, &harness.spec);
@@ -1598,7 +1582,7 @@ mod release_tests {
         let slashing_2 = harness.make_attester_slashing(vec![4, 5, 6]);
         let slashing_3 = harness.make_attester_slashing(vec![7, 8]);
 
-        op_pool.insert_attester_slashing(slashing_1.clone().validate(&state, spec).unwrap());
+        op_pool.insert_attester_slashing(slashing_1.validate(&state, spec).unwrap());
         op_pool.insert_attester_slashing(slashing_2.clone().validate(&state, spec).unwrap());
         op_pool.insert_attester_slashing(slashing_3.clone().validate(&state, spec).unwrap());
 

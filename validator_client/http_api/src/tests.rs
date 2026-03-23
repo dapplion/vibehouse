@@ -132,7 +132,7 @@ impl ApiTester {
             sse_logging_components: None,
             slot_clock: slot_clock.clone(),
         });
-        let ctx = context.clone();
+        let ctx = context;
         let (listening_socket, server) =
             super::serve::<_, E>(ctx, test_runtime.task_executor.exit()).unwrap();
 
@@ -164,7 +164,7 @@ impl ApiTester {
         let tmp = tempdir().unwrap().path().join("invalid-token.txt");
         let api_secret = ApiSecret::create_or_open(tmp).unwrap();
         let invalid_pubkey = api_secret.api_token();
-        ValidatorClientHttpClient::new(self.url.clone(), invalid_pubkey.clone()).unwrap()
+        ValidatorClientHttpClient::new(self.url.clone(), invalid_pubkey).unwrap()
     }
 
     pub(crate) async fn test_with_invalid_auth<F, A, T>(self, func: F) -> Self
@@ -319,7 +319,7 @@ impl ApiTester {
                 .await
                 .unwrap()
                 .data;
-            (response.validators.clone(), response.mnemonic.clone())
+            (response.validators.clone(), response.mnemonic)
         };
 
         assert_eq!(response.len(), s.count);

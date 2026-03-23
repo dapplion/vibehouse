@@ -110,7 +110,7 @@ fn scrypt_params() {
     });
     let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, String::new())
         .unwrap()
-        .kdf(my_kdf.clone())
+        .kdf(my_kdf)
         .build();
     assert_eq!(keystore, Err(Error::InvalidScryptParam));
 
@@ -124,7 +124,7 @@ fn scrypt_params() {
     });
     let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, String::new())
         .unwrap()
-        .kdf(my_kdf.clone())
+        .kdf(my_kdf)
         .build();
     assert_eq!(keystore, Err(Error::InvalidScryptParam));
 
@@ -138,7 +138,7 @@ fn scrypt_params() {
     });
     let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, String::new())
         .unwrap()
-        .kdf(my_kdf.clone())
+        .kdf(my_kdf)
         .build();
     assert_eq!(keystore, Err(Error::InvalidScryptParam));
 
@@ -148,11 +148,11 @@ fn scrypt_params() {
         n: 1 << 31,
         p: 1 << 31,
         r: 1 << 31,
-        salt: salt.clone().into(),
+        salt: salt.into(),
     });
     let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, String::new())
         .unwrap()
-        .kdf(my_kdf.clone())
+        .kdf(my_kdf)
         .build();
     assert_eq!(keystore, Err(Error::InvalidScryptParam));
 }
@@ -171,7 +171,7 @@ fn pbkdf2_params() {
     });
     let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, String::new())
         .unwrap()
-        .kdf(my_kdf.clone())
+        .kdf(my_kdf)
         .build();
     assert_eq!(keystore, Err(Error::InvalidPbkdf2Param));
 
@@ -179,11 +179,11 @@ fn pbkdf2_params() {
         dklen: DKLEN + 1,
         c: 4,
         prf: Prf::HmacSha256,
-        salt: salt.clone().into(),
+        salt: salt.into(),
     });
     let keystore = KeystoreBuilder::new(&keypair, GOOD_PASSWORD, String::new())
         .unwrap()
-        .kdf(my_kdf.clone())
+        .kdf(my_kdf)
         .build();
     assert_eq!(keystore, Err(Error::InvalidPbkdf2Param));
 }

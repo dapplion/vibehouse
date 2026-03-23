@@ -286,7 +286,7 @@ impl TestRig {
         let network_beacon_processor = Arc::new(network_beacon_processor);
 
         let beacon_processor = BeaconProcessor {
-            network_globals: network_globals.clone(),
+            network_globals,
             executor,
             current_workers: 0,
             config: beacon_processor_config,
@@ -5724,7 +5724,7 @@ async fn gloas_rig_stateless(chain_length: u64, min_proofs_required: usize) -> T
     let network_beacon_processor = Arc::new(network_beacon_processor);
 
     let beacon_processor = BeaconProcessor {
-        network_globals: network_globals.clone(),
+        network_globals,
         executor,
         current_workers: 0,
         config: beacon_processor_config,

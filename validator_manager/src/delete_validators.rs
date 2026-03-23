@@ -214,7 +214,7 @@ mod test {
                 validators_to_delete,
             });
 
-            self.validators = local_validators.clone();
+            self.validators = local_validators;
             self.src_import_builder = Some(builder);
             self
         }

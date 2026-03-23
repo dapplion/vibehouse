@@ -336,7 +336,7 @@ impl GossipTester {
         invalid_attestation.data.beacon_block_root = Hash256::repeat_byte(13);
 
         let (mut invalid_aggregate, _, _) =
-            get_valid_aggregated_attestation(&harness.chain, valid_aggregate_attestation.clone());
+            get_valid_aggregated_attestation(&harness.chain, valid_aggregate_attestation);
 
         match invalid_aggregate.to_mut() {
             SignedAggregateAndProofRefMut::Base(att) => {

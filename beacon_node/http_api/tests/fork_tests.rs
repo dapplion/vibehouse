@@ -152,10 +152,6 @@ async fn attestations_across_fork_with_skip_slots() {
     let unaggregated_attestations = attestations
         .iter()
         .flat_map(|(atts, _)| atts.iter().map(|(att, _)| att.clone()))
-        .collect::<Vec<_>>();
-
-    let unaggregated_attestations = unaggregated_attestations
-        .into_iter()
         .map(|attn| {
             let aggregation_bits = attn.get_aggregation_bits();
 

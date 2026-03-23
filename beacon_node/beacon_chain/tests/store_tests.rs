@@ -4506,7 +4506,7 @@ async fn test_column_da_boundary() {
         "PeerDAS not scheduled"
     );
 
-    let harness = get_harness(store.clone(), LOW_VALIDATOR_COUNT);
+    let harness = get_harness(store, LOW_VALIDATOR_COUNT);
 
     // The column da boundary should be the fulu fork epoch
     assert_eq!(
@@ -4527,7 +4527,7 @@ async fn test_earliest_custodied_data_column_epoch() {
         "PeerDAS not scheduled"
     );
 
-    let harness = get_harness(store.clone(), LOW_VALIDATOR_COUNT);
+    let harness = get_harness(store, LOW_VALIDATOR_COUNT);
 
     // earliest custody info is set to the last slot in `custody_info_epoch`
     harness

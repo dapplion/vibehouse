@@ -526,7 +526,7 @@ fn validator_import_launchpad() {
     expected_def.enabled = true;
 
     assert!(
-        defs.as_slice() == [expected_def.clone()],
+        defs.as_slice() == [expected_def],
         "validator defs file should be accurate"
     );
 }
@@ -629,7 +629,7 @@ fn validator_import_launchpad_no_password_then_add_password() {
     };
 
     assert!(
-        defs.as_slice() == [expected_def.clone()],
+        defs.as_slice() == [expected_def],
         "validator defs file should be accurate"
     );
 
@@ -658,7 +658,7 @@ fn validator_import_launchpad_no_password_then_add_password() {
 
     let defs = ValidatorDefinitions::open(&dst_dir).unwrap();
     assert!(
-        defs.as_slice() == [expected_def.clone()],
+        defs.as_slice() == [expected_def],
         "validator defs file should be accurate"
     );
 }

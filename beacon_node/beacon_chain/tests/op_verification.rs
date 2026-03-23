@@ -90,9 +90,7 @@ async fn voluntary_exit() {
 
     // Second should not.
     assert!(matches!(
-        harness
-            .chain
-            .verify_voluntary_exit_for_gossip(exit1.clone()),
+        harness.chain.verify_voluntary_exit_for_gossip(exit1),
         Ok(ObservationOutcome::AlreadyKnown)
     ));
 
@@ -193,7 +191,7 @@ async fn voluntary_exit_duplicate_in_state() {
 fn proposer_slashing() {
     let db_path = tempdir().unwrap();
     let store = get_store(&db_path);
-    let harness = get_harness(store.clone(), VALIDATOR_COUNT);
+    let harness = get_harness(store, VALIDATOR_COUNT);
 
     let validator_index1 = VALIDATOR_COUNT - 1;
     let validator_index2 = VALIDATOR_COUNT - 2;
@@ -302,7 +300,7 @@ async fn proposer_slashing_duplicate_in_state() {
 fn attester_slashing() {
     let db_path = tempdir().unwrap();
     let store = get_store(&db_path);
-    let harness = get_harness(store.clone(), VALIDATOR_COUNT);
+    let harness = get_harness(store, VALIDATOR_COUNT);
 
     // First third of the validators
     let first_third = (0..VALIDATOR_COUNT as u64 / 3).collect::<Vec<_>>();
@@ -337,14 +335,14 @@ fn attester_slashing() {
     assert!(matches!(
         harness
             .chain
-            .verify_attester_slashing_for_gossip(slashing1.clone())
+            .verify_attester_slashing_for_gossip(slashing1)
             .unwrap(),
         ObservationOutcome::AlreadyKnown
     ));
     assert!(matches!(
         harness
             .chain
-            .verify_attester_slashing_for_gossip(slashing2.clone())
+            .verify_attester_slashing_for_gossip(slashing2)
             .unwrap(),
         ObservationOutcome::AlreadyKnown
     ));

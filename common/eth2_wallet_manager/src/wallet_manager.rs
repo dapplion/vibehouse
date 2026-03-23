@@ -269,12 +269,7 @@ mod tests {
         )
         .expect("should create first wallet");
 
-        match mgr.create_wallet(
-            name.clone(),
-            WalletType::Hd,
-            &get_mnemonic(),
-            WALLET_PASSWORD,
-        ) {
+        match mgr.create_wallet(name, WalletType::Hd, &get_mnemonic(), WALLET_PASSWORD) {
             Err(Error::NameAlreadyTaken(_)) => {}
             _ => panic!("expected name error"),
         }

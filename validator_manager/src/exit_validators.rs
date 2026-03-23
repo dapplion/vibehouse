@@ -432,7 +432,7 @@ mod test {
                 presign: false,
             });
 
-            self.validators = local_validators.clone();
+            self.validators = local_validators;
             self.src_import_builder = Some(builder);
             self.index_of_validators_to_exit = index_of_validators_to_exit;
             self
