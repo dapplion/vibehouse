@@ -4972,3 +4972,13 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - **#4932** (sanity/blocks tests with payload attestation) — new test vectors, runner ready
 - **Test coverage audit**: Verified `prune_gloas_pools` has 3 dedicated tests (buffer cap enforcement, slot boundary retention, at-cap-not-cleared). Range sync Gloas skip (`state_update_while_purging`) is test infra limitation (cross-harness bid parent_block_hash mismatch), not a coverage gap.
 - **Fix**: Escaped `[IGNORE]` and `[REJECT]` in doc comments in `attestation_verification.rs:1350` and `gloas_verification.rs:193` — rustdoc was parsing them as broken intra-doc links. `cargo doc --workspace --no-deps -D warnings` now passes clean.
+
+### Run 2237 (2026-03-23)
+
+**Verification + devnet + spec tracking — all systems green**
+
+- **CI status**: Run 23436980575 — 6/6 jobs passed (all green). Nightly slasher failure was timing (run started 09:33 UTC, fix pushed 11:42 UTC — tomorrow's nightly will pass).
+- **Spec tracking**: v1.7.0-alpha.3 still latest. No new merged Gloas PRs. Open PTC lookbehind PRs (#4979, #5020, #4992) are in design discussion — three competing approaches for caching PTC across epoch boundaries. Our implementation matches current spec; we'll implement whichever PR merges.
+  - Investigated PTC epoch boundary issue: when processing a block at first slot of new epoch, `get_ptc` uses post-epoch-transition effective_balance values for the previous slot's PTC. This is a known spec-level issue (not vibehouse-specific) — all clients using the spec as-is have the same behavior. No consensus disagreement between nodes. Gossip validation could reject valid attestations at epoch boundaries (liveness, not safety).
+- **Devnet verification**: Full devnet test passed — 4 nodes, Gloas fork at epoch 1, finalized_epoch=8 (slot 81, epoch 10). No stalls. Confirms no regressions from runs 2223-2236 (8 runs of lint changes: 30+ clone removals, function signature changes, 225 clippy lints enforced).
+- **No code changes this run** — codebase is healthy, CI green, devnet verified, spec tracked.
