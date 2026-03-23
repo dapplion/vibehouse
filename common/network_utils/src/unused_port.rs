@@ -57,15 +57,15 @@ pub fn zero_port(transport: Transport, ipv: IpVersion) -> Result<u16, String> {
         IpVersion::Ipv6 => std::net::Ipv6Addr::LOCALHOST.into(),
     };
     let socket_addr = std::net::SocketAddr::new(localhost, 0);
-    let mut unused_port: u16;
-    loop {
-        unused_port = find_unused_port(transport, socket_addr)?;
+    let unused_port = loop {
+        let port = find_unused_port(transport, socket_addr)?;
         let mut cache_lock = FOUND_PORTS_CACHE.lock();
-        if !cache_lock.contains(&unused_port) {
-            cache_lock.insert(unused_port);
-            break;
+        if !cache_lock.contains(&port) {
+            cache_lock.insert(port);
+            drop(cache_lock);
+            break port;
         }
-    }
+    };
 
     Ok(unused_port)
 }

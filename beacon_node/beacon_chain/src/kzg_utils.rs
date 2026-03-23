@@ -100,7 +100,7 @@ where
         }
     }
 
-    kzg.verify_cell_proof_batch(&cells, &proofs, column_indices, &commitments)
+    kzg.verify_cell_proof_batch(&cells, &proofs, &column_indices, &commitments)
 }
 
 /// Validate a batch of `DataColumnSidecar` using externally-provided KZG commitments.
@@ -146,7 +146,7 @@ pub fn validate_data_columns_with_commitments<E: EthSpec>(
         ));
     }
 
-    kzg.verify_cell_proof_batch(&cells, &proofs, column_indices, &commitments)
+    kzg.verify_cell_proof_batch(&cells, &proofs, &column_indices, &commitments)
 }
 
 /// Validate a batch of blob-commitment-proof triplets from multiple `BlobSidecars`.

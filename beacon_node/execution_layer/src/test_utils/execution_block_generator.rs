@@ -1097,7 +1097,7 @@ mod test {
             .enumerate()
             .map(|(cell_idx, cell)| (cell_idx as u64, CellRef::try_from(cell.as_ref()).unwrap()))
             .unzip();
-        kzg.verify_cell_proof_batch(&cell_refs, &kzg_proofs, cell_indices, &kzg_commitments)
+        kzg.verify_cell_proof_batch(&cell_refs, &kzg_proofs, &cell_indices, &kzg_commitments)
             .map_err(|e| format!("Invalid blobs bundle: {e:?}"))
     }
 

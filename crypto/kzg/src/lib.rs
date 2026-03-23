@@ -237,7 +237,7 @@ impl Kzg {
         &self,
         cells: &[CellRef<'_>],
         kzg_proofs: &[Bytes48],
-        indices: Vec<CellIndex>,
+        indices: &[CellIndex],
         kzg_commitments: &[Bytes48],
     ) -> Result<(), (Option<u64>, Error)> {
         let mut column_groups: HashMap<u64, Vec<(CellRef, Bytes48, Bytes48)>> = HashMap::new();

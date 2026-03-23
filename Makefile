@@ -242,7 +242,7 @@ mdlint:
 test-full: cargo-fmt test-release test-debug test-ef test-exec-engine
 
 # Lints the code for bad style and potentially unsafe arithmetic using Clippy.
-# Runs clippy with workspace-wide lints enforced as errors (263 lints, sorted, deduplicated).
+# Runs clippy with workspace-wide lints enforced as errors (288 lints, sorted, deduplicated).
 lint:
 	cargo clippy --workspace --benches --tests $(EXTRA_CLIPPY_OPTS) --features "$(TEST_FEATURES)" -- \
 		-D clippy::absurd_extreme_comparisons \
@@ -256,11 +256,13 @@ lint:
 		-D clippy::bytes_count_to_len \
 		-D clippy::case_sensitive_file_extension_comparisons \
 		-D clippy::cast_lossless \
+		-D clippy::cast_ptr_alignment \
 		-D clippy::checked_conversions \
 		-D clippy::clear_with_drain \
 		-D clippy::clone_on_copy \
 		-D clippy::cloned_instead_of_copied \
 		-D clippy::cloned_ref_to_slice_refs \
+		-D clippy::collapsible_else_if \
 		-D clippy::collapsible_if \
 		-D clippy::collapsible_str_replace \
 		-D clippy::collection_is_never_read \
@@ -279,6 +281,7 @@ lint:
 		-D clippy::doc_lazy_continuation \
 		-D clippy::double_parens \
 		-D clippy::elidable_lifetime_names \
+		-D clippy::empty_enums \
 		-D clippy::empty_enum_variants_with_brackets \
 		-D clippy::empty_line_after_doc_comments \
 		-D clippy::empty_line_after_outer_attr \
@@ -295,6 +298,7 @@ lint:
 		-D clippy::flat_map_option \
 		-D clippy::fn_params_excessive_bools \
 		-D clippy::fn_to_numeric_cast_any \
+		-D clippy::format_collect \
 		-D clippy::format_push_string \
 		-D clippy::from_iter_instead_of_collect \
 		-D clippy::from_over_into \
@@ -318,6 +322,7 @@ lint:
 		-D clippy::invalid_upcast_comparisons \
 		-D clippy::ip_constant \
 		-D clippy::items_after_statements \
+		-D clippy::iter_without_into_iter \
 		-D clippy::iter_filter_is_ok \
 		-D clippy::iter_filter_is_some \
 		-D clippy::iter_kv_map \
@@ -328,6 +333,7 @@ lint:
 		-D clippy::iter_with_drain \
 		-D clippy::large_digit_groups \
 		-D clippy::large_include_file \
+		-D clippy::large_stack_arrays \
 		-D clippy::large_stack_frames \
 		-D clippy::large_types_passed_by_value \
 		-D clippy::legacy_numeric_constants \
@@ -407,6 +413,8 @@ lint:
 		-D clippy::neg_multiply \
 		-D clippy::negative_feature_names \
 		-D clippy::no_effect \
+		-D clippy::non_send_fields_in_send_ty \
+		-D clippy::non_std_lazy_statics \
 		-D clippy::no_effect_replace \
 		-D clippy::no_effect_underscore_binding \
 		-D clippy::no_mangle_with_rust_abi \
@@ -421,6 +429,7 @@ lint:
 		-D clippy::path_buf_push_overwrite \
 		-D clippy::possible_missing_else \
 		-D clippy::ptr_arg \
+		-D clippy::ptr_cast_constness \
 		-D clippy::ptr_offset_by_literal \
 		-D clippy::ptr_as_ptr \
 		-D clippy::range_minus_one \
@@ -484,11 +493,13 @@ lint:
 		-D clippy::unit_arg \
 		-D clippy::unnecessary_box_returns \
 		-D clippy::unnecessary_cast \
+		-D clippy::unnecessary_debug_formatting \
 		-D clippy::unnecessary_fallible_conversions \
 		-D clippy::unnecessary_filter_map \
 		-D clippy::unnecessary_get_then_check \
 		-D clippy::unnecessary_join \
 		-D clippy::unnecessary_lazy_evaluations \
+		-D clippy::unnecessary_literal_bound \
 		-D clippy::unnecessary_map_on_constructor \
 		-D clippy::unnecessary_option_map_or_else \
 		-D clippy::unnecessary_min_or_max \
@@ -496,6 +507,7 @@ lint:
 		-D clippy::unnecessary_safety_doc \
 		-D clippy::unnecessary_semicolon \
 		-D clippy::unnecessary_self_imports \
+		-D clippy::unsafe_derive_deserialize \
 		-D clippy::unnecessary_struct_initialization \
 		-D clippy::unnecessary_to_owned \
 		-D clippy::unnecessary_wraps \

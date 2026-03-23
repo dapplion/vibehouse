@@ -5,6 +5,7 @@ const DEFAULT_LOW_PRIORITY_CPU_PERCENTAGE: usize = 25;
 const DEFAULT_HIGH_PRIORITY_CPU_PERCENTAGE: usize = 80;
 const MINIMUM_THREAD_COUNT: usize = 1;
 
+#[derive(Clone, Copy)]
 pub enum RayonPoolType {
     HighPriority,
     LowPriority,

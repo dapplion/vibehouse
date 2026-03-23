@@ -54,7 +54,7 @@ impl<E: EthSpec> Case for KZGVerifyCellKZGProofBatch<E> {
                     .map(std::convert::AsRef::as_ref)
                     .collect::<Vec<_>>();
                 let kzg = get_kzg();
-                match kzg.verify_cell_proof_batch(&cells, &proofs, cell_indices, &commitments) {
+                match kzg.verify_cell_proof_batch(&cells, &proofs, &cell_indices, &commitments) {
                     Ok(()) => Ok(true),
                     Err((_, KzgError::KzgVerificationFailed)) => Ok(false),
                     Err(e) => Err(Error::InternalError(format!(

@@ -1066,7 +1066,7 @@ mod test {
 
         let gossip_verified_blobs = if let Some((kzg_proofs, blobs)) = maybe_blobs {
             let sidecars =
-                BlobSidecar::build_sidecars(blobs, &block, kzg_proofs, &chain.spec).unwrap();
+                BlobSidecar::build_sidecars(blobs, &block, &kzg_proofs, &chain.spec).unwrap();
             Vec::from(sidecars)
                 .into_iter()
                 .map(|sidecar| {

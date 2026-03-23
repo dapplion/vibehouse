@@ -6,8 +6,8 @@ use ssz::{Decode, Encode};
 use std::borrow::Cow;
 use std::fmt::Debug;
 
-fn ssz_round_trip<T: Encode + Decode + PartialEq + Debug>(item: T) {
-    assert_eq!(item, T::from_ssz_bytes(&item.as_ssz_bytes()).unwrap());
+fn ssz_round_trip<T: Encode + Decode + PartialEq + Debug>(item: &T) {
+    assert_eq!(*item, T::from_ssz_bytes(&item.as_ssz_bytes()).unwrap());
 }
 
 macro_rules! test_suite {
@@ -55,31 +55,31 @@ macro_rules! test_suite {
         #[test]
         fn ssz_round_trip_multiple_types() {
             let mut agg_sig = AggregateSignature::infinity();
-            ssz_round_trip(agg_sig.clone());
+            ssz_round_trip(&agg_sig);
 
             let msg = Hash256::from_low_u64_be(42);
             let secret = secret_from_u64(42);
 
             let sig = secret.sign(msg);
-            ssz_round_trip(sig.clone());
+            ssz_round_trip(&sig);
 
             agg_sig.add_assign(&sig);
-            ssz_round_trip(agg_sig);
+            ssz_round_trip(&agg_sig);
         }
 
         #[test]
         fn ssz_round_trip_sig_empty() {
-            ssz_round_trip(Signature::empty())
+            ssz_round_trip(&Signature::empty())
         }
 
         #[test]
         fn ssz_round_trip_agg_sig_empty() {
-            ssz_round_trip(AggregateSignature::empty())
+            ssz_round_trip(&AggregateSignature::empty())
         }
 
         #[test]
         fn ssz_round_trip_agg_sig_infinity() {
-            ssz_round_trip(AggregateSignature::infinity())
+            ssz_round_trip(&AggregateSignature::infinity())
         }
 
         #[test]

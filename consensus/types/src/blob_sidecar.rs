@@ -274,7 +274,7 @@ impl<E: EthSpec> BlobSidecar<E> {
     pub fn build_sidecars(
         blobs: BlobsList<E>,
         block: &SignedBeaconBlock<E>,
-        kzg_proofs: KzgProofs<E>,
+        kzg_proofs: &KzgProofs<E>,
         spec: &ChainSpec,
     ) -> Result<BlobSidecarList<E>, BlobSidecarError> {
         let mut blob_sidecars = vec![];

@@ -2567,7 +2567,7 @@ where
         } else {
             let blobs = blob_items
                 .map(|(proofs, blobs)| {
-                    BlobSidecar::build_sidecars(blobs, &block, proofs, &self.spec)
+                    BlobSidecar::build_sidecars(blobs, &block, &proofs, &self.spec)
                 })
                 .transpose()
                 .unwrap();

@@ -328,7 +328,7 @@ impl TestRig {
                 (None, Some(custody_columns))
             } else {
                 let blob_sidecars =
-                    BlobSidecar::build_sidecars(blobs, &block, kzg_proofs, &chain.spec).unwrap();
+                    BlobSidecar::build_sidecars(blobs, &block, &kzg_proofs, &chain.spec).unwrap();
                 (Some(blob_sidecars), None)
             }
         } else {

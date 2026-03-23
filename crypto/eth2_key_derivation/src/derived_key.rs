@@ -106,7 +106,7 @@ fn hkdf_mod_r(ikm: &[u8]) -> ZeroizeHash {
         salt = hasher.finalize().to_vec();
 
         let prk = hkdf_extract(&salt, ikm_with_postfix.as_bytes());
-        let okm = &hkdf_expand(prk, &info, MOD_R_L);
+        let okm = &hkdf_expand(&prk, &info, MOD_R_L);
 
         output = mod_r(okm.as_bytes());
     }
@@ -171,7 +171,7 @@ fn parent_sk_to_lamport_pk(ikm: &[u8], index: u32) -> ZeroizeHash {
 /// Equivalent to `IKM_to_lamport_SK` in EIP-2333.
 fn ikm_to_lamport_sk(salt: &[u8], ikm: &[u8]) -> LamportSecretKey {
     let prk = hkdf_extract(salt, ikm);
-    let okm = hkdf_expand(prk, &[], HASH_SIZE * LAMPORT_ARRAY_SIZE as usize);
+    let okm = hkdf_expand(&prk, &[], HASH_SIZE * LAMPORT_ARRAY_SIZE as usize);
     LamportSecretKey::from_bytes(okm.as_bytes())
 }
 
@@ -185,7 +185,7 @@ fn hkdf_extract(salt: &[u8], ikm: &[u8]) -> Prk {
 /// Peforms a `HKDF-Expand` on the `pkr` (pseudo-random key), returning `l` bytes.
 ///
 /// Defined in [RFC5869](https://tools.ietf.org/html/rfc5869).
-fn hkdf_expand(prk: Prk, info: &[u8], l: usize) -> SecretBytes {
+fn hkdf_expand(prk: &Prk, info: &[u8], l: usize) -> SecretBytes {
     struct ExpandLen(usize);
 
     impl KeyType for ExpandLen {

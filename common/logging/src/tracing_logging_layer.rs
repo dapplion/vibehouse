@@ -416,7 +416,7 @@ mod tests {
         let log_fields = vec![("field_name".to_string(), "field_value".to_string())];
         let span_fields = vec![];
         let expected = "Jan 1 08:00:00.000 INFO  test message                                  field_name: field_value\n";
-        test_build_log_text(log_fields, span_fields, expected);
+        test_build_log_text(&log_fields, &span_fields, expected);
     }
 
     #[test]
@@ -427,7 +427,7 @@ mod tests {
         ];
         let span_fields = vec![];
         let expected = "Jan 1 08:00:00.000 INFO  test message                                  field_name1: field_value1, field_name2: field_value2\n";
-        test_build_log_text(log_fields, span_fields, expected);
+        test_build_log_text(&log_fields, &span_fields, expected);
     }
 
     #[test]
@@ -438,7 +438,7 @@ mod tests {
             "span_field_value".to_string(),
         )];
         let expected = "Jan 1 08:00:00.000 INFO  test message                                  field_name: field_value, span_field_name: span_field_value\n";
-        test_build_log_text(log_fields, span_fields, expected);
+        test_build_log_text(&log_fields, &span_fields, expected);
     }
 
     #[test]
@@ -449,7 +449,7 @@ mod tests {
             "span_field_value".to_string(),
         )];
         let expected = "Jan 1 08:00:00.000 INFO  test message                                  span_field_name: span_field_value\n";
-        test_build_log_text(log_fields, span_fields, expected);
+        test_build_log_text(&log_fields, &span_fields, expected);
     }
 
     #[test]
@@ -466,7 +466,7 @@ mod tests {
             ),
         ];
         let expected = "Jan 1 08:00:00.000 INFO  test message                                  span_field_name1: span_field_value1, span_field_name2: span_field_value2\n";
-        test_build_log_text(log_fields, span_fields, expected);
+        test_build_log_text(&log_fields, &span_fields, expected);
     }
 
     #[test]
@@ -483,7 +483,7 @@ mod tests {
             ),
         ];
         let expected = "Jan 1 08:00:00.000 INFO  test message                                  span_field_name1-1: span_field_value1-1, span_field_name1-2: span_field_value1-2\n";
-        test_build_log_text(log_fields, span_fields, expected);
+        test_build_log_text(&log_fields, &span_fields, expected);
     }
 
     #[test]
@@ -497,7 +497,7 @@ mod tests {
             ("field_name_3".to_string(), "field_value_3".to_string()),
         ];
         let expected = "Jan 1 08:00:00.000 INFO  test message                                  field_name_1: field_value_1, field_name_2: field_value_2, field_name_3: field_value_3\n";
-        test_build_log_text(log_fields, span_fields, expected);
+        test_build_log_text(&log_fields, &span_fields, expected);
     }
 
     #[test]
@@ -511,17 +511,17 @@ mod tests {
             ("field_name_3".to_string(), "field_value_3".to_string()),
         ];
         let expected = "Jan 1 08:00:00.000 INFO  test message                                  field_name_1: field_value_1_log, field_name_2: field_value_2, field_name_3: field_value_3\n";
-        test_build_log_text(log_fields, span_fields, expected);
+        test_build_log_text(&log_fields, &span_fields, expected);
     }
 
     fn test_build_log_text(
-        log_fields: Vec<(String, String)>,
-        span_fields: Vec<(String, String)>,
+        log_fields: &[(String, String)],
+        span_fields: &[(String, String)],
         expected: &str,
     ) {
         let visitor = FieldVisitor {
             message: "test message".to_string(),
-            fields: log_fields,
+            fields: log_fields.to_vec(),
             is_crit: false,
         };
         let plain_level_str = "INFO";
@@ -535,7 +535,7 @@ mod tests {
             &visitor,
             plain_level_str,
             timestamp,
-            &span_fields,
+            span_fields,
             location,
             color_level_str,
             use_color,
