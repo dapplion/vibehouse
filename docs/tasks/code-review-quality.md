@@ -4916,3 +4916,11 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - Plus 20 more zero-existing-warnings lints for regression prevention: `explicit_write`, `match_overlapping_arm`, `absurd_extreme_comparisons`, `modulo_one`, `suspicious_else_formatting`, `partialeq_ne_impl`, `suspicious_arithmetic_impl`, `enum_clike_unportable_variant`, `redundant_allocation`, `manual_hash_one`, `transmute_bytes_to_str`, `unnecessary_box_returns`, `string_lit_chars_any`, `manual_saturating_arithmetic`, `uninhabited_references`, `as_ptr_cast_mut`, `manual_is_finite`
 - **Clippy fully clean**: 0 warnings from `cargo clippy --workspace --all-targets -- -W clippy::all` — all standard clippy lints resolved
 - **Tests**: operation_pool 72/72, beacon_chain 999/999, state_processing+wallet+keystore+validator_manager 1193/1193, network 204/204, http_api 74/74, validator_client 1/1, account_manager 6/6. All passing.
+
+### Run 2231 (2026-03-23)
+
+**Fix nightly-tests CI failure: slasher dead code with redb-only build**
+
+- **Disk cleanup**: disk was 100% full (443/467G). Freed ~100G by cleaning cargo target/debug, target/release/incremental, old claude session data, and kurtosis logs.
+- **CI fix**: nightly-tests `slasher-tests` job failed because `MEGABYTE` constant in `slasher/src/config.rs` was dead code when compiled with `--features "redb"` only (no lmdb/mdbx). Added `#[cfg(any(feature = "lmdb", feature = "mdbx"))]` gate since the constant is only used by those backends.
+- **Tests**: slasher 105/105 (default lmdb), 104/104 (redb-only), 104/104 (mdbx-only). `make lint` clean.
