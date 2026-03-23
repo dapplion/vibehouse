@@ -484,6 +484,10 @@ lint:
 		-D clippy::str_split_at_newline \
 		-D clippy::unnecessary_min_or_max \
 		-D clippy::useless_format \
+		-D clippy::undocumented_unsafe_blocks \
+		-D clippy::panicking_unwrap \
+		-D clippy::missing_safety_doc \
+		-D clippy::as_underscore \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.

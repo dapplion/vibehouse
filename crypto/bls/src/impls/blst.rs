@@ -60,6 +60,9 @@ pub fn verify_signature_sets<'a>(
         let mut rand_i = std::mem::MaybeUninit::<blst_scalar>::uninit();
 
         // TODO: remove this `unsafe` code-block once blst provides a safe API (#36)
+        // SAFETY: `rand_i` is immediately initialized by `blst_scalar_from_uint64` which writes
+        // all 4 u64 limbs from `vals` into the scalar. `assume_init` is safe because the FFI
+        // call fully initializes the memory.
         unsafe {
             blst::blst_scalar_from_uint64(rand_i.as_mut_ptr(), vals.as_ptr());
             rands.push(rand_i.assume_init());

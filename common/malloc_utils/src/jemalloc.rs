@@ -86,6 +86,9 @@ pub fn scrape_jemalloc_metrics_fallible() -> Result<(), Error> {
     set_gauge(&BYTES_RETAINED, stats::retained::read()? as i64);
 
     for arena in 0..num_arenas {
+        // SAFETY: the stat name strings are NUL-terminated (literal `\0` suffix) and
+        // `raw::read::<usize>` only reads a jemalloc statistic by name — no aliasing or
+        // lifetime concerns.
         unsafe {
             set_stats_gauge(
                 &JEMALLOC_ARENAS_SMALL_NMALLOC,
@@ -114,6 +117,8 @@ pub fn scrape_jemalloc_metrics_fallible() -> Result<(), Error> {
 }
 
 unsafe fn set_stats_gauge(metric: &metrics::Result<IntGaugeVec>, arena: u32, stat: &str) {
+    // SAFETY: `stat` is a NUL-terminated jemalloc stat name; `raw::read` performs a safe
+    // jemalloc mallctl read. Caller guarantees `stat` is valid.
     unsafe {
         if let Ok(val) = raw::read::<usize>(stat.as_bytes()) {
             set_gauge_vec(metric, &[&format!("arena_{arena}")], val as i64);

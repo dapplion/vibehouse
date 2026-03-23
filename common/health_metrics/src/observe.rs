@@ -40,7 +40,11 @@ impl Observe for SystemHealth {
         // Disk usage via statvfs
         let disk_usage = {
             let path = std::ffi::CString::new("/").unwrap();
+            // SAFETY: zeroed memory is a valid representation for statvfs (all-zero is valid for
+            // every field — unsigned integers and padding).
             let mut stat: libc::statvfs = unsafe { std::mem::zeroed() };
+            // SAFETY: `path` is a valid NUL-terminated C string (created via CString::new above),
+            // and `stat` is a valid mutable pointer to a statvfs struct.
             let ret = unsafe { libc::statvfs(path.as_ptr(), std::ptr::addr_of_mut!(stat)) };
             if ret != 0 {
                 return Err("Unable to get disk usage info".to_string());
