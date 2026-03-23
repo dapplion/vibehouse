@@ -30,6 +30,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2260 (Mar 23) — maintenance check, #4979 actively refactoring
+
+- CI: run 23457496246 in progress (check+clippy green, 5 jobs still running).
+- Spec: v1.7.0-alpha.3 still latest. Spec test vectors: v1.5.0 (unchanged).
+- **#5023 merged** today — test fixture fix. New test vectors (head_payload_status checks, on_execution_payload steps) will arrive in next spec test release. No action until then.
+- **#4979 very active** — renamed from `ptc_lookbehind` to `ptc_window`, expanded to explicit 3 epochs. Still open, significant refactoring underway. Updated memory file.
+- Other tracked PRs unchanged: #4962 (withdrawal tests), #4843 (variable PTC deadline), #4892 (remove impossible branch, APPROVED), #4898 (remove pending tiebreaker, APPROVED), #4954 (ms in fork choice), #4747 (fast confirmation rule).
+- Rust 1.94.0 up to date. cargo audit unchanged. 0 clippy warnings.
+- No code changes — codebase healthy, holding pattern.
+
 ### run 2259 (Mar 23) — 3 spec PRs merged, no vibehouse impact
 
 - CI: run 23457496246 in progress (commit c312a65d3, removed stale lint suppression).
