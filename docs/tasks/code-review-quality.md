@@ -5065,3 +5065,20 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Pedantic lint survey**: 4817 pedantic warnings — not actionable at scale. Current 280 enforced lints is comprehensive.
 - **Status**: Project is in excellent shape. All 8 priorities done, CI green, spec tracked, 280 clippy lints enforced. No actionable work items found — waiting for PTC lookbehind (#4979) or other spec changes to land.
 - **No code changes this run** — codebase healthy, waiting for spec PRs to land.
+
+### Run 2245 (2026-03-23)
+
+**PTC lookbehind spec analysis + verification**
+
+- **CI**: Run 23446142758 — all 7 jobs passed (full green). Nightly failure (slasher-tests, MEGABYTE dead_code) was on pre-fix commit — tonight's nightly will pass.
+- **Spec tracking**: v1.7.0-alpha.3 still latest. No new merged Gloas PRs since run 2244.
+  - **PTC lookbehind (#4979)**: still open, clear winner (competing #4992 and #5020 both closed). Performed detailed spec analysis:
+    - Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], (2+MIN_SEED_LOOKAHEAD)*SLOTS_PER_EPOCH]` to BeaconState
+    - Extracts `compute_ptc` from `get_ptc`, rewrites `get_ptc` as cache lookup
+    - New epoch processing: `process_ptc_lookbehind` (shift + fill, called last after `process_proposer_lookahead`)
+    - Fork upgrade: `initialize_ptc_lookbehind` for `upgrade_to_gloas`
+    - Watch items: potential field rename, size inconsistency in init function (returns 2 epochs, field holds 3)
+    - Full analysis saved to memory for quick implementation when merged
+  - Nightly consensus-specs test vectors stale (last successful: March 7, before #4940 fork choice tests merged March 13). Nightly workflow has cancelled runs since March 9.
+- **Dependencies**: Attempted `rand_xorshift` 0.4→0.5 upgrade — blocked by `rand_core` version conflict (0.5 requires rand_core 0.10, workspace uses rand 0.9 / rand_core 0.9). Requires full rand ecosystem upgrade, not worth it now.
+- **No code changes this run** — codebase healthy, spec analysis complete, ready for PTC lookbehind implementation.
