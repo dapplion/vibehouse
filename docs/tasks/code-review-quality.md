@@ -4955,3 +4955,20 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Disk maintenance**: Freed ~8.2GB by cleaning target/debug/incremental cache (82% → healthier disk usage).
 - **Security audit**: `cargo audit` unchanged — 1 medium advisory (RSA timing, no fix available), 5 unmaintained warnings (all transitive). No new advisories.
 - **No code changes this run** — codebase is healthy, CI green, spec tracked.
+
+### Run 2235 (2026-03-23)
+
+**Verification + spec tracking — all systems green**
+
+- **CI status**: Run 23434476265 — 6/6 jobs passed (all green including beacon_chain and unit tests). Nightly failure (slasher redb-only) already fixed in run 2231. Previous nightly (Mar 22) was infra failure (cargo-nextest install), not code.
+- **Spec tracking**: v1.7.0-alpha.3 still latest. Verified 3 recently merged Gloas PRs:
+  - **#5001** (add `parent_block_root` to bid filtering key) — already implemented: `observed_execution_bids.rs:48` uses `(Slot, ExecutionBlockHash, Hash256)` triple
+  - **#5002** (self-build signature verification wording) — spec wording only, no behavioral change
+  - **#5008** (field name fix in EnvelopesByRoot) — spec doc fix, our RPC uses correct field names
+- **Open Gloas spec PRs monitored** (all still open, not yet merged):
+  - **#4840** (EIP-7843 SLOTNUM opcode) — adds `slot_number` to `PayloadAttributes`, blocked status
+  - **#5023** (fix block root filenames + Gloas comptests) — test infra changes, our runner already handles `on_execution_payload` and `head_payload_status`
+  - **#4960** (fork choice test: new validator deposit) — new test vectors, runner ready
+  - **#4932** (sanity/blocks tests with payload attestation) — new test vectors, runner ready
+- **Test coverage audit**: Verified `prune_gloas_pools` has 3 dedicated tests (buffer cap enforcement, slot boundary retention, at-cap-not-cleared). Range sync Gloas skip (`state_update_while_purging`) is test infra limitation (cross-harness bid parent_block_hash mismatch), not a coverage gap.
+- **No code changes this run** — codebase healthy, CI fully green, spec fully tracked.
