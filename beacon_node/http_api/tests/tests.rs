@@ -289,7 +289,7 @@ impl ApiTester {
             network_rx,
             local_enr,
             external_peer_id,
-        } = create_api_server(chain.clone(), &harness.runtime).await;
+        } = create_api_server(chain.clone(), &harness.runtime);
 
         harness.runtime.task_executor.spawn(server, "api_server");
 
@@ -399,7 +399,7 @@ impl ApiTester {
             network_rx,
             local_enr,
             external_peer_id,
-        } = create_api_server(chain.clone(), &harness.runtime).await;
+        } = create_api_server(chain.clone(), &harness.runtime);
 
         harness.runtime.task_executor.spawn(server, "api_server");
 
@@ -4275,7 +4275,7 @@ impl ApiTester {
         self
     }
 
-    async fn generate_validator_registration_data(
+    fn generate_validator_registration_data(
         &self,
         fee_recipient_generator: impl Fn(usize) -> Address,
         gas_limit: u64,
@@ -4323,12 +4323,10 @@ impl ApiTester {
     }
 
     pub(crate) async fn test_post_validator_register_validator(self) -> Self {
-        let (registrations, fee_recipients) = self
-            .generate_validator_registration_data(
-                |val_index| Address::from_low_u64_be(val_index as u64),
-                DEFAULT_GAS_LIMIT,
-            )
-            .await;
+        let (registrations, fee_recipients) = self.generate_validator_registration_data(
+            |val_index| Address::from_low_u64_be(val_index as u64),
+            DEFAULT_GAS_LIMIT,
+        );
 
         self.client
             .post_validator_register_validator(&registrations)
@@ -4380,12 +4378,10 @@ impl ApiTester {
             )
             .await;
 
-        let (registrations, fee_recipients) = self
-            .generate_validator_registration_data(
-                |val_index| Address::from_low_u64_be(val_index as u64),
-                DEFAULT_GAS_LIMIT,
-            )
-            .await;
+        let (registrations, fee_recipients) = self.generate_validator_registration_data(
+            |val_index| Address::from_low_u64_be(val_index as u64),
+            DEFAULT_GAS_LIMIT,
+        );
 
         self.client
             .post_validator_register_validator(&registrations)
@@ -4419,12 +4415,10 @@ impl ApiTester {
     }
 
     pub(crate) async fn test_post_validator_register_validator_higher_gas_limit(&self) {
-        let (registrations, fee_recipients) = self
-            .generate_validator_registration_data(
-                |val_index| Address::from_low_u64_be(val_index as u64),
-                DEFAULT_GAS_LIMIT + 10_000_000,
-            )
-            .await;
+        let (registrations, fee_recipients) = self.generate_validator_registration_data(
+            |val_index| Address::from_low_u64_be(val_index as u64),
+            DEFAULT_GAS_LIMIT + 10_000_000,
+        );
 
         self.client
             .post_validator_register_validator(&registrations)

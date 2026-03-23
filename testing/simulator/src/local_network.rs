@@ -129,6 +129,8 @@ impl<E: EthSpec> Deref for LocalNetwork<E> {
 }
 
 impl<E: EthSpec> LocalNetwork<E> {
+    // Callers wrap this in Box::pin, requiring a Future return type
+    #[allow(clippy::unused_async)]
     pub(crate) async fn create_local_network(
         client_config: Option<ClientConfig>,
         mock_execution_config: Option<MockExecutionConfig>,

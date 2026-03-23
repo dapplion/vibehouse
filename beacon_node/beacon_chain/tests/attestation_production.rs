@@ -212,11 +212,7 @@ async fn produces_attestations() {
                 .fork_name_at_slot::<MainnetEthSpec>(slot)
                 .gloas_enabled()
             {
-                let expected_index = if slot > Slot::from(num_blocks_produced) {
-                    1
-                } else {
-                    0
-                };
+                let expected_index = u64::from(slot > Slot::from(num_blocks_produced));
                 assert_eq!(
                     data.index, expected_index,
                     "bad index (gloas payload_present)"

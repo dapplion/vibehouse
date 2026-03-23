@@ -84,6 +84,8 @@ impl<E: EthSpec> InteractiveTester<E> {
         .await
     }
 
+    // Called via .await in many test files
+    #[allow(clippy::unused_async)]
     pub async fn new_with_initializer_and_mutator(
         spec: Option<ChainSpec>,
         validator_count: usize,
@@ -123,7 +125,7 @@ impl<E: EthSpec> InteractiveTester<E> {
             listening_socket,
             network_rx,
             ..
-        } = create_api_server_with_config(harness.chain.clone(), config, &harness.runtime).await;
+        } = create_api_server_with_config(harness.chain.clone(), config, &harness.runtime);
 
         tokio::spawn(server);
 
@@ -178,14 +180,14 @@ impl<E: EthSpec> InteractiveTester<E> {
     }
 }
 
-pub async fn create_api_server<T: BeaconChainTypes>(
+pub fn create_api_server<T: BeaconChainTypes>(
     chain: Arc<BeaconChain<T>>,
     test_runtime: &TestRuntime,
 ) -> ApiServer<T, impl Future<Output = ()> + use<T>> {
-    create_api_server_with_config(chain, Config::default(), test_runtime).await
+    create_api_server_with_config(chain, Config::default(), test_runtime)
 }
 
-pub async fn create_api_server_with_config<T: BeaconChainTypes>(
+pub fn create_api_server_with_config<T: BeaconChainTypes>(
     chain: Arc<BeaconChain<T>>,
     http_config: Config,
     test_runtime: &TestRuntime,

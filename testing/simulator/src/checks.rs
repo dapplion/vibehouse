@@ -428,7 +428,7 @@ pub(crate) async fn verify_full_blob_production_up_to<E: EthSpec>(
 }
 
 // Causes the beacon node at `node_index` to disconnect from the execution layer.
-pub(crate) async fn disconnect_from_execution_layer<E: EthSpec>(
+pub(crate) fn disconnect_from_execution_layer<E: EthSpec>(
     network: LocalNetwork<E>,
     node_index: usize,
 ) -> Result<(), String> {
@@ -442,7 +442,7 @@ pub(crate) async fn disconnect_from_execution_layer<E: EthSpec>(
 }
 
 // Causes the beacon node at `node_index` to reconnect from the execution layer.
-pub(crate) async fn reconnect_to_execution_layer<E: EthSpec>(
+pub(crate) fn reconnect_to_execution_layer<E: EthSpec>(
     network: LocalNetwork<E>,
     node_index: usize,
 ) -> Result<(), String> {

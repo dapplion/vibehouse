@@ -365,7 +365,7 @@ mod test {
                 self.spec.clone(),
             )
             .await;
-            let mut builder = ImportTestBuilder::new_with_vc(vc).await;
+            let mut builder = ImportTestBuilder::new_with_vc(vc);
 
             self.vc_token =
                 Some(fs::read_to_string(builder.get_import_config().vc_token_path).unwrap());

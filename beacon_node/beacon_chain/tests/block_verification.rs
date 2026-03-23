@@ -663,7 +663,7 @@ async fn assert_invalid_signature(
     // slot) tuple.
 }
 
-async fn get_invalid_sigs_harness(
+fn get_invalid_sigs_harness(
     chain_segment: &[BeaconSnapshot<E>],
 ) -> BeaconChainHarness<EphemeralHarnessType<E>> {
     let harness = get_harness(VALIDATOR_COUNT, NodeCustodyType::Fullnode);
@@ -678,7 +678,7 @@ async fn invalid_signature_gossip_block() {
     let (chain_segment, chain_segment_blobs, chain_segment_envelopes) = get_chain_segment().await;
     for &block_index in BLOCK_INDICES {
         // Ensure the block will be rejected if imported on its own (without gossip checking).
-        let harness = get_invalid_sigs_harness(&chain_segment).await;
+        let harness = get_invalid_sigs_harness(&chain_segment);
         let mut snapshots = chain_segment.clone();
         let (block, _) = snapshots[block_index]
             .beacon_block
@@ -726,7 +726,7 @@ async fn invalid_signature_gossip_block() {
 async fn invalid_signature_block_proposal() {
     let (chain_segment, chain_segment_blobs, _chain_segment_envelopes) = get_chain_segment().await;
     for &block_index in BLOCK_INDICES {
-        let harness = get_invalid_sigs_harness(&chain_segment).await;
+        let harness = get_invalid_sigs_harness(&chain_segment);
         let mut snapshots = chain_segment.clone();
         let (block, _) = snapshots[block_index]
             .beacon_block
@@ -763,7 +763,7 @@ async fn invalid_signature_randao_reveal() {
     let (chain_segment, mut chain_segment_blobs, chain_segment_envelopes) =
         get_chain_segment().await;
     for &block_index in BLOCK_INDICES {
-        let harness = get_invalid_sigs_harness(&chain_segment).await;
+        let harness = get_invalid_sigs_harness(&chain_segment);
         let mut snapshots = chain_segment.clone();
         let (mut block, signature) = snapshots[block_index]
             .beacon_block
@@ -793,7 +793,7 @@ async fn invalid_signature_proposer_slashing() {
     let (chain_segment, mut chain_segment_blobs, chain_segment_envelopes) =
         get_chain_segment().await;
     for &block_index in BLOCK_INDICES {
-        let harness = get_invalid_sigs_harness(&chain_segment).await;
+        let harness = get_invalid_sigs_harness(&chain_segment);
         let mut snapshots = chain_segment.clone();
         let (mut block, signature) = snapshots[block_index]
             .beacon_block
@@ -837,7 +837,7 @@ async fn invalid_signature_attester_slashing() {
     let (chain_segment, mut chain_segment_blobs, chain_segment_envelopes) =
         get_chain_segment().await;
     for &block_index in BLOCK_INDICES {
-        let harness = get_invalid_sigs_harness(&chain_segment).await;
+        let harness = get_invalid_sigs_harness(&chain_segment);
         let mut snapshots = chain_segment.clone();
         let fork_name = harness.chain.spec.fork_name_at_slot::<E>(Slot::new(0));
 
@@ -962,7 +962,7 @@ async fn invalid_signature_attestation() {
     let mut checked_attestation = false;
 
     for &block_index in BLOCK_INDICES {
-        let harness = get_invalid_sigs_harness(&chain_segment).await;
+        let harness = get_invalid_sigs_harness(&chain_segment);
         let mut snapshots = chain_segment.clone();
         let (mut block, signature) = snapshots[block_index]
             .beacon_block
@@ -1035,7 +1035,7 @@ async fn invalid_signature_deposit() {
         get_chain_segment().await;
     for &block_index in BLOCK_INDICES {
         // Note: an invalid deposit signature is permitted!
-        let harness = get_invalid_sigs_harness(&chain_segment).await;
+        let harness = get_invalid_sigs_harness(&chain_segment);
         let mut snapshots = chain_segment.clone();
         let deposit = Deposit {
             proof: vec![Hash256::zero(); DEPOSIT_TREE_DEPTH + 1].into(),
@@ -1087,7 +1087,7 @@ async fn invalid_signature_exit() {
     let (chain_segment, mut chain_segment_blobs, chain_segment_envelopes) =
         get_chain_segment().await;
     for &block_index in BLOCK_INDICES {
-        let harness = get_invalid_sigs_harness(&chain_segment).await;
+        let harness = get_invalid_sigs_harness(&chain_segment);
         let mut snapshots = chain_segment.clone();
         let epoch = snapshots[block_index].beacon_state.current_epoch();
         let (mut block, signature) = snapshots[block_index]

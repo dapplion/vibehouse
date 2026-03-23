@@ -239,7 +239,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> BlockService<S, T> {
         executor.spawn(
             async move {
                 while let Some(notif) = notification_rx.recv().await {
-                    self.do_update(notif).await.ok();
+                    self.do_update(notif).ok();
                 }
                 debug!("Block service shutting down");
             },
@@ -250,7 +250,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> BlockService<S, T> {
     }
 
     /// Attempt to produce a block for any block producers in the `ValidatorStore`.
-    async fn do_update(&self, notification: BlockServiceNotification) -> Result<(), ()> {
+    fn do_update(&self, notification: BlockServiceNotification) -> Result<(), ()> {
         let _timer = validator_metrics::start_timer_vec(
             &validator_metrics::BLOCK_SERVICE_TIMES,
             &[validator_metrics::FULL_UPDATE],

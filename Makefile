@@ -297,6 +297,22 @@ lint:
 		-D clippy::string_lit_as_bytes \
 		-D clippy::suboptimal_flops \
 		-D clippy::branches_sharing_code \
+		-D clippy::unused_async \
+		-D clippy::same_functions_in_if_condition \
+		-D clippy::no_effect_underscore_binding \
+		-D clippy::manual_is_variant_and \
+		-D clippy::bool_to_int_with_if \
+		-D clippy::cast_lossless \
+		-D clippy::manual_ok_or \
+		-D clippy::manual_instant_elapsed \
+		-D clippy::unicode_not_nfc \
+		-D clippy::transmute_ptr_to_ptr \
+		-D clippy::ref_as_ptr \
+		-D clippy::explicit_deref_methods \
+		-D clippy::invalid_upcast_comparisons \
+		-D clippy::large_types_passed_by_value \
+		-D clippy::manual_find_map \
+		-D clippy::mismatching_type_param_order \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.

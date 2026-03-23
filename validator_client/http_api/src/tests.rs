@@ -456,7 +456,7 @@ impl ApiTester {
             .unwrap()
             .data;
 
-        let num_enabled = s.enabled as usize;
+        let num_enabled = usize::from(s.enabled);
 
         assert_eq!(self.vals_total(), initial_vals + 1);
         assert_eq!(self.vals_enabled(), initial_enabled_vals + num_enabled);

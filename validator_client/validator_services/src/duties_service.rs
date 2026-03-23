@@ -2147,7 +2147,7 @@ mod broadcast_preferences_tests {
     }
 
     /// Build a DutiesService wired to a MockBeaconNode + PreferencesValidatorStore.
-    async fn make_duties_service(
+    fn make_duties_service(
         mock: &MockBeaconNode<E>,
         store: PreferencesValidatorStore,
         spec: ChainSpec,
@@ -2205,7 +2205,7 @@ mod broadcast_preferences_tests {
         let store = PreferencesValidatorStore::new(vec![(pubkey, 100)])
             .with_fee_recipient(pubkey, Address::repeat_byte(0xAA));
         let mock = MockBeaconNode::<E>::new().await;
-        let (ds, _rt) = make_duties_service(&mock, store, spec, Slot::new(0)).await;
+        let (ds, _rt) = make_duties_service(&mock, store, spec, Slot::new(0));
 
         // Should return Ok without making any HTTP requests (no mock needed)
         broadcast_proposer_preferences(&ds).await.unwrap();
@@ -2221,7 +2221,7 @@ mod broadcast_preferences_tests {
         let store = PreferencesValidatorStore::new(vec![]); // no validators
         let mock = MockBeaconNode::<E>::new().await;
         let slots_per_epoch = E::slots_per_epoch();
-        let (ds, _rt) = make_duties_service(&mock, store, spec, Slot::new(slots_per_epoch)).await;
+        let (ds, _rt) = make_duties_service(&mock, store, spec, Slot::new(slots_per_epoch));
 
         broadcast_proposer_preferences(&ds).await.unwrap();
 
@@ -2251,7 +2251,7 @@ mod broadcast_preferences_tests {
         let _m1 = mock.mock_get_validator_duties_proposer(next_epoch, vec![proposer_duty]);
         let _m2 = mock.mock_post_beacon_pool_proposer_preferences();
 
-        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot).await;
+        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot);
 
         // First call succeeds and marks next_epoch as broadcast
         broadcast_proposer_preferences(&ds).await.unwrap();
@@ -2285,7 +2285,7 @@ mod broadcast_preferences_tests {
         };
         let _m1 = mock.mock_get_validator_duties_proposer(next_epoch, vec![non_local_duty]);
 
-        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot).await;
+        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot);
 
         broadcast_proposer_preferences(&ds).await.unwrap();
 
@@ -2314,7 +2314,7 @@ mod broadcast_preferences_tests {
         let _m1 = mock.mock_get_validator_duties_proposer(next_epoch, vec![proposer_duty]);
         // No post mock needed — should never be called
 
-        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot).await;
+        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot);
 
         // Should succeed (skips the validator with a warning)
         broadcast_proposer_preferences(&ds).await.unwrap();
@@ -2349,7 +2349,7 @@ mod broadcast_preferences_tests {
         let _m1 = mock.mock_get_validator_duties_proposer(next_epoch, vec![proposer_duty]);
         let _m2 = mock.mock_post_beacon_pool_proposer_preferences();
 
-        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot).await;
+        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot);
 
         broadcast_proposer_preferences(&ds).await.unwrap();
 
@@ -2386,7 +2386,7 @@ mod broadcast_preferences_tests {
         let _m1 = mock.mock_get_validator_duties_proposer(next_epoch, vec![proposer_duty]);
         // No POST mock — signing fails so POST should never be called
 
-        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot).await;
+        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot);
 
         broadcast_proposer_preferences(&ds).await.unwrap();
 
@@ -2422,7 +2422,7 @@ mod broadcast_preferences_tests {
         let _m1 = mock.mock_get_validator_duties_proposer(next_epoch, vec![proposer_duty]);
         let _m2 = mock.mock_post_beacon_pool_proposer_preferences_error();
 
-        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot).await;
+        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot);
 
         // Function should still return Ok (POST failure is logged but not fatal)
         broadcast_proposer_preferences(&ds).await.unwrap();
@@ -2462,7 +2462,7 @@ mod broadcast_preferences_tests {
         let _m1 = mock.mock_get_validator_duties_proposer(next_epoch, vec![proposer_duty]);
         let _m2 = mock.mock_post_beacon_pool_proposer_preferences();
 
-        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot).await;
+        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot);
 
         broadcast_proposer_preferences(&ds).await.unwrap();
 
@@ -2484,7 +2484,7 @@ mod broadcast_preferences_tests {
         // current_epoch = gloas_epoch - 2 = 3, next_epoch = 4 (still before Gloas)
         let current_slot = Slot::new(slots_per_epoch * (gloas_epoch - 2));
         let mock = MockBeaconNode::<E>::new().await;
-        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot).await;
+        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot);
 
         broadcast_proposer_preferences(&ds).await.unwrap();
 

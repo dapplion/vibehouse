@@ -277,7 +277,7 @@ pub(crate) fn run_fallback_sim(matches: &ArgMatches) -> Result<(), String> {
             for i in 0..vc_count {
                 for j in 0..(bns_per_vc - 1) {
                     let node_index = bns_per_vc * i + j;
-                    checks::disconnect_from_execution_layer(network.clone(), node_index).await?;
+                    checks::disconnect_from_execution_layer(network.clone(), node_index)?;
                 }
             }
             checks::epoch_delay(
@@ -288,7 +288,7 @@ pub(crate) fn run_fallback_sim(matches: &ArgMatches) -> Result<(), String> {
             .await;
             // Enable all BNs.
             for i in 0..node_count {
-                checks::reconnect_to_execution_layer(network.clone(), i).await?;
+                checks::reconnect_to_execution_layer(network.clone(), i)?;
             }
             Ok::<(), String>(())
         };

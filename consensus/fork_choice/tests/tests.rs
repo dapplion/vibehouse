@@ -231,7 +231,7 @@ impl ForkChoiceTest {
     }
 
     /// Slash a validator from the previous epoch committee.
-    pub(crate) async fn add_previous_epoch_attester_slashing(self) -> Self {
+    pub(crate) fn add_previous_epoch_attester_slashing(self) -> Self {
         let state = self.harness.get_current_state();
         let previous_epoch_shuffling = state.get_shuffling(RelativeEpoch::Previous).unwrap();
         let validator_indices = previous_epoch_shuffling
@@ -248,7 +248,7 @@ impl ForkChoiceTest {
     }
 
     /// Slash the proposer of a block in the previous epoch.
-    pub(crate) async fn add_previous_epoch_proposer_slashing(self, slots_per_epoch: u64) -> Self {
+    pub(crate) fn add_previous_epoch_proposer_slashing(self, slots_per_epoch: u64) -> Self {
         let previous_epoch_slot = self.harness.get_current_slot() - slots_per_epoch;
         let previous_epoch_block = self
             .harness
@@ -1259,7 +1259,6 @@ async fn progressive_balances_cache_attester_slashing() {
         .await
         .unwrap()
         .add_previous_epoch_attester_slashing()
-        .await
         // expect fork choice to import blocks successfully after a previous epoch attester is
         // slashed, i.e. the slashed attester's balance is correctly excluded from
         // the previous epoch total balance in `ProgressiveBalancesCache`.
@@ -1282,7 +1281,6 @@ async fn progressive_balances_cache_proposer_slashing() {
         .await
         .unwrap()
         .add_previous_epoch_proposer_slashing(E::slots_per_epoch())
-        .await
         // expect fork choice to import blocks successfully after a previous epoch proposer is
         // slashed, i.e. the slashed proposer's balance is correctly excluded from
         // the previous epoch total balance in `ProgressiveBalancesCache`.

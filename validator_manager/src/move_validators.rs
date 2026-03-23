@@ -673,7 +673,7 @@ mod test {
     }
 
     impl TestBuilder {
-        async fn new() -> Self {
+        fn new() -> Self {
             let dir = tempdir().unwrap();
             Self {
                 src_import_builder: None,
@@ -1037,7 +1037,6 @@ mod test {
     #[tokio::test]
     async fn no_validators() {
         TestBuilder::new()
-            .await
             .run_test(|_| Validators::All)
             .await
             .assert_err_is(NO_VALIDATORS_MSG.to_string());
@@ -1046,7 +1045,6 @@ mod test {
     #[tokio::test]
     async fn one_validator_move_all() {
         TestBuilder::new()
-            .await
             .with_src_validators(1, 0)
             .await
             .run_test(|_| Validators::All)
@@ -1057,7 +1055,6 @@ mod test {
     #[tokio::test]
     async fn one_validator_move_one() {
         TestBuilder::new()
-            .await
             .with_src_validators(1, 0)
             .await
             .run_test(|pubkeys| Validators::Specific(pubkeys.to_vec()))
@@ -1068,7 +1065,6 @@ mod test {
     #[tokio::test]
     async fn one_validator_to_non_empty_dest() {
         TestBuilder::new()
-            .await
             .with_src_validators(1, 0)
             .await
             .with_dest_validators(1, 10)
@@ -1081,7 +1077,6 @@ mod test {
     #[tokio::test]
     async fn two_validators_move_all_where_one_is_a_duplicate() {
         TestBuilder::new()
-            .await
             .with_src_validators(2, 0)
             .await
             .with_dest_validators(1, 1)
@@ -1095,7 +1090,6 @@ mod test {
     #[tokio::test]
     async fn two_validators_move_one_where_one_is_a_duplicate() {
         TestBuilder::new()
-            .await
             .with_src_validators(2, 0)
             .await
             .with_dest_validators(2, 0)
@@ -1109,7 +1103,6 @@ mod test {
     #[tokio::test]
     async fn three_validators_move_all() {
         TestBuilder::new()
-            .await
             .with_src_validators(3, 0)
             .await
             .run_test(|_| Validators::All)
@@ -1120,7 +1113,6 @@ mod test {
     #[tokio::test]
     async fn three_validators_move_one() {
         TestBuilder::new()
-            .await
             .with_src_validators(3, 0)
             .await
             .run_test(|pubkeys| Validators::Specific(pubkeys[0..1].to_vec()))
@@ -1131,7 +1123,6 @@ mod test {
     #[tokio::test]
     async fn three_validators_move_two() {
         TestBuilder::new()
-            .await
             .with_src_validators(3, 0)
             .await
             .run_test(|pubkeys| Validators::Specific(pubkeys[0..2].to_vec()))
@@ -1142,7 +1133,6 @@ mod test {
     #[tokio::test]
     async fn three_validators_move_three() {
         TestBuilder::new()
-            .await
             .with_src_validators(3, 42)
             .await
             .run_test(|pubkeys| Validators::Specific(pubkeys.to_vec()))
@@ -1153,7 +1143,6 @@ mod test {
     #[tokio::test]
     async fn three_validators_move_one_by_count() {
         TestBuilder::new()
-            .await
             .with_src_validators(3, 0)
             .await
             .run_test(|_| Validators::Count(1))
@@ -1164,7 +1153,6 @@ mod test {
     #[tokio::test]
     async fn three_validators_move_two_by_count() {
         TestBuilder::new()
-            .await
             .with_src_validators(3, 0)
             .await
             .run_test(|_| Validators::Count(2))
@@ -1175,7 +1163,6 @@ mod test {
     #[tokio::test]
     async fn one_validators_move_two_by_count() {
         TestBuilder::new()
-            .await
             .with_src_validators(1, 0)
             .await
             .run_test(|_| Validators::Count(2))
@@ -1186,7 +1173,6 @@ mod test {
     #[tokio::test]
     async fn two_validator_move_all_and_back_again() {
         TestBuilder::new()
-            .await
             .with_src_validators(2, 0)
             .await
             .move_back_again()
@@ -1198,7 +1184,6 @@ mod test {
     #[tokio::test]
     async fn two_validator_move_all_passwords_removed() {
         TestBuilder::new()
-            .await
             .with_src_validators(2, 0)
             .await
             .remove_passwords_from_src_vc()
@@ -1212,7 +1197,6 @@ mod test {
     #[tokio::test]
     async fn two_validator_move_all_passwords_removed_failed_password_attempt() {
         TestBuilder::new()
-            .await
             .with_src_validators(2, 0)
             .await
             .remove_passwords_from_src_vc()
@@ -1233,7 +1217,6 @@ mod test {
     #[tokio::test]
     async fn two_validator_move_all_passwords_removed_without_correct_password() {
         TestBuilder::new()
-            .await
             .with_src_validators(2, 0)
             .await
             .remove_passwords_from_src_vc()
@@ -1250,7 +1233,6 @@ mod test {
     #[tokio::test]
     async fn one_validator_move_all_with_password_files() {
         TestBuilder::new()
-            .await
             .use_password_files()
             .with_src_validators(1, 0)
             .await
@@ -1262,7 +1244,6 @@ mod test {
     #[tokio::test]
     async fn two_validators_move_one_with_identical_password_files() {
         TestBuilder::new()
-            .await
             .use_password_files()
             // The password file for validator 0 will be shared with other
             // validators on the src vc.

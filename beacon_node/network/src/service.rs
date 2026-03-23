@@ -439,7 +439,7 @@ impl<T: BeaconChainTypes> NetworkService<T> {
                     Some(msg) = self.network_recv.recv() => self.on_network_msg(msg, &mut shutdown_sender).await,
 
                     // handle a message from a validator requesting a subscription to a subnet
-                    Some(msg) = self.validator_subscription_recv.recv() => self.on_validator_subscription_msg(msg).await,
+                    Some(msg) = self.validator_subscription_recv.recv() => self.on_validator_subscription_msg(msg),
 
                     // process any subnet service events
                     Some(msg) = self.subnet_service.next() => self.on_subnet_service_msg(msg),
@@ -751,7 +751,7 @@ impl<T: BeaconChainTypes> NetworkService<T> {
     }
 
     /// Handle a message sent to the network service.
-    async fn on_validator_subscription_msg(&mut self, msg: ValidatorSubscriptionMessage) {
+    fn on_validator_subscription_msg(&mut self, msg: ValidatorSubscriptionMessage) {
         match msg {
             ValidatorSubscriptionMessage::AttestationSubscribe { subscriptions } => {
                 let subscriptions = subscriptions.into_iter().map(Subscription::Attestation);

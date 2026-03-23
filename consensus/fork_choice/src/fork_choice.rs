@@ -4470,9 +4470,8 @@ mod tests {
                 .unwrap();
 
             let spec = ChainSpec::minimal();
-            // MinimalEthSpec: ptc_size=2, quorum_threshold=1.
+            // MinimalEthSpec: ptc_size=2, quorum_threshold=ptc_size/2=1.
             // Need ptc_weight <= quorum to stay below quorum (strictly greater required).
-            let _quorum_threshold = spec.ptc_size / 2; // 1
 
             // Send 1 payload_present vote (at quorum boundary — not exceeded)
             let att1 = make_payload_attestation(1, block_root, true, false);

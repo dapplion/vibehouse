@@ -230,7 +230,7 @@ mod test {
     }
 
     impl TestBuilder {
-        async fn new() -> Self {
+        fn new() -> Self {
             Self {
                 list_config: None,
                 src_import_builder: None,
@@ -323,7 +323,6 @@ mod test {
     #[tokio::test]
     async fn list_all_validators() {
         TestBuilder::new()
-            .await
             .with_validators(3, 0)
             .await
             .run_test()

@@ -507,7 +507,7 @@ impl<E: EthSpec> Network<E> {
             local_peer_id,
         };
 
-        network.start(&config).await?;
+        network.start(&config)?;
 
         let network_globals = network.network_globals.clone();
 
@@ -519,7 +519,7 @@ impl<E: EthSpec> Network<E> {
     /// - Starts listening in the given ports.
     /// - Dials boot-nodes and libp2p peers.
     /// - Subscribes to starting gossipsub topics.
-    async fn start(&mut self, config: &crate::NetworkConfig) -> Result<(), String> {
+    fn start(&mut self, config: &crate::NetworkConfig) -> Result<(), String> {
         let enr = self.network_globals.local_enr();
         info!(
             peer_id = %enr.peer_id(),

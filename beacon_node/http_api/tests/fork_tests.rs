@@ -2328,8 +2328,8 @@ async fn post_payload_attestation_wrong_signature() {
     let message_root = data.signing_root(domain);
 
     // Sign with WRONG key (use a different validator's key)
-    let wrong_index = if validator_index == 0 { 1 } else { 0 };
-    let wrong_keypair = generate_deterministic_keypair(wrong_index as usize);
+    let wrong_index = usize::from(validator_index == 0);
+    let wrong_keypair = generate_deterministic_keypair(wrong_index);
     let signature = wrong_keypair.sk.sign(message_root);
 
     let message = PayloadAttestationMessage {
@@ -2444,14 +2444,13 @@ async fn expected_withdrawals_gloas() {
         .await
         .unwrap();
 
-    let response = client
+    client
         .get_expected_withdrawals(&StateId::Head)
         .await
         .expect("expected_withdrawals should succeed for Gloas state");
 
     // At genesis with default validators, there may or may not be withdrawals
     // depending on validator balances. The key thing is the endpoint doesn't error.
-    let _withdrawals = &response.data;
 }
 
 /// GET expected_withdrawals with Gloas state should include builder pending withdrawals.

@@ -1026,7 +1026,7 @@ async fn multiple_attestations_per_block() {
                     .message()
                     .body()
                     .attestations_len() as u64,
-                if slot <= 1 { 0 } else { 1 }
+                u64::from(slot > 1)
             );
         } else {
             assert_eq!(

@@ -240,15 +240,12 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> SyncCommitteeService<S
         let service = self.clone();
         self.inner.executor.spawn(
             async move {
-                service
-                    .publish_sync_committee_aggregates(
-                        slot,
-                        block_root,
-                        aggregators,
-                        aggregate_production_instant,
-                    )
-                    .map(|()| ())
-                    .await;
+                service.publish_sync_committee_aggregates(
+                    slot,
+                    block_root,
+                    aggregators,
+                    aggregate_production_instant,
+                );
             },
             "sync_committee_aggregate_publish",
         );
@@ -331,7 +328,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> SyncCommitteeService<S
         Ok(())
     }
 
-    async fn publish_sync_committee_aggregates(
+    fn publish_sync_committee_aggregates(
         &self,
         slot: Slot,
         beacon_block_root: Hash256,

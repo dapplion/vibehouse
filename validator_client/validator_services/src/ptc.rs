@@ -609,7 +609,7 @@ mod poll_tests {
     }
 
     /// Build a DutiesService wired to a MockBeaconNode + MinimalValidatorStore.
-    async fn make_duties_service(
+    fn make_duties_service(
         mock: &MockBeaconNode<E>,
         validators: Vec<(PublicKeyBytes, u64)>,
         spec: ChainSpec,
@@ -684,7 +684,7 @@ mod poll_tests {
         let spec = spec_with_gloas(Some(10));
         let pubkey = MinimalValidatorStore::pubkey(1);
         let mock = MockBeaconNode::<E>::new().await;
-        let (ds, _rt) = make_duties_service(&mock, vec![(pubkey, 100)], spec, Slot::new(0)).await;
+        let (ds, _rt) = make_duties_service(&mock, vec![(pubkey, 100)], spec, Slot::new(0));
 
         // Should return Ok without making any HTTP requests
         poll_ptc_duties(&ds).await.unwrap();
@@ -713,7 +713,7 @@ mod poll_tests {
         let _m1 = mock.mock_post_validator_duties_ptc(current_epoch, vec![duty_epoch1.clone()]);
         let _m2 = mock.mock_post_validator_duties_ptc(next_epoch, vec![duty_epoch2.clone()]);
 
-        let (ds, _rt) = make_duties_service(&mock, vec![(pubkey, 100)], spec, current_slot).await;
+        let (ds, _rt) = make_duties_service(&mock, vec![(pubkey, 100)], spec, current_slot);
 
         poll_ptc_duties(&ds).await.unwrap();
 
@@ -754,7 +754,7 @@ mod poll_tests {
         let _m1 = mock.mock_post_validator_duties_ptc(current_epoch, vec![duty_epoch1]);
         let _m2 = mock.mock_post_validator_duties_ptc(next_epoch, vec![duty_epoch2]);
 
-        let (ds, _rt) = make_duties_service(&mock, vec![(pubkey, 200)], spec, current_slot).await;
+        let (ds, _rt) = make_duties_service(&mock, vec![(pubkey, 200)], spec, current_slot);
 
         // First call: both epochs fetched
         poll_ptc_duties(&ds).await.unwrap();
@@ -783,7 +783,7 @@ mod poll_tests {
 
         let mock = MockBeaconNode::<E>::new().await;
         // No validators registered
-        let (ds, _rt) = make_duties_service(&mock, vec![], spec, current_slot).await;
+        let (ds, _rt) = make_duties_service(&mock, vec![], spec, current_slot);
 
         // Should return Ok without calling BN
         poll_ptc_duties(&ds).await.unwrap();
@@ -807,7 +807,7 @@ mod poll_tests {
         let _m1 = mock.mock_post_validator_duties_ptc(current_epoch, vec![]);
         let _m2 = mock.mock_post_validator_duties_ptc(next_epoch, vec![]);
 
-        let (ds, _rt) = make_duties_service(&mock, vec![(pubkey, 300)], spec, current_slot).await;
+        let (ds, _rt) = make_duties_service(&mock, vec![(pubkey, 300)], spec, current_slot);
 
         poll_ptc_duties(&ds).await.unwrap();
 
@@ -829,7 +829,7 @@ mod poll_tests {
         let pubkey = MinimalValidatorStore::pubkey(4);
 
         let mock = MockBeaconNode::<E>::new().await;
-        let (ds, _rt) = make_duties_service(&mock, vec![(pubkey, 400)], spec, Slot::new(100)).await;
+        let (ds, _rt) = make_duties_service(&mock, vec![(pubkey, 400)], spec, Slot::new(100));
 
         poll_ptc_duties(&ds).await.unwrap();
 
@@ -863,8 +863,7 @@ mod poll_tests {
             vec![(pk1, 10), (pk2, 11), (pk3, 12)],
             spec,
             current_slot,
-        )
-        .await;
+        );
 
         poll_ptc_duties(&ds).await.unwrap();
 

@@ -460,7 +460,7 @@ impl<E: EthSpec> MockBuilder<E> {
         self.builder_sk.public_key().compress()
     }
 
-    pub async fn register_validators(
+    pub fn register_validators(
         &self,
         registrations: Vec<SignedValidatorRegistrationData>,
     ) -> Result<(), String> {
@@ -994,13 +994,14 @@ impl<E: EthSpec> MockBuilder<E> {
 }
 
 /// POST /eth/v1/builder/validators
+// Axum requires async handler signature
+#[allow(clippy::unused_async)]
 async fn validators_handler<E: EthSpec>(
     State(builder): State<MockBuilder<E>>,
     axum::Json(registrations): axum::Json<Vec<SignedValidatorRegistrationData>>,
 ) -> Result<impl IntoResponse, ApiError> {
     builder
         .register_validators(registrations)
-        .await
         .map_err(ApiError::from)?;
     Ok(axum::http::StatusCode::OK)
 }

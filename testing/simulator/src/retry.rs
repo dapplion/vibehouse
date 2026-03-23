@@ -28,6 +28,8 @@ mod tests {
     use super::*;
     use std::collections::VecDeque;
 
+    // Used via Box::pin, requiring a Future return type
+    #[allow(clippy::unused_async)]
     async fn my_async_func(is_ok: bool) -> Result<(), ()> {
         if is_ok { Ok(()) } else { Err(()) }
     }

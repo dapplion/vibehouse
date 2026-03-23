@@ -169,10 +169,7 @@ impl MonitoringHttpClient {
     }
 
     /// Return metric based on process type.
-    pub async fn get_metrics(
-        &self,
-        process_type: &ProcessType,
-    ) -> Result<MonitoringMetrics, Error> {
+    pub fn get_metrics(&self, process_type: &ProcessType) -> Result<MonitoringMetrics, Error> {
         match process_type {
             ProcessType::BeaconNode => self.get_beacon_metrics(),
             ProcessType::System => self.get_system_metrics(),
@@ -184,7 +181,7 @@ impl MonitoringHttpClient {
     pub async fn send_metrics(&self, processes: &[ProcessType]) -> Result<(), Error> {
         let mut metrics = Vec::new();
         for process in processes {
-            match self.get_metrics(process).await {
+            match self.get_metrics(process) {
                 Err(e) => error!(
                     process_type = ?process,
                     error = %e,

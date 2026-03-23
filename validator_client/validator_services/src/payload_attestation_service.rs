@@ -561,7 +561,7 @@ mod produce_tests {
     /// Build a PayloadAttestationService wired to a MockBeaconNode + SigningValidatorStore.
     ///
     /// `duties` maps (epoch, slot) pairs to lists of duties to inject.
-    async fn make_service(
+    fn make_service(
         mock: &MockBeaconNode<E>,
         validators: Vec<(PublicKeyBytes, u64)>,
         spec: ChainSpec,
@@ -649,7 +649,7 @@ mod produce_tests {
         let duties = vec![(epoch, vec![make_ptc_duty(pubkey, 100, 999)])];
 
         let (service, signed, _rt) =
-            make_service(&mock, vec![(pubkey, 100)], spec, current_slot, duties).await;
+            make_service(&mock, vec![(pubkey, 100)], spec, current_slot, duties);
 
         // Should return Ok without fetching payload attestation data from BN
         service
@@ -690,7 +690,7 @@ mod produce_tests {
         )];
 
         let (service, signed, _rt) =
-            make_service(&mock, vec![(pubkey, 200)], spec, current_slot, duties).await;
+            make_service(&mock, vec![(pubkey, 200)], spec, current_slot, duties);
 
         service
             .produce_payload_attestations_for_testing()
@@ -743,8 +743,7 @@ mod produce_tests {
             spec,
             current_slot,
             duties,
-        )
-        .await;
+        );
 
         service
             .produce_payload_attestations_for_testing()
@@ -777,7 +776,7 @@ mod produce_tests {
         )];
 
         let (service, signed, _rt) =
-            make_service(&mock, vec![(pubkey, 300)], spec, current_slot, duties).await;
+            make_service(&mock, vec![(pubkey, 300)], spec, current_slot, duties);
 
         // Should return Err(()) because BN is not available
         let result = service.produce_payload_attestations_for_testing().await;
@@ -901,7 +900,7 @@ mod produce_tests {
         )];
 
         let (service, signed, _rt) =
-            make_service(&mock, vec![(pubkey, 500)], spec, current_slot, duties).await;
+            make_service(&mock, vec![(pubkey, 500)], spec, current_slot, duties);
 
         service
             .produce_payload_attestations_for_testing()
@@ -1047,7 +1046,7 @@ mod produce_tests {
         )];
 
         let (service, signed, _rt) =
-            make_service(&mock, vec![(pubkey, 600)], spec, current_slot, duties).await;
+            make_service(&mock, vec![(pubkey, 600)], spec, current_slot, duties);
 
         // Should return Err because BN POST failed
         let result = service.produce_payload_attestations_for_testing().await;

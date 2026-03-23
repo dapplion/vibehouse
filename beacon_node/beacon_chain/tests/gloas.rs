@@ -1710,7 +1710,7 @@ async fn gloas_import_payload_attestation_message_invalid_signature() {
     let validator_index = first_ptc_member(state, head_slot, &harness.spec);
 
     // Sign with the WRONG keypair (validator 0 signs for a different validator)
-    let wrong_keypair_index = if validator_index == 0 { 1 } else { 0 };
+    let wrong_keypair_index = usize::from(validator_index == 0);
 
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
@@ -1719,8 +1719,7 @@ async fn gloas_import_payload_attestation_message_invalid_signature() {
         blob_data_available: false,
     };
 
-    let signature =
-        sign_payload_attestation_data(&data, wrong_keypair_index as usize, state, &harness.spec);
+    let signature = sign_payload_attestation_data(&data, wrong_keypair_index, state, &harness.spec);
 
     let message = PayloadAttestationMessage {
         validator_index,

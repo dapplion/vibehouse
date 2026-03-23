@@ -1446,7 +1446,7 @@ async fn attestation_invalid_signature_rejected() {
     };
 
     // Sign with a WRONG key (use a different validator's key)
-    let wrong_validator = if ptc_validator == 0 { 1 } else { 0 };
+    let wrong_validator = u64::from(ptc_validator == 0);
     let epoch = head_slot.epoch(E::slots_per_epoch());
     let domain = spec.get_domain(
         epoch,
@@ -2898,7 +2898,7 @@ async fn attestation_invalid_signature_does_not_poison_observation_cache() {
     };
 
     // Step 1: Submit an attestation with an invalid signature (wrong key).
-    let wrong_validator = if ptc_validator == 0 { 1 } else { 0 };
+    let wrong_validator = u64::from(ptc_validator == 0);
     let epoch = head_slot.epoch(E::slots_per_epoch());
     let domain = spec.get_domain(
         epoch,

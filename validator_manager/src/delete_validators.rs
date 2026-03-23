@@ -165,7 +165,7 @@ mod test {
     }
 
     impl TestBuilder {
-        async fn new() -> Self {
+        fn new() -> Self {
             Self {
                 delete_config: None,
                 src_import_builder: None,
@@ -289,7 +289,6 @@ mod test {
     #[tokio::test]
     async fn delete_multiple_validators() {
         TestBuilder::new()
-            .await
             .with_validators(3, 0, vec![0, 1, 2])
             .await
             .run_test()

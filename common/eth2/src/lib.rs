@@ -2269,15 +2269,18 @@ impl BeaconNodeHttpClient {
         graffiti: Option<&Graffiti>,
         skip_randao_verification: SkipRandaoVerification,
     ) -> Result<BeaconResponse<FullBlockContents<E>>, Error> {
-        let path = self
-            .get_validator_blocks_path(slot, randao_reveal, graffiti, skip_randao_verification)
-            .await?;
+        let path = self.get_validator_blocks_path(
+            slot,
+            randao_reveal,
+            graffiti,
+            skip_randao_verification,
+        )?;
 
         self.get(path).await.map(BeaconResponse::ForkVersioned)
     }
 
     /// returns `GET v2/validator/blocks/{slot}` URL path
-    pub(crate) async fn get_validator_blocks_path(
+    pub(crate) fn get_validator_blocks_path(
         &self,
         slot: Slot,
         randao_reveal: &SignatureBytes,
@@ -2309,7 +2312,7 @@ impl BeaconNodeHttpClient {
     }
 
     /// returns `GET v3/validator/blocks/{slot}` URL path
-    pub(crate) async fn get_validator_blocks_v3_path(
+    pub(crate) fn get_validator_blocks_v3_path(
         &self,
         slot: Slot,
         randao_reveal: &SignatureBytes,
@@ -2373,15 +2376,13 @@ impl BeaconNodeHttpClient {
         skip_randao_verification: SkipRandaoVerification,
         builder_booster_factor: Option<u64>,
     ) -> Result<(JsonProduceBlockV3Response<E>, ProduceBlockV3Metadata), Error> {
-        let path = self
-            .get_validator_blocks_v3_path(
-                slot,
-                randao_reveal,
-                graffiti,
-                skip_randao_verification,
-                builder_booster_factor,
-            )
-            .await?;
+        let path = self.get_validator_blocks_v3_path(
+            slot,
+            randao_reveal,
+            graffiti,
+            skip_randao_verification,
+            builder_booster_factor,
+        )?;
 
         let opt_result = self
             .get_response_with_response_headers(
@@ -2442,15 +2443,13 @@ impl BeaconNodeHttpClient {
         skip_randao_verification: SkipRandaoVerification,
         builder_booster_factor: Option<u64>,
     ) -> Result<(ProduceBlockV3Response<E>, ProduceBlockV3Metadata), Error> {
-        let path = self
-            .get_validator_blocks_v3_path(
-                slot,
-                randao_reveal,
-                graffiti,
-                skip_randao_verification,
-                builder_booster_factor,
-            )
-            .await?;
+        let path = self.get_validator_blocks_v3_path(
+            slot,
+            randao_reveal,
+            graffiti,
+            skip_randao_verification,
+            builder_booster_factor,
+        )?;
 
         let opt_response = self
             .get_response_with_response_headers(
@@ -2515,9 +2514,12 @@ impl BeaconNodeHttpClient {
         graffiti: Option<&Graffiti>,
         skip_randao_verification: SkipRandaoVerification,
     ) -> Result<Option<Vec<u8>>, Error> {
-        let path = self
-            .get_validator_blocks_path(slot, randao_reveal, graffiti, skip_randao_verification)
-            .await?;
+        let path = self.get_validator_blocks_path(
+            slot,
+            randao_reveal,
+            graffiti,
+            skip_randao_verification,
+        )?;
 
         self.get_bytes_opt_accept_header(path, Accept::Ssz, self.timeouts.get_validator_block)
             .await
@@ -2540,7 +2542,7 @@ impl BeaconNodeHttpClient {
     }
 
     /// returns `GET v1/validator/blinded_blocks/{slot}` URL path
-    pub(crate) async fn get_validator_blinded_blocks_path(
+    pub(crate) fn get_validator_blinded_blocks_path(
         &self,
         slot: Slot,
         randao_reveal: &SignatureBytes,
@@ -2579,14 +2581,12 @@ impl BeaconNodeHttpClient {
         graffiti: Option<&Graffiti>,
         skip_randao_verification: SkipRandaoVerification,
     ) -> Result<BeaconResponse<BlindedBeaconBlock<E>>, Error> {
-        let path = self
-            .get_validator_blinded_blocks_path(
-                slot,
-                randao_reveal,
-                graffiti,
-                skip_randao_verification,
-            )
-            .await?;
+        let path = self.get_validator_blinded_blocks_path(
+            slot,
+            randao_reveal,
+            graffiti,
+            skip_randao_verification,
+        )?;
 
         self.get(path).await.map(BeaconResponse::ForkVersioned)
     }
@@ -2614,14 +2614,12 @@ impl BeaconNodeHttpClient {
         graffiti: Option<&Graffiti>,
         skip_randao_verification: SkipRandaoVerification,
     ) -> Result<Option<Vec<u8>>, Error> {
-        let path = self
-            .get_validator_blinded_blocks_path(
-                slot,
-                randao_reveal,
-                graffiti,
-                skip_randao_verification,
-            )
-            .await?;
+        let path = self.get_validator_blinded_blocks_path(
+            slot,
+            randao_reveal,
+            graffiti,
+            skip_randao_verification,
+        )?;
 
         self.get_bytes_opt_accept_header(path, Accept::Ssz, self.timeouts.get_validator_block)
             .await

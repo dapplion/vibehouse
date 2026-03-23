@@ -2778,8 +2778,8 @@ async fn test_gloas_gossip_payload_attestation_invalid_signature_rejected() {
     let signing_root = data.signing_root(domain);
 
     // Sign with the WRONG validator's key
-    let wrong_signer = if validator_index == 0 { 1 } else { 0 };
-    let wrong_sk = &rig._harness.validator_keypairs[wrong_signer as usize].sk;
+    let wrong_signer = usize::from(validator_index == 0);
+    let wrong_sk = &rig._harness.validator_keypairs[wrong_signer].sk;
     let wrong_sig = wrong_sk.sign(signing_root);
 
     let message = types::PayloadAttestationMessage {
@@ -3040,7 +3040,7 @@ async fn test_gloas_gossip_proposer_preferences_wrong_proposer_rejected() {
     let actual_proposer = *lookahead.get(lookahead_index).unwrap();
 
     // Use a different validator_index (not the actual proposer)
-    let wrong_proposer = if actual_proposer == 0 { 1 } else { 0 };
+    let wrong_proposer = u64::from(actual_proposer == 0);
 
     let signed_preferences = SignedProposerPreferences {
         message: ProposerPreferences {
@@ -3244,8 +3244,8 @@ async fn test_gloas_gossip_proposer_preferences_wrong_key_rejected() {
     let signing_root = preferences.signing_root(domain);
 
     // Sign with a DIFFERENT validator's key
-    let wrong_signer = if actual_proposer == 0 { 1 } else { 0 };
-    let wrong_sk = &rig._harness.validator_keypairs[wrong_signer as usize].sk;
+    let wrong_signer = usize::from(actual_proposer == 0);
+    let wrong_sk = &rig._harness.validator_keypairs[wrong_signer].sk;
     let signature = wrong_sk.sign(signing_root);
 
     let signed_preferences = SignedProposerPreferences {

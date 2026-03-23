@@ -1707,19 +1707,19 @@ mod tests {
     use crate::rpc::MetaDataV3;
     use types::{ChainSpec, Epoch, ForkName, Hash256, MainnetEthSpec as E, Slot};
 
-    async fn build_peer_manager(target_peer_count: usize) -> PeerManager<E> {
-        build_peer_manager_with_trusted_peers(vec![], target_peer_count).await
+    fn build_peer_manager(target_peer_count: usize) -> PeerManager<E> {
+        build_peer_manager_with_trusted_peers(vec![], target_peer_count)
     }
 
-    async fn build_peer_manager_with_trusted_peers(
+    fn build_peer_manager_with_trusted_peers(
         trusted_peers: Vec<PeerId>,
         target_peer_count: usize,
     ) -> PeerManager<E> {
         let spec = Arc::new(E::default_spec());
-        build_peer_manager_with_opts(trusted_peers, target_peer_count, spec).await
+        build_peer_manager_with_opts(trusted_peers, target_peer_count, spec)
     }
 
-    async fn build_peer_manager_with_opts(
+    fn build_peer_manager_with_opts(
         trusted_peers: Vec<PeerId>,
         target_peer_count: usize,
         spec: Arc<ChainSpec>,
@@ -1770,7 +1770,7 @@ mod tests {
         let outbound_only_peer2 = PeerId::random();
         let trusted_peer = PeerId::random();
 
-        let mut peer_manager = build_peer_manager_with_trusted_peers(vec![trusted_peer], 3).await;
+        let mut peer_manager = build_peer_manager_with_trusted_peers(vec![trusted_peer], 3);
 
         peer_manager.inject_connect_ingoing(&peer0, "/ip4/0.0.0.0".parse().unwrap(), None);
         peer_manager.inject_connect_ingoing(&peer1, "/ip4/0.0.0.0".parse().unwrap(), None);
@@ -1854,7 +1854,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_peer_manager_not_enough_outbound_peers_no_panic_during_heartbeat() {
-        let mut peer_manager = build_peer_manager(20).await;
+        let mut peer_manager = build_peer_manager(20);
 
         // Connect to 20 ingoing-only peers.
         for _i in 0..19 {
@@ -1888,7 +1888,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_peer_manager_remove_unhealthy_peers_brings_peers_below_target() {
-        let mut peer_manager = build_peer_manager(3).await;
+        let mut peer_manager = build_peer_manager(3);
 
         // Create 4 peers to connect to.
         // One pair will be unhealthy inbound only and outbound only peers.
@@ -1947,7 +1947,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_peer_manager_removes_enough_peers_when_one_is_unhealthy() {
-        let mut peer_manager = build_peer_manager(3).await;
+        let mut peer_manager = build_peer_manager(3);
 
         // Create 5 peers to connect to.
         // One will be unhealthy inbound only and outbound only peers.
@@ -1996,7 +1996,7 @@ mod tests {
     /// We want to test that the peer manager removes peers that are not subscribed to a subnet as
     /// a priority over all else.
     async fn test_peer_manager_remove_non_subnet_peers_when_all_healthy() {
-        let mut peer_manager = build_peer_manager(3).await;
+        let mut peer_manager = build_peer_manager(3);
         let spec = peer_manager.network_globals.spec.clone();
 
         // Create 5 peers to connect to.
@@ -2116,7 +2116,7 @@ mod tests {
     async fn test_peer_manager_update_custody_subnets() {
         // PeerDAS is enabled from Fulu.
         let spec = Arc::new(ForkName::Fulu.make_genesis_spec(E::default_spec()));
-        let mut peer_manager = build_peer_manager_with_opts(vec![], 1, spec).await;
+        let mut peer_manager = build_peer_manager_with_opts(vec![], 1, spec);
         let pubkey = Keypair::generate_secp256k1().public();
         let peer_id = PeerId::from_public_key(&pubkey);
         peer_manager.inject_connect_ingoing(
@@ -2153,7 +2153,7 @@ mod tests {
     /// Test the pruning logic to remove grouped data column subnet peers
     async fn test_peer_manager_prune_grouped_data_column_subnet_peers() {
         let target = 9;
-        let mut peer_manager = build_peer_manager(target).await;
+        let mut peer_manager = build_peer_manager(target);
         // Override sampling subnets to prevent sampling peer protection from interfering with this test.
         *peer_manager.network_globals.sampling_subnets.write() = HashSet::new();
 
@@ -2255,7 +2255,7 @@ mod tests {
     #[tokio::test]
     async fn test_peer_manager_prune_data_column_subnet_peers_most_subscribed() {
         let target = 3;
-        let mut peer_manager = build_peer_manager(target).await;
+        let mut peer_manager = build_peer_manager(target);
 
         // Create 6 peers to connect to.
         let mut peers = Vec::new();
@@ -2343,7 +2343,7 @@ mod tests {
     #[tokio::test]
     async fn test_peer_manager_prune_subnet_peers_sync_committee() {
         let target = 3;
-        let mut peer_manager = build_peer_manager(target).await;
+        let mut peer_manager = build_peer_manager(target);
         // Override sampling subnets to prevent sampling peer protection from interfering with this test.
         *peer_manager.network_globals.sampling_subnets.write() = HashSet::new();
 
@@ -2453,7 +2453,7 @@ mod tests {
     #[tokio::test]
     async fn test_peer_manager_protect_sampling_subnet_peers_below_threshold() {
         let target = 5;
-        let mut peer_manager = build_peer_manager(target).await;
+        let mut peer_manager = build_peer_manager(target);
 
         *peer_manager.network_globals.sampling_subnets.write() =
             HashSet::from([DataColumnSubnetId::new(1), DataColumnSubnetId::new(2)]);
@@ -2539,7 +2539,7 @@ mod tests {
     #[tokio::test]
     async fn test_peer_manager_prune_based_on_subnet_count_repeat() {
         for _ in 0..100 {
-            test_peer_manager_prune_based_on_subnet_count().await;
+            test_peer_manager_prune_based_on_subnet_count();
         }
     }
 
@@ -2556,9 +2556,9 @@ mod tests {
     /// Peer5 (out) : Column subnet 3
     /// Peer6 (in) : Column subnet 4
     /// Peer7 (in) : Column subnet 5
-    async fn test_peer_manager_prune_based_on_subnet_count() {
+    fn test_peer_manager_prune_based_on_subnet_count() {
         let target = 7;
-        let mut peer_manager = build_peer_manager(target).await;
+        let mut peer_manager = build_peer_manager(target);
         // Override sampling subnets to prevent sampling peer protection from interfering with this test.
         *peer_manager.network_globals.sampling_subnets.write() = HashSet::new();
 
@@ -2685,7 +2685,7 @@ mod tests {
     #[tokio::test]
     async fn test_peer_manager_not_prune_sparsest_attestation_subnet() {
         let target = 4;
-        let mut peer_manager = build_peer_manager(target).await;
+        let mut peer_manager = build_peer_manager(target);
         let spec = peer_manager.network_globals.spec.clone();
         let mut peers = Vec::new();
 
@@ -2772,7 +2772,7 @@ mod tests {
     #[tokio::test]
     async fn test_peer_manager_prune_should_prioritize_synced_advanced_peers() {
         let target = 3;
-        let mut peer_manager = build_peer_manager(target).await;
+        let mut peer_manager = build_peer_manager(target);
         // Override sampling subnets to prevent sampling peer protection from interfering with this test.
         *peer_manager.network_globals.sampling_subnets.write() = HashSet::new();
 
@@ -2862,7 +2862,7 @@ mod tests {
     #[tokio::test]
     async fn test_peer_manager_prune_mixed_custody_subnet_protection() {
         let target = 6;
-        let mut peer_manager = build_peer_manager(target).await;
+        let mut peer_manager = build_peer_manager(target);
         // Override sampling subnets to prevent sampling peer protection from interfering.
         *peer_manager.network_globals.sampling_subnets.write() = HashSet::new();
 
@@ -3032,7 +3032,7 @@ mod tests {
             rt.block_on(async move {
                 // Collect all the trusted peers
                 let mut peer_manager =
-                    build_peer_manager_with_trusted_peers(trusted_peers, target_peer_count).await;
+                    build_peer_manager_with_trusted_peers(trusted_peers, target_peer_count);
 
                 // Create peers based on the randomly generated conditions.
                 for condition in &peer_conditions {
@@ -3127,7 +3127,7 @@ mod tests {
     async fn test_custody_peer_logic_only_runs_when_peerdas_enabled() {
         use crate::types::{GossipEncoding, GossipTopic};
 
-        let mut peer_manager = build_peer_manager(5).await;
+        let mut peer_manager = build_peer_manager(5);
 
         // Set up sampling subnets so maintain_custody_peers would have work to do
         *peer_manager.network_globals.sampling_subnets.write() = std::collections::HashSet::from([

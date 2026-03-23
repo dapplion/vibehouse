@@ -640,7 +640,7 @@ impl<T: BeaconChainTypes> BeaconBlockStreamer<T> {
                 }
             }
             Err(e) => {
-                send_errors(block_roots, sender, e).await;
+                send_errors(block_roots, sender, e);
             }
         }
     }
@@ -660,7 +660,7 @@ impl<T: BeaconChainTypes> BeaconBlockStreamer<T> {
     }
 }
 
-async fn send_errors<E: EthSpec>(
+fn send_errors<E: EthSpec>(
     block_roots: Vec<Hash256>,
     sender: UnboundedSender<(Hash256, Arc<BlockResult<E>>)>,
     beacon_chain_error: BeaconChainError,
