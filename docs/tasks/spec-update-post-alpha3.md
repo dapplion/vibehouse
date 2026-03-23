@@ -339,3 +339,21 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - CI green (push workflows), zero clippy warnings, zero dead code warnings, zero compiler warnings
 - Rust stable 1.94.0 (current), only outdated dep is rand_xorshift 0.4→0.5 (blocked by rand_core split)
 - **No action needed. Spec current, codebase healthy.**
+
+### run 2271 (Mar 23) — deep spec + toolchain audit
+
+- Full re-audit of all 6 post-alpha.3 merged PRs: all confirmed implemented or not-applicable
+  - **#5001** (parent_block_root bid filtering): verified — `observed_execution_bids.rs` uses 3-tuple key `(Slot, ExecutionBlockHash, Hash256)` ✓
+  - **#5022** (block-known check): verified — 2 layers: gossip check + fork choice proto-array lookup ✓
+  - **#5008** (field name fix): doc-only ✓
+  - **#5023** (test fixtures): no impact until new test release ✓
+  - **#5014** (EIP-8025 P2P): deferred (ZK infra uses gossip+HTTP) ✓
+  - **#5002** (wording): no code change ✓
+- **PTC window (#4979)**: still OPEN, mergeable_state=blocked, 12 review comments, 0 approvals
+- Latest EF test release: v1.7.0-alpha.3 (Mar 13) — we're on it
+- Latest consensus-specs release: v1.7.0-alpha.3 — we're on it
+- Nightly clippy (Rust 1.96.0-nightly): zero warnings
+- Stable clippy (Rust 1.94.0): zero warnings
+- cargo audit: 1 vuln (RUSTSEC-2023-0071 rsa, no fix available), 5 unmaintained (transitive, not actionable)
+- All 3 remaining TODOs linked to #36, all blocked on external factors
+- **No action needed. Spec current, codebase healthy.**
