@@ -30,6 +30,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2259 (Mar 23) — 3 spec PRs merged, no vibehouse impact
+
+- CI: run 23457496246 in progress (commit c312a65d3, removed stale lint suppression).
+- Spec: v1.7.0-alpha.3 still latest. 3 Gloas PRs merged since last check:
+  - **#5023** (test fixtures) — test infrastructure only, new test vectors will add `head_payload_status` checks and `on_execution_payload` steps for Gloas fork choice. Will handle when new vectors released.
+  - **#5022** (assert block known in on_payload_attestation_message) — vibehouse already has this check in fork_choice.rs:1426-1432 (`UnknownBeaconBlockRoot` error). No change needed.
+  - **#5008** (correct field name block_root→beacon_block_root in p2p docs) — spec prose fix only. Vibehouse already uses `beacon_block_root` in ExecutionPayloadEnvelope. No change needed.
+- Remaining 7 tracked PRs still open: #4979 (PTC lookbehind), #4962 (withdrawal tests), #4843 (variable PTC deadline), #4892 (remove impossible branch, APPROVED), #4898 (remove pending tiebreaker, APPROVED), #4954 (milliseconds in fork choice), #4747 (fast confirmation rule).
+- No code changes — codebase healthy, holding pattern until remaining spec PRs merge.
+
 ### run 2257 (Mar 23) — maintenance check, all stable
 
 - CI: Latest run green (all 7 jobs passed). Nightly Mar 23 slasher failure confirmed as MEGABYTE cfg gate issue — fix in HEAD (a4f999735). Tonight's nightly should pass.
