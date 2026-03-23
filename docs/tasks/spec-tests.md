@@ -30,6 +30,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2249 (Mar 23) — maintenance check, all stable
+
+- Spec: v1.7.0-alpha.3 still latest. #5022 (block known check in `on_payload_attestation_message`) now merged — our implementation already has the check at `fork_choice.rs:1426-1432` with `UnknownBeaconBlockRoot` error. #5008 (field name fix) already confirmed correct.
+- Open Gloas PRs: #4979 (PTC lookbehind, still REVIEW_REQUIRED), #5023 (test fixture fix), #4962 (withdrawal interaction tests), #4843 (variable PTC deadline) — all still open/unmerged. #5020/#4992 closed in favor of #4979.
+- Nightly: Mar 22+23 failures were `MEGABYTE` dead code in slasher (redb-only build). Already fixed in `a4f999735` (cfg gate added). Tonight's nightly should be green.
+- CI: in-progress run for latest commits, no failures so far. Local workspace tests: 4991/5000 pass (8 failures are web3signer needing external service — expected).
+- Clippy: 0 warnings, 263 lints enforced. Cargo audit: 1 vulnerability (rsa Marvin Attack — no fix available), 5 unmaintained transitive deps — all non-actionable.
+- Total enforced clippy lints: 263 (was 233 after run 2248 additions).
+
 ### run 2238 (Mar 23) — spec check + 8 new clippy lints
 
 - Spec: v1.7.0-alpha.3 still latest. Two post-alpha.3 PRs merged (Mar 22): #5008 (doc fix: `block_root` → `beacon_block_root` in ExecutionPayloadEnvelopesByRoot — our code already correct), #5014 (EIP-8025 p2p protocol — not Gloas, not relevant).
