@@ -5168,3 +5168,11 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - No actionable runtime panic risks found in production paths.
 - **Consensus-spec-tests**: v1.7.0-alpha.3 vectors in use, matching latest spec release. No newer official release available.
 - **No code changes this run** — codebase healthy, waiting for spec PRs.
+
+### Run 2255 (2026-03-23)
+
+**Spec + CI check**
+
+- **CI**: Green (run 23451379478, all 7 jobs passed). Nightly failure (09:33 UTC) confirmed on pre-fix commit — tonight's nightly will pass.
+- **Spec tracking**: v1.7.0-alpha.3 still latest. Recently closed without merging: #5020 (PTC lookbehind minimal state change, nflaig), #4992 (cached PTCs, potuz) — both superseded by #4979 which remains open. #4892, #4898, #4954 all still open. All recent merges are dependency/tooling updates only.
+- **No code changes this run** — project in holding pattern, all priorities done.
