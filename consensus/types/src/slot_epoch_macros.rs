@@ -492,14 +492,14 @@ macro_rules! math_between_tests {
         }
 
         #[test]
-        #[should_panic]
+        #[should_panic(expected = "divide by zero")]
         fn div_panics_with_divide_by_zero() {
             let other: $other = $type(0).into();
             let _ = $type(2) / other;
         }
 
         #[test]
-        #[should_panic]
+        #[should_panic(expected = "divide by zero")]
         fn div_assign_panics_with_divide_by_zero() {
             let other: $other = $type(0).into();
             let mut assigned = $type(2);

@@ -360,7 +360,9 @@ pub fn get_config<E: EthSpec>(
         client_config.trusted_setup = std::fs::read(trusted_setup_file_path)
             .map_err(|e| format!("Failed to read trusted setup file: {e}"))?;
     } else if let Some(eth2_network_config) = context.eth2_network_config.as_ref() {
-        client_config.trusted_setup = eth2_network_config.kzg_trusted_setup.clone();
+        client_config
+            .trusted_setup
+            .clone_from(&eth2_network_config.kzg_trusted_setup);
     }
 
     if let Some(freezer_dir) = cli_args.get_one::<String>("freezer-dir") {

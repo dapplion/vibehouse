@@ -4147,7 +4147,7 @@ impl AsRef<[u8]> for BytesKey {
     }
 }
 
-impl<'a> db_key::Key<'a> for BytesKey {}
+impl db_key::Key<'_> for BytesKey {}
 
 impl BytesKey {
     /// Return `true` iff this `BytesKey` was created with the given `column`.

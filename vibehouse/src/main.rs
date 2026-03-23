@@ -64,7 +64,7 @@ fn bls_library_name() -> &'static str {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn bls_hardware_acceleration() -> bool {
     #[cfg(target_arch = "x86_64")]
     return std::is_x86_feature_detected!("adx");

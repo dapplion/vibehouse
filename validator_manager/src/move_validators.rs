@@ -1213,7 +1213,7 @@ mod test {
 
     /// This test simulates a src VC that doesn't know the keystore passwords
     /// and we have not provided the correct password.
-    #[should_panic]
+    #[should_panic(expected = "removal index")]
     #[tokio::test]
     async fn two_validator_move_all_passwords_removed_without_correct_password() {
         TestBuilder::new()

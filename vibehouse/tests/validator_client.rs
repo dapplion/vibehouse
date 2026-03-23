@@ -307,7 +307,7 @@ fn http_address_ipv6_flag() {
         .with_config(|config| assert_eq!(config.http_api.listen_addr, addr));
 }
 #[test]
-#[should_panic]
+#[should_panic(expected = "")]
 fn missing_unencrypted_http_transport_flag() {
     let addr = "127.0.0.99".parse::<IpAddr>().unwrap();
     CommandLineTest::new()
@@ -317,7 +317,7 @@ fn missing_unencrypted_http_transport_flag() {
         .with_config(|config| assert_eq!(config.http_api.listen_addr, addr));
 }
 #[test]
-#[should_panic]
+#[should_panic(expected = "")]
 fn missing_http_http_port_flag() {
     CommandLineTest::new()
         .flag("http-port", Some("9090"))
@@ -689,7 +689,7 @@ fn validator_registration_batch_size() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "")]
 fn validator_registration_batch_size_zero_value() {
     CommandLineTest::new()
         .flag("validator-registration-batch-size", Some("0"))

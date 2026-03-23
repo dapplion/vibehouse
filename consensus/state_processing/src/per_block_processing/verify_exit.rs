@@ -350,6 +350,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::decimal_bitwise_operands)] // values are validator indices, not bitmasks
     fn is_builder_index_with_flag() {
         assert!(is_builder_index(BUILDER_INDEX_FLAG));
         assert!(is_builder_index(BUILDER_INDEX_FLAG | 7));
@@ -357,6 +358,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::decimal_bitwise_operands)] // values are validator indices, not bitmasks
     fn to_builder_index_extracts_index() {
         assert_eq!(to_builder_index(BUILDER_INDEX_FLAG), 0);
         assert_eq!(to_builder_index(BUILDER_INDEX_FLAG | 5), 5);
@@ -526,6 +528,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::decimal_bitwise_operands)] // 99 is a builder index, not a bitmask
     fn builder_exit_unknown_builder() {
         let spec = make_spec();
         let state = make_gloas_state(4, 1, &spec);

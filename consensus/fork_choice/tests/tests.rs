@@ -1017,7 +1017,7 @@ async fn can_read_finalized_block() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "Weak subjectivity")]
 fn weak_subjectivity_fail_on_startup() {
     let epoch = Epoch::new(0);
     let root = Hash256::from_low_u64_le(1);

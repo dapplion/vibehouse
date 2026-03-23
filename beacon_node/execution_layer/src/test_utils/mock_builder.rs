@@ -393,7 +393,7 @@ impl<E: EthSpec> MockBuilder<E> {
         (builder, server)
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
     pub fn new(
         el: ExecutionLayer<E>,
         beacon_client: BeaconNodeHttpClient,

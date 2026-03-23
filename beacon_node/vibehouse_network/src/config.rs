@@ -549,7 +549,7 @@ fn is_global_ipv4(addr: Ipv4Addr) -> bool {
     }
 
     // reserved for future use (240.0.0.0/4, excluding broadcast which is already checked)
-    if octets[0] & 240 == 240 {
+    if octets[0] & 0xF0 == 0xF0 {
         return false;
     }
 

@@ -81,7 +81,7 @@ mod tests {
     use alloy_primitives::B256 as Hash256;
 
     #[test]
-    #[ignore]
+    #[ignore = "slow fuzz test, run manually"]
     fn fuzz_test() {
         let max_list_size = 2_usize.pow(24);
         let test_runs = 1000;

@@ -146,7 +146,7 @@ fn random_test(seed: u64, mut db: SlasherDB<E>, test_config: TestConfig) -> Slas
 
 // Fuzz-like test that runs forever on different seeds looking for crashes.
 #[test]
-#[ignore]
+#[ignore = "infinite loop fuzz test, run manually"]
 fn no_crash() {
     let mut rng = rng();
     let (_tempdir, mut db) = make_db();
@@ -157,7 +157,7 @@ fn no_crash() {
 
 // Fuzz-like test that runs forever on different seeds looking for crashes.
 #[test]
-#[ignore]
+#[ignore = "infinite loop fuzz test, run manually"]
 fn no_crash_with_blocks() {
     let mut rng = rng();
     let (_tempdir, mut db) = make_db();
@@ -175,7 +175,7 @@ fn no_crash_with_blocks() {
 
 // Fuzz-like test that runs forever on different seeds looking for missed slashings.
 #[test]
-#[ignore]
+#[ignore = "infinite loop fuzz test, run manually"]
 fn check_slashings() {
     let mut rng = rng();
     let (_tempdir, mut db) = make_db();

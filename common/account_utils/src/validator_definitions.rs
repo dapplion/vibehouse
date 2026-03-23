@@ -436,7 +436,7 @@ pub fn recursively_find_voting_keystores<P: AsRef<Path>>(
 /// Returns `true` if we should consider the `file_name` to represent a voting keystore.
 fn is_voting_keystore(file_name: &str) -> bool {
     // All formats end with `.json`.
-    if !file_name.ends_with(".json") {
+    if !file_name.to_ascii_lowercase().ends_with(".json") {
         return false;
     }
 

@@ -1843,11 +1843,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let head_slot = head.head_slot();
 
         // Find the block root at the requested slot
-        let block_root = if head_slot == slot {
-            head_block_root
-        } else if slot > head_slot {
-            // The block for this slot hasn't arrived yet. The PTC will vote payload_present=false.
-            // Return the head block root as a best-effort; fork choice won't find a payload for it.
+        let block_root = if slot >= head_slot {
+            // Same slot or future: use head block root directly.
+            // For future slots, the block hasn't arrived yet — the PTC will vote
+            // payload_present=false. Return head block root as best-effort.
             head_block_root
         } else {
             // Look through fork choice for the block at this slot
@@ -2216,20 +2215,24 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             // payload was revealed: 1 if FULL (payload present), 0 otherwise.
             payload_present = if head_state.fork_name_unchecked().gloas_enabled() {
                 let fc = self.canonical_head.fork_choice_read_lock();
-                if request_slot > head_state.slot() {
-                    // Skip-slot: head block is from a prior slot.
-                    // Use the fork choice head payload status which reflects
-                    // whether the winning virtual child is FULL or EMPTY.
-                    // GloasPayloadStatus::Full == 1
-                    fc.gloas_head_payload_status().is_some_and(|s| s == 1)
-                } else if request_slot < head_state.slot() {
-                    // Historical block: check payload_revealed on the proto_node.
-                    fc.get_block(&beacon_block_root)
-                        .is_some_and(|block| block.payload_revealed)
-                } else {
-                    // Same-slot: always index=0 (spec: same-slot attestations
-                    // must have data.index == 0).
-                    false
+                match request_slot.cmp(&head_state.slot()) {
+                    std::cmp::Ordering::Greater => {
+                        // Skip-slot: head block is from a prior slot.
+                        // Use the fork choice head payload status which reflects
+                        // whether the winning virtual child is FULL or EMPTY.
+                        // GloasPayloadStatus::Full == 1
+                        fc.gloas_head_payload_status().is_some_and(|s| s == 1)
+                    }
+                    std::cmp::Ordering::Less => {
+                        // Historical block: check payload_revealed on the proto_node.
+                        fc.get_block(&beacon_block_root)
+                            .is_some_and(|block| block.payload_revealed)
+                    }
+                    std::cmp::Ordering::Equal => {
+                        // Same-slot: always index=0 (spec: same-slot attestations
+                        // must have data.index == 0).
+                        false
+                    }
                 }
             } else {
                 false

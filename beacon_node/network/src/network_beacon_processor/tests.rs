@@ -713,7 +713,7 @@ impl TestRig {
     /// Assert that the `BeaconProcessor` doesn't produce any events in the given `duration`.
     pub(crate) async fn assert_no_events_for(&mut self, duration: Duration) {
         tokio::select! {
-            _ = tokio::time::sleep(duration) => (),
+            () = tokio::time::sleep(duration) => (),
             event = self.work_journal_rx.recv() => panic!(
                 "received {:?} within {:?} when expecting no events",
                 event,
@@ -760,14 +760,14 @@ impl TestRig {
 
         // Drain the expected number of events from the channel, or time out and give up.
         tokio::select! {
-            _ = tokio::time::sleep(STANDARD_TIMEOUT) => panic!(
+            () = tokio::time::sleep(STANDARD_TIMEOUT) => panic!(
                 "Timeout ({:?}) expired waiting for events. Expected {:?} but got {:?} waiting for {} `WORKER_FREED` events.",
                 STANDARD_TIMEOUT,
                 expected,
                 events,
                 worker_freed_remaining,
             ),
-            _ = drain_future => {},
+            () = drain_future => {},
         }
 
         assert_eq!(events, expected);
@@ -863,13 +863,13 @@ impl TestRig {
 
         // Drain the expected number of events from the channel, or time out and give up.
         tokio::select! {
-            _ = tokio::time::sleep(timeout) => panic!(
+            () = tokio::time::sleep(timeout) => panic!(
                 "Timeout ({:?}) expired waiting for events. Expected {:?} but got {:?}",
                 timeout,
                 expected,
                 events
             ),
-            _ = drain_future => {},
+            () = drain_future => {},
         }
 
         assert_eq!(events, expected);
@@ -896,8 +896,8 @@ impl TestRig {
 
         // Panic if we don't time out.
         tokio::select! {
-            _ = tokio::time::sleep(timeout) => {},
-            _ = drain_future =>  panic!(
+            () = tokio::time::sleep(timeout) => {},
+            () = drain_future =>  panic!(
                 "Got events before timeout. Expected no events but got {:?}",
                 events
             ),
@@ -933,7 +933,7 @@ impl TestRig {
             }
 
             tokio::select! {
-                _ = &mut timeout_future => break,
+                () = &mut timeout_future => break,
                 maybe_msg = self.network_rx.recv() => {
                     match maybe_msg {
                         Some(msg) => events.push(msg),
@@ -972,7 +972,7 @@ impl TestRig {
             }
 
             tokio::select! {
-                _ = &mut timeout_future => break,
+                () = &mut timeout_future => break,
                 maybe_msg = self.sync_rx.recv() => {
                     match maybe_msg {
                         Some(msg) => events.push(msg),
@@ -1108,7 +1108,7 @@ async fn data_column_reconstruction_at_deadline() {
         tokio::pin!(deadline);
         loop {
             tokio::select! {
-                _ = &mut deadline => break,
+                () = &mut deadline => break,
                 event = rig.work_journal_rx.recv() => {
                     match event {
                         Some("gossip_data_column_sidecar") => gossip_count += 1,
@@ -2293,7 +2293,7 @@ async fn drain_validation_result(
 
     loop {
         tokio::select! {
-            _ = &mut deadline => panic!("timeout waiting for ValidationResult"),
+            () = &mut deadline => panic!("timeout waiting for ValidationResult"),
             msg = network_rx.recv() => {
                 match msg {
                     Some(NetworkMessage::ValidationResult { validation_result, .. }) => {
@@ -4907,7 +4907,7 @@ async fn drain_envelopes_by_root_responses(
     let mut envelopes = Vec::new();
     loop {
         tokio::select! {
-            _ = &mut deadline => panic!("timeout waiting for ExecutionPayloadEnvelopesByRoot response"),
+            () = &mut deadline => panic!("timeout waiting for ExecutionPayloadEnvelopesByRoot response"),
             msg = network_rx.recv() => {
                 match msg {
                     Some(NetworkMessage::SendResponse {

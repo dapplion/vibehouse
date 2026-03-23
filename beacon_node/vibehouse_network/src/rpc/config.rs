@@ -185,6 +185,26 @@ impl Debug for RateLimiterConfig {
                 "data_columns_by_root",
                 fmt_q!(&self.data_columns_by_root_quota),
             )
+            .field(
+                "light_client_bootstrap",
+                fmt_q!(&self.light_client_bootstrap_quota),
+            )
+            .field(
+                "light_client_optimistic_update",
+                fmt_q!(&self.light_client_optimistic_update_quota),
+            )
+            .field(
+                "light_client_finality_update",
+                fmt_q!(&self.light_client_finality_update_quota),
+            )
+            .field(
+                "light_client_updates_by_range",
+                fmt_q!(&self.light_client_updates_by_range_quota),
+            )
+            .field(
+                "execution_payload_envelopes_by_root",
+                fmt_q!(&self.execution_payload_envelopes_by_root_quota),
+            )
             .finish()
     }
 }

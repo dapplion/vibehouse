@@ -1010,7 +1010,7 @@ impl std::fmt::Display for RPCError {
             RPCError::StreamTimeout => write!(f, "Stream Timeout"),
             RPCError::UnsupportedProtocol => write!(f, "Peer does not support the protocol"),
             RPCError::IncompleteStream => write!(f, "Stream ended unexpectedly"),
-            RPCError::InternalError(ref err) => write!(f, "Internal error: {err}"),
+            RPCError::InternalError(err) => write!(f, "Internal error: {err}"),
             RPCError::NegotiationTimeout => write!(f, "Negotiation timeout"),
             RPCError::HandlerRejected => write!(f, "Handler rejected the request"),
             RPCError::Disconnected => write!(f, "Gracefully Disconnected"),

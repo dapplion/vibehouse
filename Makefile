@@ -352,6 +352,22 @@ lint:
 		-D clippy::unreadable_literal \
 		-D clippy::unused_peekable \
 		-D clippy::unused_rounding \
+		-D clippy::enum_glob_use \
+		-D clippy::ignored_unit_patterns \
+		-D clippy::borrow_as_ptr \
+		-D clippy::case_sensitive_file_extension_comparisons \
+		-D clippy::comparison_chain \
+		-D clippy::elidable_lifetime_names \
+		-D clippy::inline_always \
+		-D clippy::into_iter_without_iter \
+		-D clippy::manual_ilog2 \
+		-D clippy::missing_fields_in_debug \
+		-D clippy::assigning_clones \
+		-D clippy::should_panic_without_expect \
+		-D clippy::ignore_without_reason \
+		-D clippy::ref_binding_to_reference \
+		-D clippy::fn_params_excessive_bools \
+		-D clippy::decimal_bitwise_operands \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.

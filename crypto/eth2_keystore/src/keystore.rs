@@ -471,7 +471,7 @@ fn log2_int(x: u32) -> u32 {
     if x == 0 {
         return 0;
     }
-    31 - x.leading_zeros()
+    x.ilog2()
 }
 
 // We only check the size of the `iv` is non-zero as there is no guidance about

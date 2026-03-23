@@ -45,7 +45,7 @@ impl fmt::Debug for PrettyReqwestError {
             write!(f, ", status_code: {status}")?;
         }
 
-        if let Some(ref source) = self.0.source() {
+        if let Some(source) = self.0.source() {
             write!(f, ", detail: {source}")?;
         } else {
             write!(f, ", source: unknown")?;

@@ -41,7 +41,7 @@ impl Observe for SystemHealth {
         let disk_usage = {
             let path = std::ffi::CString::new("/").unwrap();
             let mut stat: libc::statvfs = unsafe { std::mem::zeroed() };
-            let ret = unsafe { libc::statvfs(path.as_ptr(), &mut stat) };
+            let ret = unsafe { libc::statvfs(path.as_ptr(), std::ptr::addr_of_mut!(stat)) };
             if ret != 0 {
                 return Err("Unable to get disk usage info".to_string());
             }

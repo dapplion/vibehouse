@@ -28,7 +28,7 @@ fn verify_execution_payload_chain<E: EthSpec>(chain: &[FullPayload<E>]) {
 #[tokio::test]
 // Non-zero values in `initialize_beacon_state_from_eth1` cause failed execution lookups.
 // This test is known-broken and panics; kept as a regression marker.
-#[should_panic]
+#[should_panic(expected = "assertion")]
 async fn merge_with_terminal_block_hash_override() {
     let altair_fork_epoch = Epoch::new(0);
     let bellatrix_fork_epoch = Epoch::new(0);

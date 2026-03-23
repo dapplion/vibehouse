@@ -275,7 +275,8 @@ impl<E: EthSpec> EnvironmentBuilder<E> {
             None
         };
 
-        self.sse_logging_components = sse_logging_layer_opt.clone();
+        self.sse_logging_components
+            .clone_from(&sse_logging_layer_opt);
 
         (
             self,

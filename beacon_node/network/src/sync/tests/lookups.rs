@@ -1897,7 +1897,7 @@ fn block_in_processing_cache_becomes_valid_imported() {
 }
 
 // IGNORE: wait for change that delays blob fetching to knowing the block
-#[ignore]
+#[ignore = "pending blob fetch delay refactor"]
 #[test]
 fn blobs_in_da_checker_skip_download() {
     let Some(mut r) = TestRig::test_setup_after_deneb_before_fulu() else {
@@ -2874,7 +2874,7 @@ mod deneb_only {
 
     // This test no longer applies, we don't issue requests for child lookups
     // Keep for after updating rules on fetching blocks only first
-    #[ignore]
+    #[ignore = "pending child lookup fetch refactor"]
     #[test]
     fn no_peer_penalty_when_rpc_response_already_known_from_gossip() {
         let Some(mut r) = TestRig::test_setup_after_deneb_before_fulu() else {

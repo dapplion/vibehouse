@@ -6893,8 +6893,8 @@ async fn poll_events<S: Stream<Item = Result<EventKind<E>, eth2::Error>> + Unpin
     };
 
     tokio::select! {
-        _ = collect_stream_fut => { events }
-        _ = tokio::time::sleep(timeout) => { events }
+        () = collect_stream_fut => { events }
+        () = tokio::time::sleep(timeout) => { events }
     }
 }
 

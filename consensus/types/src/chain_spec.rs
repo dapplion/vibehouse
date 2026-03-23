@@ -1812,6 +1812,10 @@ impl BlobSchedule {
     pub fn as_slice(&self) -> &[BlobParameters] {
         &self.schedule
     }
+
+    pub fn iter(&self) -> std::slice::Iter<'_, BlobParameters> {
+        self.schedule.iter()
+    }
 }
 
 impl Serialize for BlobSchedule {

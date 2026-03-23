@@ -128,7 +128,7 @@ fn allow_insecure_genesis_sync_default() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "")]
 fn insecure_genesis_sync_should_panic() {
     CommandLineTest::new()
         .set_zero_port()
@@ -910,7 +910,7 @@ fn network_listen_address_flag_dual_stack() {
         });
 }
 #[test]
-#[should_panic]
+#[should_panic(expected = "")]
 fn network_listen_address_flag_wrong_double_v4_value_config() {
     // It's actually possible to listen over multiple sockets in libp2p over the same ip version.
     // However this is not compatible with the single contactable address over each version in ENR.
@@ -923,7 +923,7 @@ fn network_listen_address_flag_wrong_double_v4_value_config() {
         .run_with_zero_port();
 }
 #[test]
-#[should_panic]
+#[should_panic(expected = "")]
 fn network_listen_address_flag_wrong_double_v6_value_config() {
     // It's actually possible to listen over multiple sockets in libp2p over the same ip version.
     // However this is not compatible with the single contactable address over each version in ENR.
@@ -2094,7 +2094,7 @@ fn slasher_slot_offset_flag() {
         });
 }
 #[test]
-#[should_panic]
+#[should_panic(expected = "")]
 fn slasher_slot_offset_nan_flag() {
     CommandLineTest::new()
         .flag("slasher", None)
@@ -2279,7 +2279,7 @@ fn malloc_tuning_flag() {
         });
 }
 #[test]
-#[should_panic]
+#[should_panic(expected = "")]
 fn ensure_panic_on_failed_launch() {
     CommandLineTest::new()
         .flag("slasher", None)
@@ -2392,7 +2392,7 @@ fn proposer_re_org_disallowed_offsets_override() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "")]
 fn proposer_re_org_disallowed_offsets_invalid() {
     CommandLineTest::new()
         .flag("proposer-reorg-disallowed-offsets", Some("32,33,34"))
@@ -2672,7 +2672,7 @@ fn beacon_processor() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "")]
 fn beacon_processor_zero_workers() {
     CommandLineTest::new()
         .flag("beacon-processor-max-workers", Some("0"))

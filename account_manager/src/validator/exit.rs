@@ -126,7 +126,7 @@ pub fn cli_run<E: EthSpec>(matches: &ArgMatches, env: Environment<E>) -> Result<
 }
 
 /// Gets the keypair and validator_index for every validator and calls `publish_voluntary_exit` on it.
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
 async fn publish_voluntary_exit<E: EthSpec>(
     keystore_path: &Path,
     password_file_path: Option<&PathBuf>,

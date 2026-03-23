@@ -627,7 +627,7 @@ async fn assert_invalid_signature(
     let ancestor_envelopes = &chain_segment_envelopes[..block_index];
     // We don't care if this fails, we just call this to ensure that all prior blocks have been
     // imported prior to this test.
-    let _ =
+    let () =
         import_chain_segment_with_envelopes_tolerant(harness, &ancestor_blocks, ancestor_envelopes)
             .await;
     harness.chain.recompute_head_at_current_slot().await;
