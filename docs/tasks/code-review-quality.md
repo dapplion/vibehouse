@@ -4823,3 +4823,18 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - `decimal_bitwise_operands` — 1 hex conversion + 3 `#[allow]` annotations (builder index test values are validator indices, not bitmasks)
 - **Notable improvement**: `RateLimiterConfig` Debug output now includes all 15 rate limit quotas (was only showing 10).
 - **Tests**: 2779/2779 types+state_processing+proto_array+fork_choice+store+slasher, 91/91 network beacon_processor, 35/35 EF ops+epoch+sanity, 1/1 validator_manager should_panic. `make lint-full` clean. Pre-push hook passed, pushed successfully.
+
+### Run 2227 (2026-03-23)
+
+**Enforce 14 new clippy lints, remove unnecessary Result wrappers and &mut references**
+
+- **Spec**: v1.7.0-alpha.3 still latest. Post-alpha.3 commits: #5014 (EIP-8025 ZK proof P2P protocol, `_features` spec not in Gloas mainline), #5008 (doc fix), #4902 (phase0 gossip tests) — no code impact.
+- **CI**: Run from run 2226 in progress.
+- **14 new lints enforced** (now 88 total extra `-D` lints in Makefile):
+  - `needless_pass_by_ref_mut` — 25+ functions changed from `&mut self`/`&mut param` to `&self`/`&param` across discovery, sync, network router, beacon chain, fork choice store, light client cache, validator monitor, duties service; 5 `#[allow]` for FFI/database code (slasher LMDB/MDBX cursors, RwTransaction)
+  - `unnecessary_wraps` — 15+ functions simplified: removed `Result<T, _>` → `T` where function never errors (beacon_block, decrease_balance_directly, store_cold_state_summary, do_maintenance, DataAvailabilityCheckerInner::new, spawn_notifier, gather_prometheus_metrics, Router::spawn, serve, parse_client_config, parse_compact/migrate/prune_states_config, disconnect/reconnect_to_execution_layer, junk_execution_address, ValidatorTestWallet::create); 5 `#[allow]` where Result required by caller interface (blocking_json closures, HTTP response builders)
+  - `or_fun_call` — 8 fixes: `unwrap_or(Type::method())` → `unwrap_or_else(Type::method)`, `map_or(default, ...)` → `map_or_else(|| default, ...)`
+  - `option_as_ref_cloned` — 1 fix: `.as_ref().cloned()` → `.clone()`
+  - `manual_flatten`, `map_entry`, `unnecessary_lazy_evaluations`, `manual_strip`, `match_bool`, `search_is_some`, `len_zero`, `redundant_guards`, `manual_map`, `useless_vec` — zero existing warnings, regression prevention
+- **51 files changed**, 226 insertions, 250 deletions — net code reduction
+- **Tests**: 1085/1085 types, 1026/1026 state_processing, 635/635 store+fork_choice+op_pool, 164/164 slasher+validator_services, 550/550 vibehouse_network+execution_layer. `make lint-full` clean. Pre-push hook passed, pushed successfully.
