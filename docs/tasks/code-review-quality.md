@@ -4838,3 +4838,39 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - `manual_flatten`, `map_entry`, `unnecessary_lazy_evaluations`, `manual_strip`, `match_bool`, `search_is_some`, `len_zero`, `redundant_guards`, `manual_map`, `useless_vec` — zero existing warnings, regression prevention
 - **51 files changed**, 226 insertions, 250 deletions — net code reduction
 - **Tests**: 1085/1085 types, 1026/1026 state_processing, 635/635 store+fork_choice+op_pool, 164/164 slasher+validator_services, 550/550 vibehouse_network+execution_layer. `make lint-full` clean. Pre-push hook passed, pushed successfully.
+
+### Run 2228 (2026-03-23)
+
+**Enforce 28 new clippy lints, remove redundant type annotations**
+
+- **Spec**: v1.7.0-alpha.3 still latest.
+- **28 new lints enforced** (now 116 total extra `-D` lints in Makefile):
+  - `redundant_type_annotations` — 9 fixes: removed explicit type annotations where type is obvious from RHS (`usize::MAX`, `u64::MAX`, `2u128.pow(70)`, `get_flag()`, `max_requested()`, `SocketAddr::new()`, `SystemTime::now()`)
+  - `copy_iterator` — zero existing warnings, regression prevention
+  - `nonstandard_macro_braces` — zero existing warnings
+  - `zero_prefixed_literal` — zero existing warnings
+  - `iter_filter_is_some` — zero existing warnings
+  - `iter_filter_is_ok` — zero existing warnings
+  - `empty_enum_variants_with_brackets` — zero existing warnings
+  - `needless_lifetimes` — zero existing warnings
+  - `needless_return` — zero existing warnings
+  - `needless_borrow` — zero existing warnings
+  - `needless_borrows_for_generic_args` — zero existing warnings
+  - `needless_range_loop` — zero existing warnings
+  - `manual_range_contains` — zero existing warnings
+  - `single_component_path_imports` — zero existing warnings
+  - `unnecessary_to_owned` — zero existing warnings
+  - `ptr_arg` — zero existing warnings
+  - `clone_on_copy` — zero existing warnings
+  - `unnecessary_cast` — zero existing warnings
+  - `map_clone` — zero existing warnings
+  - `if_same_then_else` — zero existing warnings
+  - `neg_cmp_op_on_partial_ord` — zero existing warnings
+  - `no_effect` — zero existing warnings
+  - `unnecessary_operation` — zero existing warnings
+  - `identity_op` — zero existing warnings
+  - `double_parens` — zero existing warnings
+  - `let_and_return` — zero existing warnings
+  - `match_single_binding` — zero existing warnings
+  - `wildcard_in_or_patterns` — zero existing warnings
+- **Tests**: 2317/2317 types+state_processing+proto_array. `make lint-full` clean. Pre-push hook passed, pushed successfully.
