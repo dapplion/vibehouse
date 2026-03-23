@@ -5048,4 +5048,20 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Spec tracking**: v1.7.0-alpha.3 still latest. All post-alpha.3 merged PRs (#5001, #5002, #5005, #5008, #5022, #5027) already tracked. PTC lookbehind PR #4979 is the clear winner — #4992 and #5020 both closed in its favor. #4979 adds `ptc_lookbehind` field to BeaconState (Vector[Vector[ValidatorIndex, PTC_SIZE], 3*SLOTS_PER_EPOCH]), `compute_ptc` helper, `process_ptc_lookbehind` epoch processing, and `initialize_ptc_lookbehind` for fork upgrade. Will implement when merged.
 - **Security audit**: `cargo audit` unchanged — 1 medium RSA advisory (no fix), 5 unmaintained warnings (transitive). No new advisories.
 - **Disk maintenance**: Cleaned `target/debug/incremental` (9.4GB freed, 83% → 81%).
+
+### Run 2244 (2026-03-23)
+
+**Verification + spec tracking**
+
+- **CI**: Run 23446142758 (commit 90f85eb0e, cargo doc warnings enforcement) — all 7 jobs passed: check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, http_api ✓, beacon_chain ✓, unit tests ✓.
+- **Tests**: 4991/5000 workspace tests pass (8 web3signer timeouts = pre-existing infra).
+- **Spec tracking**: v1.7.0-alpha.3 still latest. Two recently merged PRs reviewed:
+  - **#5022** (block-known check in `on_payload_attestation_message`): already implemented at fork_choice.rs:1426-1432
+  - **#5008** (field name fix `block_root` → `beacon_block_root`): doc-only, our SSZ encoding correct
+  - **#5014** (EIP-8025 execution proofs protocol): new RPC types `ExecutionProofStatus`/`ExecutionProofsByRange` — not yet in Gloas core spec
+  - PTC lookbehind PR #4979 still open — will implement when merged
+- **Security audit**: `cargo audit` unchanged — 1 medium RSA advisory (no fix), 5 unmaintained warnings (transitive). No new advisories.
+- **Dependencies**: Only 1 outdated root dep (`rand_xorshift` 0.4→0.5 in types crate). Non-critical.
+- **Pedantic lint survey**: 4817 pedantic warnings — not actionable at scale. Current 280 enforced lints is comprehensive.
+- **Status**: Project is in excellent shape. All 8 priorities done, CI green, spec tracked, 280 clippy lints enforced. No actionable work items found — waiting for PTC lookbehind (#4979) or other spec changes to land.
 - **No code changes this run** — codebase healthy, waiting for spec PRs to land.
