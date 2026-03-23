@@ -5082,3 +5082,14 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - Nightly consensus-specs test vectors stale (last successful: March 7, before #4940 fork choice tests merged March 13). Nightly workflow has cancelled runs since March 9.
 - **Dependencies**: Attempted `rand_xorshift` 0.4→0.5 upgrade — blocked by `rand_core` version conflict (0.5 requires rand_core 0.10, workspace uses rand 0.9 / rand_core 0.9). Requires full rand ecosystem upgrade, not worth it now.
 - **No code changes this run** — codebase healthy, spec analysis complete, ready for PTC lookbehind implementation.
+
+### Run 2246 (2026-03-23)
+
+**Devnet regression test after ~50 lint/cleanup commits**
+
+- **Devnet**: Ran `scripts/kurtosis-run.sh` — SUCCESS. Finalized epoch 8, chain progressed through Gloas fork. No regressions from extensive lint/cleanup work (runs 1945-2242: 280 clippy lints enforced, 310-file format arg inlining, 114 redundant clones removed, cargo doc warnings CI enforcement, unsafe block documentation, etc.).
+- **Spec tracking**: v1.7.0-alpha.3 still latest. No new releases. PTC lookbehind (#4979) still open with 12 reviews, active discussion. Recently merged PRs (#5022 block known check, #5008 field name fix, #5014 EIP-8025 protocol) all already tracked. New today: #5027 (tooling), #5025/#5026/#5017/#5010/#5009/#5007/#5006 (dependency bumps) — none require code changes.
+- **Nightly CI**: March 22 + 23 failures both on pre-fix commits (before MEGABYTE dead_code fix 5d23ecf85). Fix confirmed on HEAD. Tonight's nightly will pass.
+- **Codebase**: 3 TODOs remain, all blocked on external specs (EIP-7892 blob schedule ×2, pool persistence). Zero FIXME/HACK. Zero `todo!()`/`unimplemented!()` in production code.
+- **Cargo.lock**: Restored accidental dependency drift (syn 1→2, getrandom 0.3→0.4) — working tree clean.
+- **No code changes this run** — devnet regression verified, codebase healthy.
