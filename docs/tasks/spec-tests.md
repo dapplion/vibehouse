@@ -30,6 +30,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2253 (Mar 23) — maintenance check, nightly fix confirmed
+
+- CI: Latest run green (all 7 jobs passed). Nightly Mar 23 failed on slasher `MEGABYTE` dead code in redb-only build — fix already in HEAD (a4f999735, cfg gate). Nightly ran on older commit f4af903eb. Mar 24 nightly will be green.
+- Spec: v1.7.0-alpha.3 still latest. All 8 tracked Gloas PRs still open: #4979 (PTC lookbehind), #5023 (test fixtures), #4962 (withdrawal tests), #4843 (variable PTC deadline), #4892 (remove impossible branch, APPROVED), #4898 (remove pending tiebreaker, APPROVED), #4954 (milliseconds in fork choice, REVIEW_REQUIRED), #4747 (fast confirmation rule).
+- Pre-implementation analysis: #4954 (ms in fork choice) — low impact for vibehouse. Our fork choice uses Slot abstraction, not raw timestamps. Main impact will be EF test format changes (tick steps use `time_ms` instead of `time`). Will handle when merged + new test vectors released.
+- Clippy: 0 warnings, 263 lints enforced. cargo audit unchanged (1 rsa, 5 unmaintained).
+- Rust: 1.94.0 stable, up to date.
+- No code changes — codebase healthy, waiting for spec PRs to merge.
+
 ### run 2250 (Mar 23) — CI green, spec stable, holding pattern
 
 - CI: Run 23451379478 — all 7 jobs passed (check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, http_api ✓, beacon_chain ✓, unit tests ✓, ci-success ✓). Full green.
