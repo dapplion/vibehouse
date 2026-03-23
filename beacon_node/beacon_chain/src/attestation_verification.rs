@@ -1347,8 +1347,8 @@ pub fn verify_attestation_signature<T: BeaconChainTypes>(
 /// Verifies that index-1 attestations (payload present for a past block) have the
 /// corresponding execution payload envelope seen and validated.
 ///
-/// - [IGNORE] If index == 1, the envelope must have been seen.
-/// - [REJECT] If index == 1, the execution payload must have passed validation.
+/// - \[IGNORE\] If index == 1, the envelope must have been seen.
+/// - \[REJECT\] If index == 1, the execution payload must have passed validation.
 fn verify_payload_envelope_for_index1(
     head_block: &ProtoBlock,
     attestation_data: &AttestationData,

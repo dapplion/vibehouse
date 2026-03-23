@@ -190,7 +190,7 @@ pub enum PayloadAttestationError {
     /// No validators attested (empty aggregation bits).
     EmptyAggregationBits,
     /// A validator has already submitted a valid attestation for this slot/block.
-    /// Spec: [IGNORE] The payload_attestation_message is the first valid message
+    /// Spec: `[IGNORE]` The payload_attestation_message is the first valid message
     /// received from the validator.
     DuplicateAttestation { validator_index: u64, slot: Slot },
     /// Failed to get PTC committee for the slot.
