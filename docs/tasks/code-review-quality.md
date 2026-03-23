@@ -4900,3 +4900,19 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
   - `trivial_regex` — 10 fixes: removed `Regex::new()` wrapper from simple string patterns in validator_test_rig mock_beacon_node, passing string literals directly to `Matcher::Regex`. Removed unused `regex` dependency from validator_test_rig.
   - `useless_let_if_seq` — 2 fixes: `let mut x; if cond { x = val; }` → `let x = if cond { val } else { default }` in router.rs and mock_builder.rs. 1 `#[allow]` for multi-mutation tracking in ProposerPreparationDataEntry::update.
 - **Tests**: 4991/4991 workspace (excl. ef_tests/beacon_chain/slasher/network/http_api), 24/24 slot_clock, 8/8 beacon_processor. `make lint-full` clean.
+
+### Run 2230 (2026-03-23)
+
+**Enforce 32 new clippy lints, fix redundant clones and fallible From impls**
+
+- **32 new lints enforced** (now 176 total extra `-D` lints in Makefile):
+  - `redundant_clone` — 30+ fixes: removed unnecessary `.clone()` calls across beacon_chain tests (builder, gloas, op_verification, store_tests, attestation_verification), http_api fork_tests, network tests, state_processing tests, eth2_keystore tests, validator_client tests, validator_manager, vibehouse account_manager tests
+  - `fallible_impl_from` — 1 fix: converted `impl From<AvailabilityPendingExecutedBlock> for DietAvailabilityPendingExecutedBlock` (which used `.unwrap()`) to named `from_pending()` method in state_lru_cache.rs
+  - `useless_conversion` — 3 fixes: removed `.into()` calls where types already matched (operation_pool, verify_operation)
+  - `option_map_unit_fn` / `result_map_unit_fn` — already clean
+  - `nonminimal_bool` / `bool_comparison` / `useless_asref` / `iter_next_slice` — already clean
+  - `needless_collect` / `clear_with_drain` / `vec_init_then_push` — already clean
+  - `deref_addrof` / `unit_arg` / `linkedlist` — already clean
+  - Plus 20 more zero-existing-warnings lints for regression prevention: `explicit_write`, `match_overlapping_arm`, `absurd_extreme_comparisons`, `modulo_one`, `suspicious_else_formatting`, `partialeq_ne_impl`, `suspicious_arithmetic_impl`, `enum_clike_unportable_variant`, `redundant_allocation`, `manual_hash_one`, `transmute_bytes_to_str`, `unnecessary_box_returns`, `string_lit_chars_any`, `manual_saturating_arithmetic`, `uninhabited_references`, `as_ptr_cast_mut`, `manual_is_finite`
+- **Clippy fully clean**: 0 warnings from `cargo clippy --workspace --all-targets -- -W clippy::all` — all standard clippy lints resolved
+- **Tests**: operation_pool 72/72, beacon_chain 999/999, state_processing+wallet+keystore+validator_manager 1193/1193, network 204/204, http_api 74/74, validator_client 1/1, account_manager 6/6. All passing.
