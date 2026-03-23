@@ -242,7 +242,7 @@ mdlint:
 test-full: cargo-fmt test-release test-debug test-ef test-exec-engine
 
 # Lints the code for bad style and potentially unsafe arithmetic using Clippy.
-# Runs clippy with workspace-wide lints enforced as errors (253 lints, sorted, deduplicated).
+# Runs clippy with workspace-wide lints enforced as errors (263 lints, sorted, deduplicated).
 lint:
 	cargo clippy --workspace --benches --tests $(EXTRA_CLIPPY_OPTS) --features "$(TEST_FEATURES)" -- \
 		-D clippy::absurd_extreme_comparisons \
@@ -274,6 +274,7 @@ lint:
 		-D clippy::deref_addrof \
 		-D clippy::derive_partial_eq_without_eq \
 		-D clippy::disallowed_methods \
+		-D clippy::doc_lazy_continuation \
 		-D clippy::double_parens \
 		-D clippy::elidable_lifetime_names \
 		-D clippy::empty_enum_variants_with_brackets \
@@ -334,7 +335,9 @@ lint:
 		-D clippy::macro_use_imports \
 		-D clippy::manual_assert \
 		-D clippy::manual_c_str_literals \
+		-D clippy::manual_contains \
 		-D clippy::manual_clamp \
+		-D clippy::manual_div_ceil \
 		-D clippy::manual_filter_map \
 		-D clippy::manual_find \
 		-D clippy::manual_find_map \
@@ -342,6 +345,7 @@ lint:
 		-D clippy::manual_hash_one \
 		-D clippy::manual_ilog2 \
 		-D clippy::manual_instant_elapsed \
+		-D clippy::manual_midpoint \
 		-D clippy::manual_is_ascii_check \
 		-D clippy::manual_is_finite \
 		-D clippy::manual_is_power_of_two \
@@ -356,6 +360,7 @@ lint:
 		-D clippy::manual_string_new \
 		-D clippy::manual_strip \
 		-D clippy::manual_while_let_some \
+		-D clippy::map_all_any_identity \
 		-D clippy::map_clone \
 		-D clippy::map_collect_result_unit \
 		-D clippy::map_entry \
@@ -377,6 +382,7 @@ lint:
 		-D clippy::modulo_one \
 		-D clippy::mut_mut \
 		-D clippy::naive_bytecount \
+		-D clippy::needless_as_bytes \
 		-D clippy::needless_bitwise_bool \
 		-D clippy::needless_bool \
 		-D clippy::needless_borrow \
@@ -469,11 +475,14 @@ lint:
 		-D clippy::unnecessary_cast \
 		-D clippy::unnecessary_fallible_conversions \
 		-D clippy::unnecessary_filter_map \
+		-D clippy::unnecessary_get_then_check \
 		-D clippy::unnecessary_join \
 		-D clippy::unnecessary_lazy_evaluations \
+		-D clippy::unnecessary_map_on_constructor \
 		-D clippy::unnecessary_min_or_max \
 		-D clippy::unnecessary_operation \
 		-D clippy::unnecessary_safety_doc \
+		-D clippy::unnecessary_semicolon \
 		-D clippy::unnecessary_self_imports \
 		-D clippy::unnecessary_struct_initialization \
 		-D clippy::unnecessary_to_owned \
@@ -498,6 +507,7 @@ lint:
 		-D clippy::wildcard_in_or_patterns \
 		-D clippy::zero_prefixed_literal \
 		-D clippy::zero_sized_map_values \
+		-D clippy::zombie_processes \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.
