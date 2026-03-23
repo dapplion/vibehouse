@@ -5029,3 +5029,12 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Nightly failure investigated**: slasher-tests failed on runs 23430551707 and 23399597034 because they ran on commits before the `MEGABYTE` cfg fix (5d23ecf85). Fix is already merged; tonight's nightly should pass.
 - **Spec tracking**: v1.7.0-alpha.3 still latest. All recent merges (#5027 tooling, #5014 EIP-8025, #5022 block check) assessed — no action needed.
 - `make lint` and `make lint-full` clean.
+
+### Run 2242 (2026-03-23)
+
+**Add cargo doc warning enforcement to CI**
+
+- **CI improvement**: Added `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps` step to the `check` CI job. This prevents doc warning regressions (broken links, bare URLs, unclosed HTML tags) that were fixed in runs 218 and 2235.
+- **Verified**: `cargo doc --workspace --no-deps` passes with `-D warnings` on current main.
+- **Spec tracking**: v1.7.0-alpha.3 still latest. Two post-alpha.3 PRs merged (#5008 field name fix, #5022 block known check) — both already tracked in spec-update-post-alpha3.md. Notable open PRs: #4979 (PTC lookbehind, spec-breaking), #4843 (variable PTC deadline), #4954 (millisecond store time).
+- **Tests**: 4991/5000 workspace tests pass (4 web3signer timeouts = pre-existing infra).

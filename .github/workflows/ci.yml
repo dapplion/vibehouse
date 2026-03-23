@@ -39,6 +39,8 @@ jobs:
         run: cargo fmt --all -- --check
       - name: cargo clippy (with all enforced lints)
         run: make lint
+      - name: cargo doc (no warnings)
+        run: RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 
   ef-tests:
     name: ef-tests (minimal, fake_crypto)
