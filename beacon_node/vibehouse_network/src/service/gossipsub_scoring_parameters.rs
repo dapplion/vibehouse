@@ -583,7 +583,7 @@ mod tests {
         // Double rate -> double convergence
         let single = PeerScoreSettings::<E>::decay_convergence(0.5, 1.0);
         let double = PeerScoreSettings::<E>::decay_convergence(0.5, 2.0);
-        assert!((double - 2.0 * single).abs() < 1e-10);
+        assert!((2.0f64.mul_add(-single, double)).abs() < 1e-10);
     }
 
     // --- threshold ---

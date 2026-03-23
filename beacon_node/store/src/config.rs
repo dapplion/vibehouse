@@ -231,9 +231,7 @@ mod test {
 
     #[test]
     fn check_compatibility_ok() {
-        let store_config = StoreConfig {
-            ..Default::default()
-        };
+        let store_config = StoreConfig::default();
         let on_disk_config = OnDiskStoreConfig::V22(OnDiskStoreConfigV22::new(
             store_config.hierarchy_config.clone(),
         ));

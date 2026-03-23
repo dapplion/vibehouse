@@ -718,12 +718,9 @@ pub fn process_withdrawals<E: EthSpec, Payload: AbstractExecPayload<E>>(
                 .safe_rem(state.validators().len() as u64)?;
             *state.next_withdrawal_validator_index_mut()? = next_validator_index;
         }
-
-        Ok(())
-    } else {
-        // these shouldn't even be encountered but they're here for completeness
-        Ok(())
     }
+
+    Ok(())
 }
 
 #[cfg(test)]

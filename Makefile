@@ -291,6 +291,12 @@ lint:
 		-D clippy::naive_bytecount \
 		-D clippy::filter_map_next \
 		-D clippy::mut_mut \
+		-D clippy::suspicious_operation_groupings \
+		-D clippy::literal_string_with_formatting_args \
+		-D clippy::unnecessary_struct_initialization \
+		-D clippy::string_lit_as_bytes \
+		-D clippy::suboptimal_flops \
+		-D clippy::branches_sharing_code \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.

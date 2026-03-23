@@ -708,6 +708,7 @@ mod tests {
     #[test]
     fn normalize_nfkd_decomposition() {
         // U+00E9 (é) decomposes to e + combining acute accent in NFKD
+        #[allow(clippy::string_lit_as_bytes)] // non-ASCII, can't use b""
         let input = "é".as_bytes();
         let result = normalize(input).unwrap();
         assert_eq!(result.len(), 3, "NFKD decomposition should expand é");

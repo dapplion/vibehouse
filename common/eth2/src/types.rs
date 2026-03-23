@@ -769,7 +769,11 @@ impl AttesterData {
         spec: &ChainSpec,
     ) -> bool {
         if spec.fork_name_at_slot::<E>(attestation_data.slot) < ForkName::Electra {
-            self.slot == attestation_data.slot && self.committee_index == attestation_data.index
+            // attestation_data.index IS the committee index in the spec
+            #[allow(clippy::suspicious_operation_groupings)]
+            {
+                self.slot == attestation_data.slot && self.committee_index == attestation_data.index
+            }
         } else {
             // After electra `attestation_data.index` is set to 0 and does not match the duties
             self.slot == attestation_data.slot

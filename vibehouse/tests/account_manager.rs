@@ -587,7 +587,7 @@ fn validator_import_launchpad_no_password_then_add_password() {
     let mut child = validator_import_key_cmd();
     wait_for_password_prompt(&mut child);
     let stdin = child.stdin.as_mut().unwrap();
-    stdin.write_all("\n".as_bytes()).unwrap();
+    stdin.write_all(b"\n").unwrap();
     child.wait().unwrap();
 
     assert!(

@@ -107,24 +107,20 @@ type_name!(BuilderPendingPayments, "builder_pending_payments");
 
 impl<E: EthSpec> EpochTransition<E> for JustificationAndFinalization {
     fn run(state: &mut BeaconState<E>, spec: &ChainSpec) -> Result<(), EpochProcessingError> {
-        if state.fork_name_unchecked().altair_enabled() {
+        let justification_and_finalization_state = if state.fork_name_unchecked().altair_enabled() {
             initialize_progressive_balances_cache(state, spec)?;
-            let justification_and_finalization_state =
-                altair::process_justification_and_finalization(state)?;
-            justification_and_finalization_state.apply_changes_to_state(state);
-            Ok(())
+            altair::process_justification_and_finalization(state)?
         } else {
             let mut validator_statuses = base::ValidatorStatuses::new(state, spec)?;
             validator_statuses.process_attestations(state)?;
-            let justification_and_finalization_state =
-                base::process_justification_and_finalization(
-                    state,
-                    &validator_statuses.total_balances,
-                    spec,
-                )?;
-            justification_and_finalization_state.apply_changes_to_state(state);
-            Ok(())
-        }
+            base::process_justification_and_finalization(
+                state,
+                &validator_statuses.total_balances,
+                spec,
+            )?
+        };
+        justification_and_finalization_state.apply_changes_to_state(state);
+        Ok(())
     }
 }
 

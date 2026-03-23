@@ -812,14 +812,13 @@ impl<E: EthSpec> PeerDB<E> {
             },
         );
 
+        let peer_info = self.peers.get_mut(&peer_id).expect("peer exists");
         if supernode {
-            let peer_info = self.peers.get_mut(&peer_id).expect("peer exists");
             let all_subnets = (0..spec.data_column_sidecar_subnet_count)
                 .map(Into::into)
                 .collect();
             peer_info.set_custody_subnets(all_subnets);
         } else {
-            let peer_info = self.peers.get_mut(&peer_id).expect("peer exists");
             let node_id = peer_id_to_node_id(&peer_id).expect("convert peer_id to node_id");
             let subnets =
                 compute_subnets_for_node::<E>(node_id.raw(), spec.custody_requirement, spec)

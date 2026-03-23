@@ -107,12 +107,10 @@ pub async fn cli_run<E: EthSpec>(
     dump_config: DumpConfig,
 ) -> Result<(), String> {
     let config = ListConfig::from_cli(matches)?;
-    if dump_config.should_exit_early(&config)? {
-        Ok(())
-    } else {
+    if !dump_config.should_exit_early(&config)? {
         run::<E>(config).await?;
-        Ok(())
     }
+    Ok(())
 }
 
 async fn run<E: EthSpec>(config: ListConfig) -> Result<Vec<SingleKeystoreResponse>, String> {

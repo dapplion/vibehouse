@@ -39,7 +39,7 @@ pub enum Block<E: EthSpec> {
 }
 
 pub fn mock_el_extra_data<E: EthSpec>() -> types::VariableList<u8, E::MaxExtraDataBytes> {
-    "block gen was here".as_bytes().to_vec().into()
+    b"block gen was here".to_vec().into()
 }
 
 impl<E: EthSpec> Block<E> {
@@ -725,7 +725,7 @@ impl<E: EthSpec> ExecutionBlockGenerator<E> {
                     gas_limit: DEFAULT_GAS_LIMIT,
                     gas_used: GAS_USED,
                     timestamp: pa.timestamp,
-                    extra_data: "block gen was here".as_bytes().to_vec().into(),
+                    extra_data: b"block gen was here".to_vec().into(),
                     base_fee_per_gas: Uint256::from(1u64),
                     block_hash: ExecutionBlockHash::zero(),
                     transactions: vec![].into(),
@@ -744,7 +744,7 @@ impl<E: EthSpec> ExecutionBlockGenerator<E> {
                     gas_limit: DEFAULT_GAS_LIMIT,
                     gas_used: GAS_USED,
                     timestamp: pa.timestamp,
-                    extra_data: "block gen was here".as_bytes().to_vec().into(),
+                    extra_data: b"block gen was here".to_vec().into(),
                     base_fee_per_gas: Uint256::from(1u64),
                     block_hash: ExecutionBlockHash::zero(),
                     transactions: vec![].into(),

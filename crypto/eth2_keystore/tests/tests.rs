@@ -15,7 +15,7 @@ const BAD_PASSWORD: &[u8] = &[43, 43, 43];
 #[test]
 fn empty_password() {
     assert_eq!(
-        KeystoreBuilder::new(&Keypair::random(), "".as_bytes(), String::new())
+        KeystoreBuilder::new(&Keypair::random(), b"", String::new())
             .err()
             .unwrap(),
         Error::EmptyPassword

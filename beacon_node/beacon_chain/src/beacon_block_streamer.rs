@@ -214,8 +214,6 @@ impl<E: EthSpec> BodiesByRange<E> {
                 if self.count == 0 {
                     self.start = block_number;
                     self.count = 1;
-                    blocks_parts_vec.push(block_parts);
-                    Ok(())
                 } else {
                     // need to figure out if this block fits in the request
                     if block_number < self.start
@@ -224,13 +222,13 @@ impl<E: EthSpec> BodiesByRange<E> {
                         return Err(block_parts);
                     }
 
-                    blocks_parts_vec.push(block_parts);
                     if self.start + self.count <= block_number {
                         self.count = block_number - self.start + 1;
                     }
-
-                    Ok(())
                 }
+
+                blocks_parts_vec.push(block_parts);
+                Ok(())
             }
         }
     }

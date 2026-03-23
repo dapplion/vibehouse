@@ -379,7 +379,7 @@ fn json_bad_checksum() {
     assert_eq!(
         Keystore::from_json_str(vector)
             .unwrap()
-            .decrypt_keypair("testpassword".as_bytes())
+            .decrypt_keypair(b"testpassword")
             .err()
             .unwrap(),
         Error::InvalidPassword

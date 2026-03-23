@@ -105,7 +105,7 @@ pub(crate) async fn create_validators_mnemonic<
                 ApiError::ServerError(format!("failed to read local deposit data: {e:?}"))
             })?
             .ok_or_else(|| {
-                ApiError::ServerError("failed to create local deposit data: {:?}".to_string())
+                ApiError::ServerError("failed to create local deposit data".to_string())
             })?;
 
         if eth1_deposit_data.deposit_data.amount != request.deposit_gwei {
