@@ -37,8 +37,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: cargo fmt
         run: cargo fmt --all -- --check
-      - name: cargo clippy
-        run: cargo clippy --workspace --tests -- -D warnings
+      - name: cargo clippy (with all enforced lints)
+        run: make lint
 
   ef-tests:
     name: ef-tests (minimal, fake_crypto)
