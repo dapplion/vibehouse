@@ -478,6 +478,12 @@ lint:
 		-D clippy::rc_buffer \
 		-D clippy::rc_mutex \
 		-D clippy::default_union_representation \
+		-D clippy::needless_borrowed_reference \
+		-D clippy::negative_feature_names \
+		-D clippy::set_contains_or_insert \
+		-D clippy::str_split_at_newline \
+		-D clippy::unnecessary_min_or_max \
+		-D clippy::useless_format \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.
