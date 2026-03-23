@@ -309,3 +309,14 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - Clean build, zero clippy warnings, zero compiler warnings, cargo fmt clean
 - cargo audit: same known advisory (RUSTSEC-2023-0071 rsa, unfixable), no new issues
 - **No action needed. Spec current, codebase healthy.**
+
+### run 2266 (Mar 23) — routine spec check + CI verification
+
+- No new functional Gloas spec merges — latest commits are CI/tooling only (#5029 setup-uv, #5030 release-drafter, #5028 download-artifact, #5031 workflow merge, #5023 block root filenames)
+- **#5023** (block root filenames + Gloas comptests): merged today. Verified our EF test runner is resilient — uses YAML manifest references (not hash-based filename discovery), so block file naming changes won't break loading when new fixtures are released
+- **PTC window (#4979)**: still OPEN, 12 review comments, rename to `ptc_window` agreed. No approvals yet — still in design discussion
+- Nightly failures (Mar 22, 23): both explained — Mar 22 was transient nextest 404, Mar 23 was MEGABYTE dead code (already fixed in 5d23ecf85, will be picked up by tonight's nightly)
+- CI fully green: all 6 jobs passed (run 23460108181)
+- Codebase audit: zero actionable TODOs (all blocked on external factors), zero production unwrap()/expect() outside tests, zero clippy warnings
+- cargo audit: same known advisories (RUSTSEC-2023-0071 rsa unfixable, plus unmaintained transitive deps: bincode, ansi_term, derivative, filesystem, paste — all not actionable)
+- **No action needed. Spec current, codebase healthy.**
