@@ -5038,3 +5038,14 @@ Monitoring runs, no code changes. Spec v1.7.0-alpha.3 still latest — no new co
 - **Verified**: `cargo doc --workspace --no-deps` passes with `-D warnings` on current main.
 - **Spec tracking**: v1.7.0-alpha.3 still latest. Two post-alpha.3 PRs merged (#5008 field name fix, #5022 block known check) — both already tracked in spec-update-post-alpha3.md. Notable open PRs: #4979 (PTC lookbehind, spec-breaking), #4843 (variable PTC deadline), #4954 (millisecond store time).
 - **Tests**: 4991/5000 workspace tests pass (4 web3signer timeouts = pre-existing infra).
+
+### Run 2243 (2026-03-23)
+
+**Verification + spec tracking + maintenance**
+
+- **CI status**: Run from commit 90f85eb0e (cargo doc warnings enforcement) — check+clippy+fmt ✓, remaining jobs in progress.
+- **Nightly failure**: slasher-tests still failing (ran at 09:33 UTC, fix was pushed at 10:42 UTC). Tonight's nightly will pass — the `MEGABYTE` dead_code fix (5d23ecf85) is already on main.
+- **Spec tracking**: v1.7.0-alpha.3 still latest. All post-alpha.3 merged PRs (#5001, #5002, #5005, #5008, #5022, #5027) already tracked. PTC lookbehind PR #4979 is the clear winner — #4992 and #5020 both closed in its favor. #4979 adds `ptc_lookbehind` field to BeaconState (Vector[Vector[ValidatorIndex, PTC_SIZE], 3*SLOTS_PER_EPOCH]), `compute_ptc` helper, `process_ptc_lookbehind` epoch processing, and `initialize_ptc_lookbehind` for fork upgrade. Will implement when merged.
+- **Security audit**: `cargo audit` unchanged — 1 medium RSA advisory (no fix), 5 unmaintained warnings (transitive). No new advisories.
+- **Disk maintenance**: Cleaned `target/debug/incremental` (9.4GB freed, 83% → 81%).
+- **No code changes this run** — codebase healthy, waiting for spec PRs to land.

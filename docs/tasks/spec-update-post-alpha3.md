@@ -245,6 +245,19 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - Ran `cargo machete --with-metadata`: no actionable unused deps (all flagged are false positives from `TestRandom` derive macro needing `rand` in scope)
 - Ran `cargo clippy --release --all-targets`: zero warnings
 - Ran dead code check (`RUSTFLAGS="-W dead_code"`): zero warnings on core crates
+
+### run 2243 (Mar 23) — PTC lookbehind resolution + spec tracking
+
+- **PTC lookbehind settled**: #4992 and #5020 both CLOSED in favor of #4979 (full 2-epoch + lookahead cache). #4979 is the only surviving approach:
+  - Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], (2+MIN_SEED_LOOKAHEAD)*SLOTS_PER_EPOCH]` to BeaconState (~256KB)
+  - `compute_ptc(state, slot)` — pure computation (extracted from current `get_ptc`)
+  - `get_ptc(state, slot)` — becomes cache lookup into `ptc_lookbehind`
+  - `process_ptc_lookbehind(state)` — new epoch processing: shift window + fill lookahead
+  - `initialize_ptc_lookbehind(state)` — fork upgrade: empty previous epoch + compute current epoch
+  - Implementation impact: BeaconState SSZ change, epoch processing addition, fork upgrade logic, split get_ptc into compute+cache
+  - **Status**: still OPEN, not merged. Will implement when merged.
+- **Recently merged**: #5008, #5022, #5027 — all already tracked and confirmed aligned
+- No new consensus-specs release since alpha.3
 - Duplicate deps in Cargo.lock: all transitive (strum 0.27 from sp1 stack, rand versions from various ecosystems)
 - **No action needed. Spec current, codebase healthy.**
 
