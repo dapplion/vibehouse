@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 2268 (Mar 23) — maintenance check, all stable
+
+CI green (latest run success). Nightly failure (Mar 22-23) was slasher redb-only build dead code — already fixed in commit 5d23ecf85, tonight's nightly should pass. Spec HEAD updated today: 5 merged PRs all CI/infra (action updates, dep bumps, #5023 test generator fix — no spec changes). All open Gloas PRs still open: #4979 (PTC window, 12 review comments), #4843 (variable PTC deadline), #4954 (milliseconds), #4898 (remove pending tiebreaker), #4892 (remove impossible branch). cargo audit: 1 vuln (rsa timing, no fix), 5 unmaintained warnings. Rust 1.94 current, 1.95 due Apr 16. Zero compatible dep updates. Project in maintenance mode.
+
 ### run 2134 (Mar 21) — maintenance check, all stable
 
 CI green (latest + 8 nightlies). Spec HEAD unchanged (no merges since Mar 15). Zero compiler/clippy warnings. cargo audit: 1 known (rsa timing, no fix). Dependency check: only rand ecosystem outdated (blocked on k256 0.14 RC, discv5 git deps still on rand_core 0.6). Verified spec PRs #5001 (parent_block_root bid key) already implemented, #5022 (block known assert in on_payload_attestation) already handled. Open Gloas PRs: #4843 (variable PTC deadline, 1 approval, 11 reviews), #5020/#4992/#4979 still in review. Attempted rand_xorshift 0.4→0.5 upgrade but blocked by rand_core 0.9→0.10 ecosystem split. Project in maintenance mode.
