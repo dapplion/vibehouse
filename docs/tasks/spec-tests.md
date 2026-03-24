@@ -30,6 +30,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2323 (Mar 24) — #4939 merged, CI monitoring
+
+- CI: run 23504503578 in progress for #5036 commit (check+clippy ✓, 5 jobs running). Previous run (23503090543) cancelled (superseded). Last full green: 23496276572.
+- Spec: **#4939 merged** (request missing payload envelopes for index-1 attestation) — already implemented in vibehouse. Verified implementation matches final merged spec: REJECT for invalid payload, IGNORE + SHOULD request for unseen envelope, both aggregate and subnet attestation paths.
+- No new test vector release (still v1.5.0 from May 2025).
+- 9 tracked open Gloas PRs: #4979 (PTC window), #4843 (variable PTC deadline), #4892 (remove impossible branch, APPROVED), #4898 (remove pending tiebreaker, APPROVED), #4954 (ms in fork choice), #4747 (fast confirmation rule), #5035 (same epoch prefs, APPROVED — implemented), #5036 (relax bid gossip — implemented), #4962 (sanity/blocks withdrawal tests, test-only).
+- cargo audit: unchanged (1 rsa, 5 unmaintained). Zero compiler warnings. Dependencies current (only rand_xorshift outdated).
+- No code changes — codebase healthy, holding pattern.
+
 ### run 2321 (Mar 24) — CI monitoring, #5036 pre-read, code audit
 
 - CI: run 23503090543 in progress for #5035 commit (check+clippy ✓, ef-tests ✓, network+op_pool ✓, 3 jobs still running). Previous run (23496276572) all green. Nightly Mar 24 green.
