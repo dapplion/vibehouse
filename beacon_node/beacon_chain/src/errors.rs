@@ -303,6 +303,7 @@ pub enum BlockProductionError {
     InvalidBlockVariant(String),
     MissingExecutionRequests,
     EnvelopeConstructionFailed(String),
+    SszTypesError(SszTypesError),
 }
 
 easy_from_to!(BlockProcessingError, BlockProductionError);
