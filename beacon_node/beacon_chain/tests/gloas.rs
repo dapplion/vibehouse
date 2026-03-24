@@ -6068,7 +6068,7 @@ async fn fc_on_payload_attestation_quorum_triggers_payload_revealed() {
     let indexed_one_more = IndexedPayloadAttestation::<E> {
         attesting_indices: {
             let mut list = ssz_types::VariableList::empty();
-            list.push(quorum_threshold as u64).unwrap();
+            list.push(quorum_threshold).unwrap();
             list
         },
         data: attestation_one_more.data,
