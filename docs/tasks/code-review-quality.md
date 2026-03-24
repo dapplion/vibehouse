@@ -5238,3 +5238,13 @@ Lints tested but excluded (too many violations from macro-generated or third-par
 - `future_not_send` (3 violations in generic async methods)
 
 Also tracked: 2 new post-alpha.3 spec PRs (#5014 EIP-8025 p2p protocol, #5023 block root filename fix + Gloas comptests). Neither requires code changes — #5014 is an EIP-8025 feature, #5023 is test-generator-only.
+
+### Run 2273: enforce 17 new clippy lints (288 → 305)
+
+New lints: `almost_complete_range`, `async_yields_async`, `deprecated_cfg_attr`, `double_must_use`, `duplicate_mod`, `empty_drop`, `mismatched_target_os`, `mut_mutex_lock`, `needless_raw_strings`, `obfuscated_if_else`, `redundant_at_rest_pattern`, `single_range_in_vec_init`, `suspicious_command_arg_space`, `suspicious_open_options`, `transmute_ptr_to_ref`, `unused_result_ok`, `zero_repeat_side_effects`.
+
+Notable correctness-oriented lints: `mut_mutex_lock` (catches `lock()` on `&mut Mutex`), `transmute_ptr_to_ref` (unsafe transmute misuse), `suspicious_command_arg_space` (catches `arg("-f file")`), `suspicious_open_options` (catches conflicting open options), `duplicate_mod` (same module included twice), `unused_result_ok` (`.ok()` on discarded Result is misleading).
+
+Code fixes: removed unnecessary `r` raw string prefixes from 18 string literals (mock_beacon_node.rs, chain_spec.rs, create_validators.rs), replaced `.ok()` with `let _ =` for discarded results in block_service and execution_layer test utils.
+
+Also investigated nightly CI failures: Mar 22 was transient nextest download 404, Mar 23 was slasher dead code (already fixed in 5d23ecf85). Both resolved.
