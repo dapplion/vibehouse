@@ -5297,3 +5297,17 @@ PTC window spec change (consensus-specs PR #4979) still open/unmerged — monito
 **PTC window PR #4979**: 13 commits, 12 review comments, last updated Mar 23. Design stable — updated implementation memory with latest diff analysis including `compute_ptc`, `get_ptc` cache lookup logic, `process_ptc_window` epoch processing, and `initialize_ptc_window` fork upgrade helper.
 
 **No code changes this run** — codebase verified healthy, all spec PRs audited, holding for PTC window merge.
+
+### Run 2289: fix CI clippy failure from renamed lints (2026-03-24)
+
+**CI failure**: `check + clippy + fmt` job failed on commit 38f45dbb9 (enforce 42 new clippy lints). Root cause: 4 lints added in that commit were renamed/removed in current clippy, and `-D warnings` (at end of lint list) implies `-D renamed-and-removed-lints`, turning the rename warnings into hard errors.
+
+**Fixed**:
+- `clippy::double_neg` → `double_negations` (promoted to rustc lint)
+- `clippy::overflow_check_conditional` → `clippy::panicking_overflow_checks`
+- `clippy::range_step_by_zero` → removed (step_by(0) now panics, no lint needed)
+- `clippy::unchecked_duration_subtraction` → `clippy::unchecked_time_subtraction`
+
+**Spec audit**: Re-confirmed 3 recently merged Gloas PRs (#5022, #5014, #5008) — all already tracked in previous runs. PTC window PR #4979 still open (reopened Mar 20 after brief closure in favor of #4992, discussion ongoing).
+
+**Nightly tests**: All 26 jobs pass (beacon_chain, network, op_pool, http_api across all forks).
