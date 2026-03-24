@@ -5482,3 +5482,30 @@ Added `debug_assert!(vote.current_slot >= node_slot)` in both `is_supporting_vot
 **Tests**: proto_array 206/206, fork_choice 121/121, EF fork_choice 9/9 all pass.
 
 **Assessment**: One small spec alignment shipped. All remaining open PRs need more review before implementation.
+
+### Run 2301 — spec tracking + safety audit (2026-03-24)
+
+**Scope**: Check for new consensus-specs changes, Gloas consensus safety audit, CI monitoring.
+
+**Spec tracking**: No new Gloas-relevant PRs merged since run 2300. Recently merged PRs (#5015, #5029, #5031, #5030, #5028, #5027) are all CI/infra/dependency updates in the specs repo — no spec changes. No new spec release beyond v1.7.0-alpha.3.
+
+**Open PR status update**:
+- **#4892** (remove impossible branch) — 2 approvals, clean, already implemented
+- **#4898** (remove pending tiebreaker) — 1 approval, clean, already implemented
+- **#4979** (PTC window cache) — 0 approvals, blocked, not ready
+- **#4843** (variable PTC deadline) — 1 approval, clean, still under discussion
+- **#4962** (withdrawal+missed-payload tests) — 1 approval (potuz), blocked
+- **#5035** (same epoch proposer preferences) — 0 approvals, blocked, new
+- **#4747** (fast confirmation rule) — open, updated today
+- **#4630** (EIP-7688 forward-compatible SSZ) — open
+
+**Gloas consensus safety audit**: Full audit of critical paths (state_processing/gloas.rs, per_epoch_processing/gloas.rs, upgrade/gloas.rs, fork_choice.rs, proto_array_fork_choice.rs). Results:
+- Zero unwrap()/expect() in production Gloas code
+- All arithmetic uses SafeArith (safe_add, safe_rem, saturating_add, safe_add_assign)
+- All array/vector access uses .get()/.get_mut() with proper error handling
+- No unsafe blocks, no direct indexing, no overflow paths
+- Builder index flag operations validated (1u64 << 40, index < 2^40)
+
+**CI**: Latest run (23492870696) check+clippy+fmt passed, other jobs in progress. Yesterday's nightly slasher failure was pre-existing (MEGABYTE dead code in redb-only build, fixed by 5d23ecf85). Today's nightly: green.
+
+**Assessment**: Codebase in excellent shape. No actionable work. Waiting for spec changes (primarily #4979 PTC window, #4843 variable PTC deadline).
