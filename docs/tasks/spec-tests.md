@@ -30,6 +30,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2287 (Mar 24) — spec audit, nightly clippy fixes
+
+- Audited consensus-specs merges since run 2286: #5022 (explicit block check in on_payload_attestation_message) — already compliant (line 1426-1432 of fork_choice.rs). #5008 (field name fix in spec doc) — no code change needed. Rest are CI/infra/deps.
+- Fixed 4 nightly clippy warnings: unnecessary u64→u64 cast in gloas.rs:6071, 3 redundant .into_iter() in http_api tests.rs (lines 4346, 4401, 4438). Both stable and nightly now zero warnings.
+- Nightly CI: Mar 23 slasher failure confirmed as MEGABYTE cfg guard (fixed on HEAD). Mar 22 failure was transient curl 404. Tonight's nightly should be green.
+- All 7 tracked Gloas PRs still open, no status changes.
+- Committed: 816f0c5e6
+
 ### run 2286 (Mar 24) — routine health check, all stable
 
 - CI: latest push run green (a19b41c03). Nightly Mar 23 slasher failure on old commit — fix on HEAD, tonight's nightly should be green.
