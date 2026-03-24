@@ -5324,8 +5324,22 @@ PTC window spec change (consensus-specs PR #4979) still open/unmerged — monito
 3. Gloas withdrawal list conversion (line 6504): `map(|v| v.try_into().unwrap())` → `and_then(|v| v.try_into().map_err(Error::SszTypesError))`
 4. Advanced state withdrawal list conversion (line 6531): same pattern as #3
 
-**Not changed**: ~45 `try_into().unwrap()` calls in shared block body construction code (pre-existing, all fork variants, protected by operation pool size limits).
+**Not changed**: ~45 `try_into().unwrap()` calls in shared block body construction code (pre-existing, all fork variants, protected by operation pool size limits). → **Now fixed in run 2291** (see below).
 
 **Also checked**: No new Gloas spec changes since alpha.3. PTC window PR #4979 still open. Nightly test failures (Mar 22-23) were transient CI infra issue + MEGABYTE constant dead_code (already fixed by clippy lint commit).
 
 **Verification**: 999/999 beacon_chain tests (gloas), full workspace clippy clean (lint-full passed on push).
+
+### Run 2291 — block production try_into().unwrap() cleanup (2026-03-24)
+
+**Fixed all remaining `try_into().unwrap()` in block body construction** across all fork variants (Base, Altair, Bellatrix, Capella, Deneb, Electra, Fulu, Gloas):
+- Added `SszTypesError(SszTypesError)` variant to `BlockProductionError`
+- Replaced 43 `try_into().unwrap()` calls with `.try_into().map_err(BlockProductionError::SszTypesError)?`
+- Also fixed `block_verification.rs` withdrawal list conversion: `.map_err(BeaconStateError::SszTypesError)` instead of `.unwrap()`
+- Also fixed Gloas `payload_attestations` list conversion
+
+**Verification**: 999/999 beacon_chain tests (gloas), full workspace clippy clean, lint-full passed on push.
+
+**Remaining `try_into().unwrap()` in beacon_chain src (non-test)**:
+- `kzg_utils.rs`: 5 instances — data column/cell construction from c-kzg output (safe: sizes guaranteed by c-kzg library)
+- Zero instances in `beacon_chain.rs` and `block_verification.rs`
