@@ -406,3 +406,11 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - **Spec tracking**: no new Gloas spec merges since #5023 (Mar 23). PTC window (#4979) still OPEN (mergeable_state=blocked, 0 approvals, 12 review comments, last updated Mar 23).
 - **CI**: latest push (run 23496276572) completed successfully. Zero clippy warnings.
 - **No action needed. Spec current, codebase healthy.**
+
+### run 2314 (Mar 24) — alpha.4 version bump + spec compliance check
+
+- **Spec v1.7.0-alpha.4 released** (commit f36f2e77, Mar 24). Diff from alpha.3: #5005 (test fix), #4902 (phase0 gossip helpers), #5008 (field name doc fix), #5014 (EIP-8025 P2P), #5022 (block-known assert in on_payload_attestation), #5023 (test infra). No new Gloas implementation changes — all already compliant.
+- **Already implemented in vibehouse**: #4892 (impossible fork choice branch) implemented via debug_assert at proto_array_fork_choice.rs:1690. #4898 (pending tiebreaker removal) already matches our implementation at proto_array_fork_choice.rs:1826-1842.
+- **Open Gloas PRs tracked**: #5035 (same-epoch proposer preferences, under review), #5036 (relax bid gossip dependency on prefs, under review), #4979 (PTC window cache, blocked), #4843 (variable PTC deadline, under discussion).
+- **Codebase audit**: zero compiler warnings, zero clippy lints, zero production unwrap/expect in consensus crates. CI green.
+- **No action needed. Spec current through alpha.4, codebase healthy.**
