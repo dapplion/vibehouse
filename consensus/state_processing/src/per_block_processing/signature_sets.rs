@@ -631,13 +631,8 @@ where
     let participant_pubkeys = committee_pubkeys
         .iter()
         .zip(sync_aggregate.sync_committee_bits.iter())
-        .filter_map(|(pubkey, bit)| {
-            if bit {
-                Some(decompressor(pubkey))
-            } else {
-                None
-            }
-        })
+        .filter(|(_, bit)| *bit)
+        .map(|(pubkey, _)| decompressor(pubkey))
         .collect::<Option<Vec<_>>>()
         .ok_or(Error::PublicKeyDecompressionFailed)?;
 

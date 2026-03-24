@@ -24,13 +24,7 @@ impl SyncDuty {
         let validator_sync_committee_indices = sync_committee_indices
             .iter()
             .enumerate()
-            .filter_map(|(i, &v)| {
-                if validator_index == v as u64 {
-                    Some(i as u64)
-                } else {
-                    None
-                }
-            })
+            .filter_map(|(i, &v)| (validator_index == v as u64).then_some(i as u64))
             .collect();
         Self::new(validator_index, pubkey, validator_sync_committee_indices)
     }
@@ -46,13 +40,7 @@ impl SyncDuty {
             .pubkeys
             .iter()
             .enumerate()
-            .filter_map(|(i, committee_pubkey)| {
-                if &pubkey == committee_pubkey {
-                    Some(i as u64)
-                } else {
-                    None
-                }
-            })
+            .filter_map(|(i, committee_pubkey)| (&pubkey == committee_pubkey).then_some(i as u64))
             .collect();
         Self::new(validator_index, pubkey, validator_sync_committee_indices)
     }

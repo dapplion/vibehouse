@@ -549,6 +549,26 @@ lint:
 		-D clippy::zero_repeat_side_effects \
 		-D clippy::zero_sized_map_values \
 		-D clippy::zombie_processes \
+		-D clippy::doc_overindented_list_items \
+		-D clippy::float_cmp_const \
+		-D clippy::four_forward_slashes \
+		-D clippy::into_iter_on_ref \
+		-D clippy::manual_inspect \
+		-D clippy::manual_is_infinite \
+		-D clippy::manual_unwrap_or \
+		-D clippy::manual_unwrap_or_default \
+		-D clippy::match_on_vec_items \
+		-D clippy::mutex_integer \
+		-D clippy::needless_character_iteration \
+		-D clippy::needless_return_with_question_mark \
+		-D clippy::permissions_set_readonly_false \
+		-D clippy::redundant_closure_call \
+		-D clippy::seek_from_current \
+		-D clippy::seek_to_start_instead_of_rewind \
+		-D clippy::string_to_string \
+		-D clippy::suspicious_to_owned \
+		-D clippy::trailing_empty_array \
+		-D clippy::transmute_num_to_bytes \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.

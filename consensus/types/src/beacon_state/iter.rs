@@ -33,22 +33,18 @@ impl<E: EthSpec> Iterator for BlockRootsIter<'_, E> {
     type Item = Result<(Slot, Hash256), Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.prev > self.genesis_slot
+        let can_advance = self.prev > self.genesis_slot
             && self.prev
                 > self
                     .state
                     .slot()
-                    .saturating_sub(self.state.block_roots().len() as u64)
-        {
+                    .saturating_sub(self.state.block_roots().len() as u64);
+        can_advance.then(|| {
             self.prev = self.prev.saturating_sub(1_u64);
-            Some(
-                self.state
-                    .get_block_root(self.prev)
-                    .map(|root| (self.prev, *root)),
-            )
-        } else {
-            None
-        }
+            self.state
+                .get_block_root(self.prev)
+                .map(|root| (self.prev, *root))
+        })
     }
 }
 

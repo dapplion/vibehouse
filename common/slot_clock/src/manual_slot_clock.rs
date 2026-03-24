@@ -123,16 +123,14 @@ impl SlotClock for ManualSlotClock {
     fn slot_of(&self, now: Duration) -> Option<Slot> {
         let genesis = self.genesis_duration;
 
-        if now >= genesis {
+        (now >= genesis).then(|| {
             let since_genesis = now
                 .checked_sub(genesis)
                 .expect("Control flow ensures now is greater than or equal to genesis");
             let slot =
                 Slot::from((since_genesis.as_millis() / self.slot_duration.as_millis()) as u64);
-            Some(slot + self.genesis_slot)
-        } else {
-            None
-        }
+            slot + self.genesis_slot
+        })
     }
 
     fn duration_to_next_slot(&self) -> Option<Duration> {

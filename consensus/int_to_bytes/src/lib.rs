@@ -18,12 +18,10 @@ pub fn int_to_bytes2(int: u16) -> [u8; 2] {
 /// conditions, so we ensure the calling function is aware of the error condition as opposed to
 /// hiding it with a modulo.
 pub fn int_to_bytes3(int: u32) -> Option<[u8; 3]> {
-    if int < 2_u32.pow(3 * 8) {
+    (int < 2_u32.pow(3 * 8)).then(|| {
         let le = int.to_le_bytes();
-        Some([le[0], le[1], le[2]])
-    } else {
-        None
-    }
+        [le[0], le[1], le[2]]
+    })
 }
 
 /// Returns `int` as little-endian bytes with a length of 4.

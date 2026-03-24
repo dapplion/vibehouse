@@ -278,12 +278,10 @@ impl TargetArrayChunk for MinTargetChunk {
         current_epoch: Epoch,
         config: &Config,
     ) -> Option<Epoch> {
-        if source_epoch > current_epoch - config.history_length as u64 {
+        (source_epoch > current_epoch - config.history_length as u64).then(|| {
             assert_ne!(source_epoch, 0);
-            Some(source_epoch - 1)
-        } else {
-            None
-        }
+            source_epoch - 1
+        })
     }
 
     // Move to last epoch of previous chunk
@@ -378,11 +376,7 @@ impl TargetArrayChunk for MaxTargetChunk {
         current_epoch: Epoch,
         _config: &Config,
     ) -> Option<Epoch> {
-        if source_epoch < current_epoch {
-            Some(source_epoch + 1)
-        } else {
-            None
-        }
+        (source_epoch < current_epoch).then_some(source_epoch + 1)
     }
 
     // Move to first epoch of next chunk
