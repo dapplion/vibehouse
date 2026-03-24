@@ -5352,10 +5352,12 @@ PTC window spec change (consensus-specs PR #4979) still open/unmerged — monito
 - `genesis/common.rs`: 1 instance — deposit proof `FixedVector` conversion now propagates through `Result<_, String>`
 
 **Not changed** (safe by construction):
-- `hot_cold_store.rs` / `reconstruct.rs`: withdrawal list conversions from `List<Withdrawal, MaxWithdrawalsPerPayload>` — already bounded, conversion is infallible
-- `attestation.rs`: single-element vec to `VariableList` — always fits
-- `swap_or_not_shuffle.rs`: `bytes[..8].try_into()` — 8-byte slice to `[u8; 8]` is always valid
+- `attestation.rs`: single-element vec to `VariableList` — always fits, changing return type would cascade to callers
 - Test code: ~80 instances across test files — acceptable in tests
+
+**Fixed in run 2294**:
+- `hot_cold_store.rs` / `reconstruct.rs`: withdrawal list conversions now use proper error handling via `map_err` to `Error::SszDecodeError`
+- `swap_or_not_shuffle.rs`: replaced `try_into().unwrap()` with `copy_from_slice` into a fixed array
 
 ### Run 2293 — full production safety audit (2026-03-24)
 
@@ -5372,3 +5374,14 @@ PTC window spec change (consensus-specs PR #4979) still open/unmerged — monito
 **Conclusion**: Production code is clean. No remaining safety improvements to make. The codebase has zero `unsafe`, zero unguarded `unwrap()` in Gloas code, and all remaining patterns are documented and safe by construction.
 
 **Verification**: genesis tests pass (2/2), kzg_utils tests pass (2/2), full workspace clippy clean, lint-full passed on push.
+
+### Run 2294 — replace remaining try_into().unwrap() in store and shuffle (2026-03-24)
+
+**Scope**: Fix remaining `try_into().unwrap()` in runtime (non-test) code that were previously marked "safe by construction".
+
+**Changes**:
+- `hot_cold_store.rs`: withdrawal list conversion (`List` → `Vec` → `VariableList`) now uses `map_err` to `Error::SszDecodeError` instead of `unwrap()`. Restructured from `.map()` closure to `match` to allow `?` propagation.
+- `reconstruct.rs`: same pattern — withdrawal list conversion with proper error handling
+- `swap_or_not_shuffle/compute_shuffled_index.rs`: replaced `bytes[..8].try_into().unwrap()` with `copy_from_slice` into a fixed `[u8; 8]` array — avoids TryInto entirely
+
+**Verification**: 236/236 store tests pass, 5/5 shuffle tests pass, clippy clean, lint-full passed on push.
