@@ -375,3 +375,15 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - CI: latest push (clippy fix, run 23481206829) — check+clippy passed, tests in progress. Nightly slasher failure already fixed (5d23ecf85), awaiting tonight's run.
 - **Enforced 42 new clippy lints** (326 → 368): correctness guards (await_holding_lock, uninit_vec, unconditional_recursion, mutable_key_type, out_of_bounds_indexing, wrong_transmute), performance (box_default, drain_collect, unnecessary_sort_by), transmute safety. All pass without code changes.
 - cargo audit: same known advisories, no new issues.
+
+### run 2290 (Mar 24) — spec check + full EF test verification
+
+- Spec audit: no new Gloas PRs merged since last check. 3 new merged PRs are all test infrastructure (#5023 merged Mar 23) — already handled by our test runner.
+- **PTC window (#4979)**: still OPEN, renamed to `ptc_window`, design stable but 0 approvals. Competing PRs #4992 and #5020 both closed in its favor.
+- Open Gloas PRs unchanged: #4979, #4954, #4843, #4898, #4892, #4939, #4960, #4932, #4840, #4747, #4630, #4558
+- consensus-specs nightly test generation broken upstream (Mar 8-9 runs cancelled); last successful nightly (Mar 7) is older than alpha.3, so not useful for ahead-of-release testing
+- EF tests verified locally: 139/139 (fake_crypto+minimal) + 79/79 (real_crypto+minimal) = 218/218 all passing
+- Nightly CI (Mar 24): passed (MEGABYTE fix from 5d23ecf85 landed)
+- CI (push, run 23485195611): 4/6 jobs passed (check+clippy, ef-tests, network+op_pool, http_api), unit tests + beacon_chain still running
+- Codebase health: zero clippy warnings, zero unwrap()/expect() in consensus production code, all TODOs tracked to #36 (all blocked on external factors)
+- **No action needed. Spec current, codebase healthy.**
