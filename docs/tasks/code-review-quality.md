@@ -5269,3 +5269,13 @@ CI `check + clippy + fmt` failed on newer Rust toolchain: 3 lints from run 2275 
 - `clippy::match_on_vec_items` — removed (covered by `clippy::indexing_slicing`)
 - `clippy::string_to_string` — removed (covered by `clippy::implicit_clone`)
 - `clippy::transmute_num_to_bytes` — renamed to rustc `unnecessary_transmutes`
+
+### Run 2277: health check + disk cleanup
+
+Comprehensive health check: CI green, 218/218 EF spec tests passing (79 real crypto + 139 fake crypto), default clippy clean, no new consensus-specs PRs requiring implementation (checked all merges through Mar 24). Audited unwrap/expect/indexing usage in consensus-critical code (state_processing, fork_choice, proto_array) — state_processing is clean, proto_array instances are all invariant-safe.
+
+Disk cleanup: freed ~80GB (75GB debug target, 2.6GB doc target, 2.7GB Docker build cache, 0.5GB Docker images, 0.5GB kurtosis logs). Disk usage went from 100% (2GB free) to 82% (83GB free).
+
+Devnet verification: 4-node devnet passed after cleanup — finalized epoch 8 (slot 80), chain healthy through Gloas fork. No issues.
+
+PTC window spec change (consensus-specs PR #4979) still open/unmerged — monitoring.
