@@ -571,6 +571,48 @@ lint:
 		-D clippy::items_after_test_module \
 		-D clippy::mutex_atomic \
 		-D clippy::pub_underscore_fields \
+		-D clippy::almost_swapped \
+		-D clippy::approx_constant \
+		-D clippy::await_holding_lock \
+		-D clippy::await_holding_refcell_ref \
+		-D clippy::box_collection \
+		-D clippy::box_default \
+		-D clippy::char_lit_as_u8 \
+		-D clippy::crosspointer_transmute \
+		-D clippy::derive_ord_xor_partial_ord \
+		-D clippy::diverging_sub_expression \
+		-D clippy::double_neg \
+		-D clippy::drain_collect \
+		-D clippy::drop_non_drop \
+		-D clippy::duration_subsec \
+		-D clippy::empty_loop \
+		-D clippy::erasing_op \
+		-D clippy::fn_to_numeric_cast_with_truncation \
+		-D clippy::if_let_mutex \
+		-D clippy::invalid_regex \
+		-D clippy::mistyped_literal_suffixes \
+		-D clippy::mutable_key_type \
+		-D clippy::needless_question_mark \
+		-D clippy::never_loop \
+		-D clippy::out_of_bounds_indexing \
+		-D clippy::overflow_check_conditional \
+		-D clippy::path_ends_with_ext \
+		-D clippy::range_step_by_zero \
+		-D clippy::size_of_ref \
+		-D clippy::slow_vector_initialization \
+		-D clippy::suspicious_map \
+		-D clippy::temporary_assignment \
+		-D clippy::transmuting_null \
+		-D clippy::unchecked_duration_subtraction \
+		-D clippy::unconditional_recursion \
+		-D clippy::uninit_vec \
+		-D clippy::unit_return_expecting_ord \
+		-D clippy::unnecessary_sort_by \
+		-D clippy::unsound_collection_transmute \
+		-D clippy::vec_box \
+		-D clippy::while_immutable_condition \
+		-D clippy::wildcard_dependencies \
+		-D clippy::wrong_transmute \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.
