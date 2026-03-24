@@ -30,6 +30,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2349 (Mar 24) — holding pattern, no new spec activity
+
+- CI: all green (run 23506464983). Latest spec test release still v1.7.0-alpha.3.
+- Spec: no new consensus-specs merges since #4939 (Mar 24 17:53 UTC). No new test vector release.
+- Open Gloas PRs unchanged: #4979 (PTC window, active review), #4892, #4898, #4962, #5035, #5036, #4843 — none merged.
+- `cargo outdated`: only `rand_xorshift` 0.4→0.5 (test-only, non-critical). `cargo audit`: unchanged (1 rsa vuln, 5 unmaintained warnings, 1 yanked — all transitive, none actionable).
+- Codebase clean: zero TODOs in state_processing, one tracked TODO in beacon_chain (#36).
+- No code changes — holding pattern.
+
 ### run 2346 (Mar 24) — holding pattern, full spec audit
 
 - CI: all green. Zero clippy warnings. Clean build.
