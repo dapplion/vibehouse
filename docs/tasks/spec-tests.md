@@ -30,6 +30,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2350 (Mar 24) — holding pattern, nightly flake investigation
+
+- CI: all green (latest CI run success). Latest spec test release still v1.7.0-alpha.3.
+- Spec: no new consensus-specs merges since last run. No new test vector release.
+- Open Gloas PRs: #4979 (PTC window) actively reviewed — renamed from ptc_lookbehind to ptc_window (consensus: terencechain, jtraglia, nflaig), validator epoch bound fix committed. #5035 got approval from jtraglia. #4892, #4898, #5036, #4843 unchanged.
+- Nightly investigation: Mar 23 slasher failure was CI toolchain transient (MEGABYTE dead_code warning with redb-only — cannot reproduce locally, compiles clean). Mar 22 op-pool-tests failure was curl 404 downloading CI dependencies. Both are transient, not code bugs. Mar 24 nightly passed.
+- `cargo outdated`: unchanged (rand_xorshift 0.4→0.5 only). `cargo audit`: unchanged.
+- No code changes — holding pattern.
+
 ### run 2349 (Mar 24) — holding pattern, no new spec activity
 
 - CI: all green (run 23506464983). Latest spec test release still v1.7.0-alpha.3.
