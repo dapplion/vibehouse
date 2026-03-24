@@ -5509,3 +5509,22 @@ Added `debug_assert!(vote.current_slot >= node_slot)` in both `is_supporting_vot
 **CI**: Latest run (23492870696) check+clippy+fmt passed, other jobs in progress. Yesterday's nightly slasher failure was pre-existing (MEGABYTE dead code in redb-only build, fixed by 5d23ecf85). Today's nightly: green.
 
 **Assessment**: Codebase in excellent shape. No actionable work. Waiting for spec changes (primarily #4979 PTC window, #4843 variable PTC deadline).
+
+### Run 2302 — spec tracking + proposer preferences analysis (2026-03-24)
+
+**Scope**: Check for new consensus-specs activity, analyze new open PRs, review proposer preferences implementation.
+
+**Spec tracking — 2 new open PRs (both from nflaig, just created today)**:
+- **#5035** (Allow same epoch proposer preferences): Extends `SignedProposerPreferences` gossip to accept current epoch in addition to next epoch. Adds `proposal_slot > state.slot` check. Changes `is_valid_proposal_slot` to index both epochs in `proposer_lookahead`. Changes `get_upcoming_proposal_slots` to include remaining current-epoch slots. **Impact on vibehouse**: Would require updates to `process_gossip_proposer_preferences()` (gossip_methods.rs:4121 epoch check), `broadcast_proposer_preferences()` (duties_service.rs:1673 to fetch current+next epoch duties), and proposer_lookahead index calculation (gossip_methods.rs:4162). Not merged, 0 reviews.
+- **#5036** (Relax bid gossip dependency on proposer preferences): Removes hard requirement for `SignedProposerPreferences` to have been seen before forwarding bids. Fee_recipient and gas_limit checks become conditional on preferences existing. **Impact on vibehouse**: Would change `verify_execution_bid_for_gossip()` (gloas_verification.rs:484-504) to make preference checks optional instead of IGNORE on missing. Small change. Not merged, 0 reviews.
+- **#5034** (Bump version to v1.7.0-alpha.4): Version string change only (testing label). Signals upcoming alpha.4 release with test fixtures for #5022 (block-known assert) and #5023 (block root filenames). Already compliant with both.
+
+**Other open PRs — no changes from run 2301**: #4892 (2 approvals, already implemented), #4898 (1 approval, already implemented), #4979 (0 approvals, blocked), #4843 (1 approval, under discussion), #4962 (1 approval, blocked), #4747 (fast confirmation rule, updated today, 0 reviews).
+
+**Recent merges**: All 10 commits since March 15 are CI/infra/dependency updates (#5015, #5029, #5027, #5031, #5030, #5028, #5023, #5010, #5017, #5025, #5026). No spec changes.
+
+**CI status**: Run 23492870696 — check+clippy+fmt ✓, ef-tests ✓, remaining jobs (unit tests, beacon_chain, http_api, network+op_pool) in progress. Previous completed run (nextest pin) all 6 jobs green. Nightly: today green, March 23 failure was MEGABYTE dead code (already fixed by 5d23ecf85), March 22 failure was nextest download 404 (fixed by nextest pin).
+
+**Proposer preferences code review**: Reviewed all 3 components — BN gossip validation (gossip_methods.rs:4097-4264), bid verification (gloas_verification.rs:450-530), VC broadcast (duties_service.rs:1635-1801). All correct per current spec (v1.7.0-alpha.3). Ready for quick implementation when #5035 or #5036 merge.
+
+**Assessment**: Codebase stable. Two new spec PRs (#5035, #5036) are on the horizon but too early to implement. Alpha.4 release approaching — we're already compliant with all changes it will include.
