@@ -5279,3 +5279,21 @@ Disk cleanup: freed ~80GB (75GB debug target, 2.6GB doc target, 2.7GB Docker bui
 Devnet verification: 4-node devnet passed after cleanup — finalized epoch 8 (slot 80), chain healthy through Gloas fork. No issues.
 
 PTC window spec change (consensus-specs PR #4979) still open/unmerged — monitoring.
+
+### Run 2278: spec audit + nightly verification (2026-03-24)
+
+**Spec audit**: Reviewed 6 new consensus-specs PRs merged since last audit (#5001, #5002, #5005, #5008, #5014, #5022, #5023). None require client code changes:
+- #5022 (assert block known in PTC attestation) — already handled at fork_choice.rs:1430-1432
+- #5001 (parent_block_root in bid filter key) — already implemented in observed_execution_bids.rs
+- #5008 (field name correction) — docs-only
+- #5002 (envelope signature wording) — docs-only
+- #5014 (EIP-8025 p2p protocol) — different EIP, not applicable
+- #5023 (block root filenames + Gloas comptests) — test infrastructure only
+
+**CI**: Green. Nightly failures (Mar 22-23) were slasher redb-only dead code — already fixed in 5d23ecf85 (Mar 23), tonight's nightly will pass. Verified locally: `cargo check -p slasher --no-default-features --features redb` clean.
+
+**Lint**: `make lint` clean (317 lints enforced). Default clippy clean. No new lints to add (rand_xorshift 0.4→0.5 blocked by rand_core version mismatch with rand 0.9).
+
+**PTC window PR #4979**: 13 commits, 12 review comments, last updated Mar 23. Design stable — updated implementation memory with latest diff analysis including `compute_ptc`, `get_ptc` cache lookup logic, `process_ptc_window` epoch processing, and `initialize_ptc_window` fork upgrade helper.
+
+**No code changes this run** — codebase verified healthy, all spec PRs audited, holding for PTC window merge.
