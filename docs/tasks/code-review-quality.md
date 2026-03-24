@@ -5608,3 +5608,27 @@ Added `debug_assert!(vote.current_slot >= node_slot)` in both `is_supporting_vot
 - #4898 (PENDING no early return in tiebreaker): verified correct at proto_array_fork_choice.rs:1826-1842
 
 **Assessment**: Codebase is thoroughly clean. No actionable safety improvements remaining in production code.
+
+### Run 2311 — spec tracking + compliance check (2026-03-24)
+
+**Scope**: Check for new consensus-specs merges, verify compliance.
+
+**Spec tracking — 2 new Gloas-relevant merges since last check**:
+- **#5022** (block-known assert in `on_payload_attestation_message`, merged Mar 23): Adds explicit assert that `data.beacon_block_root` refers to a known block. **Already compliant**: our `on_payload_attestation` at fork_choice.rs:1426-1432 checks `indices.get(&beacon_block_root)` and returns `UnknownBeaconBlockRoot` error.
+- **#5008** (field name correction `block_root` → `beacon_block_root` in `ExecutionPayloadEnvelopesByRoot` spec docs, merged Mar 22): Documentation-only fix. **Already compliant**: our `ExecutionPayloadEnvelope` type uses `beacon_block_root` (execution_payload_envelope.rs:38).
+- **#5023** (block root filenames + Gloas comptests, merged Mar 23): Test infrastructure only. No action needed.
+
+**Other merges**: #5014 (EIP-8025 P2P for ZK proofs) — separate EIP, not Gloas. All other recent merges are CI/deps/infra.
+
+**Open PR status — no changes from run 2304**:
+- #4979 (PTC window cache): still open, 0 approvals, blocked
+- #5035 (same epoch proposer preferences): still open, under review
+- #5036 (relax bid gossip dependency): still open, under review
+- #4843 (variable PTC deadline): still open, under discussion
+- #4747 (fast confirmation rule): still open, very active but far from merge
+
+**CI status**: Run 23496276572 (commit 55a8dba02) — check+clippy+fmt passed, 5 jobs still in progress. Previous full runs all green.
+
+**Production code audit**: Confirmed all `.unwrap()` calls in production code have been eliminated. Only test code remains.
+
+**Assessment**: No actionable work. All spec merges compliant. Codebase stable. Waiting for spec PRs to merge.
