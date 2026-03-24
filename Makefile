@@ -242,7 +242,7 @@ mdlint:
 test-full: cargo-fmt test-release test-debug test-ef test-exec-engine
 
 # Lints the code for bad style and potentially unsafe arithmetic using Clippy.
-# Runs clippy with workspace-wide lints enforced as errors (288 lints, sorted, deduplicated).
+# Runs clippy with workspace-wide lints enforced as errors (327 lints, sorted, deduplicated).
 lint:
 	cargo clippy --workspace --benches --tests $(EXTRA_CLIPPY_OPTS) --features "$(TEST_FEATURES)" -- \
 		-D clippy::absurd_extreme_comparisons \
@@ -566,6 +566,12 @@ lint:
 		-D clippy::seek_to_start_instead_of_rewind \
 		-D clippy::suspicious_to_owned \
 		-D clippy::trailing_empty_array \
+		-D clippy::doc_link_with_quotes \
+		-D clippy::filter_map_bool_then \
+		-D clippy::items_after_test_module \
+		-D clippy::mutex_atomic \
+		-D clippy::pub_underscore_fields \
+		-D clippy::string_to_string \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.

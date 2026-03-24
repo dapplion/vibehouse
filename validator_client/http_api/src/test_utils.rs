@@ -61,7 +61,7 @@ pub struct ApiTester {
     pub url: SensitiveUrl,
     pub api_token: String,
     pub test_runtime: TestRuntime,
-    pub _server_shutdown: oneshot::Sender<()>,
+    _server_shutdown: oneshot::Sender<()>,
     pub validator_dir: TempDir,
     pub secrets_dir: TempDir,
     pub spec: Arc<ChainSpec>,
