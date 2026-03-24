@@ -30,6 +30,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2338 (Mar 24) — CI green, spec stable, holding pattern
+
+- CI: all green. Nightly Mar 24 green.
+- Spec: no new consensus-specs merges since last run. No new test vector release (still v1.5.0 / alpha.3 vectors).
+- All 9 tracked open Gloas PRs unchanged. None merged. #4979 (PTC window) still under active review. #4962 (sanity/blocks tests, 2 approvals) closest to merge.
+- Reviewed untracked Gloas PRs: #4960 (fork choice deposit test, test-only, 0 approvals), #4932 (sanity/blocks tests, test-only, 0 approvals), #4840 (EIP-7843, draft, stale). None require action.
+- No code changes — codebase healthy, holding pattern.
+
 ### run 2337 (Mar 24) — CI green, spec stable, holding pattern
 
 - CI: run 23506464983 all green. Nightly Mar 24 green (Mar 23 slasher flake already fixed).
