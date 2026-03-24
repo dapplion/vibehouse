@@ -224,3 +224,13 @@ Implemented SHOULD behavior from Gloas p2p spec (aligned with open PR #4939): re
 - **Devnet verification**: ran 4-node devnet to verify #5035 (same-epoch prefs) and #5036 (relaxed bid gossip) work end-to-end. Result: finalized_epoch=8, no stalls. Gossip changes working correctly in a real network.
 - **CI**: push CI for run 2329 — check/clippy/fmt passed, ef-tests passed, network+op_pool passed. Unit tests, beacon_chain, http_api still running.
 - **Open Gloas spec PRs**: unchanged from run 2330. #4979 (PTC window) still in active review, not merged.
+
+### run 2332 (Mar 24) — routine spec + health check
+
+- **No new Gloas spec merges** since last check. Latest merge remains #4939 (already implemented).
+- **New spec PR #5037** (Remove fork version/epoch in EIP-8025 specs): testing infra only, not Gloas-related, no action needed.
+- **#4979 (PTC window)**: still under active review (jtraglia fixing epoch range, nflaig asking about ptc_assignments). 0 approvals. Not ready to implement.
+- **CI**: run 2329 CI — 4/6 jobs passed (check+clippy+fmt, ef-tests, http_api, network+op_pool). Unit tests + beacon_chain still running.
+- **Dependencies**: all at latest semver-compatible versions. Remaining "behind" are all major version bumps (bincode 3.0, rand 0.10, reqwest 0.13).
+- **Cargo audit**: unchanged — 1 medium (rsa, no fix), 5 unmaintained warnings (all transitive).
+- **No actionable work**: all priorities DONE, codebase clean, spec fully tracked.
