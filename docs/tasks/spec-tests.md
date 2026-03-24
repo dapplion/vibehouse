@@ -30,6 +30,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2356 (Mar 25) — holding pattern, alpha.4 release pending
+
+- CI: all green (run 23515812485 in progress, 4/6 jobs passed, 2 finishing). Nightly: all 25 jobs passed (Mar 24).
+- Spec: v1.7.0-alpha.4 version bump merged (#5034, Mar 24) but GitHub release not yet published — no test vector assets available. Test vectors pinned to alpha.3.
+- No new consensus-specs merges since yesterday. No new Gloas-labeled PRs.
+- Open Gloas PRs: #4979 (PTC window) actively reviewed (5 reviewers all COMMENTED, no APPROVED yet). #5035, #5036 still open (proactively implemented). #4898, #4892, #4962, #4843 unchanged.
+- Codebase health: zero build warnings (release + nightly clippy). Zero outdated compatible deps. `cargo audit` unchanged.
+- No code changes — holding pattern.
+
 ### run 2350 (Mar 24) — holding pattern, nightly flake investigation
 
 - CI: all green (latest CI run success). Latest spec test release still v1.7.0-alpha.3.
