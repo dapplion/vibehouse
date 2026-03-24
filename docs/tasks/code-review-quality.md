@@ -5568,3 +5568,15 @@ Added `debug_assert!(vote.current_slot >= node_slot)` in both `is_supporting_vot
 **Issue #36 (misc code improvements)**: Remaining items all blocked (EIP-7892 spec ×3, blst upstream ×1) or non-critical (persist pools, error enum refactor). Nothing actionable.
 
 **Assessment**: No actionable work. Codebase stable, CI green, spec tracked. Waiting for spec changes.
+
+### Run 2305 — spec tracking + stability check (2026-03-24)
+
+**Scope**: Check for new consensus-specs activity, verify CI health, deep audit of production unwrap() safety.
+
+**Spec tracking**: No new Gloas-relevant PRs merged. Recent merged PRs (#5015, #5023, etc.) are all CI/infra/test-infrastructure changes. Open Gloas PRs (#5035, #5036, #4979, #4747, #4843) remain under review with no approvals.
+
+**CI status**: Run 23492870696 — 5/6 passed (check+clippy+fmt, ef-tests, unit-tests, network+op_pool, http_api), beacon_chain still in progress. Nightly passed today after slasher redb-only dead code fix (5d23ecf85).
+
+**Production code audit**: Deep search of `consensus/state_processing/src/`, `consensus/fork_choice/src/`, and `beacon_node/beacon_chain/src/` for `.unwrap()` in non-test runtime code. **Zero dangerous unwrap() calls found.** All remaining `.unwrap()` and `.try_into().unwrap()` calls are strictly in test code (`#[cfg(test)]` modules or `*test*.rs` files). The `try_into().unwrap()` elimination work from runs 2290-2299 is complete for production code.
+
+**Assessment**: No actionable work. Codebase stable, CI green, production code safe. Waiting for spec changes.
