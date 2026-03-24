@@ -5248,3 +5248,9 @@ Notable correctness-oriented lints: `mut_mutex_lock` (catches `lock()` on `&mut 
 Code fixes: removed unnecessary `r` raw string prefixes from 18 string literals (mock_beacon_node.rs, chain_spec.rs, create_validators.rs), replaced `.ok()` with `let _ =` for discarded results in block_service and execution_layer test utils.
 
 Also investigated nightly CI failures: Mar 22 was transient nextest download 404, Mar 23 was slasher dead code (already fixed in 5d23ecf85). Both resolved.
+
+### Run 2274: fix CI failure — remove renamed clippy::mismatched_target_os lint
+
+CI `check + clippy + fmt` job failed because `clippy::mismatched_target_os` was renamed to `unexpected_cfgs` (a rustc lint). The rename causes a `renamed_and_removed_lints` warning which becomes an error via `-D warnings`. Passes locally due to incremental build caching but fails on CI's clean build. Fix: removed the lint from the Makefile (304 lints enforced, down from 305).
+
+Also audited 3 post-alpha.3 spec PRs (#5022, #5008, #5023): none require code changes. #5022 (block-known check in `on_payload_attestation_message`) already implemented at fork_choice.rs:1430-1432. #5008 is a field name documentation fix. #5023 is test infrastructure only.
