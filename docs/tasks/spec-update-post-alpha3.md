@@ -264,3 +264,14 @@ Implemented SHOULD behavior from Gloas p2p spec (aligned with open PR #4939): re
 - **Clippy/warnings**: zero across workspace on both stable and nightly.
 - **Open Gloas spec PRs**: #4979 (PTC window, still under review), #5035/#5036 (implemented), #4892/#4898 (aligned). No newly merged.
 - **No actionable work**.
+
+### run 2347 (Mar 24) — comprehensive codebase audit
+
+- **Spec check**: no new Gloas spec merges since #4939. PTC window (#4979) still under active review (0 approvals). alpha.4 tag not yet released as GitHub Release.
+- **Clippy**: zero warnings across entire workspace (excl. ef_tests).
+- **Cargo doc**: zero warnings (`RUSTDOCFLAGS="-D warnings"`).
+- **Cargo audit**: unchanged — 1 medium (rsa, no fix), 6 unmaintained warnings (transitive: ansi_term, bincode, derivative, filesystem, paste, unicode-segmentation).
+- **Production unwrap audit**: exhaustive search across beacon_node/, consensus/, validator_client/. All `.unwrap()` calls are in `#[cfg(test)]` modules or are logically safe (static string parsing, same-size container conversion, proven-non-empty slices). Zero genuine panic risk in production code.
+- **Dependencies**: rand_xorshift 0.4→0.5 still blocked by rand_core version split. No other outdated deps.
+- **Open Gloas spec PRs**: #4979 (PTC window, active review), #5035/#5036 (implemented), #4892/#4898 (aligned), #4843 (variable PTC deadline, APPROVED), #4954 (millisecond time), #4747 (fast confirmation rule)
+- **Devnet**: smoke test in progress.
