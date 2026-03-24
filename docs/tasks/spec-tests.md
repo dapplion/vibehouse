@@ -30,6 +30,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2284 (Mar 24) — maintenance check, #5022 already compliant
+
+- CI: run 23475160830 in progress (check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, beacon_chain/http_api/unit still running). Previous run (23474978792) green.
+- Nightly Mar 23 slasher failure confirmed on old commit (f4af903eb, missing cfg guard on MEGABYTE constant) — already fixed on HEAD (28-29 has `#[cfg(any(feature = "lmdb", feature = "mdbx"))]`). Mar 24 nightly should be green.
+- Spec: v1.7.0-alpha.3 still latest. No new spec test release.
+- **New merge: #5022** (add check that block is known in `on_payload_attestation_message`) — reviewed: vibehouse already has this check at `fork_choice.rs:1426-1432` (`indices.get(&beacon_block_root)` returns `UnknownBeaconBlockRoot` error). Already compliant.
+- #5023 (test fixture fix) merged Mar 23 — test-only, already tracked in run 2260.
+- All 7 tracked Gloas PRs still open: #4979 (PTC window, under review), #4962 (withdrawal tests), #4843 (variable PTC deadline), #4892 (remove impossible branch, APPROVED), #4898 (remove pending tiebreaker, APPROVED), #4954 (ms in fork choice), #4747 (fast confirmation rule).
+- Clippy: 0 warnings (stable + nightly). cargo doc: 0 warnings. cargo audit: unchanged (1 rsa, 5 unmaintained).
+- Dependencies: only `rand_xorshift` outdated (0.4→0.5, blocked by rand_core version conflict).
+- No code changes — codebase healthy, holding pattern.
+
 ### run 2283 (Mar 24) — fix CI clippy failure (removed lint)
 
 - CI: run 23474978792 failed — `clippy::string_to_string` lint removed from clippy (covered by `implicit_clone`). Fixed by removing from Makefile (implicit_clone already enforced). Pushed 144f8ada2.
