@@ -5412,3 +5412,20 @@ Also verified vibehouse is ahead of two open PRs:
 **CI status**: check+clippy+fmt ✓, ef-tests ✓, http_api ✓, network+op_pool ✓, beacon_chain and unit tests in progress.
 
 **Dependency audit**: `cargo audit` shows 1 medium vulnerability (RSA timing side-channel in `rsa` 0.9.10 via `jsonwebtoken`) — no fix available upstream. `cargo clippy --workspace --all-targets` clean. No outdated dependencies worth updating.
+
+### Run 2297 — CI hardening + production code audit (2026-03-24)
+
+**Scope**: Fix nightly CI flakiness, audit remaining `try_into().unwrap()`, verify all open spec PRs.
+
+**CI fix**: Pinned `cargo-nextest` to v0.9.132 in both `ci.yml` and `nightly-tests.yml`. The March 22 nightly failure was caused by `cargo-nextest@latest` resolving to v0.9.132 while the binary was transiently unavailable (HTTP 404). Pinning prevents future flakiness during release publishing.
+
+**Nightly failure audit**: March 22 op-pool failure was nextest download 404 (infra, not code). March 23 slasher failure was dead code in redb-only build — already fixed by `5d23ecf85`. Today's nightly: all green.
+
+**Production code audit**: Confirmed all 111 remaining `try_into().unwrap()` across 29 files are exclusively in test code. Zero instances in production code. The cleanup from runs 2290-2296 is complete.
+
+**Spec PR review**: Verified alignment with all close-to-merge Gloas PRs:
+- **#4892** (remove impossible branch, 2 approvals) — already implemented (uses `==` not `<=`)
+- **#4898** (remove pending tiebreaker, 1 approval) — already implemented (no PENDING early return)
+- **#4979** (PTC window cache) — still under discussion, not ready
+- **#4843** (variable PTC deadline) — active discussion, 1 approval
+- **#4954** (millisecond store) — blocked, 0 reviews
