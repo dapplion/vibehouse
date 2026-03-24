@@ -30,6 +30,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2326 (Mar 24) — CI monitoring, holding pattern
+
+- CI: run 23504997273 in progress (check+clippy ✓, 5 jobs running). Last full green: 23496276572.
+- Spec: no new consensus-specs commits since last check. No new test vector release (still v1.5.0).
+- All 9 tracked open Gloas PRs unchanged: #4979, #4843, #4892, #4898, #4954, #4747, #5035, #5036, #4962.
+- No new Gloas-related PRs opened. #5037 (EIP-8025, not Gloas) is the only new PR.
+- No code changes — codebase healthy, holding pattern.
+
 ### run 2325 (Mar 24) — CI monitoring, #4979 reopened
 
 - CI: run 23504997273 in progress for #5036 test fix commit (all 6 jobs running). Previous run (23504503578) cancelled (superseded). Last full green: 23496276572.
