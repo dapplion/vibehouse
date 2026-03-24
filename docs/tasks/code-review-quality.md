@@ -5652,3 +5652,26 @@ Added `debug_assert!(vote.current_slot >= node_slot)` in both `is_supporting_vot
 **CI**: Run 23496276572 in progress — check+clippy+fmt passed, ef-tests passed, http_api passed, network+op_pool passed. Remaining jobs (unit tests, beacon_chain) in progress.
 
 **Assessment**: Codebase at peak cleanliness. All production safety checks verified. No actionable work remaining.
+
+### Run 2315 — spec tracking + full verification (2026-03-24)
+
+**Scope**: Spec tracking, build verification, full EF test suite validation.
+
+**Spec tracking — no new Gloas-relevant merges**:
+- v1.7.0-alpha.4 version bump (#5034) merged Mar 24, but no release published yet. Changes since alpha.3 are all CI/deps/infra, test fixes (#5005, #4902), and doc corrections (#5008) — all previously verified as compliant in runs 2311-2312.
+- Open PRs unchanged: #4979 (PTC window, blocked), #5035 (same-epoch prefs, 1 approval), #5036 (relax bid gossip), #4843 (variable PTC deadline), #4747 (fast confirmation rule).
+- #4962 (missed payload withdrawal sanity tests) has 2 approvals — test-only, will need new fixtures when released.
+
+**Build verification**:
+- Release build: clean (2m18s)
+- `make lint`: clean (52s)
+- Nightly clippy (1.96.0-nightly): zero warnings
+- `cargo audit`: 1 vulnerability (RUSTSEC-2023-0071 in transitive `rsa` via `jsonwebtoken`), 5 allowed warnings — all in transitive deps, no fix available
+
+**EF test suite (minimal preset)**:
+- Operations + epoch processing + sanity: 35/35 pass
+- Fork choice: 9/9 pass
+- SSZ static: 69/69 pass
+- Full suite (fake_crypto, minimal): 139/139 pass, 0 skipped
+
+**Assessment**: Codebase fully healthy. All spec merges compliant. All tests passing. No actionable work remaining — waiting for spec PRs to merge or alpha.4 release with new fixtures.
