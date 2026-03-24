@@ -398,3 +398,11 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - **PTC window (#4979)**: still OPEN, not merged. Will implement when merged.
 - CI green (full lint passed on push), all tests pass.
 - **No action needed. Spec current, codebase healthy.**
+
+### run 2313 (Mar 24) — comprehensive runtime safety audit + full EF test verification
+
+- **Runtime unwrap audit**: comprehensive scan of all runtime (non-test) code in consensus/, beacon_node/, validator_client/. Result: **zero production unwrap()/expect() calls** remaining in consensus/state_processing, consensus/fork_choice, or validator_client service files. All prior cleanup work confirmed effective.
+- **EF test verification**: 139/139 (fake_crypto+minimal) + 79/79 (real_crypto+minimal) = 218/218 all passing, including Gloas fork choice `on_execution_payload` tests from #4940.
+- **Spec tracking**: no new Gloas spec merges since #5023 (Mar 23). PTC window (#4979) still OPEN (mergeable_state=blocked, 0 approvals, 12 review comments, last updated Mar 23).
+- **CI**: latest push (run 23496276572) completed successfully. Zero clippy warnings.
+- **No action needed. Spec current, codebase healthy.**
