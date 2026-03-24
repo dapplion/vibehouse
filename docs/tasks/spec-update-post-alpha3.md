@@ -368,3 +368,10 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - cargo audit: same known advisories (RUSTSEC-2023-0071 rsa unfixable, 5 unmaintained transitive deps not actionable). `filesystem` crate warning is false positive (our local crate, not the crates.io one)
 - cargo outdated: only rand_xorshift 0.4→0.5 (blocked by rand_core version split)
 - **No action needed. Spec current, codebase healthy.**
+
+### run 2288 (Mar 24) — spec check + clippy lint expansion
+
+- Spec audit: no new Gloas PRs merged since last check. #4979 (PTC window) still OPEN. #4843 (variable PTC deadline) still OPEN. No new releases or test fixtures.
+- CI: latest push (clippy fix, run 23481206829) — check+clippy passed, tests in progress. Nightly slasher failure already fixed (5d23ecf85), awaiting tonight's run.
+- **Enforced 42 new clippy lints** (326 → 368): correctness guards (await_holding_lock, uninit_vec, unconditional_recursion, mutable_key_type, out_of_bounds_indexing, wrong_transmute), performance (box_default, drain_collect, unnecessary_sort_by), transmute safety. All pass without code changes.
+- cargo audit: same known advisories, no new issues.
