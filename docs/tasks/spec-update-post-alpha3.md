@@ -234,3 +234,13 @@ Implemented SHOULD behavior from Gloas p2p spec (aligned with open PR #4939): re
 - **Dependencies**: all at latest semver-compatible versions. Remaining "behind" are all major version bumps (bincode 3.0, rand 0.10, reqwest 0.13).
 - **Cargo audit**: unchanged — 1 medium (rsa, no fix), 5 unmaintained warnings (all transitive).
 - **No actionable work**: all priorities DONE, codebase clean, spec fully tracked.
+
+### run 2333 (Mar 24) — routine spec + CI check
+
+- **No new Gloas spec merges** since last check. Latest merge remains #4939 (already implemented).
+- **#4979 (PTC window)**: 0 approvals, 16 review comments, still under active review. Not ready to implement.
+- **CI**: run 2329 — 5/6 jobs passed (unit tests completed successfully). Beacon_chain tests still running. Nightly Mar 24 green.
+- **Compilation**: zero warnings from `cargo check --release`.
+- **Cargo audit**: unchanged — 1 medium (rsa, no fix), 5 unmaintained warnings (all transitive).
+- **Open Gloas spec PRs**: #5035 (implemented), #5036 (implemented), #4979 (PTC window, 0 approvals), #4892 (2 approvals, aligned), #4898 (1 approval, aligned), #4843 (variable PTC deadline), #4747 (fast confirmation rule)
+- **No actionable work**: all priorities DONE, codebase clean, spec fully tracked.
