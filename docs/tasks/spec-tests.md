@@ -30,6 +30,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2286 (Mar 24) — routine health check, all stable
+
+- CI: latest push run green (a19b41c03). Nightly Mar 23 slasher failure on old commit — fix on HEAD, tonight's nightly should be green.
+- Spec: v1.7.0-alpha.3 still latest. No new consensus-specs merges since last check. EF test fixtures: v1.5.0 (unchanged).
+- All 7 tracked Gloas PRs still open: #4979 (PTC window, blocked on reviews, updated Mar 23), #4843 (variable PTC deadline, 1 approval but value questioned), #4892 (remove impossible branch, APPROVED/clean), #4898 (remove pending tiebreaker, APPROVED/clean), #4954 (ms in fork choice, no reviews), #4747 (fast confirmation rule, 128 review comments — very active), #4939 (envelope request, blocked).
+- Verified #4892 and #4898 already match our implementation (is_supporting_vote uses == not <=, tiebreaker omits PENDING early-return).
+- Build: zero warnings. Clippy: zero warnings (stable 1.94.0 + nightly 1.96.0). cargo audit: unchanged (1 rsa, 5 unmaintained).
+- Workspace tests: 4991/5000 pass (8 web3signer failures = expected, CI excludes web3signer_tests).
+- Dependencies: only rand_xorshift 0.4→0.5 outdated (blocked by 3-way rand_core version split: 0.6/0.9/0.10).
+- Rust: 1.94.0 stable, up to date.
+- No code changes — codebase healthy, holding pattern.
+
 ### run 2285 (Mar 24) — maintenance check, nightly updated, all clean
 
 - CI: latest run green (5ecd595b2). Nightly Mar 23 slasher failure on old commit (MEGABYTE cfg guard) — already fixed on HEAD. Mar 22 nightly failure was transient curl 404 (infra issue).
