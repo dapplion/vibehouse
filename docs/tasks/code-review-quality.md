@@ -5632,3 +5632,23 @@ Added `debug_assert!(vote.current_slot >= node_slot)` in both `is_supporting_vot
 **Production code audit**: Confirmed all `.unwrap()` calls in production code have been eliminated. Only test code remains.
 
 **Assessment**: No actionable work. All spec merges compliant. Codebase stable. Waiting for spec PRs to merge.
+
+### Run 2312 — comprehensive safety audit + spec check (2026-03-24)
+
+**Scope**: Deep search for remaining runtime panic risks across all production code + spec tracking.
+
+**Safety audit results — CLEAN**:
+- Consensus crate (state_processing, fork_choice, proto_array): zero production `.unwrap()`, zero `checked_*.unwrap()`, zero unchecked array indexing. All `.expect()` calls have safety proofs in comments.
+- beacon_node + validator_client: zero `checked_sub().unwrap()` or `checked_add().unwrap()` patterns. All found by agent search were in test code or infallible type conversions (same-bound VariableList → Vec → VariableList).
+- `json_structures.rs` `try_into().unwrap()` calls (10 instances): verified safe — source types are already bounded VariableList with same max length as target.
+- `version.rs` `.parse().unwrap()` calls (5 instances): constant strings, infallible.
+- `cargo check`: zero warnings. Clippy clean.
+
+**Spec tracking — no new changes**:
+- Latest release: v1.6.1. Next: v1.7.0-alpha.4 (PR #5034, version bump only).
+- No new Gloas-relevant spec merges since run 2311.
+- Open PRs unchanged: #4979 (PTC window, blocked), #5035 (same-epoch prefs), #5036 (relax bid gossip), #4843 (variable PTC deadline).
+
+**CI**: Run 23496276572 in progress — check+clippy+fmt passed, ef-tests passed, http_api passed, network+op_pool passed. Remaining jobs (unit tests, beacon_chain) in progress.
+
+**Assessment**: Codebase at peak cleanliness. All production safety checks verified. No actionable work remaining.
