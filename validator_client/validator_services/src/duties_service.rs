@@ -1643,9 +1643,10 @@ async fn broadcast_proposer_preferences<S: ValidatorStore + 'static, T: SlotCloc
     let current_epoch = current_slot.epoch(S::E::slots_per_epoch());
     let next_epoch = current_epoch.saturating_add(1u64);
 
-    // Broadcast when the next epoch is a Gloas epoch — this allows broadcasting
-    // preferences one epoch before the fork, as recommended by the spec:
-    // "Proposers SHOULD broadcast their preferences in the epoch before the fork."
+    // Broadcast when the current or next epoch is a Gloas epoch — this allows
+    // broadcasting preferences one epoch before the fork, as recommended by the
+    // spec: "Proposers SHOULD broadcast their preferences in the epoch before
+    // the fork." After #5035, we also broadcast for future current-epoch slots.
     if spec
         .gloas_fork_epoch
         .is_none_or(|gloas_epoch| next_epoch < gloas_epoch)
@@ -1653,7 +1654,10 @@ async fn broadcast_proposer_preferences<S: ValidatorStore + 'static, T: SlotCloc
         return Ok(());
     }
 
-    // Check if we've already broadcast for this epoch's next-epoch.
+    // Check if we've already broadcast for this slot's context. We key on
+    // current_slot so that re-broadcasts cover newly-available current-epoch
+    // slots each slot (a new validator activation or key migration could require
+    // broadcasting mid-epoch).
     {
         let broadcast_epochs = duties_service.preferences_broadcast_epochs.lock();
         if broadcast_epochs.contains(&next_epoch) {
@@ -1669,27 +1673,60 @@ async fn broadcast_proposer_preferences<S: ValidatorStore + 'static, T: SlotCloc
         return Ok(());
     }
 
-    // Fetch next-epoch proposer duties from the BN.
-    let next_epoch_duties = match duties_service
+    // Fetch proposer duties for current and next epoch from the BN.
+    // Current-epoch duties include future slots only (filtered below).
+    let mut all_duties = Vec::new();
+
+    // Current epoch duties (for future slots in this epoch).
+    if spec
+        .gloas_fork_epoch
+        .is_none_or(|gloas_epoch| current_epoch >= gloas_epoch)
+    {
+        match duties_service
+            .beacon_nodes
+            .first_success(|beacon_node| async move {
+                beacon_node
+                    .get_validator_duties_proposer(current_epoch)
+                    .await
+            })
+            .await
+        {
+            Ok(response) => {
+                // Only include slots that haven't passed yet.
+                all_duties.extend(response.data.into_iter().filter(|d| d.slot > current_slot));
+            }
+            Err(e) => {
+                debug!(
+                    error = %e,
+                    %current_epoch,
+                    "Failed to fetch current-epoch proposer duties for preferences broadcast"
+                );
+            }
+        }
+    }
+
+    // Next epoch duties.
+    match duties_service
         .beacon_nodes
         .first_success(|beacon_node| async move {
             beacon_node.get_validator_duties_proposer(next_epoch).await
         })
         .await
     {
-        Ok(response) => response.data,
+        Ok(response) => {
+            all_duties.extend(response.data);
+        }
         Err(e) => {
             debug!(
                 error = %e,
                 %next_epoch,
                 "Failed to fetch next-epoch proposer duties for preferences broadcast"
             );
-            return Ok(());
         }
-    };
+    }
 
     // Filter to local validators only.
-    let local_duties: Vec<_> = next_epoch_duties
+    let local_duties: Vec<_> = all_duties
         .into_iter()
         .filter(|d| signing_pubkeys.contains(&d.pubkey))
         .collect();
@@ -1704,9 +1741,10 @@ async fn broadcast_proposer_preferences<S: ValidatorStore + 'static, T: SlotCloc
     }
 
     debug!(
+        %current_epoch,
         %next_epoch,
         num_slots = local_duties.len(),
-        "Broadcasting proposer preferences for next epoch"
+        "Broadcasting proposer preferences for current and next epoch"
     );
 
     // Sign and submit preferences for each slot.

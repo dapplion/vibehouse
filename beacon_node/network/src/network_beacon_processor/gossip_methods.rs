@@ -4104,7 +4104,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         let proposal_slot = Slot::new(preferences.proposal_slot);
         let validator_index = preferences.validator_index;
 
-        // [IGNORE] proposal_slot must be in the next epoch
+        // [IGNORE] proposal_slot must be in the current or next epoch
         let current_slot = match self.chain.slot() {
             Ok(slot) => slot,
             Err(e) => {
@@ -4118,13 +4118,25 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         let next_epoch = current_epoch.saturating_add(1u64);
         let proposal_epoch = proposal_slot.epoch(T::EthSpec::slots_per_epoch());
 
-        if proposal_epoch != next_epoch {
+        if proposal_epoch < current_epoch || proposal_epoch > next_epoch {
             debug!(
                 %proposal_slot,
                 %validator_index,
                 %proposal_epoch,
-                %next_epoch,
-                "Ignoring proposer preferences: proposal_slot not in next epoch"
+                %current_epoch,
+                "Ignoring proposer preferences: proposal_slot not in current or next epoch"
+            );
+            self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+            return;
+        }
+
+        // [IGNORE] proposal_slot must not have already passed
+        if proposal_slot <= current_slot {
+            debug!(
+                %proposal_slot,
+                %validator_index,
+                %current_slot,
+                "Ignoring proposer preferences: proposal_slot already passed"
             );
             self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
             return;
@@ -4157,9 +4169,16 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         }
 
         if let Ok(proposer_lookahead) = head_state.proposer_lookahead() {
-            // Index into the next epoch's portion of the lookahead
+            // Index into the current or next epoch's portion of the lookahead.
+            // Lookahead layout: [0, slots_per_epoch) = current epoch,
+            //                   [slots_per_epoch, 2*slots_per_epoch) = next epoch.
             let slots_per_epoch = T::EthSpec::slots_per_epoch() as usize;
-            let index = slots_per_epoch.saturating_add(proposal_slot.as_usize() % slots_per_epoch);
+            let epoch_offset = proposal_epoch
+                .as_u64()
+                .saturating_sub(current_epoch.as_u64()) as usize;
+            let index = epoch_offset
+                .saturating_mul(slots_per_epoch)
+                .saturating_add(proposal_slot.as_usize() % slots_per_epoch);
             let is_proposer = matches!(
                 proposer_lookahead.get(index),
                 Some(&expected_proposer) if expected_proposer == validator_index

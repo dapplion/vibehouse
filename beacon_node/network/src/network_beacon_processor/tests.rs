@@ -2964,10 +2964,10 @@ async fn test_gloas_gossip_payload_attestation_accumulates_ptc_weight() {
 // The handler enforces: proposal_slot in next epoch (IGNORE), validator_index matches
 // proposer_lookahead (REJECT), valid signature (REJECT), then ACCEPT.
 
-/// Gloas gossip: proposer preferences with proposal_slot in the current epoch is IGNORED.
+/// Gloas gossip: proposer preferences with proposal_slot that already passed is IGNORED.
 ///
-/// Per spec: [IGNORE] proposal_slot must be in the next epoch.
-/// The handler checks proposal_epoch != next_epoch and ignores the message.
+/// Per spec (#5035): [IGNORE] proposal_slot must not have already passed
+/// (proposal_slot > state.slot). A preference for the current or past slot is ignored.
 #[tokio::test]
 async fn test_gloas_gossip_proposer_preferences_current_epoch_ignored() {
     if test_spec::<E>().gloas_fork_epoch.is_none() {
@@ -2977,7 +2977,7 @@ async fn test_gloas_gossip_proposer_preferences_current_epoch_ignored() {
     let mut rig = gloas_rig(SMALL_CHAIN).await;
     let current_slot = rig.chain.slot().unwrap();
 
-    // proposal_slot is in the current epoch → should be ignored
+    // proposal_slot == current_slot (already passed) → should be ignored
     let signed_preferences = SignedProposerPreferences {
         message: ProposerPreferences {
             proposal_slot: current_slot.as_u64(),
@@ -2997,8 +2997,8 @@ async fn test_gloas_gossip_proposer_preferences_current_epoch_ignored() {
 
 /// Gloas gossip: proposer preferences with proposal_slot two epochs ahead is IGNORED.
 ///
-/// Per spec: [IGNORE] proposal_slot must be in the next epoch (not further).
-/// A proposal_slot far in the future should also be ignored.
+/// Per spec (#5035): [IGNORE] proposal_slot must be in current or next epoch.
+/// A proposal_slot far in the future should be ignored.
 #[tokio::test]
 async fn test_gloas_gossip_proposer_preferences_far_future_epoch_ignored() {
     if test_spec::<E>().gloas_fork_epoch.is_none() {
@@ -3198,6 +3198,66 @@ async fn test_gloas_gossip_proposer_preferences_valid_accepted() {
     let signing_root = preferences.signing_root(domain);
 
     // Sign with the correct validator's secret key
+    let sk = &rig._harness.validator_keypairs[actual_proposer as usize].sk;
+    let signature = sk.sign(signing_root);
+
+    let signed_preferences = SignedProposerPreferences {
+        message: preferences,
+        signature,
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_proposer_preferences(junk_message_id(), junk_peer_id(), signed_preferences);
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+}
+
+/// Gloas gossip: proposer preferences for a future slot in the current epoch is ACCEPTED.
+///
+/// Per spec (#5035): proposal_slot in [current_epoch, next_epoch] is valid.
+/// This test verifies that current-epoch future slots are no longer ignored.
+#[tokio::test]
+async fn test_gloas_gossip_proposer_preferences_current_epoch_future_slot_accepted() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+    let head_state = &head.beacon_state;
+    let current_slot = rig.chain.slot().unwrap();
+    let current_epoch = head_state.current_epoch();
+    let spec = &rig.chain.spec;
+
+    // Pick a future slot in the current epoch (last slot of epoch).
+    let proposal_slot = current_epoch.end_slot(E::slots_per_epoch());
+    assert!(
+        proposal_slot > current_slot,
+        "need a future slot in current epoch"
+    );
+
+    // Find the actual proposer from the lookahead (current epoch portion).
+    let lookahead = head_state.proposer_lookahead().unwrap();
+    let slots_per_epoch = E::slots_per_epoch() as usize;
+    let lookahead_index = proposal_slot.as_usize() % slots_per_epoch;
+    let actual_proposer = *lookahead.get(lookahead_index).unwrap();
+
+    let preferences = ProposerPreferences {
+        proposal_slot: proposal_slot.as_u64(),
+        validator_index: actual_proposer,
+        fee_recipient: Address::repeat_byte(0x42),
+        gas_limit: 30_000_000,
+    };
+
+    let domain = spec.get_domain(
+        current_epoch,
+        Domain::ProposerPreferences,
+        &head_state.fork(),
+        head_state.genesis_validators_root(),
+    );
+    let signing_root = preferences.signing_root(domain);
+
     let sk = &rig._harness.validator_keypairs[actual_proposer as usize].sk;
     let signature = sk.sign(signing_root);
 
