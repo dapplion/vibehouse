@@ -5357,4 +5357,18 @@ PTC window spec change (consensus-specs PR #4979) still open/unmerged — monito
 - `swap_or_not_shuffle.rs`: `bytes[..8].try_into()` — 8-byte slice to `[u8; 8]` is always valid
 - Test code: ~80 instances across test files — acceptable in tests
 
+### Run 2293 — full production safety audit (2026-03-24)
+
+**Scope**: Comprehensive audit of all remaining `unwrap()`, `expect()`, `unsafe`, and `try_into().unwrap()` calls in production (non-test) code.
+
+**Findings**:
+- **`try_into().unwrap()` in beacon_node production code**: Zero remaining. All instances are in test files or the `json_structures.rs` From impls (documented as infallible with `#![allow(clippy::fallible_impl_from)]`).
+- **`expect()` in production code**: All remaining instances are either (a) in test modules/helpers, (b) startup/initialization code (acceptable per CLAUDE.md), or (c) guarded by prior existence checks (e.g., `initialized_validators.rs:1156` after `contains_key` check at line 1142).
+- **`unsafe` code**: Zero in `consensus/` and `beacon_node/` production code. One comment reference in a store test.
+- **Nightly CI failures** (Mar 22-23): Both transient — Mar 22 was a GitHub curl 404 (infra), Mar 23 was `MEGABYTE` dead_code in slasher `redb`-only build (already fixed by clippy lint commit cb7e230a0). Mar 24 nightly is green.
+- **Spec tracking**: No new Gloas PRs merged since alpha.3. PR #4979 (PTC window) still open/blocked. PR #4962 (withdrawal+missed-payload tests) still open — our implementation correctly handles all 4 combinations.
+- **TODO audit**: Only 6 TODOs remain in production code, all tagged #36 and blocked on external specs (EIP-7892 ×3, PeerDAS checkpoint sync, blst safe API) or non-critical (pool persistence, EL error enum refactor).
+
+**Conclusion**: Production code is clean. No remaining safety improvements to make. The codebase has zero `unsafe`, zero unguarded `unwrap()` in Gloas code, and all remaining patterns are documented and safe by construction.
+
 **Verification**: genesis tests pass (2/2), kzg_utils tests pass (2/2), full workspace clippy clean, lint-full passed on push.
