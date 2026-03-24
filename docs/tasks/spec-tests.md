@@ -30,6 +30,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2334 (Mar 24) — CI green, spec stable, holding pattern
+
+- CI: run 23506464983 all green (all 6 jobs passed). Nightly Mar 24 green.
+- Spec: no new consensus-specs commits since #4939 merge. No new test vector release (still v1.5.0).
+- All tracked open Gloas PRs unchanged: #4979 (PTC window, active review today from nflaig+jtraglia), #4843 (variable PTC deadline), #4892 (APPROVED), #4898 (APPROVED), #4954 (ms in fork choice), #4747 (fast confirmation rule), #5035 (APPROVED, implemented), #5036 (implemented), #4962 (test-only, 2 approvals).
+- Build: zero warnings. All 11 TODOs tracked in #36, all blocked on external deps.
+- No code changes — codebase healthy, holding pattern.
+
 ### run 2327 (Mar 24) — CI monitoring, #4979 diff pre-read
 
 - CI: run 23504997273 still in progress (check+clippy ✓, ef-tests ✓, 4 jobs running ~20min). Last full green: 23496276572.
