@@ -5580,3 +5580,15 @@ Added `debug_assert!(vote.current_slot >= node_slot)` in both `is_supporting_vot
 **Production code audit**: Deep search of `consensus/state_processing/src/`, `consensus/fork_choice/src/`, and `beacon_node/beacon_chain/src/` for `.unwrap()` in non-test runtime code. **Zero dangerous unwrap() calls found.** All remaining `.unwrap()` and `.try_into().unwrap()` calls are strictly in test code (`#[cfg(test)]` modules or `*test*.rs` files). The `try_into().unwrap()` elimination work from runs 2290-2299 is complete for production code.
 
 **Assessment**: No actionable work. Codebase stable, CI green, production code safe. Waiting for spec changes.
+
+### Run 2307 — backfill scheduling safety fix (2026-03-24)
+
+**Scope**: Continued production code safety audit, found and fixed `checked_sub().unwrap()` in beacon_processor.
+
+**Fix**: `beacon_node/beacon_processor/src/scheduler/work_reprocessing_queue.rs` lines 1005, 1010 — replaced `checked_sub(duration).unwrap()` with `saturating_sub(duration)` in `duration_until_next_backfill_batch_event`. These could panic if slot clock readings were slightly stale (duration_from_slot_start > slot_duration). Now returns Duration::ZERO on underflow, triggering immediate scheduling instead of a crash.
+
+**Broader audit**: Searched all beacon_node/, consensus/, common/ production code for remaining `.unwrap()` patterns. Only test code remains. The `unused_v4_ports()`/`unused_v6_ports()` in network_utils are test helpers despite being pub. NetworkGlobals `expect()` calls are intentional startup panics for invalid chain spec config (acceptable per CLAUDE.md).
+
+**Spec tracking**: Checked consensus-specs — #5014 (EIP-8025 P2P protocol for ZK proofs) merged but relates to ZK proof networking, not immediate Gloas work. #4902 (executable gossip validation for phase0) is test infrastructure. No new Gloas-relevant code changes.
+
+**Assessment**: Production code is clean. Waiting for spec changes (PTC window #4979 most imminent).
