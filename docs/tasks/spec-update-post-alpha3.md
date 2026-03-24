@@ -135,3 +135,14 @@ Implemented SHOULD behavior from Gloas p2p spec (aligned with open PR #4939): re
 - **Open Gloas PRs**: #5035, #5036, #4979 (PTC window, blocked), #4843 (variable PTC deadline), #4954 (milliseconds), #4939, #4892 (2 approvals), #4898 (1 approval)
 - CI green (push + nightly). Zero warnings. EF tests 218/218 passing.
 - Consolidated progress log (trimmed ~250 lines of repetitive routine check entries)
+
+### run 2318 (Mar 24) — deep compliance audit
+
+- **Full spec compliance verified**: all 6 Gloas PRs in alpha.4 confirmed already implemented
+- **Production code safety audit**: zero `.unwrap()` in consensus state_processing, fork_choice, beacon_chain production code. All unwraps confined to `#[cfg(test)]` modules.
+- **Clippy clean**: zero warnings across consensus + beacon_chain crates
+- **Upcoming spec PRs pre-checked**:
+  - **#4892** (remove impossible PENDING branch in tiebreaker): our `get_payload_tiebreaker` already matches the new behavior — doesn't special-case PENDING
+  - **#4898** (remove pending from tiebreaker): same as above, already aligned
+  - **#4979** (PTC window cache): still open, design stable, waiting for merge
+- No new EF test release for alpha.4 yet (latest is v1.6.0-beta.0)
