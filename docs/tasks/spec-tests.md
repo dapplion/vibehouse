@@ -30,6 +30,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2281 (Mar 24) — maintenance check, devnet verification
+
+- CI: latest run green (93c450036). Nightly Mar 23 slasher failure on old commit (f4af903eb, 73 commits behind HEAD) — fix already on HEAD, Mar 24 nightly should be green.
+- Spec: v1.7.0-alpha.3 still latest. No new spec test release. No new consensus-specs commits since Mar 23 (all CI/infra/deps).
+- All 7 tracked Gloas PRs still open: #4979 (PTC window, 13 commits, under review), #4962 (withdrawal tests), #4843 (variable PTC deadline), #4892 (remove impossible branch, APPROVED), #4898 (remove pending tiebreaker, APPROVED), #4954 (ms in fork choice), #4747 (fast confirmation rule).
+- Verified #4892 and #4898 already implemented in vibehouse fork choice code (is_supporting_vote_gloas_at_slot uses == not <=, PENDING falls through to should_extend_payload at previous slot).
+- Clippy: 0 warnings. cargo audit: unchanged (1 rsa, 5 unmaintained). Rust 1.94.0 up to date. Only outdated dep: rand_xorshift 0.4→0.5 (minor test dep).
+- Running devnet on current HEAD to verify chain health after 73 commits of recent changes.
+
 ### run 2280 (Mar 24) — maintenance check, all stable
 
 - CI: latest run green (b095a0a9b). Nightly Mar 23 slasher failure confirmed on old commit (f4af903eb, 72 commits behind HEAD). Mar 24 nightly should be green.

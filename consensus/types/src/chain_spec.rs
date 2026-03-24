@@ -1766,7 +1766,7 @@ impl<'de> Deserialize<'de> for BlobSchedule {
 impl BlobSchedule {
     pub fn new(mut vec: Vec<BlobParameters>) -> Self {
         // reverse sort by epoch
-        vec.sort_by(|a, b| b.epoch.cmp(&a.epoch));
+        vec.sort_by_key(|entry| std::cmp::Reverse(entry.epoch));
         // deduplicate consecutive entries with the same epoch (keeps the first after sort)
         vec.dedup_by_key(|entry| entry.epoch);
         Self {
