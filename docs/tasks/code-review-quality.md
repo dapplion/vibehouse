@@ -5254,3 +5254,11 @@ Also investigated nightly CI failures: Mar 22 was transient nextest download 404
 CI `check + clippy + fmt` job failed because `clippy::mismatched_target_os` was renamed to `unexpected_cfgs` (a rustc lint). The rename causes a `renamed_and_removed_lints` warning which becomes an error via `-D warnings`. Passes locally due to incremental build caching but fails on CI's clean build. Fix: removed the lint from the Makefile (304 lints enforced, down from 305).
 
 Also audited 3 post-alpha.3 spec PRs (#5022, #5008, #5023): none require code changes. #5022 (block-known check in `on_payload_attestation_message`) already implemented at fork_choice.rs:1430-1432. #5008 is a field name documentation fix. #5023 is test infrastructure only.
+
+### Run 2275: dependency upgrade + 16 new clippy lints (304 → 320)
+
+**Dependency upgrade**: ethereum_ssz 0.9→0.10.1, ethereum_ssz_derive 0.9→0.10.1, ssz_types 0.11→0.14, tree_hash 0.10→0.12.1, tree_hash_derive 0.10→0.12.1, milhouse 0.7→0.9. API changes: `Encode`/`Decode`→`SszEncode`/`SszDecode`, `ssz_append`→`ssz_write`, `tree_hash_root`→`canonical_root`, `TreeHashType`→`LeafType`/`VectorType`. All 79+139 EF spec tests pass, 4991/5000 workspace tests pass.
+
+**New clippy lints**: `doc_overindented_list_items`, `float_cmp_const`, `four_forward_slashes`, `into_iter_on_ref`, `manual_inspect`, `manual_is_infinite`, `manual_unwrap_or`, `manual_unwrap_or_default`, `match_on_vec_items`, `mutex_integer`, `needless_character_iteration`, `needless_return_with_question_mark`, `permissions_set_readonly_false`, `redundant_closure_call`, `seek_from_current`, `seek_to_start_instead_of_rewind`, `string_to_string`, `suspicious_to_owned`, `trailing_empty_array`, `transmute_num_to_bytes`.
+
+Code fixes: replaced `if cond { Some(x) } else { None }` patterns with `then_some`/`then` across 8 files (attestation.rs, sync_duty.rs, iter.rs, get_attesting_indices.rs, signature_sets.rs, slot_clock, slasher, int_to_bytes). Used `.filter().map()` in signature_sets.rs to avoid `bool::then in filter_map` lint conflict.
