@@ -30,6 +30,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2283 (Mar 24) — fix CI clippy failure (removed lint)
+
+- CI: run 23474978792 failed — `clippy::string_to_string` lint removed from clippy (covered by `implicit_clone`). Fixed by removing from Makefile (implicit_clone already enforced). Pushed 144f8ada2.
+- Spec: v1.7.0-alpha.3 still latest. Spec test vectors: v1.5.0 (unchanged). No new consensus-specs commits since Mar 23 (all CI/infra/deps).
+- Tracked Gloas PRs: #4979 (PTC window, 13 commits, blocked on reviews), #4960 (fork choice deposit test), #4932 (sanity/blocks tests), #4843 (variable PTC deadline), #4840 (EIP-7843), #4630 (EIP-7688 SSZ). No new merges.
+- No code changes beyond lint fix — codebase healthy.
+
 ### run 2281 (Mar 24) — nightly clippy fixes, devnet verified
 
 - CI: latest run green (93c450036). Nightly Mar 23 slasher failure on old commit (f4af903eb, 73 commits behind HEAD) — fix already on HEAD, Mar 24 nightly should be green.
