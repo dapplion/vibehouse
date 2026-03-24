@@ -581,7 +581,7 @@ lint:
 		-D clippy::crosspointer_transmute \
 		-D clippy::derive_ord_xor_partial_ord \
 		-D clippy::diverging_sub_expression \
-		-D clippy::double_neg \
+		-D double_negations \
 		-D clippy::drain_collect \
 		-D clippy::drop_non_drop \
 		-D clippy::duration_subsec \
@@ -595,15 +595,14 @@ lint:
 		-D clippy::needless_question_mark \
 		-D clippy::never_loop \
 		-D clippy::out_of_bounds_indexing \
-		-D clippy::overflow_check_conditional \
+		-D clippy::panicking_overflow_checks \
 		-D clippy::path_ends_with_ext \
-		-D clippy::range_step_by_zero \
 		-D clippy::size_of_ref \
 		-D clippy::slow_vector_initialization \
 		-D clippy::suspicious_map \
 		-D clippy::temporary_assignment \
 		-D clippy::transmuting_null \
-		-D clippy::unchecked_duration_subtraction \
+		-D clippy::unchecked_time_subtraction \
 		-D clippy::unconditional_recursion \
 		-D clippy::uninit_vec \
 		-D clippy::unit_return_expecting_ord \
