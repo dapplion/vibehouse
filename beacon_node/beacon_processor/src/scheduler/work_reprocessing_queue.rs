@@ -1002,12 +1002,10 @@ impl<S: SlotClock> ReprocessQueue<S> {
                         if duration_from_slot_start >= next_event_time {
                             // event is in the next slot, add duration to next slot
                             let duration_to_next_slot =
-                                slot_duration.checked_sub(duration_from_slot_start).unwrap();
+                                slot_duration.saturating_sub(duration_from_slot_start);
                             duration_to_next_slot + next_event_time
                         } else {
-                            next_event_time
-                                .checked_sub(duration_from_slot_start)
-                                .unwrap()
+                            next_event_time.saturating_sub(duration_from_slot_start)
                         }
                     })
             })
