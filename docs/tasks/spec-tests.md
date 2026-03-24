@@ -30,6 +30,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2346 (Mar 24) — holding pattern, full spec audit
+
+- CI: all green. Zero clippy warnings. Clean build.
+- Spec audit: reviewed all consensus-specs PRs merged since alpha.3. All Gloas-labeled merges already implemented:
+  - #5001 (parent_block_root bid key) — already uses 3-tuple `(slot, parent_block_hash, parent_block_root)`
+  - #5022 (assert block known in on_payload_attestation) — already returns `UnknownBeaconBlockRoot` error
+  - #5008 (beacon_block_root field name) — already uses correct name in envelope struct
+  - #5002, #5005 — doc/test-only, no code impact
+  - #4940 — fork choice test vectors already passing
+  - #5035, #5036 — proactively implemented (still open PRs)
+- Open Gloas PRs: #4892 (2 approvals, impossible branch removal — already handled), #4979 (PTC window, 0 approvals), #4843 (variable PTC deadline, 1 approval). None imminent.
+- Verified 28/28 network gossip tests pass (12 proposer preference + 16 bid validation) for #5035/#5036.
+- `cargo audit`: unchanged — 1 rsa vuln, 5 allowed warnings. No cargo dependency updates available.
+- No code changes — codebase healthy, holding pattern.
+
 ### run 2345 (Mar 24) — holding pattern, clean codebase
 
 - CI: all green. Zero clippy warnings. Clean build.
