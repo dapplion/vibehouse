@@ -174,3 +174,9 @@ Implemented SHOULD behavior from Gloas p2p spec (aligned with open PR #4939): re
   - **Tests**: updated 3 test files — `gloas.rs` (bid accepted without prefs), `gloas_verification.rs` (same), `fork_tests.rs` (HTTP API no longer rejects on missing prefs)
   - All targeted tests pass (4 beacon_chain + 1 http_api)
 - **Open Gloas spec PRs**: #4979 (PTC window, waiting for merge), #4843 (variable PTC deadline), #4954 (millisecond time), #4747 (fast confirmation rule), #4892 (2 approvals, already aligned), #4898 (1 approval, already aligned)
+
+### run 2324 (Mar 24) — fix CI + spec check
+
+- **Fixed CI failure**: `test_gloas_gossip_bid_no_preferences_ignored` in network tests — test expected `Ignore` but #5036 changed behavior to `Accept`. Renamed test to `test_gloas_gossip_bid_no_preferences_accepted`, updated assertion and docstring. All 16 bid gossip tests pass.
+- **Spec check**: #4926 (SECONDS_PER_SLOT → SLOT_DURATION_MS) and #4930 (execution_payload_states → payload_states) merged since alpha.3 — both are spec-side naming changes, no code changes needed. Our code already uses `payload_states` naming.
+- **Open Gloas spec PRs**: #4979 (PTC window, waiting for merge), #4843 (variable PTC deadline), #4954 (millisecond time), #4747 (fast confirmation rule), #4892 (2 approvals, already aligned), #4898 (1 approval, already aligned). #5035 and #5036 proactively implemented.
