@@ -30,6 +30,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2341 (Mar 24) — CI green, spec stable, holding pattern
+
+- CI: all green. Nightly Mar 24 green. Zero clippy warnings, zero build warnings.
+- Spec: no new consensus-specs merges since #4939. No new test vector release (still v1.5.0 / alpha.3 vectors).
+- All 9 tracked open Gloas PRs unchanged. None merged. #4979 (PTC window) active review from nflaig (19:09-19:18 UTC). #4962 (sanity/blocks tests, 2 approvals) closest to merge.
+- `cargo audit`: 1 vulnerability (rsa, no fix available), 5 allowed warnings — all in transitive deps, none actionable.
+- No code changes — codebase healthy, holding pattern.
+
 ### run 2339 (Mar 24) — CI green, spec stable, holding pattern
 
 - CI: all green. Nightly Mar 24 green.
