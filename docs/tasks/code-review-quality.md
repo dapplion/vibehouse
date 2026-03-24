@@ -5443,3 +5443,25 @@ Also verified vibehouse is ahead of two open PRs:
 **Remaining TODOs**: All 9 remaining TODO comments in production code are linked to #36 and are either blocked on external changes (EIP-7892 ×3, blst safe API, PeerDAS checkpoint sync) or non-critical refactoring (EL error enums, pool persistence). No actionable items.
 
 **Assessment**: Codebase is in excellent shape. All priority tasks complete. Waiting for spec changes to land (primarily #4979 PTC window cache) before next implementation work.
+
+### Run 2299 — spec tracking + CI verification (2026-03-24)
+
+**Scope**: Check for new consensus-specs changes, verify CI for nextest pin commit, analyze upcoming spec PRs.
+
+**Spec tracking**: No new Gloas PRs merged since last check. All 6 tracked open PRs (#4892, #4898, #4962, #4843, #4954, #4979) remain open. No new spec release beyond v1.7.0-alpha.3.
+
+**PR #4843 analysis** (variable PTC deadline): Analyzed in detail — introduces size-dependent payload timeliness deadlines, renames `payload_present` → `payload_timely` across types/fork_choice/state_processing, adds `MIN_PAYLOAD_DUE_BPS` config constant, stores `payload_envelopes` in fork choice store. Would touch ~15+ files. Not close to merge (1 approval, 2+ months inactive).
+
+**CI verification**: cargo-nextest pin commit (79830acfd) passed all 6 CI jobs:
+- check + clippy + fmt: ✓ (4m1s)
+- ef-tests (minimal, fake_crypto): ✓ (9m15s)
+- network + op_pool tests (gloas): ✓ (14m38s)
+- http_api tests (gloas): ✓ (29m57s)
+- unit tests: ✓
+- beacon_chain tests (gloas): ✓
+
+**Nightly**: Today's nightly green. Nextest pin should prevent future transient download failures.
+
+**Dependency audit**: `cargo audit` unchanged — 1 medium RSA vuln (no upstream fix), 5 unmaintained warnings (all transitive deps from sp1-verifier/ark-ff chains).
+
+**Assessment**: No actionable work. Codebase clean, CI green, spec tracked. Waiting for spec changes.
