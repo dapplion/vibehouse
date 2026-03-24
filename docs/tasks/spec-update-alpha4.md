@@ -24,18 +24,22 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 #5031, #5030, #5029, #5028, #5027, #5026, #5025, #5017, #5015, #5010, #5009, #5007, #5006, #5004
 
+## Test Vectors
+
+No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2355, 2026-03-24). Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3.
+
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
 |----|-------------|-------|
-| #4979 | PTC window cache in BeaconState | Major change, actively reviewed, not merged |
+| #4979 | PTC window cache in BeaconState | Major change, actively reviewed, not merged (as of 2026-03-24) |
 | #5036 | Relax bid gossip dependency on proposer preferences | Open — proactively implemented (commit 1c7e608d4) |
 | #5035 | Allow same epoch proposer preferences | Open — proactively implemented (commit 3edc6f63d) |
 | #4962 | Sanity/blocks tests for missed payload withdrawal interactions | Test vectors |
 | #4960 | Fork choice test for new validator deposit | Test vectors |
-| #4954 | Update fork choice store to use milliseconds | Open |
+| #4954 | Update fork choice store to use milliseconds | Open, 0 reviews, large refactor (28 files) — not worth implementing proactively |
 | #4932 | Sanity/blocks tests with payload attestation coverage | Test vectors |
-| #4898 | Remove pending status from tiebreaker | 1 approval |
-| #4892 | Remove impossible branch in forkchoice | 2 approvals |
+| #4898 | Remove pending status from tiebreaker | 1 approval, still open |
+| #4892 | Remove impossible branch in forkchoice | 2 approvals, still open |
 | #4843 | Variable PTC deadline | Open, Jan 2026 |
 | #4840 | Add support for EIP-7843 to Gloas | Open, Jan 2026 |
