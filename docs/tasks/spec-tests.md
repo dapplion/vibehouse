@@ -30,6 +30,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2309 (Mar 24) — routine maintenance, PR #5035 approved
+
+- CI: run 23495309759 in progress (check+clippy+fmt ✓, ef-tests ✓, 4 jobs running). Previous run all green. Nightly Mar 24 green.
+- Spec: v1.7.0-alpha.3 still latest. No new spec test release. No new code merges (only CI/deps: #5031, #5030, #5029, #5028).
+- All 9 tracked Gloas PRs still open.
+- **#5035 APPROVED** (same epoch proposer preferences): approved by jtraglia, likely to merge soon. Change: `is_valid_proposal_slot` accepts current epoch (not just next), `get_upcoming_proposal_slots` includes future current-epoch slots, gossip validation adds `proposal_slot > state.slot` check. Impact: `gloas_verification.rs` proposer preferences validation + VC broadcasting logic. Ready to implement on merge.
+- **#5036** (relax bid gossip dependency): no reviews yet, still monitoring.
+- Clippy: 0 warnings (stable). cargo audit: unchanged (1 rsa, 5 unmaintained).
+- No code changes — codebase healthy, holding pattern.
+
 ### run 2308 (Mar 24) — spec tracking, implementation verification
 
 - CI: run 23495309759 in progress (check+clippy+fmt ✓, 5 jobs running). Previous run (23492870696) all green.
