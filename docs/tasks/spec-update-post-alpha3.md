@@ -35,6 +35,7 @@ Audited all Gloas spec commits since alpha.3 (17 PRs total). All implemented or 
 | #5008 | Fix field name `block_root` → `beacon_block_root` in EnvelopesByRoot spec prose | Doc-only; our code already uses `beacon_block_root` correctly |
 | #5022 | Add check that block is known in `on_payload_attestation_message` | Already implemented (UnknownBeaconBlockRoot error at fork_choice.rs:1426-1432) |
 | #5023 | Fix block root filenames and Gloas comptests | Test infra only; no code change needed |
+| #4939 | Request missing payload envelopes for index-1 attestation | Already implemented (run 1773): REJECT invalid, IGNORE unseen + envelope request |
 | #5015 | Integrate make coverage into make test | Test infra only; no code change needed |
 
 ### Implemented
@@ -180,3 +181,12 @@ Implemented SHOULD behavior from Gloas p2p spec (aligned with open PR #4939): re
 - **Fixed CI failure**: `test_gloas_gossip_bid_no_preferences_ignored` in network tests — test expected `Ignore` but #5036 changed behavior to `Accept`. Renamed test to `test_gloas_gossip_bid_no_preferences_accepted`, updated assertion and docstring. All 16 bid gossip tests pass.
 - **Spec check**: #4926 (SECONDS_PER_SLOT → SLOT_DURATION_MS) and #4930 (execution_payload_states → payload_states) merged since alpha.3 — both are spec-side naming changes, no code changes needed. Our code already uses `payload_states` naming.
 - **Open Gloas spec PRs**: #4979 (PTC window, waiting for merge), #4843 (variable PTC deadline), #4954 (millisecond time), #4747 (fast confirmation rule), #4892 (2 approvals, already aligned), #4898 (1 approval, already aligned). #5035 and #5036 proactively implemented.
+
+### run 2328 (Mar 24) — spec check + compliance verification
+
+- **#4939 merged** (request missing payload envelopes for index-1 attestation): already fully implemented (run 1773). Verified: REJECT for invalid payloads, IGNORE + envelope request for unseen payloads — matches final merged diff exactly.
+- **#4892 deep verification** (2 approvals): confirmed aligned — our `is_supporting_vote_gloas_at_slot` uses `debug_assert!(vote.current_slot >= node_slot)` + `vote.current_slot == node_slot` check, exactly matching the `assert message.slot >= block.slot` + `message.slot == block.slot` change.
+- **#4898 deep verification** (1 approval): confirmed aligned — our `get_payload_tiebreaker` doesn't special-case PENDING for previous-slot nodes, already matching the simplified logic.
+- **No new Gloas spec merges** since alpha.4 (except #4939 above).
+- **CI**: push CI in progress (4/6 jobs passed), nightly green.
+- **Open Gloas spec PRs**: #5035 (implemented), #5036 (implemented), #4979 (PTC window, blocked), #4892 (2 approvals, aligned), #4898 (1 approval, aligned), #4843 (variable PTC deadline), #4954 (millisecond time), #4747 (fast confirmation rule), #4840 (EIP-7843), #4630 (EIP-7688 SSZ), #4558 (cell dissemination)
