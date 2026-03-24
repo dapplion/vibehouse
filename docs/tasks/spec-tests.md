@@ -30,6 +30,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2359 (Mar 25) — holding pattern, no changes
+
+- CI: green. Build: zero warnings (release check + clippy). cargo audit: unchanged (rsa/ansi_term/bincode — all pre-existing, not actionable).
+- Spec: alpha.4 GitHub release still not published. #4979 (PTC window) still open. No new Gloas merges.
+- Dependencies: all compatible versions up to date. 8 deps have newer major versions (bincode 3, rand 0.10, reqwest 0.13, etc.) — not actionable without Cargo.toml changes.
+- No code changes.
+
 ### run 2356 (Mar 25) — holding pattern, alpha.4 release pending
 
 - CI: all green (run 23515812485 in progress, 4/6 jobs passed, 2 finishing). Nightly: all 25 jobs passed (Mar 24).
