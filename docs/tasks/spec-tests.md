@@ -30,6 +30,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2280 (Mar 24) — maintenance check, all stable
+
+- CI: latest run green (b095a0a9b). Nightly Mar 23 slasher failure confirmed on old commit (f4af903eb, 72 commits behind HEAD). Mar 24 nightly should be green.
+- Spec: v1.7.0-alpha.3 still latest. No new spec test release. Recent consensus-specs commits all CI/infra/deps.
+- All 7 tracked Gloas PRs still open: #4979 (PTC window, updated Mar 23, 13 commits, mergeable but blocked on reviews), #4962 (withdrawal tests), #4843 (variable PTC deadline), #4892 (remove impossible branch, APPROVED), #4898 (remove pending tiebreaker, APPROVED), #4954 (ms in fork choice), #4747 (fast confirmation rule).
+- Clippy: 0 warnings (all targets). cargo doc: 0 warnings. cargo audit: unchanged (1 rsa, 5 unmaintained).
+- No code changes — codebase healthy, holding pattern.
+
 ### run 2269 (Mar 23) — maintenance check, all stable
 
 - CI: latest run green (all jobs passed). Nightly Mar 23 slasher failure still on old commit (f4af903eb, before fix a4f999735). Mar 24 nightly should be green.
