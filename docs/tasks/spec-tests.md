@@ -30,6 +30,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2321 (Mar 24) — CI monitoring, #5036 pre-read, code audit
+
+- CI: run 23503090543 in progress for #5035 commit (check+clippy ✓, ef-tests ✓, network+op_pool ✓, 3 jobs still running). Previous run (23496276572) all green. Nightly Mar 24 green.
+- Spec: v1.7.0-alpha.4 tagged. No new test vector release (still v1.5.0). No new consensus-specs commits since alpha.4 bump.
+- All 10 tracked Gloas PRs still open: #4979 (PTC window), #4843 (variable PTC deadline), #4892 (remove impossible branch, APPROVED), #4898 (remove pending tiebreaker, APPROVED), #4954 (ms in fork choice), #4747 (fast confirmation rule, 128 comments), #4939 (envelope request), #5035 (same epoch prefs, APPROVED — implemented in 3edc6f63d), #5036 (relax bid gossip dependency, no reviews), #4962 (sanity/blocks withdrawal tests, test-only).
+- **Pre-read #5036** (relax bid gossip dependency): removes IGNORE for missing proposer preferences before forwarding bids; makes fee_recipient/gas_limit checks conditional on preferences being available. Impact: `gloas_verification.rs` ProposerPreferencesNotSeen handling, FeeRecipientMismatch/GasLimitMismatch checks. Ready to implement on merge.
+- **New PR #5037** (remove fork version/epoch in EIP-8025 specs): EIP-8025 specific, not Gloas core. No action needed.
+- **Code audit**: zero `.unwrap()` and zero `.expect()` in all Gloas production code paths (state_processing, fork_choice, beacon_chain, network verification). All instances confined to test modules.
+- cargo audit: unchanged (1 rsa, 5 unmaintained). Nightly green. Dependencies current (only rand_xorshift outdated).
+- No code changes — codebase healthy, holding pattern.
+
 ### run 2316 (Mar 24) — alpha.4 version bump audit
 
 - CI: all green. Latest push (23496276572) passed. Nightly Mar 24 green.
