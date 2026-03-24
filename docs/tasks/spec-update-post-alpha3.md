@@ -254,3 +254,13 @@ Implemented SHOULD behavior from Gloas p2p spec (aligned with open PR #4939): re
 - **Open Gloas spec PRs status**: #4979 (PTC window, 0 approvals, 17 review comments, active discussion), #5035 (implemented, 1 approval), #5036 (implemented, 0 approvals), #4892 (aligned, 2 approvals), #4898 (aligned, 1 approval), #4843 (variable PTC deadline), #4747 (fast confirmation rule). None newly merged.
 - **CI**: latest push CI green (all 6 jobs passed). Compilation zero warnings. Clippy clean.
 - **No actionable work**: all priorities DONE, codebase clean, spec fully tracked, nightly EF tests verified.
+
+### run 2344 (Mar 24) — routine health check
+
+- **No new Gloas spec merges** since last check. Latest remains #4939.
+- **EF tests**: 15/15 operations (minimal, fake_crypto) + 9/9 fork choice (minimal, real crypto) pass locally.
+- **Nightly CI**: Mar 24 green (all 25 jobs passed). Previous failures (slasher dead code, op-pool) already resolved.
+- **Cargo audit**: unchanged — 1 medium (rsa, no fix available), 5 unmaintained (transitive).
+- **Clippy/warnings**: zero across workspace on both stable and nightly.
+- **Open Gloas spec PRs**: #4979 (PTC window, still under review), #5035/#5036 (implemented), #4892/#4898 (aligned). No newly merged.
+- **No actionable work**.
