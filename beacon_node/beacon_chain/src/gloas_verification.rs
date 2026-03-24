@@ -92,14 +92,6 @@ pub enum ExecutionBidError {
     /// ## Peer scoring
     /// The peer has sent an invalid message.
     InvalidSignature,
-    /// No proposer preferences have been seen for the bid's slot.
-    ///
-    /// Spec: `[IGNORE] the SignedProposerPreferences where
-    /// preferences.proposal_slot is equal to bid.slot has been seen.`
-    ///
-    /// ## Peer scoring
-    /// Not malicious — preferences may not have arrived yet.
-    ProposerPreferencesNotSeen { slot: Slot },
     /// The bid's fee_recipient does not match the proposer's preferences.
     ///
     /// Spec: `[REJECT] bid.fee_recipient matches the fee_recipient from
@@ -481,26 +473,24 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             }
         }
 
-        // Check 4b: Proposer preferences validation
-        // Spec: [IGNORE] the SignedProposerPreferences for bid.slot has been seen.
-        // Spec: [REJECT] bid.fee_recipient matches the proposer's preferences.
-        // Spec: [REJECT] bid.gas_limit matches the proposer's preferences.
-        let preferences = self
-            .get_proposer_preferences(bid_slot)
-            .ok_or(ExecutionBidError::ProposerPreferencesNotSeen { slot: bid_slot })?;
+        // Check 4b: Proposer preferences validation (conditional per consensus-specs #5036)
+        // If preferences have been seen, validate fee_recipient and gas_limit match.
+        // If preferences have NOT been seen, allow bids through — they can flow even
+        // if preferences were delayed or missed due to network partition.
+        if let Some(preferences) = self.get_proposer_preferences(bid_slot) {
+            if bid.message.fee_recipient != preferences.message.fee_recipient {
+                return Err(ExecutionBidError::FeeRecipientMismatch {
+                    expected: preferences.message.fee_recipient,
+                    received: bid.message.fee_recipient,
+                });
+            }
 
-        if bid.message.fee_recipient != preferences.message.fee_recipient {
-            return Err(ExecutionBidError::FeeRecipientMismatch {
-                expected: preferences.message.fee_recipient,
-                received: bid.message.fee_recipient,
-            });
-        }
-
-        if bid.message.gas_limit != preferences.message.gas_limit {
-            return Err(ExecutionBidError::GasLimitMismatch {
-                expected: preferences.message.gas_limit,
-                received: bid.message.gas_limit,
-            });
+            if bid.message.gas_limit != preferences.message.gas_limit {
+                return Err(ExecutionBidError::GasLimitMismatch {
+                    expected: preferences.message.gas_limit,
+                    received: bid.message.gas_limit,
+                });
+            }
         }
 
         // Check 5: Signature verification

@@ -4488,9 +4488,11 @@ async fn bid_submission_rejected_unknown_parent_block_hash() {
     }
 }
 
-/// POST builder/bids without prior proposer preferences should return 400.
+/// POST builder/bids without prior proposer preferences should NOT fail on
+/// missing preferences (consensus-specs #5036). The bid may still fail on
+/// other checks (signature, equivocation, etc.) but preferences are optional.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn bid_submission_rejected_proposer_preferences_not_seen() {
+async fn bid_submission_without_proposer_preferences_passes_prefs_check() {
     let validator_count = 32;
     let (tester, builder_keypairs) =
         gloas_tester_with_builders(validator_count, &[(0, 10_000_000_000)]).await;
@@ -4504,7 +4506,7 @@ async fn bid_submission_rejected_proposer_preferences_not_seen() {
     let current_slot = harness.chain.slot().unwrap();
     let spec = &harness.chain.spec;
 
-    // Do NOT submit proposer preferences — bid should fail at preferences check
+    // Do NOT submit proposer preferences — bid should pass preferences check
     let bid_msg = types::ExecutionPayloadBid::<E> {
         slot: current_slot,
         execution_payment: 1,
@@ -4529,19 +4531,14 @@ async fn bid_submission_rejected_proposer_preferences_not_seen() {
     };
 
     let result = client.post_builder_bids(&signed_bid).await;
-    assert!(
-        result.is_err(),
-        "bid without proposer preferences should be rejected"
-    );
+    // The bid may succeed or fail on a later check, but it must NOT fail with
+    // ProposerPreferencesNotSeen
     if let Err(eth2::Error::ServerMessage(msg)) = &result {
-        assert_eq!(msg.code, 400);
         assert!(
-            msg.message.contains("ProposerPreferencesNotSeen"),
-            "expected ProposerPreferencesNotSeen error, got: {}",
+            !msg.message.contains("ProposerPreferencesNotSeen"),
+            "bid without preferences should not fail on missing preferences, got: {}",
             msg.message
         );
-    } else {
-        panic!("expected ServerMessage error, got: {result:?}");
     }
 }
 

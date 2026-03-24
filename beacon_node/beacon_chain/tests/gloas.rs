@@ -13947,25 +13947,15 @@ async fn gloas_payload_attestation_invalid_sig_does_not_poison_cache() {
 }
 
 // =============================================================================
-// Execution bid gossip: ProposerPreferencesNotSeen
+// Execution bid gossip: no proposer preferences (consensus-specs #5036)
 // =============================================================================
 
-/// When a bid arrives for a slot where no proposer preferences have been
-/// inserted into the pool, the bid is rejected with `ProposerPreferencesNotSeen`.
-///
-/// Spec: `[IGNORE] the SignedProposerPreferences where preferences.proposal_slot
-/// is equal to bid.slot has been seen.`
-///
-/// This check (check 4b) runs after parent root validation (check 4). The bid
-/// must pass checks 1-4 (slot, payment, builder exists/active, balance,
-/// equivocation, parent root) to reach the proposer preferences check.
-///
-/// This guard prevents builders from submitting bids before the proposer has
-/// declared their preferences. Without it, builders could bid with arbitrary
-/// fee_recipient/gas_limit values and potentially win slots with unacceptable
-/// terms for the proposer.
+/// When a bid arrives for a slot where no proposer preferences have been seen,
+/// the bid passes the preferences check and continues to later validation steps.
+/// Per consensus-specs #5036, bids can flow even if preferences were delayed or
+/// missed. The proposer still validates bids against their own preferences locally.
 #[tokio::test]
-async fn gloas_bid_gossip_rejects_no_proposer_preferences() {
+async fn gloas_bid_gossip_accepts_without_proposer_preferences() {
     // Builder 0: deposit_epoch=0, balance=10 ETH
     let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
     Box::pin(harness.extend_slots(64)).await;
@@ -13982,22 +13972,15 @@ async fn gloas_bid_gossip_rejects_no_proposer_preferences() {
         "no preferences should exist for slot {next_slot} before insertion"
     );
 
-    // Create a bid for next_slot. It will pass checks 1-4 (slot, payment,
-    // builder, balance, equivocation, parent root) but fail at check 4b
-    // because no proposer preferences have been inserted.
+    // Create a bid for next_slot. Without preferences, the bid should pass
+    // all checks including preferences (which are now optional).
     let bid = make_external_bid(&state, head_root, next_slot, 0, 5000);
 
-    let err = assert_bid_rejected(
-        &harness,
-        bid,
-        "bid should fail without proposer preferences",
+    // The bid should be accepted — preferences are no longer required
+    assert!(
+        harness.chain.verify_execution_bid_for_gossip(bid).is_ok(),
+        "bid without preferences should be accepted"
     );
-    match err {
-        ExecutionBidError::ProposerPreferencesNotSeen { slot } => {
-            assert_eq!(slot, next_slot);
-        }
-        other => panic!("expected ProposerPreferencesNotSeen, got {other:?}"),
-    }
 }
 
 // =============================================================================

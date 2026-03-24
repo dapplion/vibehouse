@@ -2137,15 +2137,15 @@ async fn envelope_prior_to_finalization_direct() {
 }
 
 // =============================================================================
-// Bid: proposer preferences validation (ProposerPreferencesNotSeen, FeeRecipientMismatch,
+// Bid: proposer preferences validation (FeeRecipientMismatch,
 // GasLimitMismatch)
 // =============================================================================
 
-/// Bid submitted before any proposer preferences have been seen for the slot → IGNORE.
-/// Per spec, bids must be preceded by a SignedProposerPreferences for the same slot.
-/// Without it, the bid cannot be validated for fee_recipient/gas_limit compliance.
+/// Bid submitted without proposer preferences proceeds past the preferences check
+/// (consensus-specs #5036). The bid may still fail on signature or other checks,
+/// but the absence of preferences is no longer a rejection/ignore reason.
 #[tokio::test]
-async fn bid_no_proposer_preferences_ignored() {
+async fn bid_no_proposer_preferences_passes_preferences_check() {
     let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
     let current_slot = harness.chain.slot().unwrap();
 
@@ -2161,13 +2161,11 @@ async fn bid_no_proposer_preferences_ignored() {
     bid.message.value = 100;
     bid.message.parent_block_root = head_root;
 
-    let err = unwrap_err(
+    // Without preferences, the bid should pass the preferences check and fail
+    // later (e.g. on signature verification or parent block hash).
+    let _err = unwrap_err(
         harness.chain.verify_execution_bid_for_gossip(bid),
-        "should reject bid without proposer preferences",
-    );
-    assert!(
-        matches!(err, ExecutionBidError::ProposerPreferencesNotSeen { slot } if slot == current_slot),
-        "expected ProposerPreferencesNotSeen for slot {current_slot}, got {err:?}"
+        "should fail on a later check, not on preferences",
     );
 }
 

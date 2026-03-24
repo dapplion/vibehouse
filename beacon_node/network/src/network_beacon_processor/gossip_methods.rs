@@ -3523,17 +3523,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
                 return;
             }
-            // Spec: [IGNORE] SignedProposerPreferences for bid.slot has been seen
-            Err(ExecutionBidError::ProposerPreferencesNotSeen { .. }) => {
-                debug!(
-                    builder_index,
-                    %peer_id,
-                    "Ignoring execution bid: proposer preferences not yet seen for this slot"
-                );
-                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
-                return;
-            }
-            // Spec: [REJECT] bid.fee_recipient matches proposer preferences
+            // Spec: [REJECT] bid.fee_recipient matches proposer preferences (if prefs seen)
             Err(ExecutionBidError::FeeRecipientMismatch { .. }) => {
                 warn!(
                     builder_index,
