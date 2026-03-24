@@ -30,6 +30,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2285 (Mar 24) — maintenance check, nightly updated, all clean
+
+- CI: latest run green (5ecd595b2). Nightly Mar 23 slasher failure on old commit (MEGABYTE cfg guard) — already fixed on HEAD. Mar 22 nightly failure was transient curl 404 (infra issue).
+- Spec: v1.7.0-alpha.3 still latest. Spec test fixtures: v1.5.0 (unchanged). No new spec test release.
+- Recent merges: #5015 (coverage infra), #5008 (doc field name fix), #5014 (EIP-8025 p2p update — adds ExecutionProofsByRange + ExecutionProofStatus RPCs, removes MetaData v4). None require code changes.
+- All 7 tracked Gloas PRs still open: #4979 (PTC window, under review), #4962 (withdrawal tests), #4843 (variable PTC deadline), #4892 (remove impossible branch, APPROVED), #4898 (remove pending tiebreaker, APPROVED), #4954 (ms in fork choice), #4747 (fast confirmation rule).
+- Updated nightly toolchain to 1.96.0-nightly (f66622c7e, Mar 23). Clippy: 0 warnings (stable 1.94.0 + nightly). cargo audit: unchanged (1 rsa, 5 unmaintained).
+- Dependencies: only `rand_xorshift` outdated (0.4→0.5, blocked by rand_core version conflict).
+- No code changes — codebase healthy, holding pattern.
+
 ### run 2284 (Mar 24) — maintenance check, #5022 already compliant
 
 - CI: run 23475160830 in progress (check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, beacon_chain/http_api/unit still running). Previous run (23474978792) green.
