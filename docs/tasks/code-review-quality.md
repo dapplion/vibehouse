@@ -5465,3 +5465,20 @@ Also verified vibehouse is ahead of two open PRs:
 **Dependency audit**: `cargo audit` unchanged — 1 medium RSA vuln (no upstream fix), 5 unmaintained warnings (all transitive deps from sp1-verifier/ark-ff chains).
 
 **Assessment**: No actionable work. Codebase clean, CI green, spec tracked. Waiting for spec changes.
+
+### Run 2300 — spec tracking + is_supporting_vote invariant assertion (2026-03-24)
+
+**Scope**: Check for newly merged consensus-specs PRs, implement any applicable changes.
+
+**Spec tracking — 2 new PRs merged since last check**:
+- **#5022** (merged Mar 23): Adds explicit `assert data.beacon_block_root in store.blocks` in `on_payload_attestation_message`. **Already compliant** — our `fork_choice.rs:1430-1432` returns `UnknownBeaconBlockRoot` error for unknown roots.
+- **#5023** (merged Mar 23): Test infrastructure only (block root filenames, Gloas comptests). No spec changes. Will affect test vectors in future release.
+
+**Implemented — PR #4892** (2 approvals, not yet merged but simple + correct):
+Added `debug_assert!(vote.current_slot >= node_slot)` in both `is_supporting_vote_gloas_at_slot` and `is_supporting_vote_gloas_cached`. This matches the spec PR which replaces `if message.slot <= block.slot` with `assert message.slot >= block.slot` + `if message.slot == block.slot`. Our code already handled this correctly (checking `==` only, since `on_attestation` validates `>=`), but the explicit assert catches invariant violations in debug builds.
+
+**New open PR — #5035** (0 approvals, just created): "Allow same epoch proposer preferences" — lets validators broadcast preferences for current epoch (not just next). Changes gossip validation, `is_valid_proposal_slot`, and `get_upcoming_proposal_slots`. Not ready to implement.
+
+**Tests**: proto_array 206/206, fork_choice 121/121, EF fork_choice 9/9 all pass.
+
+**Assessment**: One small spec alignment shipped. All remaining open PRs need more review before implementation.
