@@ -30,6 +30,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2327 (Mar 24) — CI monitoring, #4979 diff pre-read
+
+- CI: run 23504997273 still in progress (check+clippy ✓, ef-tests ✓, 4 jobs running ~20min). Last full green: 23496276572.
+- Spec: no new consensus-specs commits since #4939 merge. No new test vector release (still v1.5.0). Nightly green.
+- **#4979 diff pre-read**: reviewed full diff of PTC window PR. Design stabilized — `compute_ptc` extracted, `get_ptc` becomes cache lookup, `process_ptc_window` shifts+fills at epoch boundary, `initialize_ptc_window` for fork upgrade. Updated memory file with latest spec details. Ready to implement on merge.
+- All tracked open Gloas PRs unchanged: #4979 (PTC window, active review), #4843 (variable PTC deadline), #4892 (APPROVED), #4898 (APPROVED), #4954 (ms in fork choice), #4747 (fast confirmation rule), #5035 (APPROVED, implemented), #5036 (implemented), #4962 (test-only, 2 approvals).
+- Production code audit: zero `checked_X().unwrap()` patterns in entire codebase. All TODOs properly linked to #36.
+- No code changes — codebase healthy, holding pattern.
+
 ### run 2326 (Mar 24) — CI monitoring, holding pattern
 
 - CI: run 23504997273 in progress (check+clippy ✓, 5 jobs running). Last full green: 23496276572.
