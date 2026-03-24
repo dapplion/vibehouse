@@ -30,6 +30,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2316 (Mar 24) — alpha.4 version bump audit
+
+- CI: all green. Latest push (23496276572) passed. Nightly Mar 24 green.
+- Spec: **v1.7.0-alpha.4 version bump** (#5034) merged to consensus-specs master. No new test vector release yet.
+- Audited all alpha.3 → alpha.4 changes (20 commits):
+  - **#5022** (assert block known in on_payload_attestation_message): already handled — vibehouse checks `UnknownBeaconBlockRoot` in both gossip verification and fork choice handler
+  - **#5008** (correct field name block_root → beacon_block_root in EnvelopesByRoot): doc-only fix, our code already uses `beacon_block_root`
+  - **#5023** (fix block root filenames and Gloas comptests): test infrastructure only, no protocol changes
+  - **#5014** (update EIP-8025 p2p protocol): feature spec, not Gloas core. Adds `ExecutionProofsByRange` RPC and `ExecutionProofStatus` RPC, removes MetaData changes. Our ZK proofs use HTTP API, not P2P RPC.
+  - **#4902** (executable gossip validation for phase0): phase0 only, not relevant
+  - **#5005** (builder voluntary exit test fix): already audited in post-alpha3
+  - Remaining: all CI/deps/tooling bumps (setuptools, deepdiff, ruff, ckzg, mkdocs, pytest-cov, actions/*)
+- **Result: no actionable changes for vibehouse**. All Gloas-relevant items already handled.
+- All 9 tracked open Gloas PRs still open: #4979, #4843, #4892, #4898, #4954, #4747, #4939, #5035, #5036.
+- Production code audit: zero `.unwrap()` calls in production paths of gloas.rs, fork_choice.rs, epoch processing, upgrade code.
+- No code changes needed.
+
 ### run 2309 (Mar 24) — routine maintenance, PR #5035 approved
 
 - CI: run 23495309759 in progress (check+clippy+fmt ✓, ef-tests ✓, 4 jobs running). Previous run all green. Nightly Mar 24 green.
