@@ -5429,3 +5429,17 @@ Also verified vibehouse is ahead of two open PRs:
 - **#4979** (PTC window cache) — still under discussion, not ready
 - **#4843** (variable PTC deadline) — active discussion, 1 approval
 - **#4954** (millisecond store) — blocked, 0 reviews
+
+### Run 2298 — spec tracking + CI monitoring (2026-03-24)
+
+**Scope**: Check for new consensus-specs changes, verify CI health.
+
+**Spec tracking**: Reviewed 15 most recently merged consensus-specs PRs. All Gloas-relevant PRs (#5022, #5023, #5008) already verified in run 2296. New PR #5014 (EIP-8025 p2p protocol update) is in `_features/eip8025/` — affects ZK execution proof p2p layer (experimental), not mainline Gloas. No action needed.
+
+**Open PR status**: No changes — #4979 (PTC window, 0 approvals), #4843 (variable PTC deadline, 1 approval), #4954 (millisecond store, 0 approvals) all still under discussion. #4892 (2 approvals) and #4898 (1 approval) already implemented in vibehouse.
+
+**Codebase health**: clippy clean (`--workspace --all-targets`), `cargo audit` unchanged (1 medium RSA vuln, no fix), nightly tests green, CI in progress for cargo-nextest pin commit. EF test fixtures at v1.7.0-alpha.3 (latest release). No new spec tag since alpha.3.
+
+**Remaining TODOs**: All 9 remaining TODO comments in production code are linked to #36 and are either blocked on external changes (EIP-7892 ×3, blst safe API, PeerDAS checkpoint sync) or non-critical refactoring (EL error enums, pool persistence). No actionable items.
+
+**Assessment**: Codebase is in excellent shape. All priority tasks complete. Waiting for spec changes to land (primarily #4979 PTC window cache) before next implementation work.
