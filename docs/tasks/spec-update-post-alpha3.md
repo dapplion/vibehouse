@@ -190,3 +190,17 @@ Implemented SHOULD behavior from Gloas p2p spec (aligned with open PR #4939): re
 - **No new Gloas spec merges** since alpha.4 (except #4939 above).
 - **CI**: push CI in progress (4/6 jobs passed), nightly green.
 - **Open Gloas spec PRs**: #5035 (implemented), #5036 (implemented), #4979 (PTC window, blocked), #4892 (2 approvals, aligned), #4898 (1 approval, aligned), #4843 (variable PTC deadline), #4954 (millisecond time), #4747 (fast confirmation rule), #4840 (EIP-7843), #4630 (EIP-7688 SSZ), #4558 (cell dissemination)
+
+### run 2329 (Mar 24) — full alpha.4 audit + proactive implementation verification
+
+- **Spec v1.7.0-alpha.4**: version bump PR #5034 merged today, but no GitHub Release cut yet (test vectors still at alpha.3)
+- **Full audit of 5 new Gloas spec PRs**: all already implemented or doc-only
+  - **#5001** (parent_block_root in bid filtering key): already implemented — 3-tuple dedup key in `observed_execution_bids.rs`
+  - **#5002** (self-build signature wording): prose-only clarification, no code change
+  - **#5008** (field name in EnvelopesByRoot): prose-only fix, our code already uses `beacon_block_root`
+  - **#5022** (block-known check in payload attestation): already implemented — `UnknownBeaconBlockRoot` at fork_choice.rs:1425-1432
+  - **#4939** (request missing envelopes): already implemented (run 1773)
+- **Verified proactive implementations**: deep diff comparison of #5035 and #5036 against latest spec PR diffs — both fully aligned, no discrepancies
+- **PTC window (#4979)**: still in active development — name changed to `ptc_window`/`ptc_cache`, epoch range fix applied today. Not ready to implement.
+- **Nightly CI**: Mar 24 green. Mar 23 failure was slasher `MEGABYTE` dead code (already fixed). Mar 22 failure was transient CI infra (install-action).
+- **Dep updates**: ipconfig 0.3.4, libredox 0.1.15, proptest 1.11.0, unicode-segmentation 1.13.0, windows-registry 0.6.1 (replaces winreg 0.50.0)
