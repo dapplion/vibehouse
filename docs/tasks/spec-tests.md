@@ -30,6 +30,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2337 (Mar 24) — CI green, spec stable, holding pattern
+
+- CI: run 23506464983 all green. Nightly Mar 24 green (Mar 23 slasher flake already fixed).
+- Spec: no new consensus-specs commits since #4939 merge. No new test vector release (still v1.5.0 / alpha.3 vectors).
+- **#4979 active review**: nflaig suggesting `ptc_assignments` rename and epoch bound clarification (19:09-19:18 UTC). jtraglia responsive. Design stable, not merged.
+- New PRs: #5033 (Altair gossip validation functions), #5037 (EIP-8025 fork version removal) — neither Gloas-related.
+- All 9 tracked open Gloas PRs unchanged. None merged. #4892 (2 approvals), #4898 (1 approval), #5035 (1 approval, implemented), #5036 (0 approvals, implemented) closest to merge.
+- No code changes — codebase healthy, holding pattern.
+
 ### run 2336 (Mar 24) — CI green, spec stable, #4979 design converging
 
 - CI: run 23506464983 all green. Nightly Mar 24 green. Local workspace tests: 4991/4991 pass (8 web3signer_tests skipped — external service, excluded from CI).
