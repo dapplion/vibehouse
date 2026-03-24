@@ -285,3 +285,11 @@ Implemented SHOULD behavior from Gloas p2p spec (aligned with open PR #4939): re
 - **#4979 (PTC window cache)**: still blocked, 0 approvals, active review (updated today). Design adding 2-epoch PTC cache to BeaconState.
 - **Open Gloas spec PRs**: #4843 (approved, ready to merge), #4979 (blocked), #5035/#5036 (implemented), #4892/#4898 (aligned, not merged), #4954 (millisecond time), #4747 (fast confirmation rule)
 - **No actionable work**: all priorities DONE, codebase clean, spec fully tracked.
+
+### run 2351 (Mar 24) — spec audit + health check
+
+- **No new Gloas spec merges** since #4939. Checked all 9 recent merged PRs (#5034, #5023, #5022, #5008, #5015, #4939, #4902, #5005, #4926) — all already implemented or no code change needed.
+- **alpha.4**: version bump merged (#5034) but no GitHub Release or EF test fixtures yet (latest tag: alpha.3, latest tests: v1.6.0-beta.0).
+- **Compilation**: zero warnings. **Cargo audit**: unchanged (1 medium rsa, no fix). **Dependencies**: all up-to-date (rand_xorshift 0.4→0.5 still blocked). **TODOs**: all linked to #36, all blocked on external factors.
+- **Open Gloas spec PRs**: #4843 (approved, not yet merged), #4979 (PTC window, active review), #5035/#5036 (implemented), #4892/#4898 (aligned), #4954, #4747, #4840, #4630
+- **No actionable work**: all priorities DONE, codebase clean, spec fully tracked.
