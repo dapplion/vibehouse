@@ -275,3 +275,13 @@ Implemented SHOULD behavior from Gloas p2p spec (aligned with open PR #4939): re
 - **Dependencies**: rand_xorshift 0.4→0.5 still blocked by rand_core version split. No other outdated deps.
 - **Open Gloas spec PRs**: #4979 (PTC window, active review), #5035/#5036 (implemented), #4892/#4898 (aligned), #4843 (variable PTC deadline, APPROVED), #4954 (millisecond time), #4747 (fast confirmation rule)
 - **Devnet**: smoke test in progress.
+
+### run 2348 (Mar 24) — routine spec + health check
+
+- **No new Gloas spec merges** since #4939. All tracked.
+- **EF tests**: 42/42 (operations+epoch, fake_crypto, minimal) + 9/9 (fork_choice, real crypto, minimal) = 51/51 passing.
+- **Compilation**: zero warnings from `cargo check --release`.
+- **#4843 (variable PTC deadline)**: APPROVED by jtraglia, mergeable "clean". Large change: renames `payload_present`→`payload_timely` in PayloadAttestationData/LatestMessage, adds `MIN_PAYLOAD_DUE_BPS` config, `payload_envelopes` to store, variable deadline based on payload size. Will implement when merged.
+- **#4979 (PTC window cache)**: still blocked, 0 approvals, active review (updated today). Design adding 2-epoch PTC cache to BeaconState.
+- **Open Gloas spec PRs**: #4843 (approved, ready to merge), #4979 (blocked), #5035/#5036 (implemented), #4892/#4898 (aligned, not merged), #4954 (millisecond time), #4747 (fast confirmation rule)
+- **No actionable work**: all priorities DONE, codebase clean, spec fully tracked.
