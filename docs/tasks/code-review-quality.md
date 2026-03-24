@@ -5311,3 +5311,21 @@ PTC window spec change (consensus-specs PR #4979) still open/unmerged — monito
 **Spec audit**: Re-confirmed 3 recently merged Gloas PRs (#5022, #5014, #5008) — all already tracked in previous runs. PTC window PR #4979 still open (reopened Mar 20 after brief closure in favor of #4992, discussion ongoing).
 
 **Nightly tests**: All 26 jobs pass (beacon_chain, network, op_pool, http_api across all forks).
+
+### Run 2290: replace try_into().unwrap() in gloas beacon_chain code (2026-03-24)
+
+**Scope**: Safety audit of `unwrap()` calls in Gloas-specific runtime code.
+
+**Findings**: 4 `try_into().unwrap()` calls in `beacon_chain.rs` converting to `VariableList` types. These are protected by upstream invariants (attesting indices ≤ PTC_SIZE, withdrawal count ≤ MAX) but violate the "no unwrap at runtime" rule.
+
+**Fixed**:
+1. Payload attestation index conversion (line 3518): `unwrap()` → `map_err(Error::SszTypesError)?`
+2. Filtered payload attestation indices (line 5543): `unwrap()` → `match` with `debug!` log + `continue`
+3. Gloas withdrawal list conversion (line 6504): `map(|v| v.try_into().unwrap())` → `and_then(|v| v.try_into().map_err(Error::SszTypesError))`
+4. Advanced state withdrawal list conversion (line 6531): same pattern as #3
+
+**Not changed**: ~45 `try_into().unwrap()` calls in shared block body construction code (pre-existing, all fork variants, protected by operation pool size limits).
+
+**Also checked**: No new Gloas spec changes since alpha.3. PTC window PR #4979 still open. Nightly test failures (Mar 22-23) were transient CI infra issue + MEGABYTE constant dead_code (already fixed by clippy lint commit).
+
+**Verification**: 999/999 beacon_chain tests (gloas), full workspace clippy clean (lint-full passed on push).
