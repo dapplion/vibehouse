@@ -5549,3 +5549,22 @@ Added `debug_assert!(vote.current_slot >= node_slot)` in both `is_supporting_vot
 **EF test fixtures**: On v1.7.0-alpha.3 (latest release). No new release available.
 
 **Assessment**: Codebase stable and fully audited. No actionable work — all tasks complete, all spec changes tracked, CI green. Waiting for spec PRs to merge before next implementation work.
+
+### Run 2304 — spec tracking + stability check (2026-03-24)
+
+**Scope**: Check for new consensus-specs activity, verify CI health, assess remaining work.
+
+**Spec tracking**: No new Gloas-relevant PRs merged since run 2303. All recent consensus-specs commits remain CI/infra/dependency updates only.
+
+**Open PR status updates**:
+- #4747 (fast confirmation rule) — very active (78 commits, updated today), major change (new fork choice fields, confirmation tracking), not close to merge
+- #4979 (PTC window cache) — reopened Mar 20 after being closed in favor of #4992, renamed `ptc_lookbehind` → `ptc_window`, 0 approvals, still under review
+- #5035 (same epoch proposer preferences) — 2 reviews, not merged
+- #5036 (relax bid gossip dependency) — not merged
+- #4892, #4898, #4939 — already implemented, awaiting merge upstream
+
+**CI status**: Run 23492870696 — 3/6 jobs passed (check+clippy+fmt, ef-tests, network+op_pool), 3 in progress (http_api, unit tests, beacon_chain). No failures.
+
+**Issue #36 (misc code improvements)**: Remaining items all blocked (EIP-7892 spec ×3, blst upstream ×1) or non-critical (persist pools, error enum refactor). Nothing actionable.
+
+**Assessment**: No actionable work. Codebase stable, CI green, spec tracked. Waiting for spec changes.
