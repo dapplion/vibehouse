@@ -392,7 +392,6 @@ lint:
 		-D clippy::match_wildcard_for_single_variants \
 		-D clippy::maybe_infinite_iter \
 		-D clippy::mem_forget \
-		-D clippy::mismatched_target_os \
 		-D clippy::mismatching_type_param_order \
 		-D clippy::missing_fields_in_debug \
 		-D clippy::missing_safety_doc \
