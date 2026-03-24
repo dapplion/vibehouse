@@ -30,6 +30,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2343 (Mar 24) — holding pattern, verified #4892/#4898 already handled
+
+- CI: all green. Nightly Mar 24 green.
+- Spec: no new consensus-specs merges since alpha.4. No new test vector release (still alpha.3 vectors).
+- Reviewed approved-but-unmerged PRs: #4892 (impossible branch removal) — our `is_supporting_vote_gloas_at_slot` already uses `debug_assert!` + `==` check instead of `<=`. #4898 (pending tiebreaker removal) — our `get_payload_tiebreaker` already omits the PENDING check in the `is_previous_slot` branch. No code changes needed when either merges.
+- #4979 (PTC window) still under review. #4962 still open. No merges imminent.
+- `cargo audit`: unchanged — 1 rsa vuln, 5 allowed warnings.
+- No code changes — codebase healthy, holding pattern.
+
 ### run 2342 (Mar 24) — spec bumped to alpha.4, all changes already implemented
 
 - CI: all green. Nightly Mar 24 green.
