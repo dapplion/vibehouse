@@ -31,13 +31,24 @@ pub struct ErrorType(pub VariableList<u8, MaxErrorLen>);
 
 impl From<String> for ErrorType {
     fn from(s: String) -> Self {
-        Self(VariableList::from(s.as_bytes().to_vec()))
+        let mut bytes = s.into_bytes();
+        bytes.truncate(MAX_ERROR_LEN as usize);
+        // Safety: truncated to MAX_ERROR_LEN so VariableList::new cannot fail.
+        match VariableList::new(bytes) {
+            Ok(list) => Self(list),
+            Err(_) => Self(VariableList::empty()),
+        }
     }
 }
 
 impl From<&str> for ErrorType {
     fn from(s: &str) -> Self {
-        Self(VariableList::from(s.as_bytes().to_vec()))
+        let mut bytes = s.as_bytes().to_vec();
+        bytes.truncate(MAX_ERROR_LEN as usize);
+        match VariableList::new(bytes) {
+            Ok(list) => Self(list),
+            Err(_) => Self(VariableList::empty()),
+        }
     }
 }
 

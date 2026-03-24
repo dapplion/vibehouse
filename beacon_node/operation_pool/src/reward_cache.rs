@@ -164,7 +164,8 @@ mod tests {
         for data in deposit_datas {
             tree.push_leaf(data.tree_hash_root()).unwrap();
             let (_leaf, proof_vec) = tree.generate_proof(deposits.len()).unwrap();
-            let mut proof = FixedVector::from(vec![Hash256::zero(); DEPOSIT_TREE_DEPTH + 1]);
+            let mut proof =
+                FixedVector::new(vec![Hash256::zero(); DEPOSIT_TREE_DEPTH + 1]).unwrap();
             for (i, node) in proof_vec.iter().enumerate() {
                 proof[i] = *node;
             }

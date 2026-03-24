@@ -672,7 +672,8 @@ mod tests {
             let (_leaf, proof_vec) = tree
                 .generate_proof(deposits.len())
                 .expect("should generate proof");
-            let mut proof = types::FixedVector::from(vec![Hash256::zero(); deposit_tree_depth + 1]);
+            let mut proof =
+                types::FixedVector::new(vec![Hash256::zero(); deposit_tree_depth + 1]).unwrap();
             for (i, node) in proof_vec.iter().enumerate() {
                 proof[i] = *node;
             }

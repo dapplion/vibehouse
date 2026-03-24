@@ -4347,7 +4347,7 @@ mod gloas_operations_tests {
 
         // Build a minimal Gloas block with the builder exit
         let mut block = BeaconBlockGloas::<E, FullPayload<E>>::empty(&spec);
-        block.body.voluntary_exits = vec![exit].into();
+        block.body.voluntary_exits = vec![exit].try_into().unwrap();
         let signed_block =
             SignedBeaconBlock::from_block(BeaconBlock::Gloas(block), bls::Signature::empty());
 
@@ -4387,7 +4387,7 @@ mod gloas_operations_tests {
         let exit = sign_builder_exit(&state, 0, state.current_epoch(), &wrong_kp.sk, &spec);
 
         let mut block = BeaconBlockGloas::<E, FullPayload<E>>::empty(&spec);
-        block.body.voluntary_exits = vec![exit].into();
+        block.body.voluntary_exits = vec![exit].try_into().unwrap();
         let signed_block =
             SignedBeaconBlock::from_block(BeaconBlock::Gloas(block), bls::Signature::empty());
 

@@ -2034,7 +2034,7 @@ fn load_parent<T: BeaconChainTypes, B: AsBlock<T::EthSpec>>(
                     {
                         let withdrawals = state
                             .payload_expected_withdrawals()
-                            .map(|w| w.iter().copied().collect::<Vec<_>>().into())
+                            .map(|w| w.iter().copied().collect::<Vec<_>>().try_into().unwrap())
                             .unwrap_or_default();
                         let env = blinded.into_full_with_withdrawals(withdrawals);
                         state_processing::envelope_processing::process_execution_payload_envelope(

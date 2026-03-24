@@ -360,7 +360,7 @@ pub fn get_indexed_payload_attestation<E: EthSpec>(
     attesting_indices.sort_unstable();
 
     Ok(IndexedPayloadAttestation {
-        attesting_indices: attesting_indices.into(),
+        attesting_indices: attesting_indices.try_into()?,
         data: attestation.data,
         signature: attestation.signature.clone(),
     })

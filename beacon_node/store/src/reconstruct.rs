@@ -132,7 +132,7 @@ where
                                 Ok(Some(blinded)) => {
                                     let withdrawals = state
                                         .payload_expected_withdrawals()
-                                        .map(|w| w.iter().copied().collect::<Vec<_>>().into())
+                                        .map(|w| w.iter().copied().collect::<Vec<_>>().try_into().unwrap())
                                         .unwrap_or_default();
                                     let reconstructed =
                                         blinded.into_full_with_withdrawals(withdrawals);

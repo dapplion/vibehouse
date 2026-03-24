@@ -625,13 +625,13 @@ impl SingleAttestation {
     pub fn to_indexed<E: EthSpec>(&self, fork_name: ForkName) -> IndexedAttestation<E> {
         if fork_name.electra_enabled() {
             IndexedAttestation::Electra(IndexedAttestationElectra {
-                attesting_indices: vec![self.attester_index].into(),
+                attesting_indices: vec![self.attester_index].try_into().unwrap(),
                 data: self.data,
                 signature: self.signature.clone(),
             })
         } else {
             IndexedAttestation::Base(IndexedAttestationBase {
-                attesting_indices: vec![self.attester_index].into(),
+                attesting_indices: vec![self.attester_index].try_into().unwrap(),
                 data: self.data,
                 signature: self.signature.clone(),
             })

@@ -31,8 +31,11 @@ type E = MinimalEthSpec;
 /// Bellatrix block with length < max_rpc_size.
 fn bellatrix_block_small(spec: &ChainSpec) -> BeaconBlock<E> {
     let mut block = BeaconBlockBellatrix::<E>::empty(spec);
-    let tx = VariableList::from(vec![0; 1024]);
-    let txs = VariableList::from(std::iter::repeat_n(tx, 5000).collect::<Vec<_>>());
+    let tx: VariableList<_, _> = vec![0; 1024].try_into().unwrap();
+    let txs: VariableList<_, _> = std::iter::repeat_n(tx, 5000)
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap();
 
     block.body.execution_payload.execution_payload.transactions = txs;
 
@@ -46,8 +49,11 @@ fn bellatrix_block_small(spec: &ChainSpec) -> BeaconBlock<E> {
 /// Hence, we generate a bellatrix block just greater than `MAX_RPC_SIZE` to test rejection on the rpc layer.
 fn bellatrix_block_large(spec: &ChainSpec) -> BeaconBlock<E> {
     let mut block = BeaconBlockBellatrix::<E>::empty(spec);
-    let tx = VariableList::from(vec![0; 1024]);
-    let txs = VariableList::from(std::iter::repeat_n(tx, 100_000).collect::<Vec<_>>());
+    let tx: VariableList<_, _> = vec![0; 1024].try_into().unwrap();
+    let txs: VariableList<_, _> = std::iter::repeat_n(tx, 100_000)
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap();
 
     block.body.execution_payload.execution_payload.transactions = txs;
 
@@ -978,14 +984,21 @@ fn test_tcp_columns_by_root_chunked_rpc() {
                 },
                 signature: Signature::empty(),
             },
-            column: vec![vec![0; E::bytes_per_blob()].into()].into(),
-            kzg_commitments: vec![KzgCommitment::empty_for_testing()].into(),
-            kzg_proofs: vec![KzgProof::empty()].into(),
+            column: vec![
+                vec![0; E::field_elements_per_cell() * 32]
+                    .try_into()
+                    .unwrap(),
+            ]
+            .try_into()
+            .unwrap(),
+            kzg_commitments: vec![KzgCommitment::empty_for_testing()].try_into().unwrap(),
+            kzg_proofs: vec![KzgProof::empty()].try_into().unwrap(),
             kzg_commitments_inclusion_proof: vec![
                 Hash256::zero();
                 E::kzg_commitments_inclusion_proof_depth()
             ]
-            .into(),
+            .try_into()
+            .unwrap(),
         }));
 
         let rpc_response = Response::DataColumnsByRoot(Some(data_column.clone()));
@@ -1119,14 +1132,21 @@ fn test_tcp_columns_by_range_chunked_rpc() {
                 },
                 signature: Signature::empty(),
             },
-            column: vec![vec![0; E::bytes_per_blob()].into()].into(),
-            kzg_commitments: vec![KzgCommitment::empty_for_testing()].into(),
-            kzg_proofs: vec![KzgProof::empty()].into(),
+            column: vec![
+                vec![0; E::field_elements_per_cell() * 32]
+                    .try_into()
+                    .unwrap(),
+            ]
+            .try_into()
+            .unwrap(),
+            kzg_commitments: vec![KzgCommitment::empty_for_testing()].try_into().unwrap(),
+            kzg_proofs: vec![KzgProof::empty()].try_into().unwrap(),
             kzg_commitments_inclusion_proof: vec![
                 Hash256::zero();
                 E::kzg_commitments_inclusion_proof_depth()
             ]
-            .into(),
+            .try_into()
+            .unwrap(),
         }));
 
         let rpc_response = Response::DataColumnsByRange(Some(data_column.clone()));

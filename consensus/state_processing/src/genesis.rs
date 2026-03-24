@@ -275,7 +275,8 @@ mod gloas_genesis_tests {
             let (_leaf, proof_vec) = tree
                 .generate_proof(deposits.len())
                 .expect("should generate proof");
-            let mut proof = FixedVector::from(vec![Hash256::zero(); DEPOSIT_TREE_DEPTH + 1]);
+            let mut proof =
+                FixedVector::new(vec![Hash256::zero(); DEPOSIT_TREE_DEPTH + 1]).unwrap();
             for (i, node) in proof_vec.iter().enumerate() {
                 proof[i] = *node;
             }

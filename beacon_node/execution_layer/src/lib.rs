@@ -2197,7 +2197,7 @@ fn verify_builder_bid<E: EthSpec>(
         .withdrawals()
         .ok()
         .cloned()
-        .map(|withdrawals| Withdrawals::<E>::from(withdrawals).tree_hash_root());
+        .map(|withdrawals| Withdrawals::<E>::new(withdrawals).unwrap().tree_hash_root());
     let payload_withdrawals_root = header.withdrawals_root().ok();
     let expected_gas_limit = proposer_gas_limit
         .and_then(|target_gas_limit| expected_gas_limit(parent_gas_limit, target_gas_limit, spec));

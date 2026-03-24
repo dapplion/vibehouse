@@ -2533,8 +2533,8 @@ mod tests {
             BeaconBlock::<E>::Deneb(BeaconBlockDeneb::empty(&spec)),
             Signature::empty(),
         );
-        let blobs = BlobsList::<E>::from(vec![Blob::<E>::default()]);
-        let kzg_proofs = KzgProofs::<E>::from(vec![KzgProof::empty()]);
+        let blobs: BlobsList<E> = vec![Blob::<E>::default()].try_into().unwrap();
+        let kzg_proofs: KzgProofs<E> = vec![KzgProof::empty()].try_into().unwrap();
         let signed_block_contents =
             PublishBlockRequest::new(Arc::new(block), Some((kzg_proofs, blobs)));
 

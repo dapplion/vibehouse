@@ -3,11 +3,11 @@ use kzg::{
     Error as KzgError, Kzg, KzgBlobRef,
 };
 use rayon::prelude::*;
-use ssz_types::{FixedVector, VariableList};
+use ssz_types::FixedVector;
 use std::sync::Arc;
 use tracing::instrument;
 use types::beacon_block_body::KzgCommitments;
-use types::data_column_sidecar::{Cell, DataColumn, DataColumnSidecarError};
+use types::data_column_sidecar::{Cell, DataColumnSidecarError};
 use types::{
     Blob, BlobSidecar, BlobSidecarList, ChainSpec, DataColumnSidecar, DataColumnSidecarFulu,
     DataColumnSidecarList, EthSpec, Hash256, KzgCommitment, KzgProof, SignedBeaconBlock,
@@ -312,7 +312,7 @@ pub(crate) fn build_data_column_sidecars<E: EthSpec>(
                 .get(col)
                 .ok_or_else(|| format!("Missing blob cell at index {col}"))?;
             let cell: Vec<u8> = cell.to_vec();
-            let cell = Cell::<E>::from(cell);
+            let cell: Cell<E> = cell.try_into().unwrap();
 
             let proof = blob_cell_proofs
                 .get(col)
@@ -339,9 +339,9 @@ pub(crate) fn build_data_column_sidecars<E: EthSpec>(
         let (index, (col, proofs)) = columns_iter.next().ok_or("expected more columns")?;
         sidecars.push(Arc::new(DataColumnSidecar::Fulu(DataColumnSidecarFulu {
             index: index as u64,
-            column: DataColumn::<E>::from(col),
+            column: col.try_into().unwrap(),
             kzg_commitments: kzg_commitments.clone(),
-            kzg_proofs: VariableList::from(proofs),
+            kzg_proofs: proofs.try_into().unwrap(),
             signed_block_header: signed_block_header.clone(),
             kzg_commitments_inclusion_proof: kzg_commitments_inclusion_proof.clone(),
         })));
@@ -349,9 +349,9 @@ pub(crate) fn build_data_column_sidecars<E: EthSpec>(
     if let Some((index, (col, proofs))) = columns_iter.next() {
         sidecars.push(Arc::new(DataColumnSidecar::Fulu(DataColumnSidecarFulu {
             index: index as u64,
-            column: DataColumn::<E>::from(col),
+            column: col.try_into().unwrap(),
             kzg_commitments,
-            kzg_proofs: VariableList::from(proofs),
+            kzg_proofs: proofs.try_into().unwrap(),
             signed_block_header,
             kzg_commitments_inclusion_proof,
         })));

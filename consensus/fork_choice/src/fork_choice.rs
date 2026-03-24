@@ -2261,10 +2261,11 @@ mod tests {
             beacon_block_root: Hash256,
             payload_present: bool,
             blob_data_available: bool,
-            attesting_indices: Vec<u64>,
+            mut attesting_indices: Vec<u64>,
         ) -> IndexedPayloadAttestation<E> {
+            attesting_indices.truncate(E::ptc_size());
             IndexedPayloadAttestation {
-                attesting_indices: VariableList::from(attesting_indices),
+                attesting_indices: VariableList::new(attesting_indices).unwrap(),
                 data: PayloadAttestationData {
                     beacon_block_root,
                     slot: Slot::new(slot),
@@ -3488,7 +3489,7 @@ mod tests {
             attesting_indices: Vec<u64>,
         ) -> IndexedAttestation<E> {
             IndexedAttestation::Electra(IndexedAttestationElectra {
-                attesting_indices: VariableList::from(attesting_indices),
+                attesting_indices: VariableList::new(attesting_indices).unwrap(),
                 data: AttestationData {
                     slot: Slot::new(slot),
                     index,

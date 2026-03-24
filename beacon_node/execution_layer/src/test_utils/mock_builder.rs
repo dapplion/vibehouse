@@ -74,7 +74,7 @@ impl Operation {
 }
 
 pub fn mock_builder_extra_data<E: EthSpec>() -> types::VariableList<u8, E::MaxExtraDataBytes> {
-    b"mock_builder".to_vec().into()
+    b"mock_builder".to_vec().try_into().unwrap()
 }
 
 /// API error type for mock builder responses.

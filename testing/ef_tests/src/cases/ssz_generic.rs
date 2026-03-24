@@ -325,6 +325,6 @@ where
             N::to_usize()
         )))
     } else {
-        Ok(decoded.into())
+        Ok(decoded.try_into().unwrap())
     }
 }

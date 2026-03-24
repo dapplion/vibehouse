@@ -1,3 +1,8 @@
+// From impls for ExecutionPayload ↔ JsonExecutionPayload use .try_into().unwrap()
+// because the withdrawal count is preserved (1:1 mapping). The conversion is infallible
+// but clippy doesn't know that since ssz_types 0.14 changed From<Vec> to TryFrom<Vec>.
+#![allow(clippy::fallible_impl_from)]
+
 use super::{
     Address, ClientVersionV1, Error, EthSpec, ExecutionBlockHash, ExecutionPayload,
     ExecutionPayloadBellatrix, ExecutionPayloadBodyV1, ExecutionPayloadCapella,
@@ -7,7 +12,6 @@ use super::{
     GetPayloadResponseElectra, GetPayloadResponseFulu, GetPayloadResponseGloas, Hash256, KzgProofs,
     PayloadAttributes, PayloadAttributesV1, PayloadAttributesV2, PayloadAttributesV3, PayloadId,
     PayloadStatusV1, PayloadStatusV1Status, Transactions, Uint256, VariableList, Withdrawal,
-    Withdrawals,
 };
 use alloy_rlp::RlpEncodable;
 use eth2::types::BlobsBundle;
@@ -155,7 +159,8 @@ impl<E: EthSpec> From<ExecutionPayloadCapella<E>> for JsonExecutionPayloadCapell
                 .into_iter()
                 .map(Into::into)
                 .collect::<Vec<_>>()
-                .into(),
+                .try_into()
+                .unwrap(),
         }
     }
 }
@@ -181,7 +186,8 @@ impl<E: EthSpec> From<ExecutionPayloadDeneb<E>> for JsonExecutionPayloadDeneb<E>
                 .into_iter()
                 .map(Into::into)
                 .collect::<Vec<_>>()
-                .into(),
+                .try_into()
+                .unwrap(),
             blob_gas_used: payload.blob_gas_used,
             excess_blob_gas: payload.excess_blob_gas,
         }
@@ -210,7 +216,8 @@ impl<E: EthSpec> From<ExecutionPayloadElectra<E>> for JsonExecutionPayloadElectr
                 .into_iter()
                 .map(Into::into)
                 .collect::<Vec<_>>()
-                .into(),
+                .try_into()
+                .unwrap(),
             blob_gas_used: payload.blob_gas_used,
             excess_blob_gas: payload.excess_blob_gas,
         }
@@ -239,7 +246,8 @@ impl<E: EthSpec> From<ExecutionPayloadFulu<E>> for JsonExecutionPayloadFulu<E> {
                 .into_iter()
                 .map(Into::into)
                 .collect::<Vec<_>>()
-                .into(),
+                .try_into()
+                .unwrap(),
             blob_gas_used: payload.blob_gas_used,
             excess_blob_gas: payload.excess_blob_gas,
         }
@@ -268,7 +276,8 @@ impl<E: EthSpec> From<ExecutionPayloadGloas<E>> for JsonExecutionPayloadGloas<E>
                 .into_iter()
                 .map(Into::into)
                 .collect::<Vec<_>>()
-                .into(),
+                .try_into()
+                .unwrap(),
             blob_gas_used: payload.blob_gas_used,
             excess_blob_gas: payload.excess_blob_gas,
         }
@@ -330,7 +339,8 @@ impl<E: EthSpec> From<JsonExecutionPayloadCapella<E>> for ExecutionPayloadCapell
                 .into_iter()
                 .map(Into::into)
                 .collect::<Vec<_>>()
-                .into(),
+                .try_into()
+                .unwrap(),
         }
     }
 }
@@ -357,7 +367,8 @@ impl<E: EthSpec> From<JsonExecutionPayloadDeneb<E>> for ExecutionPayloadDeneb<E>
                 .into_iter()
                 .map(Into::into)
                 .collect::<Vec<_>>()
-                .into(),
+                .try_into()
+                .unwrap(),
             blob_gas_used: payload.blob_gas_used,
             excess_blob_gas: payload.excess_blob_gas,
         }
@@ -386,7 +397,8 @@ impl<E: EthSpec> From<JsonExecutionPayloadElectra<E>> for ExecutionPayloadElectr
                 .into_iter()
                 .map(Into::into)
                 .collect::<Vec<_>>()
-                .into(),
+                .try_into()
+                .unwrap(),
             blob_gas_used: payload.blob_gas_used,
             excess_blob_gas: payload.excess_blob_gas,
         }
@@ -415,7 +427,8 @@ impl<E: EthSpec> From<JsonExecutionPayloadFulu<E>> for ExecutionPayloadFulu<E> {
                 .into_iter()
                 .map(Into::into)
                 .collect::<Vec<_>>()
-                .into(),
+                .try_into()
+                .unwrap(),
             blob_gas_used: payload.blob_gas_used,
             excess_blob_gas: payload.excess_blob_gas,
         }
@@ -444,7 +457,8 @@ impl<E: EthSpec> From<JsonExecutionPayloadGloas<E>> for ExecutionPayloadGloas<E>
                 .into_iter()
                 .map(Into::into)
                 .collect::<Vec<_>>()
-                .into(),
+                .try_into()
+                .unwrap(),
             blob_gas_used: payload.blob_gas_used,
             excess_blob_gas: payload.excess_blob_gas,
         }
@@ -1009,12 +1023,12 @@ impl<E: EthSpec> From<JsonExecutionPayloadBodyV1<E>> for ExecutionPayloadBodyV1<
         Self {
             transactions: value.transactions,
             withdrawals: value.withdrawals.map(|json_withdrawals| {
-                Withdrawals::<E>::from(
-                    json_withdrawals
-                        .into_iter()
-                        .map(Into::into)
-                        .collect::<Vec<_>>(),
-                )
+                json_withdrawals
+                    .into_iter()
+                    .map(Into::into)
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap()
             }),
         }
     }
@@ -1025,7 +1039,12 @@ impl<E: EthSpec> From<ExecutionPayloadBodyV1<E>> for JsonExecutionPayloadBodyV1<
         Self {
             transactions: value.transactions,
             withdrawals: value.withdrawals.map(|withdrawals| {
-                VariableList::from(withdrawals.into_iter().map(Into::into).collect::<Vec<_>>())
+                withdrawals
+                    .into_iter()
+                    .map(Into::into)
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap()
             }),
         }
     }

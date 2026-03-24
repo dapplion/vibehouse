@@ -658,7 +658,7 @@ pub fn get_expected_withdrawals<E: EthSpec>(
             .safe_rem(state.validators().len() as u64)?;
     }
 
-    Ok((withdrawals.into(), processed_partial_withdrawals_count))
+    Ok((withdrawals.try_into()?, processed_partial_withdrawals_count))
 }
 
 /// Apply withdrawals to the state.

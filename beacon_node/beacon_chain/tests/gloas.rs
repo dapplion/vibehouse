@@ -7834,8 +7834,9 @@ async fn gloas_gossip_rejects_block_with_excess_bid_blob_commitments() {
             let body = block.body_gloas_mut().expect("should be Gloas block");
             body.signed_execution_payload_bid
                 .message
-                .blob_kzg_commitments =
-                vec![KzgCommitment::empty_for_testing(); max_blobs + 1].into();
+                .blob_kzg_commitments = vec![KzgCommitment::empty_for_testing(); max_blobs + 1]
+                .try_into()
+                .unwrap();
         })
         .await;
 
@@ -7883,7 +7884,9 @@ async fn gloas_gossip_accepts_block_with_valid_bid_blob_count() {
             let body = block.body_gloas_mut().expect("should be Gloas block");
             body.signed_execution_payload_bid
                 .message
-                .blob_kzg_commitments = vec![KzgCommitment::empty_for_testing(); max_blobs].into();
+                .blob_kzg_commitments = vec![KzgCommitment::empty_for_testing(); max_blobs]
+                .try_into()
+                .unwrap();
         })
         .await;
 
@@ -16763,7 +16766,7 @@ async fn gloas_external_builder_revealed_next_block_uses_builder_block_hash() {
         gas_limit: bid.message.gas_limit,
         timestamp,
         fee_recipient: bid.message.fee_recipient,
-        withdrawals: expected_withdrawals.to_vec().into(),
+        withdrawals: expected_withdrawals.to_vec().try_into().unwrap(),
         ..Default::default()
     };
 

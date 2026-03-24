@@ -3511,7 +3511,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // Convert to IndexedPayloadAttestation
         let indexed = IndexedPayloadAttestation {
-            attesting_indices: verified_attestation.attesting_indices().to_vec().into(),
+            attesting_indices: verified_attestation
+                .attesting_indices()
+                .to_vec()
+                .try_into()
+                .unwrap(),
             data: verified_attestation.attestation().data,
             signature: verified_attestation.attestation().signature.clone(),
         };
@@ -5536,7 +5540,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                             }
 
                             let filtered = IndexedPayloadAttestation {
-                                attesting_indices: new_indices.into(),
+                                attesting_indices: new_indices.try_into().unwrap(),
                                 data: indexed.data,
                                 signature: indexed.signature.clone(),
                             };
@@ -6485,7 +6489,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     &unadvanced_state,
                     &self.spec,
                 )
-                .map(std::convert::Into::into)
+                .map(|v| v.try_into().unwrap())
                 .map_err(Error::PrepareProposerFailed)
             } else {
                 get_expected_withdrawals(&unadvanced_state, &self.spec)
@@ -6512,7 +6516,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 &advanced_state,
                 &self.spec,
             )
-            .map(std::convert::Into::into)
+            .map(|v| v.try_into().unwrap())
             .map_err(Error::PrepareProposerFailed)
         } else {
             get_expected_withdrawals(&advanced_state, &self.spec)
@@ -7230,11 +7234,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         randao_reveal,
                         eth1_data,
                         graffiti,
-                        proposer_slashings: proposer_slashings.into(),
-                        attester_slashings: attester_slashings_base.into(),
-                        attestations: attestations_base.into(),
-                        deposits: deposits.into(),
-                        voluntary_exits: voluntary_exits.into(),
+                        proposer_slashings: proposer_slashings.try_into().unwrap(),
+                        attester_slashings: attester_slashings_base.try_into().unwrap(),
+                        attestations: attestations_base.try_into().unwrap(),
+                        deposits: deposits.try_into().unwrap(),
+                        voluntary_exits: voluntary_exits.try_into().unwrap(),
                         _phantom: PhantomData,
                     },
                 }),
@@ -7251,11 +7255,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         randao_reveal,
                         eth1_data,
                         graffiti,
-                        proposer_slashings: proposer_slashings.into(),
-                        attester_slashings: attester_slashings_base.into(),
-                        attestations: attestations_base.into(),
-                        deposits: deposits.into(),
-                        voluntary_exits: voluntary_exits.into(),
+                        proposer_slashings: proposer_slashings.try_into().unwrap(),
+                        attester_slashings: attester_slashings_base.try_into().unwrap(),
+                        attestations: attestations_base.try_into().unwrap(),
+                        deposits: deposits.try_into().unwrap(),
+                        voluntary_exits: voluntary_exits.try_into().unwrap(),
                         sync_aggregate: sync_aggregate
                             .ok_or(BlockProductionError::MissingSyncAggregate)?,
                         _phantom: PhantomData,
@@ -7278,11 +7282,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                             randao_reveal,
                             eth1_data,
                             graffiti,
-                            proposer_slashings: proposer_slashings.into(),
-                            attester_slashings: attester_slashings_base.into(),
-                            attestations: attestations_base.into(),
-                            deposits: deposits.into(),
-                            voluntary_exits: voluntary_exits.into(),
+                            proposer_slashings: proposer_slashings.try_into().unwrap(),
+                            attester_slashings: attester_slashings_base.try_into().unwrap(),
+                            attestations: attestations_base.try_into().unwrap(),
+                            deposits: deposits.try_into().unwrap(),
+                            voluntary_exits: voluntary_exits.try_into().unwrap(),
                             sync_aggregate: sync_aggregate
                                 .ok_or(BlockProductionError::MissingSyncAggregate)?,
                             execution_payload: block_proposal_contents
@@ -7310,18 +7314,18 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                             randao_reveal,
                             eth1_data,
                             graffiti,
-                            proposer_slashings: proposer_slashings.into(),
-                            attester_slashings: attester_slashings_base.into(),
-                            attestations: attestations_base.into(),
-                            deposits: deposits.into(),
-                            voluntary_exits: voluntary_exits.into(),
+                            proposer_slashings: proposer_slashings.try_into().unwrap(),
+                            attester_slashings: attester_slashings_base.try_into().unwrap(),
+                            attestations: attestations_base.try_into().unwrap(),
+                            deposits: deposits.try_into().unwrap(),
+                            voluntary_exits: voluntary_exits.try_into().unwrap(),
                             sync_aggregate: sync_aggregate
                                 .ok_or(BlockProductionError::MissingSyncAggregate)?,
                             execution_payload: block_proposal_contents
                                 .to_payload()
                                 .try_into()
                                 .map_err(|_| BlockProductionError::InvalidPayloadFork)?,
-                            bls_to_execution_changes: bls_to_execution_changes.into(),
+                            bls_to_execution_changes: bls_to_execution_changes.try_into().unwrap(),
                         },
                     }),
                     None,
@@ -7349,17 +7353,17 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                             randao_reveal,
                             eth1_data,
                             graffiti,
-                            proposer_slashings: proposer_slashings.into(),
-                            attester_slashings: attester_slashings_base.into(),
-                            attestations: attestations_base.into(),
-                            deposits: deposits.into(),
-                            voluntary_exits: voluntary_exits.into(),
+                            proposer_slashings: proposer_slashings.try_into().unwrap(),
+                            attester_slashings: attester_slashings_base.try_into().unwrap(),
+                            attestations: attestations_base.try_into().unwrap(),
+                            deposits: deposits.try_into().unwrap(),
+                            voluntary_exits: voluntary_exits.try_into().unwrap(),
                             sync_aggregate: sync_aggregate
                                 .ok_or(BlockProductionError::MissingSyncAggregate)?,
                             execution_payload: payload
                                 .try_into()
                                 .map_err(|_| BlockProductionError::InvalidPayloadFork)?,
-                            bls_to_execution_changes: bls_to_execution_changes.into(),
+                            bls_to_execution_changes: bls_to_execution_changes.try_into().unwrap(),
                             blob_kzg_commitments: kzg_commitments.ok_or(
                                 BlockProductionError::MissingKzgCommitment(
                                     "Kzg commitments missing from block contents".to_string(),
@@ -7392,17 +7396,17 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                             randao_reveal,
                             eth1_data,
                             graffiti,
-                            proposer_slashings: proposer_slashings.into(),
-                            attester_slashings: attester_slashings_electra.into(),
-                            attestations: attestations_electra.into(),
-                            deposits: deposits.into(),
-                            voluntary_exits: voluntary_exits.into(),
+                            proposer_slashings: proposer_slashings.try_into().unwrap(),
+                            attester_slashings: attester_slashings_electra.try_into().unwrap(),
+                            attestations: attestations_electra.try_into().unwrap(),
+                            deposits: deposits.try_into().unwrap(),
+                            voluntary_exits: voluntary_exits.try_into().unwrap(),
                             sync_aggregate: sync_aggregate
                                 .ok_or(BlockProductionError::MissingSyncAggregate)?,
                             execution_payload: payload
                                 .try_into()
                                 .map_err(|_| BlockProductionError::InvalidPayloadFork)?,
-                            bls_to_execution_changes: bls_to_execution_changes.into(),
+                            bls_to_execution_changes: bls_to_execution_changes.try_into().unwrap(),
                             blob_kzg_commitments: kzg_commitments
                                 .ok_or(BlockProductionError::InvalidPayloadFork)?,
                             execution_requests: maybe_requests
@@ -7434,17 +7438,17 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                             randao_reveal,
                             eth1_data,
                             graffiti,
-                            proposer_slashings: proposer_slashings.into(),
-                            attester_slashings: attester_slashings_electra.into(),
-                            attestations: attestations_electra.into(),
-                            deposits: deposits.into(),
-                            voluntary_exits: voluntary_exits.into(),
+                            proposer_slashings: proposer_slashings.try_into().unwrap(),
+                            attester_slashings: attester_slashings_electra.try_into().unwrap(),
+                            attestations: attestations_electra.try_into().unwrap(),
+                            deposits: deposits.try_into().unwrap(),
+                            voluntary_exits: voluntary_exits.try_into().unwrap(),
                             sync_aggregate: sync_aggregate
                                 .ok_or(BlockProductionError::MissingSyncAggregate)?,
                             execution_payload: payload
                                 .try_into()
                                 .map_err(|_| BlockProductionError::InvalidPayloadFork)?,
-                            bls_to_execution_changes: bls_to_execution_changes.into(),
+                            bls_to_execution_changes: bls_to_execution_changes.try_into().unwrap(),
                             blob_kzg_commitments: kzg_commitments
                                 .ok_or(BlockProductionError::InvalidPayloadFork)?,
                             execution_requests: maybe_requests
@@ -7461,7 +7465,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 // different head (wrong beacon_block_root) at the time of attestation production.
                 let payload_attestations: VariableList<_, _> = self
                     .get_payload_attestations_for_block(slot, parent_root)
-                    .into();
+                    .try_into()
+                    .unwrap();
 
                 let (signed_bid, maybe_blobs_and_proofs, execution_payload_value) =
                     if let Some(external_bid) = selected_external_bid {
@@ -7528,14 +7533,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                             randao_reveal,
                             eth1_data,
                             graffiti,
-                            proposer_slashings: proposer_slashings.into(),
-                            attester_slashings: attester_slashings_electra.into(),
-                            attestations: attestations_electra.into(),
-                            deposits: deposits.into(),
-                            voluntary_exits: voluntary_exits.into(),
+                            proposer_slashings: proposer_slashings.try_into().unwrap(),
+                            attester_slashings: attester_slashings_electra.try_into().unwrap(),
+                            attestations: attestations_electra.try_into().unwrap(),
+                            deposits: deposits.try_into().unwrap(),
+                            voluntary_exits: voluntary_exits.try_into().unwrap(),
                             sync_aggregate: sync_aggregate
                                 .ok_or(BlockProductionError::MissingSyncAggregate)?,
-                            bls_to_execution_changes: bls_to_execution_changes.into(),
+                            bls_to_execution_changes: bls_to_execution_changes.try_into().unwrap(),
                             signed_execution_payload_bid: signed_bid,
                             payload_attestations,
                             _phantom: PhantomData,
