@@ -156,3 +156,11 @@ Implemented SHOULD behavior from Gloas p2p spec (aligned with open PR #4939): re
 - **EF spec tests**: 139/139 passing (minimal preset, fake_crypto). Fork choice 9/9 (real crypto). SSZ static 69/69. check_all_files_accessed: pass.
 - **Open Gloas spec PRs tracked**: #4979 (PTC window, high impact, waiting for merge), #5035 (same-epoch prefs, new today), #5036 (relax bid-prefs dependency, new today), #4843 (variable PTC deadline), #4954 (millisecond time), #4747 (fast confirmation rule)
 - **No actionable work remaining**: all priorities DONE, no failing tests, no new spec merges, codebase at high quality
+
+### run 2320 (Mar 24) — implement #5035 (same-epoch proposer preferences)
+
+- **Implemented consensus-specs #5035** (1 approval from jtraglia, mergeable state "clean"):
+  - **Gossip validation** (`gossip_methods.rs`): accept preferences for current OR next epoch (was next-only), added `proposal_slot > state.slot` check, fixed lookahead index to use epoch offset
+  - **VC broadcasting** (`duties_service.rs`): fetch and broadcast preferences for future current-epoch slots in addition to next-epoch slots
+  - **Tests**: updated existing test comments, added `current_epoch_future_slot_accepted` test — all 12 gossip tests + 10 VC tests pass
+- **Open Gloas spec PRs**: #5036 (relax bid-prefs dependency, no reviews yet), #4979 (PTC window, waiting for merge), #4843 (variable PTC deadline), #4954 (millisecond time), #4747 (fast confirmation rule)
