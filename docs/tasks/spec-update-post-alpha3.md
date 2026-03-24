@@ -293,3 +293,12 @@ Implemented SHOULD behavior from Gloas p2p spec (aligned with open PR #4939): re
 - **Compilation**: zero warnings. **Cargo audit**: unchanged (1 medium rsa, no fix). **Dependencies**: all up-to-date (rand_xorshift 0.4→0.5 still blocked). **TODOs**: all linked to #36, all blocked on external factors.
 - **Open Gloas spec PRs**: #4843 (approved, not yet merged), #4979 (PTC window, active review), #5035/#5036 (implemented), #4892/#4898 (aligned), #4954, #4747, #4840, #4630
 - **No actionable work**: all priorities DONE, codebase clean, spec fully tracked.
+
+### run 2352 (Mar 24) — routine spec + health check
+
+- **No new Gloas spec merges** since #4939. Latest merge remains #4939 (already implemented).
+- **Compilation**: zero warnings (`cargo check --release`). **Nightly clippy**: zero warnings (Rust 1.96.0-nightly). **Stable**: Rust 1.94.0 up to date.
+- **Dependencies**: all up-to-date. rand_xorshift 0.4→0.5 still blocked by rand_core version split.
+- **CI**: latest push CI green (all jobs passed).
+- **Open Gloas spec PRs**: #4843 (approved by jtraglia, not merged), #4979 (PTC window, 0 approvals, active review), #5035/#5036 (implemented), #4892 (2 approvals, aligned), #4898 (1 approval, aligned), #4954, #4747, #4840, #4630
+- **No actionable work**: all priorities DONE, codebase clean, spec fully tracked.
