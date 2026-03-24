@@ -30,6 +30,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2335 (Mar 24) — alpha.4 version bump, spec audit, holding pattern
+
+- CI: run 23506464983 all green. Nightly Mar 24 green (Mar 23 slasher failure already fixed in 5d23ecf85).
+- **Spec: v1.7.0-alpha.4 version bump merged** (#5034). New merges since last run:
+  - #5022 (assert block known in `on_payload_attestation_message`) — **already compliant**: our `on_payload_attestation` checks `indices.get(&beacon_block_root)` at line 1426-1432, returns `UnknownBeaconBlockRoot` error.
+  - #5023 (fix block root filenames + Gloas comptests) — test infrastructure only, no code impact. Will affect future test vectors (block root = hash of `BeaconBlock.message` not `SignedBeaconBlock`).
+  - #5034 (version bump to alpha.4) — no spec changes, just version string.
+  - #4939 (request missing payload envelopes for index-1 attestation) — already implemented.
+- No new test vector release (still v1.5.0 / alpha.3 vectors).
+- Open Gloas PRs: #4979 (PTC window, active review today from jtraglia+nflaig), #4843 (variable PTC deadline), #4892 (APPROVED), #4898 (APPROVED), #4954 (ms in fork choice), #4747 (fast confirmation rule), #5035 (APPROVED, implemented), #5036 (implemented), #4962 (test-only, 2 approvals).
+- No code changes — codebase healthy, holding pattern.
+
 ### run 2334 (Mar 24) — CI green, spec stable, holding pattern
 
 - CI: run 23506464983 all green (all 6 jobs passed). Nightly Mar 24 green.
