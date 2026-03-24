@@ -738,7 +738,7 @@ async fn wait_for_genesis(genesis_time: u64) -> Result<(), String> {
     // the slot clock.
     if now < genesis_time {
         info!(
-            seconds_to_wait = genesis_time.checked_sub(now).unwrap().as_secs(),
+            seconds_to_wait = genesis_time.saturating_sub(now).as_secs(),
             "Starting node prior to genesis"
         );
 
@@ -746,16 +746,16 @@ async fn wait_for_genesis(genesis_time: u64) -> Result<(), String> {
         // timer runs out.
         tokio::select! {
             result = poll_whilst_waiting_for_genesis(genesis_time) => result?,
-            () = sleep(genesis_time.checked_sub(now).unwrap()) => ()
+            () = sleep(genesis_time.saturating_sub(now)) => ()
         };
 
         info!(
-            ms_since_genesis = genesis_time.checked_sub(now).unwrap().as_millis(),
+            ms_since_genesis = genesis_time.saturating_sub(now).as_millis(),
             "Genesis has occurred"
         );
     } else {
         info!(
-            seconds_ago = now.checked_sub(genesis_time).unwrap().as_secs(),
+            seconds_ago = now.saturating_sub(genesis_time).as_secs(),
             "Genesis has already occurred"
         );
     }
@@ -773,7 +773,7 @@ async fn poll_whilst_waiting_for_genesis(genesis_time: Duration) -> Result<(), S
 
         if now < genesis_time {
             info!(
-                seconds_to_wait = genesis_time.checked_sub(now).unwrap().as_secs(),
+                seconds_to_wait = genesis_time.saturating_sub(now).as_secs(),
                 "Waiting for genesis"
             );
         } else {
