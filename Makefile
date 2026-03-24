@@ -571,7 +571,6 @@ lint:
 		-D clippy::items_after_test_module \
 		-D clippy::mutex_atomic \
 		-D clippy::pub_underscore_fields \
-		-D clippy::string_to_string \
 		-D warnings
 
 # Lints the code using Clippy and automatically fix some simple compiler warnings.
