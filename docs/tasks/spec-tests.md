@@ -30,6 +30,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2308 (Mar 24) — spec tracking, implementation verification
+
+- CI: run 23495309759 in progress (check+clippy+fmt ✓, 5 jobs running). Previous run (23492870696) all green.
+- Spec: v1.7.0-alpha.3 still latest. No new spec test release. Recent consensus-specs merges (#5022, #5023, #5015) all already tracked and compliant.
+- All 9 tracked Gloas PRs still open: #4979 (PTC window), #4843 (variable PTC deadline), #4892 (remove impossible branch, APPROVED), #4898 (remove pending tiebreaker, APPROVED), #4954 (ms in fork choice), #4747 (fast confirmation rule), #4939 (envelope request), #5035 (same epoch proposer prefs), #5036 (relax bid gossip dependency).
+- **Verified #4892 implementation**: `is_supporting_vote_gloas_at_slot` uses `==` at proto_array_fork_choice.rs:1696 (correct, not `<=`).
+- **Verified #4898 implementation**: `get_payload_tiebreaker` at proto_array_fork_choice.rs:1826-1842 — PENDING falls through to `should_extend_payload` (no early return). Test at line 4694 confirms.
+- **Production code audit**: Deep search for `checked_sub().unwrap()` — all remaining instances in validator_client genesis wait logic are safe (guarded by `if now < genesis_time` using same captured `now`). No action needed.
+- No code changes — codebase healthy, holding pattern.
+
 ### run 2306 (Mar 24) — maintenance check, new PR #5036 tracked
 
 - CI: all green (run 23492870696, all 7 jobs passed). Nightly Mar 24 green (23481684741).

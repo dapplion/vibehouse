@@ -5592,3 +5592,19 @@ Added `debug_assert!(vote.current_slot >= node_slot)` in both `is_supporting_vot
 **Spec tracking**: Checked consensus-specs — #5014 (EIP-8025 P2P protocol for ZK proofs) merged but relates to ZK proof networking, not immediate Gloas work. #4902 (executable gossip validation for phase0) is test infrastructure. No new Gloas-relevant code changes.
 
 **Assessment**: Production code is clean. Waiting for spec changes (PTC window #4979 most imminent).
+
+### Run 2308 — deep audit, all clean (2026-03-24)
+
+**Scope**: Deep production code audit for remaining safety issues. Verified spec PR implementations.
+
+**Production unwrap audit**: Comprehensive search of all production (non-test) code for `.unwrap()`, `.expect()`, `checked_sub().unwrap()`. Findings:
+- All `checked_sub().unwrap()` in validator_client genesis wait logic (lib.rs:741-776) are safe — guarded by `if now < genesis_time` using same captured local variable, no TOCTOU.
+- All `.unwrap()` in consensus/state_processing and consensus/fork_choice production code eliminated in prior runs. Remaining are exclusively in `#[cfg(test)]` modules.
+- `chain_collection.rs` expect() calls (lines 148, 298, 364) are pre-existing Lighthouse patterns — structurally safe (chain was just inserted or confirmed to exist).
+- No unsafe integer truncations (`as u8/u16/u32`) in consensus production code — all are in test fixtures.
+
+**Spec verification**:
+- #4892 (`is_supporting_vote` uses `==` not `<=`): verified correct at proto_array_fork_choice.rs:1696
+- #4898 (PENDING no early return in tiebreaker): verified correct at proto_array_fork_choice.rs:1826-1842
+
+**Assessment**: Codebase is thoroughly clean. No actionable safety improvements remaining in production code.
