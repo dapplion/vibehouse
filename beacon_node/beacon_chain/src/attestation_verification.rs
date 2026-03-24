@@ -460,8 +460,10 @@ fn process_slash_info<T: BeaconChainTypes>(
                     .spec
                     .fork_name_at_slot::<T::EthSpec>(attestation.data.slot);
 
-                let indexed_attestation = attestation.to_indexed(fork_name);
-                (indexed_attestation, true, err)
+                match attestation.to_indexed(fork_name) {
+                    Ok(indexed_attestation) => (indexed_attestation, true, err),
+                    Err(_) => return err,
+                }
             }
             SignatureNotCheckedIndexed(indexed, err) => (indexed, true, err),
             SignatureInvalid(e) => return e,
@@ -999,7 +1001,9 @@ impl<'a, T: BeaconChainTypes> IndexedUnaggregatedAttestation<'a, T> {
             .spec
             .fork_name_at_slot::<T::EthSpec>(attestation.data.slot);
 
-        let indexed_attestation = attestation.to_indexed(fork_name);
+        let indexed_attestation = attestation.to_indexed(fork_name).map_err(|e| {
+            SignatureNotCheckedSingle(attestation, BeaconChainError::from(e).into())
+        })?;
 
         let validator_index = match Self::verify_middle_checks(attestation, chain) {
             Ok(t) => t,

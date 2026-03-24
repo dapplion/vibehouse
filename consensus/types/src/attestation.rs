@@ -11,7 +11,7 @@ use crate::{IndexedAttestation, context_deserialize};
 use educe::Educe;
 use serde::{Deserialize, Deserializer, Serialize};
 use ssz_derive::{Decode, Encode};
-use ssz_types::BitVector;
+use ssz_types::{BitVector, VariableList};
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 use superstruct::superstruct;
@@ -622,19 +622,22 @@ pub struct SingleAttestation {
 }
 
 impl SingleAttestation {
-    pub fn to_indexed<E: EthSpec>(&self, fork_name: ForkName) -> IndexedAttestation<E> {
+    pub fn to_indexed<E: EthSpec>(
+        &self,
+        fork_name: ForkName,
+    ) -> Result<IndexedAttestation<E>, ssz_types::Error> {
         if fork_name.electra_enabled() {
-            IndexedAttestation::Electra(IndexedAttestationElectra {
-                attesting_indices: vec![self.attester_index].try_into().unwrap(),
+            Ok(IndexedAttestation::Electra(IndexedAttestationElectra {
+                attesting_indices: VariableList::new(vec![self.attester_index])?,
                 data: self.data,
                 signature: self.signature.clone(),
-            })
+            }))
         } else {
-            IndexedAttestation::Base(IndexedAttestationBase {
-                attesting_indices: vec![self.attester_index].try_into().unwrap(),
+            Ok(IndexedAttestation::Base(IndexedAttestationBase {
+                attesting_indices: VariableList::new(vec![self.attester_index])?,
                 data: self.data,
                 signature: self.signature.clone(),
-            })
+            }))
         }
     }
 }
