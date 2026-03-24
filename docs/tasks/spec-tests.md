@@ -30,6 +30,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2342 (Mar 24) — spec bumped to alpha.4, all changes already implemented
+
+- CI: all green. Nightly Mar 24 green.
+- Spec: v1.7.0-alpha.4 version bump merged (#5034). Key PRs included since alpha.3: #4939 (envelope request for index-1 attestation — already implemented), #5022 (block known check in on_payload_attestation — already compliant, we return UnknownBeaconBlockRoot error), #5008 (field name doc fix — no code impact), #5023 (test fixture/comptest changes — test infra only), #4902 (phase0 gossip validation — not Gloas). No new test vector release yet (still alpha.3 vectors).
+- Open Gloas PRs: #4979 (PTC window) still under active review — jtraglia, nflaig commenting (20:26 UTC today). #4962 still open. No merges imminent.
+- `cargo audit`: unchanged — 1 rsa vuln, 5 allowed warnings.
+- No code changes needed — codebase fully up-to-date with alpha.4.
+
 ### run 2341 (Mar 24) — CI green, spec stable, holding pattern
 
 - CI: all green. Nightly Mar 24 green. Zero clippy warnings, zero build warnings.
