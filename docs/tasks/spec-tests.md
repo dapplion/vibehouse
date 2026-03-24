@@ -30,6 +30,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2336 (Mar 24) — CI green, spec stable, #4979 design converging
+
+- CI: run 23506464983 all green. Nightly Mar 24 green. Local workspace tests: 4991/4991 pass (8 web3signer_tests skipped — external service, excluded from CI).
+- Spec: no new consensus-specs commits since #4939 merge. No new test vector release (still v1.5.0 / alpha.3 vectors).
+- **#4979 active review**: latest commit e7b19104 (Mar 24 17:58). nflaig suggesting `get_ptc_assignment` rename to `ptc_assignments` and epoch bound fix (`epoch <= current + MIN_SEED_LOOKAHEAD`). jtraglia pushing fixes. Design stable — implementation plan in memory file still accurate.
+- All tracked open Gloas PRs unchanged: #4979 (PTC window, active review), #4843 (variable PTC deadline), #4892 (2 approvals), #4898 (1 approval), #4954 (ms in fork choice), #4747 (fast confirmation rule), #5035 (1 approval, implemented), #5036 (0 approvals, implemented), #4962 (2 approvals, test-only).
+- Build: zero warnings. All TODOs tracked in #36, all blocked on external deps.
+- No code changes — codebase healthy, holding pattern.
+
 ### run 2335 (Mar 24) — alpha.4 version bump, spec audit, holding pattern
 
 - CI: run 23506464983 all green. Nightly Mar 24 green (Mar 23 slasher failure already fixed in 5d23ecf85).
