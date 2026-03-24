@@ -164,3 +164,13 @@ Implemented SHOULD behavior from Gloas p2p spec (aligned with open PR #4939): re
   - **VC broadcasting** (`duties_service.rs`): fetch and broadcast preferences for future current-epoch slots in addition to next-epoch slots
   - **Tests**: updated existing test comments, added `current_epoch_future_slot_accepted` test — all 12 gossip tests + 10 VC tests pass
 - **Open Gloas spec PRs**: #5036 (relax bid-prefs dependency, no reviews yet), #4979 (PTC window, waiting for merge), #4843 (variable PTC deadline), #4954 (millisecond time), #4747 (fast confirmation rule)
+
+### run 2322 (Mar 24) — implement #5036 (relax bid gossip dependency on proposer preferences)
+
+- **Implemented consensus-specs #5036** (0 approvals yet, but small robustness improvement):
+  - **Bid validation** (`gloas_verification.rs`): proposer preferences check is now conditional — if preferences have been seen, validate fee_recipient/gas_limit; if not, allow bids through
+  - **Gossip handler** (`gossip_methods.rs`): removed dead `ProposerPreferencesNotSeen` match arm
+  - **Error type**: removed unused `ProposerPreferencesNotSeen` variant from `ExecutionBidError`
+  - **Tests**: updated 3 test files — `gloas.rs` (bid accepted without prefs), `gloas_verification.rs` (same), `fork_tests.rs` (HTTP API no longer rejects on missing prefs)
+  - All targeted tests pass (4 beacon_chain + 1 http_api)
+- **Open Gloas spec PRs**: #4979 (PTC window, waiting for merge), #4843 (variable PTC deadline), #4954 (millisecond time), #4747 (fast confirmation rule), #4892 (2 approvals, already aligned), #4898 (1 approval, already aligned)
