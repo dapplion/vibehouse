@@ -5385,3 +5385,30 @@ PTC window spec change (consensus-specs PR #4979) still open/unmerged — monito
 - `swap_or_not_shuffle/compute_shuffled_index.rs`: replaced `bytes[..8].try_into().unwrap()` with `copy_from_slice` into a fixed `[u8; 8]` array — avoids TryInto entirely
 
 **Verification**: 236/236 store tests pass, 5/5 shuffle tests pass, clippy clean, lint-full passed on push.
+
+### Run 2296 — spec tracking + devnet verification (2026-03-24)
+
+**Scope**: Spec tracking audit, codebase safety re-verification, devnet smoke test.
+
+**Spec tracking**: Audited 3 newly merged consensus-specs PRs:
+- **#5022** (known-block check in `on_payload_attestation_message`) — already implemented (fork_choice.rs:1426-1432, `UnknownBeaconBlockRoot` error)
+- **#5008** (field name `block_root` → `beacon_block_root` in EnvelopesByRoot spec prose) — doc-only; our code already uses `beacon_block_root`
+- **#5023** (block root filenames + Gloas comptests) — test infra only, no code change needed
+
+Also verified vibehouse is ahead of two open PRs:
+- **#4898** (remove PENDING from tiebreaker) — already implemented, test at proto_array_fork_choice.rs:4681
+- **#4892** (remove impossible branch in is_supporting_vote) — already implemented, uses `==` not `<=`
+
+**Open PRs tracked** (not yet merged, no action needed):
+- #4979 (PTC window cache) — still in active discussion, field rename pending
+- #4962 (withdrawal+missed-payload tests) — approved by potuz, awaiting merge
+- #4954 (fork choice store milliseconds) — open
+- #4843 (variable PTC deadline) — open
+
+**Safety re-verification**: Full codebase search confirmed zero `try_into().unwrap()`, `todo!()`, `unimplemented!()`, or `panic!()` in production (non-test) code. All `expect()` calls are in startup/CLI code (acceptable per CLAUDE.md).
+
+**Devnet smoke test**: PASSED — 4-node minimal preset, Gloas fork at epoch 1, finalized_epoch=8, justified_epoch=9. Chain healthy through epoch 10.
+
+**CI status**: check+clippy+fmt ✓, ef-tests ✓, http_api ✓, network+op_pool ✓, beacon_chain and unit tests in progress.
+
+**Dependency audit**: `cargo audit` shows 1 medium vulnerability (RSA timing side-channel in `rsa` 0.9.10 via `jsonwebtoken`) — no fix available upstream. `cargo clippy --workspace --all-targets` clean. No outdated dependencies worth updating.
