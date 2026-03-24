@@ -5262,3 +5262,10 @@ Also audited 3 post-alpha.3 spec PRs (#5022, #5008, #5023): none require code ch
 **New clippy lints**: `doc_overindented_list_items`, `float_cmp_const`, `four_forward_slashes`, `into_iter_on_ref`, `manual_inspect`, `manual_is_infinite`, `manual_unwrap_or`, `manual_unwrap_or_default`, `match_on_vec_items`, `mutex_integer`, `needless_character_iteration`, `needless_return_with_question_mark`, `permissions_set_readonly_false`, `redundant_closure_call`, `seek_from_current`, `seek_to_start_instead_of_rewind`, `string_to_string`, `suspicious_to_owned`, `trailing_empty_array`, `transmute_num_to_bytes`.
 
 Code fixes: replaced `if cond { Some(x) } else { None }` patterns with `then_some`/`then` across 8 files (attestation.rs, sync_duty.rs, iter.rs, get_attesting_indices.rs, signature_sets.rs, slot_clock, slasher, int_to_bytes). Used `.filter().map()` in signature_sets.rs to avoid `bool::then in filter_map` lint conflict.
+
+### Run 2276: fix CI — remove 3 renamed/removed clippy lints
+
+CI `check + clippy + fmt` failed on newer Rust toolchain: 3 lints from run 2275 were already renamed/removed upstream. Removed from Makefile (320 → 317 lints):
+- `clippy::match_on_vec_items` — removed (covered by `clippy::indexing_slicing`)
+- `clippy::string_to_string` — removed (covered by `clippy::implicit_clone`)
+- `clippy::transmute_num_to_bytes` — renamed to rustc `unnecessary_transmutes`
