@@ -5343,3 +5343,18 @@ PTC window spec change (consensus-specs PR #4979) still open/unmerged — monito
 **Remaining `try_into().unwrap()` in beacon_chain src (non-test)**:
 - `kzg_utils.rs`: 5 instances — data column/cell construction from c-kzg output (safe: sizes guaranteed by c-kzg library)
 - Zero instances in `beacon_chain.rs` and `block_verification.rs`
+
+### Run 2292 — try_into().unwrap() cleanup in kzg_utils, builder_states, genesis (2026-03-24)
+
+**Fixed `try_into().unwrap()` in 3 more production code paths**:
+- `kzg_utils.rs`: 5 instances in `build_data_column_sidecars` — cell, column, and KZG proof conversions now use `.map_err()` propagating errors through the existing `Result<_, String>` return type
+- `builder_states.rs`: 1 instance — `get_expected_withdrawals_gloas` result conversion to `Withdrawals` now returns `ApiError::server_error` instead of panicking
+- `genesis/common.rs`: 1 instance — deposit proof `FixedVector` conversion now propagates through `Result<_, String>`
+
+**Not changed** (safe by construction):
+- `hot_cold_store.rs` / `reconstruct.rs`: withdrawal list conversions from `List<Withdrawal, MaxWithdrawalsPerPayload>` — already bounded, conversion is infallible
+- `attestation.rs`: single-element vec to `VariableList` — always fits
+- `swap_or_not_shuffle.rs`: `bytes[..8].try_into()` — 8-byte slice to `[u8; 8]` is always valid
+- Test code: ~80 instances across test files — acceptable in tests
+
+**Verification**: genesis tests pass (2/2), kzg_utils tests pass (2/2), full workspace clippy clean, lint-full passed on push.
