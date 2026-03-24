@@ -389,3 +389,12 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - CI (push, run 23485195611): 4/6 jobs passed (check+clippy, ef-tests, network+op_pool, http_api), unit tests + beacon_chain still running
 - Codebase health: zero clippy warnings, zero unwrap()/expect() in consensus production code, all TODOs tracked to #36 (all blocked on external factors)
 - **No action needed. Spec current, codebase healthy.**
+
+### run 2310 (Mar 24) — unwrap elimination + spec check
+
+- **Fixed 5 `checked_sub().unwrap()` in validator_client/src/lib.rs**: genesis wait logic (lines 741-776) replaced with `saturating_sub()`. Safe by branch guard but redundant unwraps.
+- **Fixed `Withdrawals::new().unwrap()` in execution_layer/src/lib.rs:2200**: replaced with `.and_then(|w| Withdrawals::new(w).ok())` to avoid panic on oversized withdrawal lists.
+- No new Gloas spec merges since #5023 (Mar 23). Only CI/infra commits (#5015, #5029, #5030, #5028, #5031).
+- **PTC window (#4979)**: still OPEN, not merged. Will implement when merged.
+- CI green (full lint passed on push), all tests pass.
+- **No action needed. Spec current, codebase healthy.**
