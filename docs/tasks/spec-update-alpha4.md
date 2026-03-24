@@ -26,7 +26,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 ## Test Vectors
 
-No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2357, 2026-03-25). Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3.
+No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2358, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3.
 
 ## Open Gloas PRs to Watch
 
@@ -39,8 +39,8 @@ No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2357, 20
 | #4960 | Fork choice test for new validator deposit | Test vectors |
 | #4954 | Update fork choice store to use milliseconds | Open, 0 reviews, large refactor (28 files) — not worth implementing proactively |
 | #4932 | Sanity/blocks tests with payload attestation coverage | Test vectors |
-| #4898 | Remove pending status from tiebreaker | 1 approval, still open |
-| #4892 | Remove impossible branch in forkchoice | 2 approvals, still open |
+| #4898 | Remove pending status from tiebreaker | 1 approval, still open — vibehouse already matches post-PR behavior |
+| #4892 | Remove impossible branch in forkchoice | 2 approvals, still open — vibehouse already uses debug_assert + == (matches post-PR) |
 | #4747 | Fast Confirmation Rule | Open, actively updated Mar 2026 — new feature, monitor |
 | #4843 | Variable PTC deadline | Open, Jan 2026 |
 | #4840 | Add support for EIP-7843 to Gloas | Open, Jan 2026 |
