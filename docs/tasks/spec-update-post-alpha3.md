@@ -357,3 +357,14 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - cargo audit: 1 vuln (RUSTSEC-2023-0071 rsa, no fix available), 5 unmaintained (transitive, not actionable)
 - All 3 remaining TODOs linked to #36, all blocked on external factors
 - **No action needed. Spec current, codebase healthy.**
+
+### run 2279 (Mar 24) — routine spec check + full PR audit
+
+- Scanned all consensus-specs PRs merged to `master` since alpha.3 (Mar 13): 7 relevant PRs found (#5001, #5002, #5005, #5008, #5014, #5022, #5023) — all already tracked in previous runs
+- **PTC window (#4979)**: still OPEN, `mergeable_state=blocked`, 12 review comments, 0 approvals. Design stable (rename to `ptc_window` agreed). Full diff reviewed — no changes since last check
+- **Variable PTC deadline (#4843)**: still OPEN, 10 review comments, 0 approvals
+- No new consensus-specs release since alpha.3, no new EF test fixtures since v1.6.0-beta.0
+- CI green (push): all jobs passing (run 23471211833). Nightly (Mar 23) slasher failure = MEGABYTE dead code, fixed in 5d23ecf85, awaiting next nightly run
+- cargo audit: same known advisories (RUSTSEC-2023-0071 rsa unfixable, 5 unmaintained transitive deps not actionable). `filesystem` crate warning is false positive (our local crate, not the crates.io one)
+- cargo outdated: only rand_xorshift 0.4→0.5 (blocked by rand_core version split)
+- **No action needed. Spec current, codebase healthy.**
