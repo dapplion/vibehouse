@@ -244,3 +244,13 @@ Implemented SHOULD behavior from Gloas p2p spec (aligned with open PR #4939): re
 - **Cargo audit**: unchanged — 1 medium (rsa, no fix), 5 unmaintained warnings (all transitive).
 - **Open Gloas spec PRs**: #5035 (implemented), #5036 (implemented), #4979 (PTC window, 0 approvals), #4892 (2 approvals, aligned), #4898 (1 approval, aligned), #4843 (variable PTC deadline), #4747 (fast confirmation rule)
 - **No actionable work**: all priorities DONE, codebase clean, spec fully tracked.
+
+### run 2340 (Mar 24) — nightly EF tests verification
+
+- **Downloaded nightly spec test fixtures** (from March 7 workflow run, latest successful nightly) and ran full EF test suite.
+- **EF spec tests**: 139/139 (fake_crypto, minimal) + 79/79 (real crypto, minimal) = **218/218 passing** against nightly fixtures.
+- **check_all_files_accessed**: PASS — 210,783 files accessed, 132,255 intentionally excluded. Zero missing.
+- **No new Gloas spec merges** since last check. Latest on master: #4939 (already implemented).
+- **Open Gloas spec PRs status**: #4979 (PTC window, 0 approvals, 17 review comments, active discussion), #5035 (implemented, 1 approval), #5036 (implemented, 0 approvals), #4892 (aligned, 2 approvals), #4898 (aligned, 1 approval), #4843 (variable PTC deadline), #4747 (fast confirmation rule). None newly merged.
+- **CI**: latest push CI green (all 6 jobs passed). Compilation zero warnings. Clippy clean.
+- **No actionable work**: all priorities DONE, codebase clean, spec fully tracked, nightly EF tests verified.
