@@ -44,7 +44,7 @@ use types::{
     BlobSidecarList, ChainSpec, Epoch, EthSpec, ExecutionPayload, ExecutionPayloadGloas,
     FixedBytesExtended, ForkName, ForkVersionDecode, Hash256, LightClientUpdate, MerkleProof,
     SignedBeaconBlock, SignedBlindedBeaconBlock, SignedBlindedExecutionPayloadEnvelope,
-    SignedExecutionPayloadEnvelope, Slot, SyncCommittee, Unsigned,
+    SignedExecutionPayloadEnvelope, Slot, SyncCommittee, Unsigned, VariableList,
 };
 use zstd::{Decoder, Encoder};
 
@@ -1185,14 +1185,26 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                 Ok(None) => {
                     // Full payload pruned — fall back to blinded envelope +
                     // state's expected withdrawals.
-                    self.get_blinded_payload_envelope(&block_root)?
-                        .map(|blinded| {
+                    match self.get_blinded_payload_envelope(&block_root)? {
+                        Some(blinded) => {
                             let withdrawals = state
                                 .payload_expected_withdrawals()
-                                .map(|w| w.iter().copied().collect::<Vec<_>>().try_into().unwrap())
-                                .unwrap_or_default();
-                            blinded.into_full_with_withdrawals(withdrawals)
-                        })
+                                .map(|w| {
+                                    w.iter()
+                                        .copied()
+                                        .collect::<Vec<_>>()
+                                        .try_into()
+                                        .map_err(|e| {
+                                            Error::SszDecodeError(ssz::DecodeError::BytesInvalid(
+                                                format!("withdrawal list conversion: {e:?}"),
+                                            ))
+                                        })
+                                })
+                                .unwrap_or(Ok(VariableList::default()))?;
+                            Some(blinded.into_full_with_withdrawals(withdrawals))
+                        }
+                        None => None,
+                    }
                 }
                 Err(e) => return Err(e),
             };

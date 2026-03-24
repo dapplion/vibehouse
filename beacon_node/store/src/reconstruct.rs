@@ -9,7 +9,7 @@ use state_processing::{
 };
 use std::sync::Arc;
 use tracing::{debug, info};
-use types::EthSpec;
+use types::{EthSpec, VariableList};
 
 impl<E, Hot, Cold> HotColdDB<E, Hot, Cold>
 where
@@ -132,8 +132,20 @@ where
                                 Ok(Some(blinded)) => {
                                     let withdrawals = state
                                         .payload_expected_withdrawals()
-                                        .map(|w| w.iter().copied().collect::<Vec<_>>().try_into().unwrap())
-                                        .unwrap_or_default();
+                                        .map(|w| {
+                                            w.iter()
+                                                .copied()
+                                                .collect::<Vec<_>>()
+                                                .try_into()
+                                                .map_err(|e| {
+                                                    Error::SszDecodeError(
+                                                        ssz::DecodeError::BytesInvalid(format!(
+                                                            "withdrawal list conversion: {e:?}"
+                                                        )),
+                                                    )
+                                                })
+                                        })
+                                        .unwrap_or(Ok(VariableList::default()))?;
                                     let reconstructed =
                                         blinded.into_full_with_withdrawals(withdrawals);
                                     Some(

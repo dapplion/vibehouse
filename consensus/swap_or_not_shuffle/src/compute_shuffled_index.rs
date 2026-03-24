@@ -72,7 +72,9 @@ fn hash_with_round(seed: &[u8], round: u8) -> [u8; 32] {
 }
 
 fn bytes_to_int64(bytes: &[u8; 32]) -> u64 {
-    u64::from_le_bytes(bytes[..8].try_into().unwrap())
+    let mut buf = [0u8; 8];
+    buf.copy_from_slice(&bytes[..8]);
+    u64::from_le_bytes(buf)
 }
 
 #[cfg(test)]
