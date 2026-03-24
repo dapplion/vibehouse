@@ -146,3 +146,13 @@ Implemented SHOULD behavior from Gloas p2p spec (aligned with open PR #4939): re
   - **#4898** (remove pending from tiebreaker): same as above, already aligned
   - **#4979** (PTC window cache): still open, design stable, waiting for merge
 - No new EF test release for alpha.4 yet (latest is v1.6.0-beta.0)
+
+### run 2319 (Mar 24) — comprehensive health check
+
+- **Spec**: still at v1.7.0-alpha.3 (latest release). No new tags. Only new merge since last check: #5023 (test infra, no code change needed).
+- **Production code safety**: exhaustive audit of all `.unwrap()` and `.expect()` in non-test code across consensus/ and beacon_node/. All production paths use `?` / `map_err`. Remaining `expect()` calls in custody_context.rs are safe by invariant (underlying functions are infallible).
+- **Clippy**: zero warnings, all lints from Rust 1.94 already enforced (327 lints in Makefile)
+- **Compilation**: zero warnings from `cargo check --release`
+- **EF spec tests**: 139/139 passing (minimal preset, fake_crypto). Fork choice 9/9 (real crypto). SSZ static 69/69. check_all_files_accessed: pass.
+- **Open Gloas spec PRs tracked**: #4979 (PTC window, high impact, waiting for merge), #5035 (same-epoch prefs, new today), #5036 (relax bid-prefs dependency, new today), #4843 (variable PTC deadline), #4954 (millisecond time), #4747 (fast confirmation rule)
+- **No actionable work remaining**: all priorities DONE, no failing tests, no new spec merges, codebase at high quality
