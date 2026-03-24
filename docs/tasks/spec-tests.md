@@ -2150,3 +2150,9 @@ Repeated spec tracking checks, all stable. Key facts from this period:
 - **Rust**: 1.94.0 (latest stable).
 - All stable. No action needed.
 
+### Run 2282 (2026-03-24) — enforce 6 new clippy lints
+- **Spec**: v1.7.0-alpha.3 still latest. No new Gloas spec PRs merged since last check. #4979 (PTC lookbehind) still open, updated Mar 23.
+- **CI**: all green. Nightly failures (Mar 22: transient nextest 404, Mar 23: MEGABYTE dead code already fixed in 5d23ecf) are resolved — tonight's nightly will pass.
+- **Lints**: enforced 6 new clippy lints (321 → 327): doc_link_with_quotes, filter_map_bool_then, items_after_test_module, mutex_atomic, pub_underscore_fields, string_to_string. Fixed pub_underscore_fields violation (pub _server_shutdown → private in validator_http_api test_utils). Rejected exit (legitimate startup exits) and filetype_is_file (intentional regular-file-only check).
+- **Tests**: 62/62 validator_http_api tests pass.
+
