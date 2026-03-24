@@ -1684,8 +1684,15 @@ impl ProtoArrayForkChoice {
             match node.payload_status {
                 GloasPayloadStatus::Pending => true,
                 GloasPayloadStatus::Empty | GloasPayloadStatus::Full => {
-                    // Spec: assert message.slot >= block.slot (validated by on_attestation)
-                    // If message.slot == block.slot: return False
+                    // Spec: assert message.slot >= block.slot
+                    // Guaranteed by validate_on_attestation which rejects
+                    // attestations for slots before the block's slot.
+                    debug_assert!(
+                        vote.current_slot >= node_slot,
+                        "vote slot {} < block slot {} — should be rejected by on_attestation",
+                        vote.current_slot,
+                        node_slot,
+                    );
                     if vote.current_slot == node_slot {
                         return false;
                     }
@@ -1727,6 +1734,12 @@ impl ProtoArrayForkChoice {
             match node.payload_status {
                 GloasPayloadStatus::Pending => true,
                 GloasPayloadStatus::Empty | GloasPayloadStatus::Full => {
+                    debug_assert!(
+                        vote.current_slot >= node_slot,
+                        "vote slot {} < block slot {} — should be rejected by on_attestation",
+                        vote.current_slot,
+                        node_slot,
+                    );
                     if vote.current_slot == node_slot {
                         return false;
                     }
