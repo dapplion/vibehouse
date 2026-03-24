@@ -217,3 +217,10 @@ Implemented SHOULD behavior from Gloas p2p spec (aligned with open PR #4939): re
 - **PTC window (#4979)**: 15 reviews, still under active discussion (nflaig, jtraglia commenting Mar 24). Not merged.
 - **Open Gloas spec PRs**: #5035 (implemented, 1 approval), #5036 (implemented, 0 approvals), #4979 (PTC window, active review), #4892 (2 approvals, mergeable, aligned), #4898 (1 approval, mergeable, aligned), #4843 (variable PTC deadline), #4954 (millisecond time), #4747 (fast confirmation rule, updated today), #4840 (EIP-7843), #4630 (EIP-7688 SSZ), #4558 (cell dissemination, 2 approvals)
 - **No actionable work**: all priorities DONE, codebase clean, spec fully tracked
+
+### run 2331 (Mar 24) — devnet verification of gossip changes
+
+- **No new Gloas spec merges** since last check.
+- **Devnet verification**: ran 4-node devnet to verify #5035 (same-epoch prefs) and #5036 (relaxed bid gossip) work end-to-end. Result: finalized_epoch=8, no stalls. Gossip changes working correctly in a real network.
+- **CI**: push CI for run 2329 — check/clippy/fmt passed, ef-tests passed, network+op_pool passed. Unit tests, beacon_chain, http_api still running.
+- **Open Gloas spec PRs**: unchanged from run 2330. #4979 (PTC window) still in active review, not merged.
