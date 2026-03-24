@@ -204,3 +204,16 @@ Implemented SHOULD behavior from Gloas p2p spec (aligned with open PR #4939): re
 - **PTC window (#4979)**: still in active development — name changed to `ptc_window`/`ptc_cache`, epoch range fix applied today. Not ready to implement.
 - **Nightly CI**: Mar 24 green. Mar 23 failure was slasher `MEGABYTE` dead code (already fixed). Mar 22 failure was transient CI infra (install-action).
 - **Dep updates**: ipconfig 0.3.4, libredox 0.1.15, proptest 1.11.0, unicode-segmentation 1.13.0, windows-registry 0.6.1 (replaces winreg 0.50.0)
+
+### run 2330 (Mar 24) — health check + maintenance
+
+- **No new Gloas spec merges** since last check. #4939 was the last merge (already implemented).
+- **EF spec tests**: 139/139 passing locally (minimal, fake_crypto). No new EF test release (latest is v1.6.0-beta.0 from Sep 2025).
+- **Clippy**: zero warnings across entire workspace (excluding ef_tests).
+- **Compilation**: zero warnings from `cargo check --release`.
+- **Cargo audit**: 1 medium advisory (rsa RUSTSEC-2023-0071, transitive via jsonwebtoken, no fix available). 5 unmaintained warnings (all transitive: ansi_term, bincode, derivative, filesystem, paste).
+- **Dependencies**: all direct deps up-to-date. rand_xorshift 0.4→0.5 still blocked (0.5 uses rand_core 0.10 vs rand 0.9's rand_core 0.9 — incompatible SeedableRng traits).
+- **CI**: push CI for run 2329 in progress (clippy/fmt passed, other jobs running). Nightly Mar 24 green.
+- **PTC window (#4979)**: 15 reviews, still under active discussion (nflaig, jtraglia commenting Mar 24). Not merged.
+- **Open Gloas spec PRs**: #5035 (implemented, 1 approval), #5036 (implemented, 0 approvals), #4979 (PTC window, active review), #4892 (2 approvals, mergeable, aligned), #4898 (1 approval, mergeable, aligned), #4843 (variable PTC deadline), #4954 (millisecond time), #4747 (fast confirmation rule, updated today), #4840 (EIP-7843), #4630 (EIP-7688 SSZ), #4558 (cell dissemination, 2 approvals)
+- **No actionable work**: all priorities DONE, codebase clean, spec fully tracked
