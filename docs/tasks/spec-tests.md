@@ -30,14 +30,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
-### run 2281 (Mar 24) — maintenance check, devnet verification
+### run 2281 (Mar 24) — nightly clippy fixes, devnet verified
 
 - CI: latest run green (93c450036). Nightly Mar 23 slasher failure on old commit (f4af903eb, 73 commits behind HEAD) — fix already on HEAD, Mar 24 nightly should be green.
 - Spec: v1.7.0-alpha.3 still latest. No new spec test release. No new consensus-specs commits since Mar 23 (all CI/infra/deps).
 - All 7 tracked Gloas PRs still open: #4979 (PTC window, 13 commits, under review), #4962 (withdrawal tests), #4843 (variable PTC deadline), #4892 (remove impossible branch, APPROVED), #4898 (remove pending tiebreaker, APPROVED), #4954 (ms in fork choice), #4747 (fast confirmation rule).
 - Verified #4892 and #4898 already implemented in vibehouse fork choice code (is_supporting_vote_gloas_at_slot uses == not <=, PENDING falls through to should_extend_payload at previous slot).
-- Clippy: 0 warnings. cargo audit: unchanged (1 rsa, 5 unmaintained). Rust 1.94.0 up to date. Only outdated dep: rand_xorshift 0.4→0.5 (minor test dep).
-- Running devnet on current HEAD to verify chain health after 73 commits of recent changes.
+- **Fixed 5 nightly clippy lints** (Rust 1.96.0-nightly): unnecessary_sort_by (2), useless_conversion (7), iter_kv_map (4), manual_checked_ops (3). Now 0 warnings on both stable and nightly.
+- rand_xorshift 0.4→0.5 upgrade blocked by rand_core version conflict (0.6 vs 0.10 in dep tree) — not worth the churn.
+- **Devnet verified**: finalized_epoch=8 (slot 80, epoch 10), 4 nodes, Gloas fork at epoch 1, no stalls. Current HEAD healthy.
+- cargo audit: unchanged (1 rsa, 5 unmaintained). Rust 1.94.0 up to date.
 
 ### run 2280 (Mar 24) — maintenance check, all stable
 
