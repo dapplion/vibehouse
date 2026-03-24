@@ -30,6 +30,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2325 (Mar 24) — CI monitoring, #4979 reopened
+
+- CI: run 23504997273 in progress for #5036 test fix commit (all 6 jobs running). Previous run (23504503578) cancelled (superseded). Last full green: 23496276572.
+- Spec: no new consensus-specs commits since #4939 merge. No new test vector release (still v1.5.0).
+- **#4979 reopened** by jihoonsong (Mar 20) — PTC lookbehind cache design discussion still active. Fresh review comments today from nflaig, jtraglia, terencechain. #4992 (alternative with 2-committee cache) was closed. Design still in flux — not actionable yet.
+- **#4962** (withdrawal interaction tests) now has 2 approvals (potuz + brech1). May merge soon — test-only, no code impact.
+- **#4843** (variable PTC deadline) received pushback from ethDreamer questioning value (~6.66% max gas limit increase).
+- **#5035** approved by jtraglia, likely to merge soon — already implemented.
+- **#5036** no reviews yet — already implemented.
+- Production code audit: zero `.unwrap()` / `.expect()` in recently changed files (gloas_verification.rs, gossip_methods.rs).
+- No code changes — codebase healthy, holding pattern.
+
 ### run 2323 (Mar 24) — #4939 merged, CI monitoring
 
 - CI: run 23504503578 in progress for #5036 commit (check+clippy ✓, 5 jobs running). Previous run (23503090543) cancelled (superseded). Last full green: 23496276572.
