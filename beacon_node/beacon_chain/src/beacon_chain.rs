@@ -3515,7 +3515,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 .attesting_indices()
                 .to_vec()
                 .try_into()
-                .unwrap(),
+                .map_err(Error::SszTypesError)?,
             data: verified_attestation.attestation().data,
             signature: verified_attestation.attestation().signature.clone(),
         };
@@ -5539,8 +5539,20 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                                 continue;
                             }
 
+                            let attesting_indices = match new_indices.try_into() {
+                                Ok(indices) => indices,
+                                Err(e) => {
+                                    debug!(
+                                        error = ?e,
+                                        slot = %attestation.data.slot,
+                                        "Invalid attesting indices length for payload attestation"
+                                    );
+                                    continue;
+                                }
+                            };
+
                             let filtered = IndexedPayloadAttestation {
-                                attesting_indices: new_indices.try_into().unwrap(),
+                                attesting_indices,
                                 data: indexed.data,
                                 signature: indexed.signature.clone(),
                             };
@@ -6489,8 +6501,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     &unadvanced_state,
                     &self.spec,
                 )
-                .map(|v| v.try_into().unwrap())
                 .map_err(Error::PrepareProposerFailed)
+                .and_then(|v| v.try_into().map_err(Error::SszTypesError))
             } else {
                 get_expected_withdrawals(&unadvanced_state, &self.spec)
                     .map(|(withdrawals, _)| withdrawals)
@@ -6516,8 +6528,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 &advanced_state,
                 &self.spec,
             )
-            .map(|v| v.try_into().unwrap())
             .map_err(Error::PrepareProposerFailed)
+            .and_then(|v| v.try_into().map_err(Error::SszTypesError))
         } else {
             get_expected_withdrawals(&advanced_state, &self.spec)
                 .map(|(withdrawals, _)| withdrawals)
