@@ -30,6 +30,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2339 (Mar 24) — CI green, spec stable, holding pattern
+
+- CI: all green. Nightly Mar 24 green.
+- Spec: no new consensus-specs merges since last run. No new test vector release (still v1.5.0 / alpha.3 vectors).
+- All tracked open Gloas PRs unchanged. None merged. #4979 (PTC window) still under review. #5035, #5036 (both implemented) still awaiting approval.
+- No new Gloas PRs since last run. #5037 (EIP-8025 fork version removal) not Gloas-related.
+- `cargo audit`: 1 vulnerability (rsa, no fix available), 5 allowed warnings — all in transitive deps, none actionable.
+- No code changes — codebase healthy, holding pattern.
+
 ### run 2338 (Mar 24) — CI green, spec stable, holding pattern
 
 - CI: all green. Nightly Mar 24 green.
