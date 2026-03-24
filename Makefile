@@ -246,6 +246,8 @@ test-full: cargo-fmt test-release test-debug test-ef test-exec-engine
 lint:
 	cargo clippy --workspace --benches --tests $(EXTRA_CLIPPY_OPTS) --features "$(TEST_FEATURES)" -- \
 		-D clippy::absurd_extreme_comparisons \
+		-D clippy::almost_complete_range \
+		-D clippy::async_yields_async \
 		-D clippy::as_ptr_cast_mut \
 		-D clippy::as_underscore \
 		-D clippy::assigning_clones \
@@ -273,14 +275,18 @@ lint:
 		-D clippy::debug_assert_with_mut_call \
 		-D clippy::decimal_bitwise_operands \
 		-D clippy::default_trait_access \
+		-D clippy::deprecated_cfg_attr \
 		-D clippy::default_union_representation \
 		-D clippy::deref_addrof \
 		-D clippy::derive_partial_eq_without_eq \
 		-D clippy::disallowed_methods \
 		-D clippy::doc_broken_link \
 		-D clippy::doc_lazy_continuation \
+		-D clippy::double_must_use \
 		-D clippy::double_parens \
+		-D clippy::duplicate_mod \
 		-D clippy::elidable_lifetime_names \
+		-D clippy::empty_drop \
 		-D clippy::empty_enums \
 		-D clippy::empty_enum_variants_with_brackets \
 		-D clippy::empty_line_after_doc_comments \
@@ -386,12 +392,14 @@ lint:
 		-D clippy::match_wildcard_for_single_variants \
 		-D clippy::maybe_infinite_iter \
 		-D clippy::mem_forget \
+		-D clippy::mismatched_target_os \
 		-D clippy::mismatching_type_param_order \
 		-D clippy::missing_fields_in_debug \
 		-D clippy::missing_safety_doc \
 		-D clippy::mixed_read_write_in_expression \
 		-D clippy::modulo_one \
 		-D clippy::mut_mut \
+		-D clippy::mut_mutex_lock \
 		-D clippy::naive_bytecount \
 		-D clippy::needless_as_bytes \
 		-D clippy::needless_bitwise_bool \
@@ -408,6 +416,7 @@ lint:
 		-D clippy::needless_pass_by_ref_mut \
 		-D clippy::needless_range_loop \
 		-D clippy::needless_raw_string_hashes \
+		-D clippy::needless_raw_strings \
 		-D clippy::needless_return \
 		-D clippy::neg_cmp_op_on_partial_ord \
 		-D clippy::neg_multiply \
@@ -420,6 +429,7 @@ lint:
 		-D clippy::no_mangle_with_rust_abi \
 		-D clippy::nonminimal_bool \
 		-D clippy::nonstandard_macro_braces \
+		-D clippy::obfuscated_if_else \
 		-D clippy::option_as_ref_cloned \
 		-D clippy::option_map_unit_fn \
 		-D clippy::option_option \
@@ -439,6 +449,7 @@ lint:
 		-D clippy::read_zero_byte_vec \
 		-D clippy::readonly_write_lock \
 		-D clippy::redundant_allocation \
+		-D clippy::redundant_at_rest_pattern \
 		-D clippy::redundant_clone \
 		-D clippy::redundant_closure \
 		-D clippy::redundant_iter_cloned \
@@ -461,6 +472,7 @@ lint:
 		-D clippy::semicolon_if_nothing_returned \
 		-D clippy::set_contains_or_insert \
 		-D clippy::should_panic_without_expect \
+		-D clippy::single_range_in_vec_init \
 		-D clippy::single_char_add_str \
 		-D clippy::single_char_pattern \
 		-D clippy::single_component_path_imports \
@@ -473,12 +485,15 @@ lint:
 		-D clippy::string_lit_chars_any \
 		-D clippy::suboptimal_flops \
 		-D clippy::suspicious_arithmetic_impl \
+		-D clippy::suspicious_command_arg_space \
 		-D clippy::suspicious_else_formatting \
+		-D clippy::suspicious_open_options \
 		-D clippy::suspicious_operation_groupings \
 		-D clippy::suspicious_xor_used_as_pow \
 		-D clippy::todo \
 		-D clippy::transmute_bytes_to_str \
 		-D clippy::transmute_ptr_to_ptr \
+		-D clippy::transmute_ptr_to_ref \
 		-D clippy::transmute_undefined_repr \
 		-D clippy::trivial_regex \
 		-D clippy::trivially_copy_pass_by_ref \
@@ -517,6 +532,7 @@ lint:
 		-D clippy::unused_io_amount \
 		-D clippy::unused_peekable \
 		-D clippy::unused_rounding \
+		-D clippy::unused_result_ok \
 		-D clippy::unused_self \
 		-D clippy::used_underscore_items \
 		-D clippy::useless_asref \
@@ -531,6 +547,7 @@ lint:
 		-D clippy::while_let_on_iterator \
 		-D clippy::wildcard_in_or_patterns \
 		-D clippy::zero_prefixed_literal \
+		-D clippy::zero_repeat_side_effects \
 		-D clippy::zero_sized_map_values \
 		-D clippy::zombie_processes \
 		-D warnings

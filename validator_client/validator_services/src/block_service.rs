@@ -239,7 +239,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> BlockService<S, T> {
         executor.spawn(
             async move {
                 while let Some(notif) = notification_rx.recv().await {
-                    self.do_update(notif).ok();
+                    let _ = self.do_update(notif);
                 }
                 debug!("Block service shutting down");
             },

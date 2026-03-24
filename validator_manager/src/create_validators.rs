@@ -896,7 +896,7 @@ pub mod tests {
         /*
          * Parse the test vector name into a set of test parameters.
          */
-        let re = Regex::new(r"(.*)_(.*)_(.*)_(.*)_(.*)_(.*)_(.*)").unwrap();
+        let re = Regex::new("(.*)_(.*)_(.*)_(.*)_(.*)_(.*)_(.*)").unwrap();
         let capture = re.captures_iter(name).next().unwrap();
         let network = capture.get(1).unwrap().as_str();
         let first = u32::from_str(capture.get(3).unwrap().as_str()).unwrap();

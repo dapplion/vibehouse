@@ -1254,7 +1254,7 @@ pub(super) fn serve<E: EthSpec>(
         .expect("mock builder should have local addr");
 
     let server = async move {
-        axum::serve(listener, app).await.ok();
+        let _ = axum::serve(listener, app).await;
     };
 
     (listening_socket, server)

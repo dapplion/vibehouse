@@ -773,10 +773,9 @@ pub fn serve<E: EthSpec>(
     );
 
     let server = async move {
-        axum::serve(listener, app)
+        let _ = axum::serve(listener, app)
             .with_graceful_shutdown(shutdown)
-            .await
-            .ok();
+            .await;
     };
 
     Ok((listening_socket, server))

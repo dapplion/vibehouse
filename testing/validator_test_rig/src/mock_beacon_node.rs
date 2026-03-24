@@ -38,7 +38,7 @@ impl<E: EthSpec> MockBeaconNode<E> {
         let config_and_preset = ConfigAndPreset::from_chain_spec::<E>(spec);
         let data = GenericResponse::from(config_and_preset);
         self.server
-            .mock("GET", Matcher::Regex(r"^/eth/v1/config/spec$".to_string()))
+            .mock("GET", Matcher::Regex("^/eth/v1/config/spec$".to_string()))
             .with_status(200)
             .with_body(serde_json::to_string(&data).unwrap())
             .create();
@@ -48,7 +48,7 @@ impl<E: EthSpec> MockBeaconNode<E> {
         let data = GenericResponse::from(response);
 
         self.server
-            .mock("GET", Matcher::Regex(r"^/eth/v1/node/syncing$".to_string()))
+            .mock("GET", Matcher::Regex("^/eth/v1/node/syncing$".to_string()))
             .with_status(200)
             .with_body(serde_json::to_string(&data).unwrap())
             .create();
@@ -63,7 +63,7 @@ impl<E: EthSpec> MockBeaconNode<E> {
         self.server
             .mock(
                 "POST",
-                Matcher::Regex(r"^/eth/v2/beacon/blinded_blocks$".to_string()),
+                Matcher::Regex("^/eth/v2/beacon/blinded_blocks$".to_string()),
             )
             .match_header("content-type", "application/octet-stream")
             .with_status(200)
@@ -92,7 +92,7 @@ impl<E: EthSpec> MockBeaconNode<E> {
 
     pub fn mock_offline_node(&mut self) -> Mock {
         self.server
-            .mock("GET", Matcher::Regex(r"^/eth/v1/node/version$".to_string()))
+            .mock("GET", Matcher::Regex("^/eth/v1/node/version$".to_string()))
             .with_status(StatusCode::INTERNAL_SERVER_ERROR.as_u16() as usize)
             .with_header("content-type", "application/json")
             .with_body(r#"{"message":"Internal Server Error"}"#)
@@ -101,7 +101,7 @@ impl<E: EthSpec> MockBeaconNode<E> {
 
     pub fn mock_online_node(&mut self) -> Mock {
         self.server
-            .mock("GET", Matcher::Regex(r"^/eth/v1/node/version$".to_string()))
+            .mock("GET", Matcher::Regex("^/eth/v1/node/version$".to_string()))
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(
@@ -120,7 +120,7 @@ impl<E: EthSpec> MockBeaconNode<E> {
         epoch: Epoch,
         duties: Vec<PtcDutyData>,
     ) -> Mock {
-        let path_pattern = format!(r"^/eth/v1/validator/duties/ptc/{}$", epoch.as_u64());
+        let path_pattern = format!("^/eth/v1/validator/duties/ptc/{}$", epoch.as_u64());
 
         let response = DutiesResponse {
             dependent_root: Hash256::ZERO,
@@ -146,7 +146,7 @@ impl<E: EthSpec> MockBeaconNode<E> {
         self.server
             .mock(
                 "GET",
-                Matcher::Regex(r"^/eth/v1/validator/payload_attestation_data".to_string()),
+                Matcher::Regex("^/eth/v1/validator/payload_attestation_data".to_string()),
             )
             .with_status(200)
             .with_header("content-type", "application/json")
@@ -159,7 +159,7 @@ impl<E: EthSpec> MockBeaconNode<E> {
         self.server
             .mock(
                 "POST",
-                Matcher::Regex(r"^/eth/v1/beacon/pool/payload_attestations$".to_string()),
+                Matcher::Regex("^/eth/v1/beacon/pool/payload_attestations$".to_string()),
             )
             .with_status(200)
             .with_header("content-type", "application/json")
@@ -173,7 +173,7 @@ impl<E: EthSpec> MockBeaconNode<E> {
         epoch: Epoch,
         duties: Vec<ProposerData>,
     ) -> Mock {
-        let path_pattern = format!(r"^/eth/v1/validator/duties/proposer/{}$", epoch.as_u64());
+        let path_pattern = format!("^/eth/v1/validator/duties/proposer/{}$", epoch.as_u64());
 
         let response = DutiesResponse {
             dependent_root: Hash256::ZERO,
@@ -194,7 +194,7 @@ impl<E: EthSpec> MockBeaconNode<E> {
         self.server
             .mock(
                 "POST",
-                Matcher::Regex(r"^/eth/v1/beacon/pool/proposer_preferences$".to_string()),
+                Matcher::Regex("^/eth/v1/beacon/pool/proposer_preferences$".to_string()),
             )
             .with_status(200)
             .with_header("content-type", "application/json")
@@ -207,7 +207,7 @@ impl<E: EthSpec> MockBeaconNode<E> {
         self.server
             .mock(
                 "POST",
-                Matcher::Regex(r"^/eth/v1/beacon/pool/payload_attestations$".to_string()),
+                Matcher::Regex("^/eth/v1/beacon/pool/payload_attestations$".to_string()),
             )
             .with_status(500)
             .with_header("content-type", "application/json")
@@ -220,7 +220,7 @@ impl<E: EthSpec> MockBeaconNode<E> {
         self.server
             .mock(
                 "POST",
-                Matcher::Regex(r"^/eth/v1/beacon/pool/proposer_preferences$".to_string()),
+                Matcher::Regex("^/eth/v1/beacon/pool/proposer_preferences$".to_string()),
             )
             .with_status(500)
             .with_header("content-type", "application/json")
