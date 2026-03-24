@@ -37,7 +37,9 @@ pub(crate) fn get_next_withdrawals<T: BeaconChainTypes>(
         // pending withdrawals and uses the builder sweep alongside validator
         // withdrawals. Using the pre-Gloas function would miss builder withdrawals.
         match get_expected_withdrawals_gloas(&state, &chain.spec) {
-            Ok(withdrawals) => Ok(withdrawals.try_into().unwrap()),
+            Ok(withdrawals) => withdrawals.try_into().map_err(|e| {
+                ApiError::server_error(format!("withdrawal list conversion failed: {e:?}"))
+            }),
             Err(e) => Err(ApiError::server_error(format!(
                 "failed to get expected withdrawal: {e:?}"
             ))),

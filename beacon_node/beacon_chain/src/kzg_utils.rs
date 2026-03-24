@@ -312,7 +312,9 @@ pub(crate) fn build_data_column_sidecars<E: EthSpec>(
                 .get(col)
                 .ok_or_else(|| format!("Missing blob cell at index {col}"))?;
             let cell: Vec<u8> = cell.to_vec();
-            let cell: Cell<E> = cell.try_into().unwrap();
+            let cell: Cell<E> = cell
+                .try_into()
+                .map_err(|e| format!("Cell conversion failed at column {col}: {e:?}"))?;
 
             let proof = blob_cell_proofs
                 .get(col)
@@ -339,9 +341,13 @@ pub(crate) fn build_data_column_sidecars<E: EthSpec>(
         let (index, (col, proofs)) = columns_iter.next().ok_or("expected more columns")?;
         sidecars.push(Arc::new(DataColumnSidecar::Fulu(DataColumnSidecarFulu {
             index: index as u64,
-            column: col.try_into().unwrap(),
+            column: col
+                .try_into()
+                .map_err(|e| format!("Column {index} conversion failed: {e:?}"))?,
             kzg_commitments: kzg_commitments.clone(),
-            kzg_proofs: proofs.try_into().unwrap(),
+            kzg_proofs: proofs
+                .try_into()
+                .map_err(|e| format!("Column {index} KZG proofs conversion failed: {e:?}"))?,
             signed_block_header: signed_block_header.clone(),
             kzg_commitments_inclusion_proof: kzg_commitments_inclusion_proof.clone(),
         })));
@@ -349,9 +355,13 @@ pub(crate) fn build_data_column_sidecars<E: EthSpec>(
     if let Some((index, (col, proofs))) = columns_iter.next() {
         sidecars.push(Arc::new(DataColumnSidecar::Fulu(DataColumnSidecarFulu {
             index: index as u64,
-            column: col.try_into().unwrap(),
+            column: col
+                .try_into()
+                .map_err(|e| format!("Column {index} conversion failed: {e:?}"))?,
             kzg_commitments,
-            kzg_proofs: proofs.try_into().unwrap(),
+            kzg_proofs: proofs
+                .try_into()
+                .map_err(|e| format!("Column {index} KZG proofs conversion failed: {e:?}"))?,
             signed_block_header,
             kzg_commitments_inclusion_proof,
         })));

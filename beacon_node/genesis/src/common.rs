@@ -36,10 +36,14 @@ pub(crate) fn genesis_deposits(
         proofs.push(proof);
     }
 
-    Ok(deposit_data
+    deposit_data
         .into_iter()
         .zip(proofs)
-        .map(|(data, proof)| (data, proof.try_into().unwrap()))
-        .map(|(data, proof)| Deposit { proof, data })
-        .collect())
+        .map(|(data, proof)| {
+            let proof = proof
+                .try_into()
+                .map_err(|e| format!("Deposit proof conversion failed: {e:?}"))?;
+            Ok(Deposit { proof, data })
+        })
+        .collect()
 }
