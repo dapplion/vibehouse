@@ -5528,3 +5528,24 @@ Added `debug_assert!(vote.current_slot >= node_slot)` in both `is_supporting_vot
 **Proposer preferences code review**: Reviewed all 3 components — BN gossip validation (gossip_methods.rs:4097-4264), bid verification (gloas_verification.rs:450-530), VC broadcast (duties_service.rs:1635-1801). All correct per current spec (v1.7.0-alpha.3). Ready for quick implementation when #5035 or #5036 merge.
 
 **Assessment**: Codebase stable. Two new spec PRs (#5035, #5036) are on the horizon but too early to implement. Alpha.4 release approaching — we're already compliant with all changes it will include.
+
+### Run 2303 — spec tracking + stability check (2026-03-24)
+
+**Scope**: Check for new consensus-specs activity, verify CI health, assess remaining work.
+
+**Spec tracking**: No new Gloas-relevant PRs merged since run 2302. All 10 most recent consensus-specs commits are CI/infra/dependency updates. Alpha.4 version bump PR (#5034) still open with 0 approvals (blocked).
+
+**Open PR status — no changes**:
+- #4892 (remove impossible branch, 2 approvals) — already implemented
+- #4898 (remove pending tiebreaker, 1 approval) — already implemented
+- #4939 (request missing envelopes, 3 requested reviewers, 0 approvals) — already implemented
+- #4979 (PTC window cache, 0 approvals) — blocked, not ready
+- #4843 (variable PTC deadline, 0 approvals) — under discussion
+- #5035 (same epoch proposer preferences, 0 approvals) — not ready
+- #5036 (relax bid gossip dependency, 0 approvals) — not ready
+
+**CI status**: All recent commits passing. In-progress run (23492870696) check+clippy+fmt and ef-tests passed. Previous full run (nextest pin) all 6 jobs green. Nightly: green.
+
+**EF test fixtures**: On v1.7.0-alpha.3 (latest release). No new release available.
+
+**Assessment**: Codebase stable and fully audited. No actionable work — all tasks complete, all spec changes tracked, CI green. Waiting for spec PRs to merge before next implementation work.
