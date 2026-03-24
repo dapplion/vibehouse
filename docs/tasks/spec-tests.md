@@ -30,6 +30,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2306 (Mar 24) — maintenance check, new PR #5036 tracked
+
+- CI: all green (run 23492870696, all 7 jobs passed). Nightly Mar 24 green (23481684741).
+- Spec: v1.7.0-alpha.3 still latest. Spec test vectors: v1.5.0 (unchanged). Only consensus-specs merge today: #5015 (test coverage infra) — no code impact.
+- **New PR: #5036** (relax bid gossip dependency on proposer preferences) — removes IGNORE requirement that SignedProposerPreferences must be seen before forwarding bids; fee_recipient/gas_limit checks become conditional on preferences being available. Impact: `gloas_verification.rs:488-504` — ProposerPreferencesNotSeen will become pass-through, fee_recipient/gas_limit checks wrapped in `if let Some(preferences)`. Not actionable until merged.
+- All 7 previously tracked Gloas PRs still open: #4979 (PTC window, under review), #4843 (variable PTC deadline), #4892 (remove impossible branch, APPROVED), #4898 (remove pending tiebreaker, APPROVED), #4954 (ms in fork choice), #4747 (fast confirmation rule, mergeable_state=dirty), #4939 (envelope request, blocked).
+- Now tracking 8 open Gloas PRs total (added #5036).
+- No code changes — codebase healthy, holding pattern.
+
 ### run 2287 (Mar 24) — spec audit, nightly clippy fixes
 
 - Audited consensus-specs merges since run 2286: #5022 (explicit block check in on_payload_attestation_message) — already compliant (line 1426-1432 of fork_choice.rs). #5008 (field name fix in spec doc) — no code change needed. Rest are CI/infra/deps.
