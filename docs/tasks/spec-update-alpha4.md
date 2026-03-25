@@ -134,3 +134,5 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences", by nflaig, 
 | #4840 | Add support for EIP-7843 to Gloas | Open, Jan 2026 |
 | #4630 | EIP-7688: Use forward compatible SSZ types in Gloas | Open, stale since Feb 2026. SSZ refactor, light client related. Not worth proactive implementation. |
 | #4558 | Add Cell Dissemination via Partial Message Specification | Open, updated Mar 2026. PeerDAS/fulu + gloas. Monitor. |
+
+Run 2477: No new spec PRs merged since run 2476. All open Gloas PRs unchanged (#5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630, #4558). #5041 merged (dep update, eth-utils v6.0.0 — Python tooling only). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.5.0. CI fully green (ci + nightly). Clippy: zero warnings. cargo audit: same known advisories (1 rsa vuln, 5 unmaintained). No actionable work.
