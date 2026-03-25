@@ -18,6 +18,8 @@ pub enum EpochProcessingError {
     MissingExitBalanceToConsume,
     PendingDepositsLogicError,
     ProposerLookaheadOutOfBounds(usize),
+    PtcWindowOutOfBounds(usize),
+    PtcWindowComputeError(String),
 }
 
 impl From<BeaconStateError> for EpochProcessingError {

@@ -5,7 +5,7 @@ pub use cases::{
     ExecutionPayloadBidWithBlock, ExecutionPayloadEnvelopeOp, FeatureName, HistoricalRootsUpdate,
     HistoricalSummariesUpdate, InactivityUpdates, JustificationAndFinalization,
     ParticipationFlagUpdates, ParticipationRecordUpdates, PendingBalanceDeposits,
-    PendingConsolidations, ProposerLookahead, RandaoMixesReset, RegistryUpdates,
+    PendingConsolidations, ProposerLookahead, PtcWindow, RandaoMixesReset, RegistryUpdates,
     RewardsAndPenalties, Slashings, SlashingsReset, SyncCommitteeUpdates,
 };
 pub use decode::log_file_access;

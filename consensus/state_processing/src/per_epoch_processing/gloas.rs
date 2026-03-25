@@ -1,6 +1,8 @@
 use crate::EpochProcessingError;
+use crate::per_block_processing::gloas::compute_ptc;
 use safe_arith::SafeArith;
-use types::{BeaconState, BuilderPendingPayment, ChainSpec, EthSpec};
+use ssz_types::FixedVector;
+use types::{BeaconState, BuilderPendingPayment, ChainSpec, Epoch, EthSpec, Slot};
 
 /// Processes the builder pending payments from the previous epoch.
 ///
@@ -61,6 +63,120 @@ pub fn process_builder_pending_payments<E: EthSpec>(
     for i in slots_per_epoch..total_len {
         if let Some(slot) = state_gloas.builder_pending_payments.get_mut(i) {
             *slot = BuilderPendingPayment::default();
+        }
+    }
+
+    Ok(())
+}
+
+/// Initialize the PTC window cache for a newly-created Gloas state.
+///
+/// Layout: [previous_epoch (zeros), current_epoch, next_epoch(+lookahead)]
+/// The previous epoch is zeroed because there is no prior epoch to cache at fork transition.
+///
+/// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/fork.md#new-initialize_ptc_window>
+#[allow(clippy::type_complexity)]
+pub fn initialize_ptc_window<E: EthSpec>(
+    state: &BeaconState<E>,
+    spec: &ChainSpec,
+) -> Result<FixedVector<FixedVector<u64, E::PtcSize>, E::PtcWindowSlots>, EpochProcessingError> {
+    let slots_per_epoch = E::slots_per_epoch();
+    let ptc_size = E::ptc_size();
+    let window_slots = E::ptc_window_slots();
+
+    let mut window = Vec::with_capacity(window_slots);
+
+    // Previous epoch: all zeros (no cached data at initialization)
+    for _ in 0..slots_per_epoch {
+        window.push(FixedVector::new(vec![0u64; ptc_size])?);
+    }
+
+    // Current epoch + next epoch(s) in the lookahead
+    let current_epoch = state.current_epoch();
+    let empty_ptc = || FixedVector::new(vec![0u64; ptc_size]);
+    let lookahead_epochs = 1u64.safe_add(spec.min_seed_lookahead.as_u64())?;
+    for e in 0..lookahead_epochs {
+        let epoch = current_epoch.safe_add(e)?;
+        let start_slot = epoch.start_slot(slots_per_epoch);
+        for i in 0..slots_per_epoch {
+            let slot = start_slot.safe_add(i)?;
+            let ptc = match compute_ptc(state, Slot::new(slot.as_u64()), spec) {
+                Ok(ptc) => FixedVector::new(ptc)?,
+                // No active validators (e.g. during fork upgrade before activations)
+                Err(_) => empty_ptc()?,
+            };
+            window.push(ptc);
+        }
+    }
+
+    Ok(FixedVector::new(window)?)
+}
+
+/// Update the cached PTC window at the end of each epoch.
+///
+/// Shifts all epochs forward by one position (dropping the oldest), then fills
+/// the last epoch with newly computed PTC assignments for the next+lookahead epoch.
+///
+/// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#new-process_ptc_window>
+pub fn process_ptc_window<E: EthSpec>(
+    state: &mut BeaconState<E>,
+    spec: &ChainSpec,
+) -> Result<(), EpochProcessingError> {
+    let slots_per_epoch = E::slots_per_epoch() as usize;
+    let window_len = E::ptc_window_slots();
+
+    // Read entries that will be shifted left (everything after the first epoch)
+    let shifted: Vec<FixedVector<u64, E::PtcSize>> = (slots_per_epoch..window_len)
+        .map(|i| {
+            state
+                .as_gloas()
+                .map_err(EpochProcessingError::BeaconStateError)?
+                .ptc_window
+                .get(i)
+                .cloned()
+                .ok_or(EpochProcessingError::PtcWindowOutOfBounds(i))
+        })
+        .collect::<Result<_, _>>()?;
+
+    // Compute PTC for the next+lookahead epoch
+    let next_epoch = Epoch::new(
+        state
+            .current_epoch()
+            .as_u64()
+            .safe_add(spec.min_seed_lookahead.as_u64())?
+            .safe_add(1)?,
+    );
+    let ptc_size = E::ptc_size();
+    let empty_ptc = || FixedVector::new(vec![0u64; ptc_size]);
+    let start_slot = next_epoch.start_slot(E::slots_per_epoch());
+    let new_ptcs: Vec<FixedVector<u64, E::PtcSize>> = (0..slots_per_epoch as u64)
+        .map(|i| {
+            let slot = Slot::new(start_slot.as_u64().safe_add(i)?);
+            match compute_ptc(state, slot, spec) {
+                Ok(ptc) => Ok(FixedVector::new(ptc)?),
+                // Committee caches may not cover this epoch yet (e.g. epoch N+2 from state at N)
+                Err(_) => Ok(empty_ptc()?),
+            }
+        })
+        .collect::<Result<_, EpochProcessingError>>()?;
+
+    // Write shifted values into the first positions
+    let ptc_window = &mut state
+        .as_gloas_mut()
+        .map_err(EpochProcessingError::BeaconStateError)?
+        .ptc_window;
+    for (dst, val) in shifted.into_iter().enumerate() {
+        if let Some(entry) = ptc_window.get_mut(dst) {
+            *entry = val;
+        }
+    }
+
+    // Fill in the last epoch with new PTC assignments
+    let last_epoch_start = window_len.safe_sub(slots_per_epoch)?;
+    for (i, ptc) in new_ptcs.into_iter().enumerate() {
+        let index = last_epoch_start.safe_add(i)?;
+        if let Some(entry) = ptc_window.get_mut(index) {
+            *entry = ptc;
         }
     }
 
@@ -231,6 +347,7 @@ mod tests {
             builder_pending_withdrawals: List::default(),
             latest_block_hash: parent_block_hash,
             payload_expected_withdrawals: List::default(),
+            ptc_window: FixedVector::default(),
             total_active_balance: None,
             progressive_balances_cache: ProgressiveBalancesCache::default(),
             committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),

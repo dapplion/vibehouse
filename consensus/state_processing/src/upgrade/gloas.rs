@@ -1,6 +1,7 @@
 use crate::per_block_processing::is_valid_deposit_signature;
-use ssz_types::BitVector;
+use crate::per_epoch_processing::gloas::initialize_ptc_window;
 use ssz_types::typenum::Unsigned;
+use ssz_types::{BitVector, FixedVector};
 use std::mem;
 use types::{
     Address, BeaconState, BeaconStateError as Error, BeaconStateGloas, Builder,
@@ -17,6 +18,18 @@ pub fn upgrade_to_gloas<E: EthSpec>(
 
     // [New in Gloas:EIP7732] Onboard builders from pending deposits
     onboard_builders_from_pending_deposits(&mut post, spec)?;
+
+    // [New in Gloas:EIP7732] Initialize PTC window cache
+    // Committee caches are needed to compute PTC assignments
+    post.build_committee_cache(types::RelativeEpoch::Current, spec)?;
+    post.build_committee_cache(types::RelativeEpoch::Next, spec)?;
+    let ptc_window = initialize_ptc_window(&post, spec).map_err(|e| match e {
+        crate::EpochProcessingError::BeaconStateError(e) => e,
+        crate::EpochProcessingError::SszTypesError(e) => Error::SszTypesError(e),
+        crate::EpochProcessingError::ArithError(e) => Error::ArithError(e),
+        other => Error::PtcWindowInitError(format!("{other:?}")),
+    })?;
+    post.as_gloas_mut()?.ptc_window = ptc_window;
 
     *pre_state = post;
 
@@ -109,6 +122,8 @@ pub(crate) fn upgrade_state_to_gloas<E: EthSpec>(
         builder_pending_withdrawals: List::default(),
         latest_block_hash: pre.latest_execution_payload_header.block_hash,
         payload_expected_withdrawals: List::default(),
+        // PTC window — initialized after state construction (needs committee caches)
+        ptc_window: FixedVector::default(),
         // Caches
         total_active_balance: pre.total_active_balance,
         progressive_balances_cache: mem::take(&mut pre.progressive_balances_cache),

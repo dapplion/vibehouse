@@ -2,9 +2,9 @@ use crate::{ChainSpec, Epoch, Error};
 use safe_arith::SafeArith;
 use serde::{Deserialize, Serialize};
 use ssz_types::typenum::{
-    U0, U1, U2, U4, U8, U16, U17, U32, U64, U128, U256, U512, U625, U1024, U2048, U4096, U8192,
-    U16384, U65536, U131072, U262144, U1048576, U16777216, U33554432, U134217728, U1073741824,
-    U1099511627776, UInt, Unsigned, bit::B0,
+    U0, U1, U2, U4, U8, U16, U17, U24, U32, U48, U64, U96, U128, U256, U512, U625, U1024, U2048,
+    U4096, U8192, U16384, U65536, U131072, U262144, U1048576, U16777216, U33554432, U134217728,
+    U1073741824, U1099511627776, UInt, Unsigned, bit::B0,
 };
 use std::fmt::{self, Debug};
 use std::str::FromStr;
@@ -118,6 +118,9 @@ pub trait EthSpec: 'static + Default + Sync + Send + Clone + Debug + PartialEq +
     type CellsPerExtBlob: Unsigned + Clone + Sync + Send + Debug + PartialEq;
     type NumberOfColumns: Unsigned + Clone + Sync + Send + Debug + PartialEq;
     type ProposerLookaheadSlots: Unsigned + Clone + Sync + Send + Debug + PartialEq;
+    /// PTC window size: (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH
+    /// Caches PTC assignments for previous, current, and next+lookahead epochs
+    type PtcWindowSlots: Unsigned + Clone + Sync + Send + Debug + PartialEq;
     /*
      * Derived values (set these CAREFULLY)
      */
@@ -406,6 +409,10 @@ pub trait EthSpec: 'static + Default + Sync + Send + Clone + Debug + PartialEq +
         Self::ProposerLookaheadSlots::to_usize()
     }
 
+    fn ptc_window_slots() -> usize {
+        Self::PtcWindowSlots::to_usize()
+    }
+
     /// Returns the `BUILDER_REGISTRY_LIMIT` constant for this specification.
     fn builder_registry_limit() -> usize {
         Self::BuilderRegistryLimit::to_usize()
@@ -490,6 +497,7 @@ impl EthSpec for MainnetEthSpec {
     type CellsPerExtBlob = U128;
     type NumberOfColumns = U128;
     type ProposerLookaheadSlots = U64; // Derived from (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH
+    type PtcWindowSlots = U96; // (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH = 3 * 32
     type SyncSubcommitteeSize = U128; // 512 committee size / 4 sync committee subnet count
     type MaxPendingAttestations = U4096; // 128 max attestations * 32 slots per epoch
     type SlotsPerEth1VotingPeriod = U2048; // 64 epochs * 32 slots per epoch
@@ -552,6 +560,7 @@ impl EthSpec for MinimalEthSpec {
     type CellsPerExtBlob = U128;
     type NumberOfColumns = U128;
     type ProposerLookaheadSlots = U16; // Derived from (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH
+    type PtcWindowSlots = U24; // (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH = 3 * 8
     type BuilderPendingPaymentsLimit = U16; // 2 * SLOTS_PER_EPOCH = 2 * 8 = 16
     type PtcSize = U2;
     type MaxBuildersPerWithdrawalsSweep = U16;
@@ -657,6 +666,7 @@ impl EthSpec for GnosisEthSpec {
     type CellsPerExtBlob = U128;
     type NumberOfColumns = U128;
     type ProposerLookaheadSlots = U32; // Derived from (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH
+    type PtcWindowSlots = U48; // (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH = 3 * 16
     type PtcSize = U512;
     type MaxPayloadAttestations = U4;
     type BuilderRegistryLimit = U1099511627776;

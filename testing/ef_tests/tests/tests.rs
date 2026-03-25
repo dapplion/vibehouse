@@ -18,6 +18,8 @@ fn check_typenum_values<E: EthSpec>() {
         E::MaxValidatorsPerSlot::to_u64(),
         E::MaxCommitteesPerSlot::to_u64() * E::MaxValidatorsPerCommittee::to_u64()
     );
+    // PtcWindowSlots = (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH = 3 * SLOTS_PER_EPOCH
+    assert_eq!(E::PtcWindowSlots::to_u64(), 3 * E::SlotsPerEpoch::to_u64());
 }
 
 #[test]
@@ -994,6 +996,12 @@ fn epoch_processing_builder_pending_payments() {
 fn epoch_processing_proposer_lookahead() {
     EpochProcessingHandler::<MinimalEthSpec, ProposerLookahead>::default().run();
     EpochProcessingHandler::<MainnetEthSpec, ProposerLookahead>::default().run();
+}
+
+#[test]
+fn epoch_processing_ptc_window() {
+    EpochProcessingHandler::<MinimalEthSpec, PtcWindow>::default().run();
+    EpochProcessingHandler::<MainnetEthSpec, PtcWindow>::default().run();
 }
 
 #[test]

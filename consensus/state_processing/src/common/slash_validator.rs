@@ -204,6 +204,7 @@ mod tests {
             builder_pending_withdrawals: List::default(),
             latest_block_hash: ExecutionBlockHash::zero(),
             payload_expected_withdrawals: List::default(),
+            ptc_window: FixedVector::default(),
             total_active_balance: Some((
                 current_epoch,
                 num_validators as u64 * spec.max_effective_balance,

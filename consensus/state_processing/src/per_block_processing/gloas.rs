@@ -366,14 +366,67 @@ pub fn get_indexed_payload_attestation<E: EthSpec>(
     })
 }
 
-/// Computes the PTC (Payload Timeliness Committee) for a given slot.
+/// Get the PTC (Payload Timeliness Committee) for a given slot using the cached ptc_window.
+///
+/// For Gloas states, this reads from the `ptc_window` cache in the beacon state.
+/// Falls back to `compute_ptc` for pre-Gloas states or when the cache is not available.
 ///
 /// Spec: get_ptc(state, slot)
-/// 1. Concatenate all beacon committees for the slot
-/// 2. Use compute_balance_weighted_selection to pick PTC_SIZE validators
-///
-/// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#get_ptc>
+/// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#new-get_ptc>
 pub fn get_ptc_committee<E: EthSpec>(
+    state: &BeaconState<E>,
+    slot: Slot,
+    spec: &ChainSpec,
+) -> Result<Vec<u64>, BlockProcessingError> {
+    let slots_per_epoch = E::slots_per_epoch();
+    let epoch = slot.epoch(slots_per_epoch);
+    let state_epoch = state.current_epoch();
+
+    if let Ok(state_gloas) = state.as_gloas() {
+        let index = if epoch < state_epoch {
+            // Previous epoch lookup
+            if epoch.safe_add(1)? != state_epoch {
+                return Err(BlockProcessingError::BeaconStateError(
+                    BeaconStateError::EpochOutOfBounds,
+                ));
+            }
+            slot.as_u64().safe_rem(slots_per_epoch)? as usize
+        } else {
+            // Current or future epoch lookup
+            let max_epoch = state_epoch.safe_add(spec.min_seed_lookahead.as_u64())?;
+            if epoch > max_epoch {
+                return Err(BlockProcessingError::BeaconStateError(
+                    BeaconStateError::EpochOutOfBounds,
+                ));
+            }
+            let slot_in_epoch = slot.as_u64().safe_rem(slots_per_epoch)? as usize;
+            let offset = (epoch.as_u64().safe_sub(state_epoch.as_u64())?.safe_add(1)?)
+                .safe_mul(slots_per_epoch)? as usize;
+            offset.safe_add(slot_in_epoch)?
+        };
+
+        let entry =
+            state_gloas
+                .ptc_window
+                .get(index)
+                .ok_or(BlockProcessingError::BeaconStateError(
+                    BeaconStateError::EpochOutOfBounds,
+                ))?;
+        return Ok(entry.to_vec());
+    }
+
+    // Fall back to direct computation for non-Gloas states
+    compute_ptc(state, slot, spec)
+}
+
+/// Computes the PTC (Payload Timeliness Committee) for a given slot from scratch.
+///
+/// This is the core computation extracted from the original get_ptc. It computes the
+/// committee using balance-weighted selection without relying on the ptc_window cache.
+///
+/// Spec: compute_ptc(state, slot)
+/// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#new-compute_ptc>
+pub fn compute_ptc<E: EthSpec>(
     state: &BeaconState<E>,
     slot: Slot,
     spec: &ChainSpec,
@@ -1035,6 +1088,7 @@ mod tests {
             builder_pending_withdrawals: List::default(),
             latest_block_hash: parent_block_hash,
             payload_expected_withdrawals: List::default(),
+            ptc_window: FixedVector::default(),
             total_active_balance: None,
             progressive_balances_cache: ProgressiveBalancesCache::default(),
             committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),
@@ -3294,7 +3348,7 @@ mod tests {
         // which is the previous slot — exactly when payload attestation validation
         // would look back.
         let target_slot = Slot::new(7);
-        let ptc_before = get_ptc_committee(&state, target_slot, &spec).unwrap();
+        let ptc_before = compute_ptc(&state, target_slot, &spec).unwrap();
         assert_eq!(ptc_before.len(), E::ptc_size());
 
         // Simulate what epoch processing does: change effective balances.
@@ -3312,7 +3366,7 @@ mod tests {
             .build_committee_cache(types::RelativeEpoch::Current, &spec)
             .unwrap();
 
-        let ptc_after = get_ptc_committee(&state, target_slot, &spec).unwrap();
+        let ptc_after = compute_ptc(&state, target_slot, &spec).unwrap();
         assert_eq!(ptc_after.len(), E::ptc_size());
 
         // The committees should differ because balance weighting changed.
@@ -3350,7 +3404,7 @@ mod tests {
         let (state, spec) = make_gloas_state_with_committees(64, max_eb, 64_000_000_000);
         let slot = state.slot();
 
-        let ptc = get_ptc_committee(&state, slot, &spec).unwrap();
+        let ptc = compute_ptc(&state, slot, &spec).unwrap();
         assert_eq!(ptc.len(), E::ptc_size());
 
         // Since every candidate passes, selection never rejects. With 64 validators and
@@ -3446,7 +3500,7 @@ mod tests {
         let (state, spec) = make_gloas_state_with_committees(128, max_eb, 64_000_000_000);
         let slot = state.slot();
 
-        let ptc = get_ptc_committee(&state, slot, &spec).unwrap();
+        let ptc = compute_ptc(&state, slot, &spec).unwrap();
         assert_eq!(ptc.len(), E::ptc_size());
 
         // All members should be valid validators
@@ -9154,7 +9208,7 @@ mod tests {
             .build_committee_cache(types::RelativeEpoch::Current, &spec)
             .expect("should build current committee cache");
 
-        let result = get_ptc_committee(&state, slot, &spec);
+        let result = compute_ptc(&state, slot, &spec);
         assert!(
             matches!(
                 result,

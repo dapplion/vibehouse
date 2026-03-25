@@ -204,6 +204,7 @@ pub enum Error {
         i: usize,
     },
     UnknownBuilder(u64),
+    PtcWindowInitError(String),
 }
 
 /// Control whether an epoch-indexed field can be indexed at the next epoch or not.
@@ -651,6 +652,12 @@ where
     #[test_random(default)]
     #[superstruct(only(Gloas))]
     pub payload_expected_withdrawals: List<Withdrawal, E::MaxWithdrawalsPerPayload>,
+
+    // Cached PTC window: previous epoch + current epoch + next epoch(+lookahead) assignments
+    #[test_random(default)]
+    #[superstruct(only(Gloas))]
+    #[metastruct(exclude_from(tree_lists))]
+    pub ptc_window: FixedVector<FixedVector<u64, E::PtcSize>, E::PtcWindowSlots>,
 
     // Caching (not in the spec)
     #[serde(skip_serializing, skip_deserializing)]

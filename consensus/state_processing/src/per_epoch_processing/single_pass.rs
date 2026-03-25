@@ -31,6 +31,7 @@ pub struct SinglePassConfig {
     pub pending_deposits: bool,
     pub pending_consolidations: bool,
     pub builder_pending_payments: bool,
+    pub ptc_window: bool,
     pub effective_balance_updates: bool,
     pub proposer_lookahead: bool,
 }
@@ -51,6 +52,7 @@ impl SinglePassConfig {
             pending_deposits: true,
             pending_consolidations: true,
             builder_pending_payments: true,
+            ptc_window: true,
             effective_balance_updates: true,
             proposer_lookahead: true,
         }
@@ -65,6 +67,7 @@ impl SinglePassConfig {
             pending_deposits: false,
             pending_consolidations: false,
             builder_pending_payments: false,
+            ptc_window: false,
             effective_balance_updates: false,
             proposer_lookahead: false,
         }
@@ -475,6 +478,11 @@ pub fn process_epoch_single_pass<E: EthSpec>(
 
     if conf.proposer_lookahead && fork_name.fulu_enabled() {
         process_proposer_lookahead(state, spec)?;
+    }
+
+    // [New in Gloas:EIP7732] Process PTC window cache update
+    if fork_name.gloas_enabled() && conf.ptc_window {
+        super::gloas::process_ptc_window(state, spec)?;
     }
 
     Ok(summary)
@@ -1795,6 +1803,7 @@ mod tests {
             builder_pending_withdrawals: List::default(),
             latest_block_hash: ExecutionBlockHash::repeat_byte(0x02),
             payload_expected_withdrawals: List::default(),
+            ptc_window: FixedVector::default(),
             total_active_balance: None,
             progressive_balances_cache: ProgressiveBalancesCache::default(),
             committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),
