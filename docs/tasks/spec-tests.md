@@ -30,6 +30,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2367 (Mar 25) — spec audit, 3 new merges all accounted for
+
+- CI: green. Build: zero warnings (release + clippy). cargo audit: 1 vuln (rsa) + 5 unmaintained — all pre-existing.
+- Spec: 3 new merges since last run: #5035 (same epoch proposer preferences, merged Mar 25), #4939 (envelope request for index-1 attestation, merged Mar 24), #4962 (sanity/blocks withdrawal tests, merged Mar 25). #5037 (EIP-8025 fork version) also merged — not Gloas core, no action needed.
+- **#5035**: already proactively implemented (gossip_methods.rs:4111 accepts current+next epoch, duties_service.rs:1649 broadcasts for future current-epoch slots).
+- **#4939**: already implemented (attestation_verification.rs:1356 verify_payload_envelope_for_index1, SingleEnvelope RPC request path).
+- **#4962**: test-only (pyspec test definitions for missed payload + withdrawal interactions). Will need test vectors when spec releases new EF test version.
+- Open Gloas PRs: #4979 (PTC window, under review), #5036 (relax bid gossip, no reviews), #4892 (remove impossible branch, APPROVED), #4898 (remove pending tiebreaker, APPROVED), #4843 (variable PTC deadline), #4954 (ms time), #4747 (fast confirmation rule). All APPROVED ones already proactively implemented.
+- Spec test vectors: still v1.6.0-beta.0 (Sep 2025). No Gloas vectors released yet.
+- No code changes — all spec changes already implemented.
+
 ### run 2359 (Mar 25) — holding pattern, no changes
 
 - CI: green. Build: zero warnings (release check + clippy). cargo audit: unchanged (rsa/ansi_term/bincode — all pre-existing, not actionable).
