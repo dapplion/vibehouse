@@ -2553,6 +2553,26 @@ async fn post_beacon_pool_proposer_preferences<T: BeaconChainTypes>(
             let proposal_slot = Slot::new(preferences.proposal_slot);
             let validator_index = preferences.validator_index;
 
+            // Validate proposal_slot is in current or next epoch and hasn't passed
+            let current_slot = chain
+                .slot()
+                .map_err(|_| ApiError::server_error("Unable to read slot clock"))?;
+            let slots_per_epoch = T::EthSpec::slots_per_epoch();
+            let current_epoch = current_slot.epoch(slots_per_epoch);
+            let next_epoch = current_epoch.saturating_add(1u64);
+            let proposal_epoch = proposal_slot.epoch(slots_per_epoch);
+
+            if proposal_epoch < current_epoch || proposal_epoch > next_epoch {
+                return Err(ApiError::bad_request(format!(
+                    "proposal_slot {proposal_slot} not in current ({current_epoch}) or next ({next_epoch}) epoch"
+                )));
+            }
+            if proposal_slot <= current_slot {
+                return Err(ApiError::bad_request(format!(
+                    "proposal_slot {proposal_slot} has already passed (current slot: {current_slot})"
+                )));
+            }
+
             let head_snapshot = chain.canonical_head.cached_head();
             let head_state = &head_snapshot.snapshot.beacon_state;
             let pubkey = head_state
@@ -2565,7 +2585,6 @@ async fn post_beacon_pool_proposer_preferences<T: BeaconChainTypes>(
                 .decompress()
                 .map_err(|_| ApiError::bad_request("Invalid validator pubkey"))?;
 
-            let proposal_epoch = proposal_slot.epoch(T::EthSpec::slots_per_epoch());
             let domain = chain.spec.get_domain(
                 proposal_epoch,
                 Domain::ProposerPreferences,
