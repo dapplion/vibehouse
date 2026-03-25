@@ -115,11 +115,14 @@ Run 2474: No new spec PRs merged since run 2473. All open Gloas PRs unchanged (#
 
 Run 2475: No new spec PRs merged since run 2474. All open Gloas PRs unchanged (#5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4558, #4630, #4840). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.5.0 (consensus-spec-tests latest release). CI fully green. Clippy: zero warnings. No actionable work.
 
+Run 2476: **#5035 merged** ("Allow same epoch proposer preferences", by nflaig, 2026-03-25). Changes: gossip validation loosened from next-epoch-only to current-or-next-epoch for `signed_proposer_preferences`, new `proposal_slot > state.slot` check, `is_valid_proposal_slot()` rewritten to index into both epochs, `get_upcoming_proposal_slots()` iterates full lookahead. **No code changes needed** — vibehouse already implements all these behaviors: gossip validation (gossip_methods.rs:4112) allows both epochs, slot check (line 4125) requires `proposal_slot > current_slot`, lookahead index (lines 4166-4172) handles both epoch offsets, VC broadcast (duties_service.rs:1676-1726) fetches both current and next epoch duties filtering to future slots. HTTP API (http_api/lib.rs:2565) also allows both epochs. #5023 also merged (test infra fix for block root filenames + Gloas comptests) — no implementation impact. All open Gloas PRs unchanged. v1.7.0-alpha.4 still not published. EF test vectors still v1.5.0. CI fully green.
+
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
 |----|-------------|-------|
 | ~~#4979~~ | ~~PTC window cache in BeaconState~~ | **MERGED 2026-03-25.** Proactively implemented and verified against final merge commit (a196ff3e) — full alignment confirmed. EF test handler ready, awaiting updated test vectors. |
+| ~~#5035~~ | ~~Allow same epoch proposer preferences~~ | **MERGED 2026-03-25.** Already implemented — gossip, HTTP API, and VC broadcast all allow current+next epoch. No code changes needed. |
 | #5036 | Relax bid gossip dependency on proposer preferences | Open — proactively implemented (commit 1c7e608d4). Verified (run 2374): latest commit (4e455a3) is doc-only, no behavioral changes. |
 | #4960 | Fork choice test for new validator deposit | Test vectors |
 | #4954 | Update fork choice store to use milliseconds | Open, 0 reviews, large refactor (28 files), also tagged `heze` — not worth implementing proactively |
