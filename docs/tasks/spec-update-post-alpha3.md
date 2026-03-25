@@ -302,3 +302,10 @@ Implemented SHOULD behavior from Gloas p2p spec (aligned with open PR #4939): re
 - **CI**: latest push CI green (all jobs passed).
 - **Open Gloas spec PRs**: #4843 (approved by jtraglia, not merged), #4979 (PTC window, 0 approvals, active review), #5035/#5036 (implemented), #4892 (2 approvals, aligned), #4898 (1 approval, aligned), #4954, #4747, #4840, #4630
 - **No actionable work**: all priorities DONE, codebase clean, spec fully tracked.
+
+### run 2442 (Mar 25) — dependency update + spec check
+
+- **Updated alloy dependencies**: 1.7.3 → 1.8.1 (18 crates). Compilation clean, 143/143 execution_layer tests pass. Pushed.
+- **Spec check**: #5035 merged (Mar 25, already implemented). No other new Gloas merges. #4979 (PTC window) still open with 19 reviews.
+- **Clippy/warnings**: zero across workspace. **CI**: latest nightly green.
+- **Open Gloas spec PRs**: #4979 (PTC window, 19 reviews, not merged), #5036 (implemented, not merged), #4892/#4898 (aligned, not merged), #4843 (variable PTC deadline, approved), #4954 (ms time), #4747 (fast confirmation)
