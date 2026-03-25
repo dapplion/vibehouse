@@ -107,6 +107,8 @@ Run 2470: Post-#4979-merge verification. Detailed spec alignment audit against f
 
 Run 2471: No new spec PRs merged since run 2470. All open Gloas PRs unchanged (#5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747). #4558 (Cell Dissemination) updated today but PeerDAS/fulu scope, not actionable. v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI fully green (6/6 jobs pass). Clippy: zero warnings. No actionable work.
 
+Run 2472: No new spec PRs merged since run 2471. All open Gloas PRs unchanged (#5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747). #4747 still dirty/conflicting (79 commits, 137 review comments). #4558 updated today (36 commits, mergeable:clean) but PeerDAS/fulu scope. v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI fully green. Clippy: zero warnings. cargo audit: same known advisories (1 rsa vuln, 5 unmaintained). No actionable work.
+
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
