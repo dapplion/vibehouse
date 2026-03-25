@@ -47,13 +47,13 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 ## Test Vectors
 
-No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2371, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new merged Gloas PRs since last check (run 2371). CI all green. Lint clean. Nightly tests passing (Mar 24 run green). cargo audit: only upstream RSA advisory (unfixable). All post-alpha.4 merged PRs (#5035, #5037, #4962, #4939, #5001, #5002) already implemented or not relevant. #4979 PTC window implementation verified (run 2368) — no drift. #4843 variable PTC deadline proactively implemented (run 2371). Open PRs (#4979, #5036, #4747, #4960, #4932) all still open. No dependency updates available.
+No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2372, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new merged Gloas PRs since last check (run 2372). CI running for #4843 variable PTC deadline (run 2371 commit a7baf6b57) — check+clippy+fmt passed. cargo audit: only upstream RSA advisory (unfixable). #4979 re-verified (run 2372): two new commits ("Fix epoch restrictions in paragraph", "Fix typo") are documentation-only — replace hardcoded +1 with MIN_SEED_LOOKAHEAD constant in text; vibehouse already uses named constant throughout, fully aligned. All open PRs still open, no new merges.
 
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
 |----|-------------|-------|
-| #4979 | PTC window cache in BeaconState | Major change, renamed to `ptc_window`, still under active design discussion, not merged (as of 2026-03-25). Implementation verified against latest PR diff including MIN_SEED_LOOKAHEAD constant usage (run 2364) — matches exactly. |
+| #4979 | PTC window cache in BeaconState | Major change, renamed to `ptc_window`, still under active design discussion, not merged (as of 2026-03-25). Implementation verified against latest PR diff (run 2372) — two new commits since run 2364 are doc-only (use MIN_SEED_LOOKAHEAD constant in text); no behavioral changes, vibehouse already aligned. |
 | #5036 | Relax bid gossip dependency on proposer preferences | Open — proactively implemented (commit 1c7e608d4) |
 | #4960 | Fork choice test for new validator deposit | Test vectors |
 | #4954 | Update fork choice store to use milliseconds | Open, 0 reviews, large refactor (28 files) — not worth implementing proactively |
