@@ -57,7 +57,9 @@ Reference:
 
 **alpha.3 tracking:** 17 Gloas spec PRs audited: all implemented or confirmed not needed.
 
-**Open PRs to watch:** #4979 (PTC window cache — major, not merged), #4898/#4892 (fork choice simplifications, approved but not merged)
+**Open PRs to watch:** #4979 (PTC window cache — major, not merged but proactively implemented), #4898/#4892 (fork choice simplifications, approved but not merged)
+
+**Proactive implementation:** #4979 PTC window cache — DONE. Added `ptc_window` field to BeaconState, `compute_ptc`/`get_ptc_committee` split, `initialize_ptc_window` (fork upgrade), `process_ptc_window` (epoch processing), EF test handler. All 1026 state_processing tests pass. EF Gloas test vectors will need updating when spec releases new vectors with this field.
 
 Spec tests: [docs/tasks/spec-tests.md](docs/tasks/spec-tests.md) — DONE: 79/79 + 139/139 passing, check_all_files_accessed passes, automated release check workflow deployed
 
