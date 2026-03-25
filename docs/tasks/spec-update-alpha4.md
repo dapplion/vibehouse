@@ -47,20 +47,20 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 ## Test Vectors
 
-No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2393, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new Gloas PRs merged since last check (last merged: #5035, #4962, #4939 on Mar 24-25). All open PRs unchanged (#4979, #5036, #4843, #4747, #4960, #4932, #4898, #4892 all still OPEN). #4747 (Fast Confirmation Rule) has 128 review comments, dirty mergeable state — still actively debated, not close to merge. CI green (latest ci + nightly Mar 24). Nightly Mar 23 slasher dead-code failure already fixed (commit 5d23ecf85). Mar 22 nextest 404 was transient. Cargo audit: 1 unfixed advisory (rsa timing sidechannel via jsonwebtoken, no fix available), 5 unmaintained crate warnings. No action needed this run.
+No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2394, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new Gloas PRs merged since last check (last merged: #5035, #4962, #4939 on Mar 24-25). All open PRs unchanged (#4979, #5036, #4843, #4747, #4960, #4932, #4898, #4892 all still OPEN). #4979 had Mar 23 commit (31745d0d "Add back MIN_SEED_LOOKAHEAD to ptc_window") — verified vibehouse already uses MIN_SEED_LOOKAHEAD in PtcWindowSlots calculation, no changes needed. #4747 (Fast Confirmation Rule) has 128+ review comments, CONFLICTING mergeable state, test vectors posted Mar 22 — still actively debated, not close to merge. CI green (latest ci + nightly Mar 25). Cargo check clean, no warnings. Cargo audit: 1 unfixed advisory (rsa timing sidechannel via jsonwebtoken, no fix available), 5 unmaintained crate warnings. No action needed this run.
 
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
 |----|-------------|-------|
-| #4979 | PTC window cache in BeaconState | Major change, renamed to `ptc_window`, still under active design discussion, not merged (as of 2026-03-25). Also tagged `heze`. Implementation verified (run 2374) — latest commits (e7b1910, 89ce53b) are doc/typo fixes; no behavioral changes, vibehouse already aligned. |
+| #4979 | PTC window cache in BeaconState | Major change, renamed to `ptc_window`, still under active design discussion, not merged (as of 2026-03-25). Also tagged `heze`. Implementation verified (run 2394) — Mar 23 commit (31745d0d) adds MIN_SEED_LOOKAHEAD back; vibehouse already uses it in PtcWindowSlots = (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH. Still aligned. |
 | #5036 | Relax bid gossip dependency on proposer preferences | Open — proactively implemented (commit 1c7e608d4). Verified (run 2374): latest commit (4e455a3) is doc-only, no behavioral changes. |
 | #4960 | Fork choice test for new validator deposit | Test vectors |
 | #4954 | Update fork choice store to use milliseconds | Open, 0 reviews, large refactor (28 files), also tagged `heze` — not worth implementing proactively |
 | #4932 | Sanity/blocks tests with payload attestation coverage | Test vectors |
 | #4898 | Remove pending status from tiebreaker | 1 approval, still open — vibehouse already matches post-PR behavior |
 | #4892 | Remove impossible branch in forkchoice | 2 approvals, still open — vibehouse already uses debug_assert + == (matches post-PR) |
-| #4747 | Fast Confirmation Rule | Open, 127 reviews, actively updated 2026-03-24 — new feature, monitor |
+| #4747 | Fast Confirmation Rule | Open, 128+ reviews, CONFLICTING mergeable state, test vectors posted Mar 11+22. Still actively debated, not close to merge. Also tagged eip7805 (FOCIL). |
 | #4843 | Variable PTC deadline | Open, APPROVED, 11 reviews. **Proactively implemented** (run 2371, commit a7baf6b57): renamed payload_present→payload_timely across 27 files, is_payload_timely→has_payload_quorum in fork choice, added MIN_PAYLOAD_DUE_BPS (3000) config, variable deadline in get_payload_attestation_data (interpolates linearly from MIN to MAX based on SSZ size). Envelope arrival timing tracked per block root. |
 | #4840 | Add support for EIP-7843 to Gloas | Open, Jan 2026 |
 | #4630 | EIP-7688: Use forward compatible SSZ types in Gloas | Open, stale since Feb 2026. SSZ refactor, light client related. Not worth proactive implementation. |
