@@ -1107,7 +1107,7 @@ pub struct SseExecutionPayload {
 pub struct SsePayloadAttestation {
     pub slot: Slot,
     pub beacon_block_root: Hash256,
-    pub payload_present: bool,
+    pub payload_timely: bool,
     pub blob_data_available: bool,
 }
 
@@ -2370,7 +2370,7 @@ mod tests {
         let pa = SsePayloadAttestation {
             slot: Slot::new(30),
             beacon_block_root: Hash256::from_low_u64_be(1),
-            payload_present: true,
+            payload_timely: true,
             blob_data_available: false,
         };
         let json = serde_json::to_string(&pa).unwrap();
@@ -2670,7 +2670,7 @@ mod tests {
         let att = SsePayloadAttestation {
             slot: Slot::new(99),
             beacon_block_root: Hash256::repeat_byte(0xCC),
-            payload_present: true,
+            payload_timely: true,
             blob_data_available: false,
         };
         let json = serde_json::to_string(&att).unwrap();
@@ -2683,13 +2683,13 @@ mod tests {
         let att = SsePayloadAttestation {
             slot: Slot::new(1),
             beacon_block_root: Hash256::zero(),
-            payload_present: false,
+            payload_timely: false,
             blob_data_available: false,
         };
         let json = serde_json::to_string(&att).unwrap();
         let decoded: SsePayloadAttestation = serde_json::from_str(&json).unwrap();
         assert_eq!(att, decoded);
-        assert!(!decoded.payload_present);
+        assert!(!decoded.payload_timely);
         assert!(!decoded.blob_data_available);
     }
 
@@ -2756,7 +2756,7 @@ mod tests {
         let att = SsePayloadAttestation {
             slot: Slot::new(99),
             beacon_block_root: Hash256::repeat_byte(0xCC),
-            payload_present: true,
+            payload_timely: true,
             blob_data_available: false,
         };
         let data = serde_json::to_string(&att).unwrap();

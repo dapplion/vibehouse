@@ -166,7 +166,7 @@ pub enum PayloadAttestationError {
     /// The beacon block root does not match any known block.
     UnknownBeaconBlockRoot { root: Hash256 },
     /// A validator in this attestation has already submitted a conflicting attestation
-    /// (different payload_present value for same slot/block).
+    /// (different payload_timely value for same slot/block).
     ///
     /// ## Peer scoring
     /// The peer is relaying equivocating messages. Penalize heavily.
@@ -671,7 +671,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // (bad BLS signature) from permanently marking validators as "seen", which would
         // cause subsequent valid attestations to be dropped as duplicates.
         let beacon_block_root = attestation.data.beacon_block_root;
-        let payload_present = attestation.data.payload_present;
+        let payload_timely = attestation.data.payload_timely;
 
         {
             let observed_attestations = self.observed_payload_attestations.lock();
@@ -680,7 +680,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     attestation_slot,
                     beacon_block_root,
                     validator_index,
-                    payload_present,
+                    payload_timely,
                 );
 
                 match outcome {
@@ -741,7 +741,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     attestation_slot,
                     beacon_block_root,
                     validator_index,
-                    payload_present,
+                    payload_timely,
                 );
             }
         }

@@ -425,6 +425,11 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     /// Spec: `[IGNORE] The node has not seen another valid SignedExecutionPayloadEnvelope for this block root`
     pub observed_payload_envelopes:
         Mutex<crate::observed_payload_envelopes::ObservedPayloadEnvelopes<T::EthSpec>>,
+    /// Tracks per-block-root envelope timing for the variable PTC deadline (spec PR #4843).
+    /// Stores (arrival_time_ms_into_slot, envelope_ssz_size) for each received envelope.
+    /// Used by `get_payload_attestation_data` to determine `payload_timely`.
+    pub payload_envelope_timings:
+        parking_lot::RwLock<std::collections::HashMap<Hash256, (u64, u64)>>,
     /// Interfaces with the execution client.
     pub execution_layer: Option<ExecutionLayer<T::EthSpec>>,
     /// Stores information about the canonical head and finalized/justified checkpoints of the
@@ -1846,7 +1851,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let block_root = if slot >= head_slot {
             // Same slot or future: use head block root directly.
             // For future slots, the block hasn't arrived yet — the PTC will vote
-            // payload_present=false. Return head block root as best-effort.
+            // payload_timely=false. Return head block root as best-effort.
             head_block_root
         } else {
             // Look through fork choice for the block at this slot
@@ -1869,22 +1874,51 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             }
         };
 
-        // Check fork choice for payload_revealed
+        // Check fork choice for payload_revealed and blob availability.
         let fc = self.canonical_head.fork_choice_read_lock();
-        let (payload_present, blob_data_available) = if let Some(block) = fc.get_block(&block_root)
+        let (payload_revealed, blob_data_available) = if let Some(block) = fc.get_block(&block_root)
         {
-            // payload_present: payload was revealed (envelope processed or PTC quorum)
-            // blob_data_available: blob data availability confirmed (envelope or PTC quorum)
             (block.payload_revealed, block.payload_data_available)
         } else {
             (false, false)
         };
         drop(fc);
 
+        // Spec PR #4843: Variable PTC deadline — payload_timely is true only if the
+        // envelope was received AND arrived within the size-dependent deadline.
+        // get_payload_due_ms interpolates between MIN_PAYLOAD_DUE_BPS (size=0) and
+        // PAYLOAD_ATTESTATION_DUE_BPS (size=MAX_PAYLOAD_SIZE).
+        let payload_timely = if payload_revealed {
+            if let Some(&(arrival_ms, ssz_size)) =
+                self.payload_envelope_timings.read().get(&block_root)
+            {
+                let min_ms = self.spec.get_min_payload_due_ms();
+                let max_ms = self.spec.get_payload_attestation_due_ms();
+                let max_payload_size = self.spec.max_payload_size;
+                let deadline_ms = if max_payload_size == 0 {
+                    min_ms
+                } else {
+                    let clamped_size = ssz_size.min(max_payload_size);
+                    min_ms.saturating_add(
+                        clamped_size.saturating_mul(max_ms.saturating_sub(min_ms))
+                            / max_payload_size,
+                    )
+                };
+                arrival_ms <= deadline_ms
+            } else {
+                // Envelope was revealed but no timing recorded (e.g. loaded from DB
+                // after restart). Conservatively treat as timely to avoid penalizing
+                // honest payloads.
+                true
+            }
+        } else {
+            false
+        };
+
         Ok(PayloadAttestationData {
             beacon_block_root: block_root,
             slot,
-            payload_present,
+            payload_timely,
             blob_data_available,
         })
     }
@@ -2128,7 +2162,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let target;
         let current_epoch_attesting_info: Option<(Checkpoint, usize)>;
         let attester_cache_key;
-        let payload_present;
+        let payload_timely;
         let head_timer = metrics::start_timer(&metrics::ATTESTATION_PRODUCTION_HEAD_SCRAPE_SECONDS);
         // The following braces are to prevent the `cached_head` Arc from being held for longer than
         // required. It also helps reduce the diff for a very large PR (#3244).
@@ -2209,11 +2243,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             attester_cache_key =
                 AttesterCacheKey::new(request_epoch, head_state, beacon_block_root)?;
 
-            // [Gloas/EIP-7732] Determine payload_present for attestation data.index.
+            // [Gloas/EIP-7732] Determine payload_timely for attestation data.index.
             // Per spec: same-slot attestations always have data.index = 0.
             // Non-same-slot attestations set data.index based on whether the
             // payload was revealed: 1 if FULL (payload present), 0 otherwise.
-            payload_present = if head_state.fork_name_unchecked().gloas_enabled() {
+            payload_timely = if head_state.fork_name_unchecked().gloas_enabled() {
                 let fc = self.canonical_head.fork_choice_read_lock();
                 match request_slot.cmp(&head_state.slot()) {
                     std::cmp::Ordering::Greater => {
@@ -2310,7 +2344,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             justified_checkpoint,
             target,
             &self.spec,
-            payload_present,
+            payload_timely,
         )?)
     }
 
@@ -2555,6 +2589,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     /// Applies a verified payload envelope to fork choice (gloas ePBS).
     ///
     /// Marks the block's payload as revealed, making it viable for head selection.
+    /// Also records envelope arrival timing for variable PTC deadline (spec PR #4843).
     pub fn apply_payload_envelope_to_fork_choice(
         &self,
         verified_envelope: &crate::gloas_verification::VerifiedPayloadEnvelope<T>,
@@ -2562,10 +2597,40 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let beacon_block_root = verified_envelope.beacon_block_root();
         let payload_block_hash = verified_envelope.envelope().message.payload.block_hash;
 
+        // Record envelope arrival timing for variable PTC deadline.
+        // Computes ms offset into the current slot and the envelope's SSZ size.
+        self.record_envelope_timing(beacon_block_root, &verified_envelope.envelope().message);
+
         self.canonical_head
             .fork_choice_write_lock()
             .on_execution_payload(beacon_block_root, payload_block_hash)
             .map_err(Into::into)
+    }
+
+    /// Records envelope arrival timing for the variable PTC deadline (spec PR #4843).
+    ///
+    /// Stores (arrival_ms_into_slot, envelope_ssz_size) for the given block root.
+    /// Only the first call per block root takes effect (subsequent calls are no-ops).
+    fn record_envelope_timing(
+        &self,
+        beacon_block_root: Hash256,
+        envelope: &ExecutionPayloadEnvelope<T::EthSpec>,
+    ) {
+        let Some(now) = self.slot_clock.now_duration() else {
+            return;
+        };
+        let Some(current_slot) = self.slot_clock.now() else {
+            return;
+        };
+        let Some(slot_start) = self.slot_clock.start_of(current_slot) else {
+            return;
+        };
+        let arrival_ms = now.saturating_sub(slot_start).as_millis() as u64;
+        let ssz_size = envelope.ssz_bytes_len() as u64;
+        self.payload_envelope_timings
+            .write()
+            .entry(beacon_block_root)
+            .or_insert((arrival_ms, ssz_size));
     }
 
     /// Processes a verified payload envelope through the beacon state transition (gloas ePBS).
@@ -3364,6 +3429,9 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 signed_envelope.message.state_root
             )));
         }
+
+        // Record envelope timing for self-build (same as gossip path).
+        self.record_envelope_timing(beacon_block_root, &signed_envelope.message);
 
         // 3. Update fork choice: mark payload as revealed. This happens AFTER EL
         // validation and state transition succeed to avoid leaving fork choice in an
@@ -5525,7 +5593,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                                         attestation.data.slot,
                                         attestation.data.beacon_block_root,
                                         idx,
-                                        attestation.data.payload_present,
+                                        attestation.data.payload_timely,
                                     );
                                     matches!(
                                         outcome,
@@ -8475,6 +8543,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 .lock()
                 .prune_old_slots(slot);
             self.observed_payload_envelopes.lock().prune();
+            // Clear envelope arrival timings — only needed for the current slot's PTC vote.
+            self.payload_envelope_timings.write().clear();
             self.prune_gloas_pools(slot);
 
             // Don't run heavy-weight tasks during sync.

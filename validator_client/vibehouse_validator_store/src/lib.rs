@@ -1383,7 +1383,7 @@ mod tests {
         let data = PayloadAttestationData {
             beacon_block_root: Hash256::repeat_byte(0xbb),
             slot: Slot::new(5),
-            payload_present: true,
+            payload_timely: true,
             blob_data_available: true,
         };
         let validator_index = 42;
@@ -1420,7 +1420,7 @@ mod tests {
         let data = PayloadAttestationData {
             beacon_block_root: Hash256::repeat_byte(0xcc),
             slot: Slot::new(3),
-            payload_present: false,
+            payload_timely: false,
             blob_data_available: false,
         };
 
@@ -1468,7 +1468,7 @@ mod tests {
         let data = PayloadAttestationData {
             beacon_block_root: Hash256::ZERO,
             slot: Slot::new(0),
-            payload_present: false,
+            payload_timely: false,
             blob_data_available: false,
         };
         let unknown_pubkey = PublicKeyBytes::from(&Keypair::random().pk);

@@ -134,8 +134,8 @@ impl<E: EthSpec> EarlyAttesterCache<E> {
 
         // [Gloas/EIP-7732] For non-same-slot attestations (request_slot > block.slot),
         // the payload is considered present since the cached block has been fully imported
-        // with its envelope. Same-slot attestations always have payload_present = false.
-        let payload_present = spec.fork_name_at_slot::<E>(request_slot).gloas_enabled()
+        // with its envelope. Same-slot attestations always have payload_timely = false.
+        let payload_timely = spec.fork_name_at_slot::<E>(request_slot).gloas_enabled()
             && request_slot > item.block.slot()
             && item.proto_block.payload_revealed;
 
@@ -147,7 +147,7 @@ impl<E: EthSpec> EarlyAttesterCache<E> {
             item.source,
             item.target,
             spec,
-            payload_present,
+            payload_timely,
         )
         .map_err(Error::AttestationError)?;
 
@@ -318,26 +318,26 @@ mod tests {
     }
 
     #[test]
-    fn gloas_same_slot_attestation_has_payload_present_false() {
+    fn gloas_same_slot_attestation_has_payload_timely_false() {
         let cache = EarlyAttesterCache::<E>::default();
         let spec = gloas_spec();
         // Block at slot 2, payload revealed. Request at same slot 2.
-        // Same-slot attestations should have payload_present = false.
+        // Same-slot attestations should have payload_timely = false.
         insert_item(&cache, Slot::new(2), Epoch::new(0), &spec, true);
         let att = cache.try_attest(Slot::new(2), 0, &spec).unwrap().unwrap();
         assert_eq!(
             att.data().index,
             0,
-            "same-slot Gloas attestation should have index=0 (payload_present=false)"
+            "same-slot Gloas attestation should have index=0 (payload_timely=false)"
         );
     }
 
     #[test]
-    fn gloas_next_slot_payload_revealed_has_payload_present_true() {
+    fn gloas_next_slot_payload_revealed_has_payload_timely_true() {
         let cache = EarlyAttesterCache::<E>::default();
         let spec = gloas_spec();
         // Block at slot 2 with payload_revealed=true. Request at slot 3.
-        // Non-same-slot with payload revealed → payload_present=true → index=1.
+        // Non-same-slot with payload revealed → payload_timely=true → index=1.
         insert_item(&cache, Slot::new(2), Epoch::new(0), &spec, true);
         let att = cache.try_attest(Slot::new(3), 0, &spec).unwrap().unwrap();
         assert_eq!(
@@ -348,11 +348,11 @@ mod tests {
     }
 
     #[test]
-    fn gloas_next_slot_payload_not_revealed_has_payload_present_false() {
+    fn gloas_next_slot_payload_not_revealed_has_payload_timely_false() {
         let cache = EarlyAttesterCache::<E>::default();
         let spec = gloas_spec();
         // Block at slot 2 with payload_revealed=false. Request at slot 3.
-        // Non-same-slot but payload NOT revealed → payload_present=false → index=0.
+        // Non-same-slot but payload NOT revealed → payload_timely=false → index=0.
         insert_item(&cache, Slot::new(2), Epoch::new(0), &spec, false);
         let att = cache.try_attest(Slot::new(3), 0, &spec).unwrap().unwrap();
         assert_eq!(
@@ -363,11 +363,11 @@ mod tests {
     }
 
     #[test]
-    fn pre_gloas_attestation_always_has_payload_present_false() {
+    fn pre_gloas_attestation_always_has_payload_timely_false() {
         let cache = EarlyAttesterCache::<E>::default();
         let spec = fulu_spec();
         // Block at slot 2 with payload_revealed=true. Request at slot 3.
-        // Pre-Gloas fork → payload_present is always false regardless of payload_revealed.
+        // Pre-Gloas fork → payload_timely is always false regardless of payload_revealed.
         insert_item(&cache, Slot::new(2), Epoch::new(0), &spec, true);
         let att = cache.try_attest(Slot::new(3), 0, &spec).unwrap().unwrap();
         assert_eq!(

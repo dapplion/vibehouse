@@ -57,7 +57,7 @@ impl<E: EthSpec> IndexedPayloadAttestation<E> {
             data: PayloadAttestationData {
                 beacon_block_root: Hash256::default(),
                 slot: Slot::default(),
-                payload_present: false,
+                payload_timely: false,
                 blob_data_available: false,
             },
             signature: AggregateSignature::empty(),
@@ -87,7 +87,7 @@ mod tests {
         let attestation = IndexedPayloadAttestation::<MainnetEthSpec>::empty();
         assert_eq!(attestation.num_attesters(), 0);
         assert!(attestation.is_sorted());
-        assert!(!attestation.data.payload_present);
+        assert!(!attestation.data.payload_timely);
         assert!(!attestation.data.blob_data_available);
     }
 
@@ -170,25 +170,25 @@ mod tests {
         att.attesting_indices.push(42).unwrap();
         att.data.slot = Slot::new(99);
         att.data.beacon_block_root = Hash256::repeat_byte(0xab);
-        att.data.payload_present = true;
+        att.data.payload_timely = true;
 
         let bytes = att.as_ssz_bytes();
         let decoded = IndexedPayloadAttestation::<E>::from_ssz_bytes(&bytes).unwrap();
         assert_eq!(att, decoded);
         assert_eq!(decoded.num_attesters(), 2);
-        assert!(decoded.data.payload_present);
+        assert!(decoded.data.payload_timely);
     }
 
     #[test]
     fn ssz_roundtrip_both_flags() {
         let mut att = IndexedPayloadAttestation::<E>::empty();
-        att.data.payload_present = true;
+        att.data.payload_timely = true;
         att.data.blob_data_available = true;
         att.attesting_indices.push(7).unwrap();
 
         let bytes = att.as_ssz_bytes();
         let decoded = IndexedPayloadAttestation::<E>::from_ssz_bytes(&bytes).unwrap();
-        assert!(decoded.data.payload_present);
+        assert!(decoded.data.payload_timely);
         assert!(decoded.data.blob_data_available);
     }
 
@@ -205,7 +205,7 @@ mod tests {
     fn tree_hash_deterministic() {
         let mut att = IndexedPayloadAttestation::<E>::empty();
         att.attesting_indices.push(5).unwrap();
-        att.data.payload_present = true;
+        att.data.payload_timely = true;
         assert_eq!(att.tree_hash_root(), att.tree_hash_root());
     }
 

@@ -830,18 +830,18 @@ async fn attestation_validator_equivocation() {
 
     let ptc_validator = ptc_indices[0];
 
-    // Pre-seed the observation tracker with an attestation from this validator (payload_present=true)
+    // Pre-seed the observation tracker with an attestation from this validator (payload_timely=true)
     harness
         .chain
         .observed_payload_attestations
         .lock()
         .observe_attestation(head_slot, head_root, ptc_validator, true);
 
-    // Now submit an attestation from the same validator with payload_present=false (equivocation)
+    // Now submit an attestation from the same validator with payload_timely=false (equivocation)
     let mut attestation = PayloadAttestation::<E>::empty();
     attestation.data.slot = head_slot;
     attestation.data.beacon_block_root = head_root;
-    attestation.data.payload_present = false; // different from pre-seeded true
+    attestation.data.payload_timely = false; // different from pre-seeded true
     attestation.aggregation_bits.set(0, true).unwrap();
 
     let err = unwrap_err(
@@ -1375,7 +1375,7 @@ async fn attestation_valid_single_ptc_signer_passes() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_present: true,
+        payload_timely: true,
         blob_data_available: false,
     };
 
@@ -1418,7 +1418,7 @@ async fn attestation_valid_single_ptc_signer_passes() {
         "attesting indices should contain the PTC validator"
     );
     assert_eq!(verified.attestation().data.beacon_block_root, head_root);
-    assert!(verified.attestation().data.payload_present);
+    assert!(verified.attestation().data.payload_timely);
 }
 
 #[tokio::test]
@@ -1441,7 +1441,7 @@ async fn attestation_invalid_signature_rejected() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_present: true,
+        payload_timely: true,
         blob_data_available: false,
     };
 
@@ -1500,7 +1500,7 @@ async fn attestation_multiple_ptc_signers_passes() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_present: true,
+        payload_timely: true,
         blob_data_available: false,
     };
 
@@ -1549,7 +1549,7 @@ async fn attestation_multiple_ptc_signers_passes() {
 
 #[tokio::test]
 async fn attestation_payload_not_present_passes() {
-    // Verify that payload_present=false is also accepted (it's a valid vote)
+    // Verify that payload_timely=false is also accepted (it's a valid vote)
     let harness = gloas_harness(2).await;
     let spec = &harness.chain.spec;
 
@@ -1568,7 +1568,7 @@ async fn attestation_payload_not_present_passes() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_present: false,
+        payload_timely: false,
         blob_data_available: false,
     };
 
@@ -1597,10 +1597,10 @@ async fn attestation_payload_not_present_passes() {
         .verify_payload_attestation_for_gossip(attestation);
     assert!(
         result.is_ok(),
-        "payload_present=false attestation should also pass, got {:?}",
+        "payload_timely=false attestation should also pass, got {:?}",
         result.err()
     );
-    assert!(!result.unwrap().attestation().data.payload_present);
+    assert!(!result.unwrap().attestation().data.payload_timely);
 }
 
 // =============================================================================
@@ -1836,18 +1836,18 @@ async fn attestation_duplicate_same_value_rejected() {
 
     let ptc_validator = ptc_indices[0];
 
-    // Pre-observe this validator with payload_present=true
+    // Pre-observe this validator with payload_timely=true
     harness
         .chain
         .observed_payload_attestations
         .lock()
         .observe_attestation(head_slot, head_root, ptc_validator, true);
 
-    // Build the same attestation (payload_present=true) and sign it correctly
+    // Build the same attestation (payload_timely=true) and sign it correctly
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_present: true,
+        payload_timely: true,
         blob_data_available: false,
     };
 
@@ -1919,7 +1919,7 @@ async fn attestation_mixed_duplicate_and_new_rejected() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_present: true,
+        payload_timely: true,
         blob_data_available: false,
     };
 
@@ -2348,7 +2348,7 @@ async fn attestation_blob_data_available_true_passes() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_present: true,
+        payload_timely: true,
         blob_data_available: true,
     };
 
@@ -2383,7 +2383,7 @@ async fn attestation_blob_data_available_true_passes() {
 
 #[tokio::test]
 async fn attestation_payload_absent_blob_available_passes() {
-    // payload_present=false, blob_data_available=true is a valid combination
+    // payload_timely=false, blob_data_available=true is a valid combination
     let harness = gloas_harness(2).await;
     let spec = &harness.chain.spec;
 
@@ -2402,7 +2402,7 @@ async fn attestation_payload_absent_blob_available_passes() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_present: false,
+        payload_timely: false,
         blob_data_available: true,
     };
 
@@ -2430,7 +2430,7 @@ async fn attestation_payload_absent_blob_available_passes() {
         .verify_payload_attestation_for_gossip(attestation);
     assert!(
         result.is_ok(),
-        "payload_present=false, blob_data_available=true should pass, got {:?}",
+        "payload_timely=false, blob_data_available=true should pass, got {:?}",
         result.err()
     );
 }
@@ -2891,7 +2891,7 @@ async fn attestation_invalid_signature_does_not_poison_observation_cache() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_present: true,
+        payload_timely: true,
         blob_data_available: false,
     };
 

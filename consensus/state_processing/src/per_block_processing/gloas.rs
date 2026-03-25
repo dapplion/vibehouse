@@ -3583,7 +3583,7 @@ mod tests {
             data: types::PayloadAttestationData {
                 beacon_block_root: parent_root,
                 slot: prev_slot,
-                payload_present: true,
+                payload_timely: true,
                 blob_data_available: true,
             },
             signature: bls::AggregateSignature::empty(),
@@ -3761,7 +3761,7 @@ mod tests {
 
         // Attestation data should be preserved
         assert_eq!(indexed.data, attestation.data);
-        assert!(indexed.data.payload_present);
+        assert!(indexed.data.payload_timely);
         assert!(indexed.data.blob_data_available);
     }
 
@@ -4036,18 +4036,18 @@ mod tests {
 
     #[test]
     fn payload_attestation_payload_not_present_field() {
-        // Test that attestation with payload_present=false is valid (field value is up to PTC)
+        // Test that attestation with payload_timely=false is valid (field value is up to PTC)
         let (mut state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
 
         let mut attestation = make_payload_attestation(&state, &[true, true]);
-        attestation.data.payload_present = false;
+        attestation.data.payload_timely = false;
         attestation.data.blob_data_available = false;
 
         let result =
             process_payload_attestation(&mut state, &attestation, VerifySignatures::False, &spec);
         assert!(
             result.is_ok(),
-            "payload_present=false should be valid: {:?}",
+            "payload_timely=false should be valid: {:?}",
             result.err()
         );
     }
@@ -4123,13 +4123,13 @@ mod tests {
 
     #[test]
     fn payload_attestation_present_true_blob_false_valid() {
-        // payload_present=true but blob_data_available=false is a valid split state
+        // payload_timely=true but blob_data_available=false is a valid split state
         // (payload was revealed but blob data not yet available). process_payload_attestation
         // does NOT validate the semantic correctness of these flags — that's fork choice's job.
         let (mut state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
 
         let mut attestation = make_payload_attestation(&state, &[true, true]);
-        attestation.data.payload_present = true;
+        attestation.data.payload_timely = true;
         attestation.data.blob_data_available = false;
 
         let result =
@@ -4143,13 +4143,13 @@ mod tests {
 
     #[test]
     fn payload_attestation_present_false_blob_true_valid() {
-        // payload_present=false but blob_data_available=true is also a valid PTC vote.
+        // payload_timely=false but blob_data_available=true is also a valid PTC vote.
         // The PTC member asserts the blob data is available even though the payload wasn't
         // timely. process_payload_attestation does not enforce consistency between these flags.
         let (mut state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
 
         let mut attestation = make_payload_attestation(&state, &[true, true]);
-        attestation.data.payload_present = false;
+        attestation.data.payload_timely = false;
         attestation.data.blob_data_available = true;
 
         let result =
@@ -7314,7 +7314,7 @@ mod tests {
             data: types::PayloadAttestationData {
                 beacon_block_root: Hash256::repeat_byte(0xFF), // wrong root
                 slot: state.slot().saturating_sub(1u64),
-                payload_present: true,
+                payload_timely: true,
                 blob_data_available: true,
             },
             aggregation_bits: BitVector::new(),
@@ -7348,7 +7348,7 @@ mod tests {
             data: types::PayloadAttestationData {
                 beacon_block_root: parent_root,
                 slot: wrong_data_slot,
-                payload_present: true,
+                payload_timely: true,
                 blob_data_available: true,
             },
             aggregation_bits: BitVector::new(),
@@ -7550,7 +7550,7 @@ mod tests {
             data: types::PayloadAttestationData {
                 beacon_block_root: parent_root,
                 slot: correct_slot,
-                payload_present: true,
+                payload_timely: true,
                 blob_data_available: true,
             },
             aggregation_bits: bits,
@@ -8679,7 +8679,7 @@ mod tests {
             data: types::PayloadAttestationData {
                 beacon_block_root,
                 slot,
-                payload_present: true,
+                payload_timely: true,
                 blob_data_available: true,
             },
             signature: bls::AggregateSignature::empty(),

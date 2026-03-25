@@ -108,6 +108,7 @@ pub struct ChainSpec {
     pub sync_message_due_bps: u64,
     pub contribution_due_bps: u64,
     pub payload_attestation_due_bps: u64,
+    pub min_payload_due_bps: u64,
     /// Gloas fork overrides for slot component timing (basis points)
     pub attestation_due_bps_gloas: u64,
     pub aggregate_due_bps_gloas: u64,
@@ -584,6 +585,12 @@ impl ChainSpec {
     /// Only applicable at Gloas: 7500 BPS (75% of slot).
     pub fn get_payload_attestation_due_ms(&self) -> u64 {
         self.bps_to_ms(self.payload_attestation_due_bps)
+    }
+
+    /// Returns the minimum payload due delay in ms (MIN_PAYLOAD_DUE_BPS).
+    /// Used as the lower bound for variable PTC deadline.
+    pub fn get_min_payload_due_ms(&self) -> u64 {
+        self.bps_to_ms(self.min_payload_due_bps)
     }
 
     /// Returns a full `Fork` struct for a given epoch.
@@ -1091,6 +1098,7 @@ impl ChainSpec {
             sync_message_due_bps: 3333,
             contribution_due_bps: 6667,
             payload_attestation_due_bps: 7500,
+            min_payload_due_bps: 3000,
             attestation_due_bps_gloas: 2500,
             aggregate_due_bps_gloas: 5000,
             sync_message_due_bps_gloas: 2500,
@@ -1482,6 +1490,7 @@ impl ChainSpec {
             sync_message_due_bps: 3333,
             contribution_due_bps: 6667,
             payload_attestation_due_bps: 7500,
+            min_payload_due_bps: 3000,
             attestation_due_bps_gloas: 2500,
             aggregate_due_bps_gloas: 5000,
             sync_message_due_bps_gloas: 2500,
@@ -1962,6 +1971,9 @@ pub struct Config {
     #[serde(default = "default_payload_attestation_due_bps")]
     #[serde(with = "serde_utils::quoted_u64")]
     payload_attestation_due_bps: u64,
+    #[serde(default = "default_min_payload_due_bps")]
+    #[serde(with = "serde_utils::quoted_u64")]
+    min_payload_due_bps: u64,
     #[serde(default = "default_attestation_due_bps_gloas")]
     #[serde(with = "serde_utils::quoted_u64")]
     attestation_due_bps_gloas: u64,
@@ -2178,6 +2190,9 @@ const fn default_contribution_due_bps() -> u64 {
 }
 const fn default_payload_attestation_due_bps() -> u64 {
     7500
+}
+const fn default_min_payload_due_bps() -> u64 {
+    3000
 }
 const fn default_attestation_due_bps_gloas() -> u64 {
     2500
@@ -2490,6 +2505,7 @@ impl Config {
             sync_message_due_bps: spec.sync_message_due_bps,
             contribution_due_bps: spec.contribution_due_bps,
             payload_attestation_due_bps: spec.payload_attestation_due_bps,
+            min_payload_due_bps: spec.min_payload_due_bps,
             attestation_due_bps_gloas: spec.attestation_due_bps_gloas,
             aggregate_due_bps_gloas: spec.aggregate_due_bps_gloas,
             sync_message_due_bps_gloas: spec.sync_message_due_bps_gloas,
@@ -2591,6 +2607,7 @@ impl Config {
             sync_message_due_bps,
             contribution_due_bps,
             payload_attestation_due_bps,
+            min_payload_due_bps,
             attestation_due_bps_gloas,
             aggregate_due_bps_gloas,
             sync_message_due_bps_gloas,
@@ -2688,6 +2705,7 @@ impl Config {
             sync_message_due_bps,
             contribution_due_bps,
             payload_attestation_due_bps,
+            min_payload_due_bps,
             attestation_due_bps_gloas,
             aggregate_due_bps_gloas,
             sync_message_due_bps_gloas,

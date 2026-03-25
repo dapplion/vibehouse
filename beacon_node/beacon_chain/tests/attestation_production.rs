@@ -215,7 +215,7 @@ async fn produces_attestations() {
                 let expected_index = u64::from(slot > Slot::from(num_blocks_produced));
                 assert_eq!(
                     data.index, expected_index,
-                    "bad index (gloas payload_present)"
+                    "bad index (gloas payload_timely)"
                 );
             } else {
                 assert_eq!(data.index, index, "bad index");

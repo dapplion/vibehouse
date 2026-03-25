@@ -1838,7 +1838,7 @@ mod test_verify_committee_index_gloas {
     // ── Gloas: index 1 with valid committee bits (single bit set) ──
 
     #[test]
-    fn gloas_payload_present_with_different_committee_indices() {
+    fn gloas_payload_timely_with_different_committee_indices() {
         // Committee index 2, data.index = 1 (payload present) — valid in Gloas
         let att = make_electra_attestation(2, 1);
         let result = verify_committee_index(att.to_ref(), ForkName::Gloas);

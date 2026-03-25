@@ -29,9 +29,9 @@ pub struct VoteTracker {
     /// Gloas: slot of the attestation for is_supporting_vote.
     current_slot: Slot,
     next_slot: Slot,
-    /// Gloas: whether the attestation indicated payload_present (index == 1).
-    current_payload_present: bool,
-    next_payload_present: bool,
+    /// Gloas: whether the attestation indicated payload_timely (index == 1).
+    current_payload_timely: bool,
+    next_payload_timely: bool,
 }
 
 /// Payload status for Gloas fork choice virtual nodes.
@@ -185,7 +185,7 @@ pub struct Block {
     pub builder_index: Option<types::BuilderIndex>,
     /// Gloas ePBS: Has the builder revealed the execution payload?
     pub payload_revealed: bool,
-    /// Gloas ePBS: Initial PTC payload_present weight (usually 0 at block insertion).
+    /// Gloas ePBS: Initial PTC payload_timely weight (usually 0 at block insertion).
     pub ptc_weight: u64,
     /// Gloas ePBS: Initial PTC blob_data_available weight (usually 0 at block insertion).
     pub ptc_blob_data_available_weight: u64,
@@ -654,7 +654,7 @@ impl ProtoArrayForkChoice {
         block_root: Hash256,
         target_epoch: Epoch,
         slot: Slot,
-        payload_present: bool,
+        payload_timely: bool,
     ) -> Result<(), String> {
         let vote = self.votes.get_mut(validator_index);
 
@@ -662,7 +662,7 @@ impl ProtoArrayForkChoice {
             vote.next_root = block_root;
             vote.next_epoch = target_epoch;
             vote.next_slot = slot;
-            vote.next_payload_present = payload_present;
+            vote.next_payload_timely = payload_timely;
         }
 
         Ok(())
@@ -1261,7 +1261,7 @@ impl ProtoArrayForkChoice {
         );
 
         // Spec: PAYLOAD_TIMELY_THRESHOLD = PTC_SIZE // 2
-        // Both is_payload_timely and is_payload_data_available use this threshold.
+        // Both has_payload_quorum and is_payload_data_available use this threshold.
         let ptc_quorum_threshold = spec.ptc_size / 2;
 
         let mut head = GloasForkChoiceNode {
@@ -1696,7 +1696,7 @@ impl ProtoArrayForkChoice {
                     if vote.current_slot == node_slot {
                         return false;
                     }
-                    if vote.current_payload_present {
+                    if vote.current_payload_timely {
                         node.payload_status == GloasPayloadStatus::Full
                     } else {
                         node.payload_status == GloasPayloadStatus::Empty
@@ -1743,7 +1743,7 @@ impl ProtoArrayForkChoice {
                     if vote.current_slot == node_slot {
                         return false;
                     }
-                    if vote.current_payload_present {
+                    if vote.current_payload_timely {
                         node.payload_status == GloasPayloadStatus::Full
                     } else {
                         node.payload_status == GloasPayloadStatus::Empty
@@ -1845,7 +1845,7 @@ impl ProtoArrayForkChoice {
     /// Spec: should_extend_payload(store, root)
     ///
     /// Returns true when:
-    /// - (is_payload_timely AND is_payload_data_available), OR
+    /// - (has_payload_quorum AND is_payload_data_available), OR
     /// - no proposer boost root, OR
     /// - boosted block's parent is not this root, OR
     /// - boosted block's parent is already FULL
@@ -1859,7 +1859,7 @@ impl ProtoArrayForkChoice {
         let pa = &self.proto_array;
 
         // Check if payload is both timely and data-available.
-        // Spec: is_payload_timely(store, root) AND is_payload_data_available(store, root)
+        // Spec: has_payload_quorum(store, root) AND is_payload_data_available(store, root)
         // Both require `root in store.payload_states` (envelope actually received/processed)
         // AND PTC quorum strictly above threshold (sum > PAYLOAD_TIMELY_THRESHOLD).
         let is_timely_and_available = proto_node.is_some_and(|n| {
@@ -1978,7 +1978,7 @@ fn apply_vote_updates(
         if vote.current_root != vote.next_root || old_balance != new_balance {
             vote.current_root = vote.next_root;
             vote.current_slot = vote.next_slot;
-            vote.current_payload_present = vote.next_payload_present;
+            vote.current_payload_timely = vote.next_payload_timely;
         }
     }
 }
@@ -2082,7 +2082,7 @@ fn compute_deltas(
 
             vote.current_root = vote.next_root;
             vote.current_slot = vote.next_slot;
-            vote.current_payload_present = vote.next_payload_present;
+            vote.current_payload_timely = vote.next_payload_timely;
         }
     }
 
@@ -3065,16 +3065,16 @@ mod test_gloas_fork_choice {
         let vote = VoteTracker {
             current_root: root(1),
             current_slot: Slot::new(1),
-            current_payload_present: false,
+            current_payload_timely: false,
             ..VoteTracker::default()
         };
         assert!(fc.is_supporting_vote_gloas(&node, &vote));
 
-        // Even with payload_present=true
+        // Even with payload_timely=true
         let vote_pp = VoteTracker {
             current_root: root(1),
             current_slot: Slot::new(2),
-            current_payload_present: true,
+            current_payload_timely: true,
             ..VoteTracker::default()
         };
         assert!(fc.is_supporting_vote_gloas(&node, &vote_pp));
@@ -3097,7 +3097,7 @@ mod test_gloas_fork_choice {
         let vote = VoteTracker {
             current_root: root(1),
             current_slot: Slot::new(1), // same as block slot
-            current_payload_present: false,
+            current_payload_timely: false,
             ..VoteTracker::default()
         };
         let empty_node = GloasForkChoiceNode {
@@ -3114,7 +3114,7 @@ mod test_gloas_fork_choice {
     }
 
     #[test]
-    fn supporting_vote_later_slot_matches_payload_present() {
+    fn supporting_vote_later_slot_matches_payload_timely() {
         let (mut fc, _spec) = new_gloas_fc();
         insert_gloas_block(
             &mut fc,
@@ -3135,21 +3135,21 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Full,
         };
 
-        // Vote at later slot with payload_present=false → supports EMPTY
+        // Vote at later slot with payload_timely=false → supports EMPTY
         let vote_no_pp = VoteTracker {
             current_root: root(1),
             current_slot: Slot::new(2),
-            current_payload_present: false,
+            current_payload_timely: false,
             ..VoteTracker::default()
         };
         assert!(fc.is_supporting_vote_gloas(&empty_node, &vote_no_pp));
         assert!(!fc.is_supporting_vote_gloas(&full_node, &vote_no_pp));
 
-        // Vote at later slot with payload_present=true → supports FULL
+        // Vote at later slot with payload_timely=true → supports FULL
         let vote_pp = VoteTracker {
             current_root: root(1),
             current_slot: Slot::new(2),
-            current_payload_present: true,
+            current_payload_timely: true,
             ..VoteTracker::default()
         };
         assert!(!fc.is_supporting_vote_gloas(&empty_node, &vote_pp));
@@ -3188,7 +3188,7 @@ mod test_gloas_fork_choice {
         let vote = VoteTracker {
             current_root: root(2),
             current_slot: Slot::new(3),
-            current_payload_present: false,
+            current_payload_timely: false,
             ..VoteTracker::default()
         };
 
@@ -3604,7 +3604,7 @@ mod test_gloas_fork_choice {
 
     #[test]
     fn find_head_payload_revealed_with_full_vote_returns_full() {
-        // Single block with payload revealed. A vote with payload_present=true at a
+        // Single block with payload revealed. A vote with payload_timely=true at a
         // later slot should cause FULL to win.
         let (mut fc, spec) = new_gloas_fc();
         insert_gloas_block(
@@ -3619,7 +3619,7 @@ mod test_gloas_fork_choice {
 
         let balances = balances(1);
 
-        // Vote with payload_present=true at slot 2
+        // Vote with payload_timely=true at slot 2
         fc.process_attestation(0, root(1), Epoch::new(0), Slot::new(2), true)
             .unwrap();
 
@@ -3800,10 +3800,10 @@ mod test_gloas_fork_choice {
         assert_eq!(head, root(2));
     }
 
-    // ───────────────────── payload_present in votes ─────────────────────
+    // ───────────────────── payload_timely in votes ─────────────────────
 
     #[test]
-    fn process_attestation_stores_payload_present() {
+    fn process_attestation_stores_payload_timely() {
         let (mut fc, _spec) = new_gloas_fc();
         insert_gloas_block(
             &mut fc,
@@ -3815,14 +3815,14 @@ mod test_gloas_fork_choice {
             true,
         );
 
-        // Attestation with payload_present=true
+        // Attestation with payload_timely=true
         fc.process_attestation(0, root(1), Epoch::new(0), Slot::new(2), true)
             .unwrap();
 
         let vote = &fc.votes.0[0];
         assert_eq!(vote.next_root, root(1));
         assert_eq!(vote.next_slot, Slot::new(2));
-        assert!(vote.next_payload_present);
+        assert!(vote.next_payload_timely);
 
         // After find_head, current_* should be updated from next_*
         let balances = balances(1);
@@ -3843,7 +3843,7 @@ mod test_gloas_fork_choice {
         let vote = &fc.votes.0[0];
         assert_eq!(vote.current_root, root(1));
         assert_eq!(vote.current_slot, Slot::new(2));
-        assert!(vote.current_payload_present);
+        assert!(vote.current_payload_timely);
     }
 
     // ──────── on_execution_bid node state transitions ────────
@@ -4408,7 +4408,7 @@ mod test_gloas_fork_choice {
     fn should_extend_payload_data_available_but_not_timely() {
         // blob_data_available weight above threshold but ptc_weight (payload timeliness)
         // NOT above threshold → is_timely_and_available is false.
-        // Spec PR #4884: should_extend_payload requires BOTH is_payload_timely AND
+        // Spec PR #4884: should_extend_payload requires BOTH has_payload_quorum AND
         // is_payload_data_available. Without timeliness, falls through to proposer
         // boost checks. No proposer boost → true.
         let (mut fc, _spec) = new_gloas_fc();
@@ -5663,7 +5663,7 @@ mod test_gloas_fork_choice {
         let vote = VoteTracker {
             current_root: root(2),
             current_slot: Slot::new(2),
-            current_payload_present: false,
+            current_payload_timely: false,
             ..VoteTracker::default()
         };
 
@@ -5704,7 +5704,7 @@ mod test_gloas_fork_choice {
         let vote = VoteTracker {
             current_root: root(2),
             current_slot: Slot::new(2),
-            current_payload_present: true,
+            current_payload_timely: true,
             ..VoteTracker::default()
         };
 
@@ -5745,7 +5745,7 @@ mod test_gloas_fork_choice {
         let vote = VoteTracker {
             current_root: root(2),
             current_slot: Slot::new(2),
-            current_payload_present: false,
+            current_payload_timely: false,
             ..VoteTracker::default()
         };
 
@@ -5786,7 +5786,7 @@ mod test_gloas_fork_choice {
         let vote = VoteTracker {
             current_root: root(2),
             current_slot: Slot::new(2),
-            current_payload_present: false,
+            current_payload_timely: false,
             ..VoteTracker::default()
         };
 
@@ -6327,7 +6327,7 @@ mod test_gloas_fork_choice {
 
         let balances = balances(1);
 
-        // Vote with payload_present=true at slot 2
+        // Vote with payload_timely=true at slot 2
         fc.process_attestation(0, root(1), Epoch::new(0), Slot::new(2), true)
             .unwrap();
 
@@ -6461,7 +6461,7 @@ mod test_gloas_fork_choice {
 
         let balances = balances(1);
 
-        // Vote with payload_present=true (supporting FULL)
+        // Vote with payload_timely=true (supporting FULL)
         fc.process_attestation(0, root(1), Epoch::new(0), Slot::new(2), true)
             .unwrap();
 
@@ -6507,7 +6507,7 @@ mod test_gloas_fork_choice {
 
         let balances = balances(1);
 
-        // Vote with payload_present=true (supporting FULL)
+        // Vote with payload_timely=true (supporting FULL)
         fc.process_attestation(0, root(1), Epoch::new(0), Slot::new(2), true)
             .unwrap();
 
@@ -6854,7 +6854,7 @@ mod test_gloas_fork_choice {
         let vote = VoteTracker {
             current_root: root(3),
             current_slot: Slot::new(4),
-            current_payload_present: false,
+            current_payload_timely: false,
             ..VoteTracker::default()
         };
 
@@ -6929,7 +6929,7 @@ mod test_gloas_fork_choice {
 
         let balances = balances(1);
 
-        // Vote for root(2) at slot 3 (payload_present=false → EMPTY supporting)
+        // Vote for root(2) at slot 3 (payload_timely=false → EMPTY supporting)
         fc.process_attestation(0, root(2), Epoch::new(0), Slot::new(3), false)
             .unwrap();
 
@@ -6990,12 +6990,12 @@ mod test_gloas_fork_choice {
 
         let balances = balances(5);
 
-        // 2 votes for root(1) with payload_present=false (EMPTY supporting)
+        // 2 votes for root(1) with payload_timely=false (EMPTY supporting)
         for i in 0..2 {
             fc.process_attestation(i, root(1), Epoch::new(0), Slot::new(2), false)
                 .unwrap();
         }
-        // 3 votes for root(2) with payload_present=true (FULL supporting)
+        // 3 votes for root(2) with payload_timely=true (FULL supporting)
         for i in 2..5 {
             fc.process_attestation(i, root(2), Epoch::new(0), Slot::new(2), true)
                 .unwrap();
@@ -7067,7 +7067,7 @@ mod test_gloas_fork_choice {
 
         let balances = balances(3);
 
-        // All 3 voters vote for root(2) with payload_present=true
+        // All 3 voters vote for root(2) with payload_timely=true
         for i in 0..3 {
             fc.process_attestation(i, root(2), Epoch::new(0), Slot::new(3), true)
                 .unwrap();
@@ -7456,12 +7456,12 @@ mod test_gloas_fork_choice {
         let vote0 = fc.votes.get_mut(0);
         vote0.current_root = root(1);
         vote0.current_slot = Slot::new(2);
-        vote0.current_payload_present = true;
+        vote0.current_payload_timely = true;
 
         let vote1 = fc.votes.get_mut(1);
         vote1.current_root = root(1);
         vote1.current_slot = Slot::new(2);
-        vote1.current_payload_present = false;
+        vote1.current_payload_timely = false;
 
         // At current_slot=2, root(1) is at slot 1 (previous slot).
         // The EMPTY and FULL nodes for root(1) should get 0 weight.
@@ -8099,7 +8099,7 @@ mod test_gloas_fork_choice {
         let vote = VoteTracker {
             current_root: root(5),
             current_slot: Slot::new(5),
-            current_payload_present: true,
+            current_payload_timely: true,
             ..VoteTracker::default()
         };
 
@@ -8311,12 +8311,12 @@ mod test_gloas_fork_choice {
 
         let bals = balances(21);
 
-        // 11 votes for root(1) with payload_present=true
+        // 11 votes for root(1) with payload_timely=true
         for i in 0..11 {
             fc.process_attestation(i, root(1), Epoch::new(0), Slot::new(2), true)
                 .unwrap();
         }
-        // 10 votes for root(2) with payload_present=false
+        // 10 votes for root(2) with payload_timely=false
         for i in 11..21 {
             fc.process_attestation(i, root(2), Epoch::new(0), Slot::new(2), false)
                 .unwrap();
@@ -8374,7 +8374,7 @@ mod test_gloas_fork_choice {
     /// root(1) parent is EMPTY (bid_parent_hash mismatch), payload revealed → FULL child.
     /// root(2) parent is FULL (bid_parent_hash matches root(1)'s bid_block_hash), no payload.
     ///
-    /// All votes on root(2) with payload_present=false → EMPTY at depth 3.
+    /// All votes on root(2) with payload_timely=false → EMPTY at depth 3.
     #[test]
     fn find_head_gloas_depth_three_alternating_payload_status() {
         let (mut fc, spec) = new_gloas_fc();
@@ -8667,9 +8667,9 @@ mod test_gloas_fork_choice {
     // Only PENDING is supported.
 
     #[test]
-    fn same_slot_vote_with_payload_present_does_not_support_full() {
+    fn same_slot_vote_with_payload_timely_does_not_support_full() {
         // Current spec: vote.slot == block.slot → return false for EMPTY/FULL
-        // regardless of payload_present.
+        // regardless of payload_timely.
         let (mut fc, _spec) = new_gloas_fc();
         insert_gloas_block(
             &mut fc,
@@ -8690,22 +8690,22 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Empty,
         };
 
-        // Same-slot vote with payload_present=true
+        // Same-slot vote with payload_timely=true
         let vote = VoteTracker {
             current_root: root(1),
             current_slot: Slot::new(1), // same as block slot
-            current_payload_present: true,
+            current_payload_timely: true,
             ..VoteTracker::default()
         };
 
         // Per current spec: same-slot votes NEVER support EMPTY or FULL
         assert!(
             !fc.is_supporting_vote_gloas(&full_node, &vote),
-            "same-slot vote with payload_present should NOT support FULL (current spec)"
+            "same-slot vote with payload_timely should NOT support FULL (current spec)"
         );
         assert!(
             !fc.is_supporting_vote_gloas(&empty_node, &vote),
-            "same-slot vote with payload_present should NOT support EMPTY (current spec)"
+            "same-slot vote with payload_timely should NOT support EMPTY (current spec)"
         );
     }
 
@@ -8732,7 +8732,7 @@ mod test_gloas_fork_choice {
         let vote = VoteTracker {
             current_root: root(1),
             current_slot: Slot::new(1), // same as block slot
-            current_payload_present: false,
+            current_payload_timely: false,
             ..VoteTracker::default()
         };
 
@@ -8741,17 +8741,17 @@ mod test_gloas_fork_choice {
             "same-slot vote should always support PENDING"
         );
 
-        // Also with payload_present=true
+        // Also with payload_timely=true
         let vote_pp = VoteTracker {
             current_root: root(1),
             current_slot: Slot::new(1),
-            current_payload_present: true,
+            current_payload_timely: true,
             ..VoteTracker::default()
         };
 
         assert!(
             fc.is_supporting_vote_gloas(&pending_node, &vote_pp),
-            "same-slot vote with payload_present should still support PENDING"
+            "same-slot vote with payload_timely should still support PENDING"
         );
     }
 

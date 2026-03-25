@@ -1133,7 +1133,7 @@ mod tests {
         let data = PayloadAttestationData {
             beacon_block_root: Hash256::repeat_byte(0xBB),
             slot: Slot::new(8),
-            payload_present: true,
+            payload_timely: true,
             blob_data_available: false,
         };
 
@@ -1182,7 +1182,7 @@ mod tests {
         let data = PayloadAttestationData {
             beacon_block_root: Hash256::repeat_byte(0xBB),
             slot: Slot::new(8),
-            payload_present: true,
+            payload_timely: true,
             blob_data_available: false,
         };
 
@@ -1384,7 +1384,7 @@ mod tests {
         let data = PayloadAttestationData {
             beacon_block_root: Hash256::repeat_byte(0xCC),
             slot: Slot::new(8),
-            payload_present: true,
+            payload_timely: true,
             blob_data_available: true,
         };
 
@@ -1433,17 +1433,17 @@ mod tests {
 
     #[test]
     fn payload_attestation_wrong_data_field_invalidates() {
-        // A payload attestation signed with payload_present=true should
-        // NOT verify when the data is changed to payload_present=false.
+        // A payload attestation signed with payload_timely=true should
+        // NOT verify when the data is changed to payload_timely=false.
         // This confirms that the PayloadAttestationData signing_root covers
-        // the payload_present field — a critical property since PTC members
+        // the payload_timely field — a critical property since PTC members
         // vote on payload timeliness and a bit-flip would reverse the vote.
         let (state, spec, keypairs) = make_gloas_state();
 
         let mut data = PayloadAttestationData {
             beacon_block_root: Hash256::repeat_byte(0xEE),
             slot: Slot::new(8),
-            payload_present: true,
+            payload_timely: true,
             blob_data_available: false,
         };
 
@@ -1459,8 +1459,8 @@ mod tests {
         let mut agg_sig = bls::AggregateSignature::infinity();
         agg_sig.add_assign(&sig);
 
-        // Flip payload_present AFTER signing
-        data.payload_present = false;
+        // Flip payload_timely AFTER signing
+        data.payload_timely = false;
 
         let attestation = PayloadAttestation {
             aggregation_bits: BitVector::new(),
@@ -1486,7 +1486,7 @@ mod tests {
 
         assert!(
             !sig_set.verify(),
-            "attestation with flipped payload_present should fail verification"
+            "attestation with flipped payload_timely should fail verification"
         );
     }
 

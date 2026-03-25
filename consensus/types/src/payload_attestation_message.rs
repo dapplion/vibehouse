@@ -36,7 +36,7 @@ impl PayloadAttestationMessage {
             data: PayloadAttestationData {
                 beacon_block_root: Hash256::default(),
                 slot: Slot::default(),
-                payload_present: false,
+                payload_timely: false,
                 blob_data_available: false,
             },
             signature: Signature::empty(),
@@ -63,7 +63,7 @@ mod tests {
     fn test_empty_payload_attestation_message() {
         let message = PayloadAttestationMessage::empty();
         assert_eq!(message.validator_index, 0);
-        assert!(!message.data.payload_present);
+        assert!(!message.data.payload_timely);
         assert!(!message.data.blob_data_available);
     }
 
@@ -96,13 +96,13 @@ mod tests {
     }
 
     #[test]
-    fn ssz_roundtrip_payload_present() {
+    fn ssz_roundtrip_payload_timely() {
         let msg = PayloadAttestationMessage {
             validator_index: 99,
             data: PayloadAttestationData {
                 beacon_block_root: Hash256::repeat_byte(0xff),
                 slot: Slot::new(100),
-                payload_present: true,
+                payload_timely: true,
                 blob_data_available: false,
             },
             signature: Signature::empty(),
@@ -110,7 +110,7 @@ mod tests {
         let bytes = msg.as_ssz_bytes();
         let decoded = PayloadAttestationMessage::from_ssz_bytes(&bytes).unwrap();
         assert_eq!(msg, decoded);
-        assert!(decoded.data.payload_present);
+        assert!(decoded.data.payload_timely);
     }
 
     #[test]
@@ -120,7 +120,7 @@ mod tests {
             data: PayloadAttestationData {
                 beacon_block_root: Hash256::repeat_byte(0xee),
                 slot: Slot::new(200),
-                payload_present: false,
+                payload_timely: false,
                 blob_data_available: true,
             },
             signature: Signature::empty(),
@@ -151,7 +151,7 @@ mod tests {
             data: PayloadAttestationData {
                 beacon_block_root: Hash256::repeat_byte(0x01),
                 slot: Slot::new(10),
-                payload_present: true,
+                payload_timely: true,
                 blob_data_available: true,
             },
             signature: Signature::empty(),
@@ -166,7 +166,7 @@ mod tests {
             data: PayloadAttestationData {
                 beacon_block_root: Hash256::repeat_byte(0xab),
                 slot: Slot::new(55),
-                payload_present: true,
+                payload_timely: true,
                 blob_data_available: true,
             },
             signature: Signature::empty(),
@@ -178,8 +178,8 @@ mod tests {
     fn different_data_not_equal() {
         let mut msg1 = PayloadAttestationMessage::empty();
         let mut msg2 = PayloadAttestationMessage::empty();
-        msg1.data.payload_present = true;
-        msg2.data.payload_present = false;
+        msg1.data.payload_timely = true;
+        msg2.data.payload_timely = false;
         assert_ne!(msg1, msg2);
     }
 }

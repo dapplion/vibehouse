@@ -97,7 +97,7 @@ impl<E: EthSpec> Hash for Attestation<E> {
 impl<E: EthSpec> Attestation<E> {
     /// Produces an attestation with empty signature.
     ///
-    /// `payload_present`: In Gloas (EIP-7732), `data.index` is repurposed to indicate whether
+    /// `payload_timely`: In Gloas (EIP-7732), `data.index` is repurposed to indicate whether
     /// the execution payload was available at the attested slot. Set to `true` when the payload
     /// was revealed (non-same-slot attestation with payload available). For same-slot attestations
     /// or pre-Gloas forks, this should be `false`.
@@ -110,7 +110,7 @@ impl<E: EthSpec> Attestation<E> {
         source: Checkpoint,
         target: Checkpoint,
         spec: &ChainSpec,
-        payload_present: bool,
+        payload_timely: bool,
     ) -> Result<Self, Error> {
         if spec.fork_name_at_slot::<E>(slot).electra_enabled() {
             let mut committee_bits: BitVector<E::MaxCommitteesPerSlot> = BitVector::default();
@@ -120,7 +120,7 @@ impl<E: EthSpec> Attestation<E> {
             // In Gloas, data.index indicates payload availability:
             // 0 = payload not present (or same-slot attestation), 1 = payload present
             let index =
-                u64::from(spec.fork_name_at_slot::<E>(slot).gloas_enabled() && payload_present);
+                u64::from(spec.fork_name_at_slot::<E>(slot).gloas_enabled() && payload_timely);
             Ok(Attestation::Electra(AttestationElectra {
                 aggregation_bits: BitList::with_capacity(committee_length)
                     .map_err(|_| Error::InvalidCommitteeLength)?,
@@ -706,7 +706,7 @@ mod tests {
         ssz_and_tree_hash_tests!(AttestationElectra<MainnetEthSpec>);
     }
 
-    // ── empty_for_signing Gloas payload_present tests ─────────
+    // ── empty_for_signing Gloas payload_timely tests ─────────
 
     fn gloas_spec() -> ChainSpec {
         let mut spec = MinimalEthSpec::default_spec();
@@ -733,7 +733,7 @@ mod tests {
     }
 
     #[test]
-    fn gloas_payload_present_sets_index_1() {
+    fn gloas_payload_timely_sets_index_1() {
         let spec = gloas_spec();
         let att = Attestation::<MinimalEthSpec>::empty_for_signing(
             0,
@@ -743,13 +743,13 @@ mod tests {
             Checkpoint::default(),
             Checkpoint::default(),
             &spec,
-            true, // payload_present
+            true, // payload_timely
         )
         .unwrap();
         assert_eq!(
             att.data().index,
             1,
-            "Gloas with payload_present=true should set index=1"
+            "Gloas with payload_timely=true should set index=1"
         );
     }
 
@@ -764,19 +764,19 @@ mod tests {
             Checkpoint::default(),
             Checkpoint::default(),
             &spec,
-            false, // payload_present
+            false, // payload_timely
         )
         .unwrap();
         assert_eq!(
             att.data().index,
             0,
-            "Gloas with payload_present=false should set index=0"
+            "Gloas with payload_timely=false should set index=0"
         );
     }
 
     #[test]
-    fn fulu_payload_present_ignored_sets_index_0() {
-        // In Fulu (pre-Gloas), payload_present flag is ignored, index is always 0
+    fn fulu_payload_timely_ignored_sets_index_0() {
+        // In Fulu (pre-Gloas), payload_timely flag is ignored, index is always 0
         let spec = fulu_spec();
         let att = Attestation::<MinimalEthSpec>::empty_for_signing(
             0,
@@ -786,13 +786,13 @@ mod tests {
             Checkpoint::default(),
             Checkpoint::default(),
             &spec,
-            true, // payload_present=true, but should be ignored
+            true, // payload_timely=true, but should be ignored
         )
         .unwrap();
         assert_eq!(
             att.data().index,
             0,
-            "Fulu should always set index=0 regardless of payload_present"
+            "Fulu should always set index=0 regardless of payload_timely"
         );
     }
 

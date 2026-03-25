@@ -1247,14 +1247,14 @@ where
 
         if attestation.data().slot < self.fc_store.get_current_slot() {
             let att_slot = attestation.data().slot;
-            let payload_present = attestation.data().index == 1;
+            let payload_timely = attestation.data().index == 1;
             for validator_index in attestation.attesting_indices_iter() {
                 self.proto_array.process_attestation(
                     *validator_index as usize,
                     attestation.data().beacon_block_root,
                     attestation.data().target.epoch,
                     att_slot,
-                    payload_present,
+                    payload_timely,
                 )?;
             }
         } else {
@@ -1465,8 +1465,8 @@ where
             .get_mut(block_index)
             .ok_or(Error::MissingProtoArrayBlock(beacon_block_root))?;
 
-        // Accumulate payload_present votes (spec: payload_timeliness_vote)
-        if attestation.data.payload_present {
+        // Accumulate payload_timely votes (spec: payload_timeliness_vote)
+        if attestation.data.payload_timely {
             node.ptc_weight = node.ptc_weight.saturating_add(attester_count);
         }
 
@@ -1644,14 +1644,14 @@ where
             self.fc_store.get_current_slot(),
             &mut self.queued_attestations,
         ) {
-            let payload_present = attestation.index == 1;
+            let payload_timely = attestation.index == 1;
             for validator_index in &attestation.attesting_indices {
                 self.proto_array.process_attestation(
                     *validator_index as usize,
                     attestation.block_root,
                     attestation.target_epoch,
                     attestation.slot,
-                    payload_present,
+                    payload_timely,
                 )?;
             }
         }
@@ -2241,7 +2241,7 @@ mod tests {
         fn make_payload_attestation(
             slot: u64,
             beacon_block_root: Hash256,
-            payload_present: bool,
+            payload_timely: bool,
             blob_data_available: bool,
         ) -> PayloadAttestation<E> {
             PayloadAttestation {
@@ -2249,7 +2249,7 @@ mod tests {
                 data: PayloadAttestationData {
                     beacon_block_root,
                     slot: Slot::new(slot),
-                    payload_present,
+                    payload_timely,
                     blob_data_available,
                 },
                 signature: AggregateSignature::empty(),
@@ -2259,7 +2259,7 @@ mod tests {
         fn make_indexed_payload_attestation(
             slot: u64,
             beacon_block_root: Hash256,
-            payload_present: bool,
+            payload_timely: bool,
             blob_data_available: bool,
             mut attesting_indices: Vec<u64>,
         ) -> IndexedPayloadAttestation<E> {
@@ -2269,7 +2269,7 @@ mod tests {
                 data: PayloadAttestationData {
                     beacon_block_root,
                     slot: Slot::new(slot),
-                    payload_present,
+                    payload_timely,
                     blob_data_available,
                 },
                 signature: AggregateSignature::empty(),
@@ -2715,7 +2715,7 @@ mod tests {
 
         #[test]
         fn payload_attestation_no_weight_when_not_present() {
-            // payload_present=false and blob_data_available=false → no weight changes
+            // payload_timely=false and blob_data_available=false → no weight changes
             let mut fc = new_fc();
             let block_root = root(1);
             insert_block(&mut fc, 1, block_root);
@@ -2954,7 +2954,7 @@ mod tests {
             let quorum_threshold = spec.ptc_size / 2;
             let indices: Vec<u64> = (0..=quorum_threshold).collect();
 
-            // payload_present=false, blob_data_available=true
+            // payload_timely=false, blob_data_available=true
             let att = make_payload_attestation(1, block_root, false, true);
             let indexed = make_indexed_payload_attestation(1, block_root, false, true, indices);
             fc.on_payload_attestation(&att, &indexed, Slot::new(1), &spec)
@@ -2967,7 +2967,7 @@ mod tests {
                 .get(&block_root)
                 .unwrap();
             let node = &fc.proto_array.core_proto_array().nodes[idx];
-            assert_eq!(node.ptc_weight, 0, "no payload_present votes");
+            assert_eq!(node.ptc_weight, 0, "no payload_timely votes");
             assert!(!node.payload_revealed, "payload should NOT be revealed");
             assert!(
                 node.payload_data_available,
@@ -3078,13 +3078,13 @@ mod tests {
             );
             // payload_data_available stays true (idempotent)
             assert!(node.payload_data_available);
-            // payload_revealed should NOT be set (no payload_present votes)
+            // payload_revealed should NOT be set (no payload_timely votes)
             assert!(!node.payload_revealed);
         }
 
         #[test]
         fn both_quorums_reached_in_single_call() {
-            // A single attestation batch with both payload_present=true and
+            // A single attestation batch with both payload_timely=true and
             // blob_data_available=true pushes both quorums over threshold at once.
             let mut fc = new_fc();
             let block_root = root(1);
@@ -3410,7 +3410,7 @@ mod tests {
                 true, // revealed
             );
 
-            // Vote with payload_present=true to favor FULL
+            // Vote with payload_timely=true to favor FULL
             fc.proto_array
                 .process_attestation(0, root(1), Epoch::new(0), Slot::new(2), true)
                 .unwrap();
@@ -3626,10 +3626,10 @@ mod tests {
         }
 
         /// Verify that a queued attestation with index=1 is dequeued as
-        /// payload_present=true, influencing head selection toward FULL.
+        /// payload_timely=true, influencing head selection toward FULL.
         ///
         /// Exercises the `process_attestation_queue` path where
-        /// `attestation.index == 1` → `payload_present = true`. A same-slot
+        /// `attestation.index == 1` → `payload_timely = true`. A same-slot
         /// attestation (att.slot == current_slot) is queued rather than
         /// processed immediately. When the slot advances and the attestation
         /// is dequeued, its `index` field must be correctly interpreted:
@@ -3639,7 +3639,7 @@ mod tests {
         /// processed attestations would count as FULL, breaking the deferred
         /// attestation processing model specified in the fork choice spec.
         #[test]
-        fn queued_attestation_index_1_dequeued_as_payload_present() {
+        fn queued_attestation_index_1_dequeued_as_payload_timely() {
             let (mut fc, spec) = new_gloas_fc_with_balances(1);
             let eh = |i: u64| ExecutionBlockHash::from_root(Hash256::from_low_u64_be(i + 100));
 
@@ -3671,7 +3671,7 @@ mod tests {
             assert_eq!(fc.queued_attestations()[0].index, 1);
 
             // Advance to slot 3: get_head → update_time → process_attestation_queue
-            // dequeues the attestation with index=1 → payload_present=true
+            // dequeues the attestation with index=1 → payload_timely=true
             let head = fc.get_head(Slot::new(3), &spec).unwrap();
             assert_eq!(head, root(1));
 
@@ -3680,7 +3680,7 @@ mod tests {
             assert_eq!(
                 fc.gloas_head_payload_status(),
                 Some(1), // FULL
-                "queued attestation with index=1 should be dequeued as payload_present, \
+                "queued attestation with index=1 should be dequeued as payload_timely, \
                  resulting in FULL head payload status"
             );
 
@@ -3692,9 +3692,9 @@ mod tests {
         }
 
         /// Verify that a queued attestation with index=0 is dequeued as
-        /// payload_present=false, resulting in EMPTY head payload status.
+        /// payload_timely=false, resulting in EMPTY head payload status.
         ///
-        /// This is the complement of `queued_attestation_index_1_dequeued_as_payload_present`:
+        /// This is the complement of `queued_attestation_index_1_dequeued_as_payload_timely`:
         /// index=0 means the attester votes for the EMPTY path (no payload present).
         #[test]
         fn queued_attestation_index_0_dequeued_as_payload_absent() {
@@ -3721,7 +3721,7 @@ mod tests {
             assert_eq!(fc.queued_attestations().len(), 1);
             assert_eq!(fc.queued_attestations()[0].index, 0);
 
-            // Advance to slot 3: dequeue with index=0 → payload_present=false
+            // Advance to slot 3: dequeue with index=0 → payload_timely=false
             let head = fc.get_head(Slot::new(3), &spec).unwrap();
             assert_eq!(head, root(1));
 
@@ -4038,7 +4038,7 @@ mod tests {
                 false, // not revealed — starts on EMPTY path
             );
 
-            // Vote FULL (payload_present=true)
+            // Vote FULL (payload_timely=true)
             fc.proto_array
                 .process_attestation(0, root(1), Epoch::new(0), Slot::new(2), true)
                 .unwrap();
@@ -4474,20 +4474,20 @@ mod tests {
             // MinimalEthSpec: ptc_size=2, quorum_threshold=ptc_size/2=1.
             // Need ptc_weight <= quorum to stay below quorum (strictly greater required).
 
-            // Send 1 payload_present vote (at quorum boundary — not exceeded)
+            // Send 1 payload_timely vote (at quorum boundary — not exceeded)
             let att1 = make_payload_attestation(1, block_root, true, false);
             let indexed1 = make_indexed_payload_attestation(1, block_root, true, false, vec![0]);
             fc.on_payload_attestation(&att1, &indexed1, Slot::new(1), &spec)
                 .unwrap();
 
-            // Send 1 blob_data_available vote (separate attester, no payload_present)
+            // Send 1 blob_data_available vote (separate attester, no payload_timely)
             let att2 = make_payload_attestation(1, block_root, false, true);
             let indexed2 = make_indexed_payload_attestation(1, block_root, false, true, vec![1]);
             fc.on_payload_attestation(&att2, &indexed2, Slot::new(1), &spec)
                 .unwrap();
 
             let node = &fc.proto_array.core_proto_array().nodes[idx];
-            assert_eq!(node.ptc_weight, 1, "sanity: 1 payload_present vote");
+            assert_eq!(node.ptc_weight, 1, "sanity: 1 payload_timely vote");
             assert_eq!(
                 node.ptc_blob_data_available_weight, 1,
                 "sanity: 1 blob_data_available vote"
@@ -4577,7 +4577,7 @@ mod tests {
             );
         }
 
-        /// Blob-only attestation (blob_data_available=true, payload_present=false)
+        /// Blob-only attestation (blob_data_available=true, payload_timely=false)
         /// reaches blob quorum without triggering payload_revealed. This verifies
         /// the independence of the two quorum tracks: blob DA quorum does NOT imply
         /// payload timeliness, and payload_revealed stays false.
@@ -4599,7 +4599,7 @@ mod tests {
             let spec = ChainSpec::minimal();
             let quorum_threshold = spec.ptc_size / 2;
 
-            // Send blob_data_available=true, payload_present=false with quorum+ attesters
+            // Send blob_data_available=true, payload_timely=false with quorum+ attesters
             let indices: Vec<u64> = (0..=quorum_threshold).collect();
             let att = make_payload_attestation(1, block_root, false, true);
             let indexed = make_indexed_payload_attestation(1, block_root, false, true, indices);
@@ -4610,7 +4610,7 @@ mod tests {
             let node = &fc.proto_array.core_proto_array().nodes[idx];
             assert_eq!(
                 node.ptc_weight, 0,
-                "payload_present=false should add zero ptc_weight"
+                "payload_timely=false should add zero ptc_weight"
             );
             assert!(
                 node.ptc_blob_data_available_weight > quorum_threshold,
@@ -4655,7 +4655,7 @@ mod tests {
             let spec = ChainSpec::minimal();
             let quorum_threshold = spec.ptc_size / 2;
 
-            // Send quorum+1 payload_present=true AND blob_data_available=true votes
+            // Send quorum+1 payload_timely=true AND blob_data_available=true votes
             let indices: Vec<u64> = (0..=quorum_threshold).collect();
             let att = make_payload_attestation(1, block_root, true, true);
             let indexed = make_indexed_payload_attestation(1, block_root, true, true, indices);
@@ -4775,7 +4775,7 @@ mod tests {
             let spec = ChainSpec::minimal();
             let quorum_threshold = spec.ptc_size / 2; // 1 for minimal
 
-            // Batch 1: 1 attester, payload_present=true
+            // Batch 1: 1 attester, payload_timely=true
             let att1 = make_payload_attestation(1, block_root, true, false);
             let idx1 = make_indexed_payload_attestation(1, block_root, true, false, vec![0]);
             fc.on_payload_attestation(&att1, &idx1, Slot::new(1), &spec)
@@ -4793,7 +4793,7 @@ mod tests {
                 "weight exactly at threshold should NOT reveal (strict > required)"
             );
 
-            // Batch 2: 1 more attester, payload_present=true (total: 2)
+            // Batch 2: 1 more attester, payload_timely=true (total: 2)
             let att2 = make_payload_attestation(1, block_root, true, false);
             let idx2 = make_indexed_payload_attestation(1, block_root, true, false, vec![1]);
             fc.on_payload_attestation(&att2, &idx2, Slot::new(1), &spec)
@@ -4811,7 +4811,7 @@ mod tests {
             );
         }
 
-        /// Attestation with both payload_present=false and blob_data_available=false
+        /// Attestation with both payload_timely=false and blob_data_available=false
         /// should not increment any weight counters on the node, even with multiple
         /// attesters. This tests the "absent vote" path: PTC members vote that the
         /// payload was NOT timely and blobs were NOT available.
@@ -4840,7 +4840,7 @@ mod tests {
             let node = &fc.proto_array.core_proto_array().nodes[idx];
             assert_eq!(
                 node.ptc_weight, 0,
-                "payload_present=false must not increment ptc_weight"
+                "payload_timely=false must not increment ptc_weight"
             );
             assert_eq!(
                 node.ptc_blob_data_available_weight, 0,
@@ -4981,7 +4981,7 @@ mod tests {
 
         /// PTC false-votes arriving after envelope receipt should NOT un-reveal
         /// the payload. The `payload_revealed` flag is a latch: once true, PTC
-        /// attestations with `payload_present=false` cannot flip it back.
+        /// attestations with `payload_timely=false` cannot flip it back.
         #[test]
         fn false_ptc_vote_after_envelope_does_not_unreveal() {
             let mut fc = new_fc();
@@ -5006,7 +5006,7 @@ mod tests {
                 "sanity: payload should be revealed after envelope"
             );
 
-            // Now PTC false-votes arrive (payload_present=false, blob_data_available=false)
+            // Now PTC false-votes arrive (payload_timely=false, blob_data_available=false)
             let spec = ChainSpec::minimal();
             let quorum_threshold = spec.ptc_size / 2;
             let many_false_voters: Vec<u64> = (0..=quorum_threshold + 10).collect();
@@ -5094,7 +5094,7 @@ mod tests {
             );
         }
 
-        /// Mixed PTC votes: some attesters vote payload_present=true, others
+        /// Mixed PTC votes: some attesters vote payload_timely=true, others
         /// vote false. Only true-voters contribute to ptc_weight. The false
         /// voters are a no-op for weight but should not cause errors.
         #[test]
@@ -5114,14 +5114,14 @@ mod tests {
                 .get(&block_root)
                 .unwrap();
 
-            // 2 attesters vote payload_present=true (MinimalEthSpec PtcSize=2)
+            // 2 attesters vote payload_timely=true (MinimalEthSpec PtcSize=2)
             let att_true = make_payload_attestation(1, block_root, true, false);
             let indexed_true =
                 make_indexed_payload_attestation(1, block_root, true, false, vec![0, 1]);
             fc.on_payload_attestation(&att_true, &indexed_true, Slot::new(1), &spec)
                 .unwrap();
 
-            // 2 attesters vote payload_present=false (different attester indices)
+            // 2 attesters vote payload_timely=false (different attester indices)
             let att_false = make_payload_attestation(1, block_root, false, false);
             let indexed_false =
                 make_indexed_payload_attestation(1, block_root, false, false, vec![2, 3]);
@@ -5139,9 +5139,9 @@ mod tests {
             );
         }
 
-        /// Split vote: payload_present=false but blob_data_available=true.
+        /// Split vote: payload_timely=false but blob_data_available=true.
         /// Only blob weight should accumulate, not payload weight.
-        /// Then the reverse: payload_present=true but blob_data_available=false.
+        /// Then the reverse: payload_timely=true but blob_data_available=false.
         /// Verifies the two weight counters are truly independent.
         #[test]
         fn split_payload_and_blob_votes_independent_counters() {
@@ -5160,13 +5160,13 @@ mod tests {
                 .get(&block_root)
                 .unwrap();
 
-            // Batch 1: blob-only votes (payload_present=false, blob_data_available=true)
+            // Batch 1: blob-only votes (payload_timely=false, blob_data_available=true)
             let att1 = make_payload_attestation(1, block_root, false, true);
             let indexed1 = make_indexed_payload_attestation(1, block_root, false, true, vec![0, 1]);
             fc.on_payload_attestation(&att1, &indexed1, Slot::new(1), &spec)
                 .unwrap();
 
-            // Batch 2: payload-only votes (payload_present=true, blob_data_available=false)
+            // Batch 2: payload-only votes (payload_timely=true, blob_data_available=false)
             let att2 = make_payload_attestation(1, block_root, true, false);
             let indexed2 = make_indexed_payload_attestation(1, block_root, true, false, vec![2, 3]);
             fc.on_payload_attestation(&att2, &indexed2, Slot::new(1), &spec)
@@ -5282,7 +5282,7 @@ mod tests {
             );
         }
 
-        /// Blob-only quorum reached (payload_present=false, blob_data_available=true)
+        /// Blob-only quorum reached (payload_timely=false, blob_data_available=true)
         /// without payload quorum — payload_revealed stays false, payload_data_available
         /// becomes true.
         #[test]
@@ -5306,7 +5306,7 @@ mod tests {
                 .unwrap();
 
             let node = &fc.proto_array.core_proto_array().nodes[idx];
-            assert_eq!(node.ptc_weight, 0, "no payload_present votes");
+            assert_eq!(node.ptc_weight, 0, "no payload_timely votes");
             assert!(!node.payload_revealed, "no payload quorum");
             assert_eq!(node.ptc_blob_data_available_weight, 2);
             assert!(
