@@ -59,6 +59,8 @@ Run 2443: Full audit — no new spec PRs merged since run 2441. All open PRs unc
 
 Run 2444: Full audit — no new spec PRs merged since run 2443. All open PRs unchanged (#4979, #5036, #4843, #4898, #4892, #4960, #4932). #4979 (PTC window) updated today with commit "State that update_fast_confirmation_variables must be called once" on #4747, but #4979 itself has no new commits since Mar 24 (doc-only fixes already verified). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). Clippy: zero warnings. cargo audit: same known RSA advisory (no fix). Tests: 1033 state_processing pass, 140 EF (fake_crypto) pass, 80 EF (real crypto) pass. No actionable work.
 
+Run 2445: Full audit — no new spec PRs merged since run 2444. All open PRs unchanged (#4979, #5036, #4843, #4898, #4892, #4960, #4932). #4979 mergeable:clean, updated today (2026-03-25) but no new behavioral changes. v1.7.0-alpha.4 release still not published (latest tag = v1.7.0-alpha.3). Latest EF test release still v1.6.0-beta.0 (Sep 2025). CI: alloy 1.8.1 update running (4/6 jobs green so far). Clippy: zero warnings. cargo check: clean. cargo audit: same known RSA advisory (no fix). No actionable work.
+
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
