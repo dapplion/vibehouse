@@ -105,6 +105,8 @@ Run 2486: No new spec PRs merged since run 2485. All open Gloas PRs unchanged. #
 
 Run 2487: No new spec PRs merged since run 2486. All open Gloas PRs unchanged (#5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). CI green (nightly Mar 22 failure was transient nextest 404, Mar 23 was slasher dead_code already fixed in 5d23ecf85). Clippy: zero warnings. cargo audit: unchanged (1 rsa vuln no fix, 5 unmaintained). No actionable work.
 
+Run 2527: No new spec PRs merged since run 2487. All open Gloas PRs unchanged (#5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). #4747 (Fast Confirmation Rule) updated 2026-03-25 but still actively debated and not close to merge. v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.5.0. CI green. No actionable work.
+
 Run 2488: No new spec PRs merged since run 2487. All open Gloas PRs unchanged (#5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). CI in progress for #5036 revert commit (adf42bf93). Nightly green (Mar 25). No actionable work.
 
 Run 2489: No new spec PRs merged since run 2488. All open Gloas PRs unchanged. Fixed CI failure: stale test `bid_submission_without_proposer_preferences_passes_prefs_check` was left behind from #5036 revert — test expected bids to pass without preferences but revert restored rejection. Removed test, all 15 bid tests pass. v1.7.0-alpha.4 release still not published (latest = v1.6.1). #5036 status: both author and reviewer against it (jtraglia: "disagree but leave open for client devs", nflaig: "also not in favor").
