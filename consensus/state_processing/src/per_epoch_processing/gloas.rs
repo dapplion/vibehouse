@@ -1216,7 +1216,7 @@ mod tests {
         process_ptc_window::<E>(&mut state, &spec).unwrap();
 
         // After shift: old current epoch should now be in previous epoch position (indices 0..spe)
-        for i in 0..spe {
+        for (i, expected) in current_epoch_before.iter().enumerate() {
             let entry = state
                 .as_gloas()
                 .unwrap()
@@ -1225,13 +1225,13 @@ mod tests {
                 .unwrap()
                 .to_vec();
             assert_eq!(
-                entry, current_epoch_before[i],
+                entry, *expected,
                 "slot {i}: old current epoch should shift to previous epoch position"
             );
         }
 
         // After shift: old next epoch should now be in current epoch position (indices spe..2*spe)
-        for i in 0..spe {
+        for (i, expected) in next_epoch_before.iter().enumerate() {
             let entry = state
                 .as_gloas()
                 .unwrap()
@@ -1241,7 +1241,7 @@ mod tests {
                 .to_vec();
             assert_eq!(
                 entry,
-                next_epoch_before[i],
+                *expected,
                 "slot {}: old next epoch should shift to current epoch position",
                 spe + i
             );
