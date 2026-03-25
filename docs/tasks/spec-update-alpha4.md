@@ -47,7 +47,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 ## Test Vectors
 
-No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2375, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new merged Gloas PRs since last check (run 2375). CI fully green (all 7 jobs passed, run 23524059238). Nightly failures on Mar 22 (nextest download 404, transient) and Mar 23 (slasher redb dead_code — already fixed in 5d23ecf85) resolved; Mar 24 nightly passed. cargo audit: only upstream RSA advisory (unfixable). All open PRs still open, no new merges or behavioral changes.
+No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2376, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new merged Gloas PRs since last check (run 2376). CI fully green, nightly passing (Mar 24). Devnet verified healthy (run 2376): 4 nodes, gloas fork epoch 1, finalized epoch 8 at slot 80. cargo audit: only upstream RSA advisory (unfixable). All open PRs still open, no new merges or behavioral changes.
 
 ## Open Gloas PRs to Watch
 
