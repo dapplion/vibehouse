@@ -89,6 +89,8 @@ Run 2461: No new spec PRs merged since run 2460. Fixed gap in HTTP API: `post_be
 
 Run 2462: No new spec PRs merged since run 2461. All open Gloas PRs unchanged (#4979, #5036, #4843, #4898, #4892, #4960, #4932, #4954). #4979 still 15 commits (last: 89ce53b0 Mar 24). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI in progress (check+clippy passed, other jobs running). Clippy: zero warnings. No actionable work.
 
+Run 2463: No new spec PRs merged since run 2462. Fixed CI failure: http_api tests broke from run 2461's epoch/slot validation — 8 bid tests were using `current_slot` as `proposal_slot` which the new `proposal_slot <= current_slot` check correctly rejects. Fixed all tests to use `current_slot + 1`. All 21 proposer_preferences + bid tests pass. Open Gloas PRs unchanged. CI green (clippy zero warnings, lint passed on push).
+
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
