@@ -47,7 +47,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 ## Test Vectors
 
-No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2416, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new Gloas PRs merged since run 2415. Nightly CI all green. Clippy clean (0 warnings). All open Gloas PRs unchanged — no new commits or status changes. No action needed.
+No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2417, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new Gloas PRs merged since run 2416. Nightly CI all green. Clippy clean (0 warnings). Cargo doc clean (0 warnings). All open Gloas PRs unchanged — no new commits or status changes. No action needed.
 
 ## Open Gloas PRs to Watch
 
