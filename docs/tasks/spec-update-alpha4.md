@@ -47,7 +47,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 ## Test Vectors
 
-No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2391, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). #5035 merged today (same epoch proposer preferences) — already implemented. No new Gloas PRs created since last check. All open PRs unchanged (#4979, #5036, #4843, #4747, #4960, #4932, #4898, #4892 all still OPEN). CI passing (6/6 jobs). No action needed this run.
+No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2392, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new Gloas PRs merged since last check (last merged: #5035, #4962, #4939 on Mar 24-25). All open PRs unchanged (#4979, #5036, #4843, #4747, #4960, #4932, #4898, #4892 all still OPEN). #4747 (Fast Confirmation Rule) has 128 review comments, dirty mergeable state — still actively debated, not close to merge. CI passing. Nightly Mar 23 slasher flake + Mar 22 nextest 404 were transient; Mar 24 nightly green. No action needed this run.
 
 ## Open Gloas PRs to Watch
 
