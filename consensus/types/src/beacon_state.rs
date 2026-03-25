@@ -3104,7 +3104,7 @@ impl<E: EthSpec> CompareFields for BeaconState<E> {
             (BeaconState::Electra(x), BeaconState::Electra(y)) => x.compare_fields(y),
             (BeaconState::Fulu(x), BeaconState::Fulu(y)) => x.compare_fields(y),
             (BeaconState::Gloas(x), BeaconState::Gloas(y)) => x.compare_fields(y),
-            _ => panic!("compare_fields: mismatched state variants",),
+            _ => panic!("compare_fields: mismatched state variants"),
         }
     }
 }

@@ -511,7 +511,7 @@ pub fn validate_blob_sidecar_for_gossip<T: BeaconChainTypes, O: ObservationStrat
                 .map_err(|e| GossipBlobError::BeaconChainError(Box::new(e.into())))?
                 .ok_or_else(|| {
                     GossipBlobError::BeaconChainError(Box::new(BeaconChainError::DBInconsistent(
-                        format!("Missing state for parent block {block_parent_root:?}",),
+                        format!("Missing state for parent block {block_parent_root:?}"),
                     )))
                 })
         },

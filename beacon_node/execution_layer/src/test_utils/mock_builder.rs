@@ -519,7 +519,7 @@ impl<E: EthSpec> MockBuilder<E> {
             "Submitting blinded beacon block to builder"
         );
         let payload = self.el.get_payload_by_root(&root).ok_or_else(|| {
-            format!("missing payload for root: {root:?}, block_hash: {block_hash:?}",)
+            format!("missing payload for root: {root:?}, block_hash: {block_hash:?}")
         })?;
 
         let (payload, blobs) = payload.deconstruct();

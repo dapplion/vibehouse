@@ -185,7 +185,7 @@ pub(crate) fn inspect_db<E: EthSpec>(
                 );
 
                 if numeric_key > prev_key + 1 {
-                    println!("gap between keys {prev_key} and {numeric_key} (offset: {num_keys})",);
+                    println!("gap between keys {prev_key} and {numeric_key} (offset: {num_keys})");
                     found_gaps = true;
                 }
                 prev_key = numeric_key;

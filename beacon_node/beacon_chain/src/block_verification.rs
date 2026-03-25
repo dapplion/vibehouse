@@ -1978,9 +1978,7 @@ fn load_parent<T: BeaconChainTypes, B: AsBlock<T::EthSpec>>(
             .store
             .get_advanced_hot_state(root, block.slot(), parent_block.state_root())?
             .ok_or_else(|| {
-                BeaconChainError::DBInconsistent(
-                    format!("Missing state for parent block {root:?}",),
-                )
+                BeaconChainError::DBInconsistent(format!("Missing state for parent block {root:?}"))
             })?;
 
         // Gloas ePBS: the spec's on_block chooses between block_states (pre-envelope)
