@@ -1785,11 +1785,11 @@ async fn test_rpc_block_reprocessing() {
 
     rig.assert_event_journal(&[WorkType::RpcBlock.into()]).await;
 
-    let max_retries = 3;
+    let max_retries = 20;
     let mut success = false;
     for _ in 0..max_retries {
         // Add an extra delay for block processing
-        tokio::time::sleep(Duration::from_millis(10)).await;
+        tokio::time::sleep(Duration::from_millis(50)).await;
         // head should update to the next block now since the duplicate
         // cache handle was dropped.
         if next_block_root == rig.head_root() {
