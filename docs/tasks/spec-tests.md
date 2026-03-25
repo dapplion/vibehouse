@@ -30,6 +30,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2448 (Mar 25) — holding pattern, everything green
+
+- CI: all green (CI, nightly, spec-test-version-check). Build: zero warnings. cargo audit: unchanged (1 rsa vuln + 5 unmaintained).
+- Spec: no new merges since run 2367. All open Gloas PRs unchanged (#4979 PTC window, #5036 relax bid gossip, #4892/#4898 fork choice simplifications, #4843 variable PTC deadline, #4954 ms time, #4840 EIP-7843, #4747 fast confirmation rule, #4630 EIP-7688 SSZ). None close to merging.
+- Nightly flake (Mar 23 slasher-tests) resolved — Mar 24 and Mar 25 nightlies passed.
+- cargo outdated: only rand_xorshift 0.4→0.5 (major, not actionable).
+- No code changes — holding pattern.
+
 ### run 2367 (Mar 25) — spec audit, 3 new merges all accounted for
 
 - CI: green. Build: zero warnings (release + clippy). cargo audit: 1 vuln (rsa) + 5 unmaintained — all pre-existing.
