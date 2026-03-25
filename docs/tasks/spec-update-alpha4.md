@@ -103,11 +103,13 @@ Run 2468: No new spec PRs merged since run 2467. All open Gloas PRs unchanged (#
 
 Run 2469: **#4979 merged** (2026-03-25T18:24:01Z) — PTC window cache in BeaconState. Head SHA 89ce53b0 (same as last verified). Full verification: our proactive implementation matches the final merged spec exactly. All functions aligned: `compute_ptc` (balance-weighted selection), `get_ptc_committee` (cache lookup with epoch offset), `initialize_ptc_window` (fork upgrade), `process_ptc_window` (epoch processing shift+fill). BeaconState field type correct (FixedVector with proper sizes per spec). No code changes needed. EF test handler ready — will integrate updated test vectors when they're released with `ptc_window` field. CI for run 2463 still in progress (unit/beacon_chain/http_api running).
 
+Run 2470: Post-#4979-merge verification. Detailed spec alignment audit against final merge commit (a196ff3e): confirmed full alignment across all 7 behavioral aspects (window size, compute_ptc, get_ptc cache lookup, process_ptc_window shift+fill, initialize_ptc_window fork upgrade, process_epoch call ordering, fork upgrade sequence). No code changes needed. CI fully green (6/6 jobs pass). Devnet verified: 4-node finalized epoch 8 at slot 80 (gloas fork at epoch 1). No new Gloas spec PRs merged or opened since run 2469. Remaining open PRs unchanged (#5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747). v1.7.0-alpha.5 version bump not yet prepared (no PR open). EF test vectors still v1.6.0-beta.0. No actionable work.
+
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
 |----|-------------|-------|
-| #4979 | PTC window cache in BeaconState | **MERGED 2026-03-25.** Proactively implemented and verified — no code changes needed. EF test handler ready, awaiting updated test vectors. |
+| ~~#4979~~ | ~~PTC window cache in BeaconState~~ | **MERGED 2026-03-25.** Proactively implemented and verified against final merge commit (a196ff3e) — full alignment confirmed. EF test handler ready, awaiting updated test vectors. |
 | #5036 | Relax bid gossip dependency on proposer preferences | Open — proactively implemented (commit 1c7e608d4). Verified (run 2374): latest commit (4e455a3) is doc-only, no behavioral changes. |
 | #4960 | Fork choice test for new validator deposit | Test vectors |
 | #4954 | Update fork choice store to use milliseconds | Open, 0 reviews, large refactor (28 files), also tagged `heze` — not worth implementing proactively |
