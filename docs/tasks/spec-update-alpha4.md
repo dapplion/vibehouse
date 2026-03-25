@@ -47,7 +47,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 ## Test Vectors
 
-No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2365, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new merged Gloas PRs since last check (run 2365). CI all green. Devnet validated: finalized_epoch=8 with ptc_window changes.
+No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2366, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new merged Gloas PRs since last check (run 2366). CI all green. Full workspace tests: 4998/5007 pass (8 web3signer infra timeouts). Clippy clean. cargo audit: only upstream RSA advisory (unfixable). All post-alpha.4 merged PRs (#5035, #5037, #4962, #4939) already implemented or not relevant.
 
 ## Open Gloas PRs to Watch
 
@@ -61,5 +61,5 @@ No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2365, 20
 | #4898 | Remove pending status from tiebreaker | 1 approval, still open — vibehouse already matches post-PR behavior |
 | #4892 | Remove impossible branch in forkchoice | 2 approvals, still open — vibehouse already uses debug_assert + == (matches post-PR) |
 | #4747 | Fast Confirmation Rule | Open, 127 reviews, actively updated 2026-03-24 — new feature, monitor |
-| #4843 | Variable PTC deadline | Open, 11 reviews, last updated 2026-03-20 |
+| #4843 | Variable PTC deadline | Open, APPROVED, 11 reviews. Renames `payload_present`→`payload_timely`, adds variable deadline based on payload size (`MIN_PAYLOAD_DUE_BPS`). Not merged yet — waiting for merge before implementing. |
 | #4840 | Add support for EIP-7843 to Gloas | Open, Jan 2026 |
