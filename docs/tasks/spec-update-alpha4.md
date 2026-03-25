@@ -88,3 +88,5 @@ Run 2479: No new spec PRs merged since run 2478. All open Gloas PRs unchanged (#
 Run 2480: #5040 merged (fork choice compliance test bug fix — Python test infra only, no production code). All open Gloas PRs unchanged (#5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). CI green. 10 TODOs in Rust (all blocked on external deps). No actionable work.
 
 Run 2481: No new spec PRs merged. All open Gloas PRs unchanged. Notable: #5036 got pushback from jtraglia (DoS concerns), #4843 still debated (ethDreamer skeptical of value). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.5.0. CI green, clippy clean, cargo audit unchanged. No actionable work.
+
+Run 2482: No new spec PRs merged since run 2481. All open Gloas PRs unchanged (#5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). #5036 still contested (jtraglia disagrees, waiting for client dev input). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.5.0. CI green, clippy clean, cargo audit unchanged. No actionable work.
