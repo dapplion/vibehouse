@@ -47,7 +47,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 ## Test Vectors
 
-No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2399, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new Gloas PRs merged or opened since last check. All open PRs unchanged. #4979 latest commits (e7b1910, 89ce53b — Mar 24) are doc/typo fixes only, no behavioral changes; vibehouse still aligned. Nightly CI: Mar 24 green, Mar 25 in progress (early jobs passing). `cargo audit`: unchanged (1 medium rsa, 5 unmaintained). Clean clippy, clean build, no warnings. No action needed this run.
+No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2400, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). Three PRs merged Mar 25 (#5035, #5037, #4962) — all already tracked, no code changes needed. All open Gloas PRs unchanged (#4979, #5036, #4843, #4898, #4892 still open). Nightly CI: Mar 25 in progress (early jobs passing), last two CI runs green. `cargo audit`: unchanged (1 medium rsa, 5 unmaintained). Clean clippy, clean docs, no warnings. No action needed this run.
 
 ## Open Gloas PRs to Watch
 
