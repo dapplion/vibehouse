@@ -87,6 +87,8 @@ Run 2460: No new spec PRs merged since run 2459. All open Gloas PRs unchanged (#
 
 Run 2461: No new spec PRs merged since run 2460. Fixed gap in HTTP API: `post_beacon_pool_proposer_preferences` was missing epoch/slot validation that gossip path already had. Added checks: proposal_slot must be in current/next epoch, must not have already passed. All 6 proposer_preferences HTTP tests pass. Open Gloas PRs unchanged.
 
+Run 2462: No new spec PRs merged since run 2461. All open Gloas PRs unchanged (#4979, #5036, #4843, #4898, #4892, #4960, #4932, #4954). #4979 still 15 commits (last: 89ce53b0 Mar 24). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI in progress (check+clippy passed, other jobs running). Clippy: zero warnings. No actionable work.
+
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
