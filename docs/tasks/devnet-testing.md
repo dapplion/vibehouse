@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 2450 (Mar 25) — devnet health check post-alloy-update
+
+Ran full 4-node devnet to verify health after alloy 1.7.3→1.8.1 dependency update. Result: SUCCESS — finalized_epoch=8 (slot 81, epoch 10) in 468s. Chain progressed smoothly through Gloas fork at epoch 1 with continuous finalization. No stalls, no errors. CI green, spec current (alpha.3, alpha.4 not yet released as test vectors). Zero clippy/compiler warnings. Project in maintenance mode.
+
 ### run 2425 (Mar 25) — maintenance check, all stable
 
 CI green (all 5 latest runs success, nightly green 2 consecutive). No new consensus-specs merges since run 2424. v1.7.0-alpha.4 still not published as GitHub release (version bump PR #5034 merged Mar 24 but no tag/release). EF test vectors still at v1.5.0 (May 2025). Open Gloas PRs unchanged: #4979 (PTC window), #5036 (relax bid gossip), #4843 (variable PTC deadline), #4954 (milliseconds), #4898/#4892 (stale). Zero clippy warnings. cargo audit: same (rsa timing, no fix). cargo outdated: only rand_xorshift 0.4→0.5 (blocked by ecosystem). Build clean. Project in maintenance mode.
