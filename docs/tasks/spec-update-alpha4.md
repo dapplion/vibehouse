@@ -47,16 +47,16 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 ## Test Vectors
 
-No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2376, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new merged Gloas PRs since last check (run 2376). CI fully green, nightly passing (Mar 24). Devnet verified healthy (run 2376): 4 nodes, gloas fork epoch 1, finalized epoch 8 at slot 80. cargo audit: only upstream RSA advisory (unfixable). All open PRs still open, no new merges or behavioral changes.
+No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2377, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new merged Gloas PRs since last check (run 2377). CI fully green, nightly passing (Mar 24). Nightly Mar 22 failure was transient (nextest install 404), Mar 23 was slasher redb dead_code (already fixed in 5d23ecf85). cargo audit: only upstream RSA advisory (unfixable). All open PRs still open, no new merges or behavioral changes. #4979 and #4954 now also tagged `heze` (future fork).
 
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
 |----|-------------|-------|
-| #4979 | PTC window cache in BeaconState | Major change, renamed to `ptc_window`, still under active design discussion, not merged (as of 2026-03-25). Implementation verified (run 2374) — latest commits (e7b1910, 89ce53b) are doc/typo fixes; no behavioral changes, vibehouse already aligned. |
+| #4979 | PTC window cache in BeaconState | Major change, renamed to `ptc_window`, still under active design discussion, not merged (as of 2026-03-25). Also tagged `heze`. Implementation verified (run 2374) — latest commits (e7b1910, 89ce53b) are doc/typo fixes; no behavioral changes, vibehouse already aligned. |
 | #5036 | Relax bid gossip dependency on proposer preferences | Open — proactively implemented (commit 1c7e608d4). Verified (run 2374): latest commit (4e455a3) is doc-only, no behavioral changes. |
 | #4960 | Fork choice test for new validator deposit | Test vectors |
-| #4954 | Update fork choice store to use milliseconds | Open, 0 reviews, large refactor (28 files) — not worth implementing proactively |
+| #4954 | Update fork choice store to use milliseconds | Open, 0 reviews, large refactor (28 files), also tagged `heze` — not worth implementing proactively |
 | #4932 | Sanity/blocks tests with payload attestation coverage | Test vectors |
 | #4898 | Remove pending status from tiebreaker | 1 approval, still open — vibehouse already matches post-PR behavior |
 | #4892 | Remove impossible branch in forkchoice | 2 approvals, still open — vibehouse already uses debug_assert + == (matches post-PR) |
