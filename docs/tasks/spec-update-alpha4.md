@@ -47,7 +47,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 ## Test Vectors
 
-No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2366, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new merged Gloas PRs since last check (run 2366). CI all green. Full workspace tests: 4998/5007 pass (8 web3signer infra timeouts). Clippy clean. cargo audit: only upstream RSA advisory (unfixable). All post-alpha.4 merged PRs (#5035, #5037, #4962, #4939) already implemented or not relevant.
+No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2368, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new merged Gloas PRs since last check (run 2368). CI all green. Clippy clean. state_processing: 1033/1033 pass. EF spec tests: 36/36 pass (104 Gloas skipped for SSZ schema mismatch). cargo audit: only upstream RSA advisory (unfixable). All post-alpha.4 merged PRs (#5035, #5037, #4962, #4939) already implemented or not relevant. #4979 PTC window implementation re-verified against latest PR diff (run 2368) — no drift detected.
 
 ## Open Gloas PRs to Watch
 
