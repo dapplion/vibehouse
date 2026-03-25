@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 2422 (Mar 25) — maintenance check, all stable
+
+CI green (all 5 latest runs success, nightly green). No new consensus-specs merges since run 2421. v1.7.0-alpha.4 still not published as GitHub release (version bump PR #5034 merged Mar 24 but no tag/release). EF test vectors still at v1.6.0-beta.0 (Sep 2025). Open Gloas PRs unchanged: #4979 (PTC window, last commit Mar 24 typo fix), #5036 (relax bid gossip, last commit Mar 24 doc update), #4843 (variable PTC deadline, mergeable: clean, 1 approval jtraglia), #4954 (milliseconds, no reviews), #4898/#4892 (stale). #4747 (Fast Confirmation Rule) updated today but still dirty/conflicting with 78 commits. Only 2 PRs tagged `heze` (#4979, #4954) — both already on radar. Zero clippy warnings. cargo audit: same (rsa timing, no fix). 4 open vibehouse issues unchanged (#36 misc TODOs, #29 ROCQ, #28 ZK, #27 messaging). Project in maintenance mode.
+
 ### run 2421 (Mar 25) — maintenance check, all stable
 
 CI green (all 5 latest runs success, nightly green). Spec fully caught up: v1.7.0-alpha.4 released (Mar 24), all behavioral changes already implemented (#5035 same-epoch proposer prefs, #5022 block-known check, #5008 field name, #4843 variable PTC deadline). #5037 merged today (EIP-8025 fork version removal — not relevant to vibehouse). Open Gloas PRs unchanged: #4979 (PTC window, still open), #4954 (milliseconds, no reviews), #4898/#4892 (fork choice simplifications, approved but stale). cargo audit: same (rsa timing, no fix). Zero clippy/compiler warnings. Production code unwrap audit: all clean in consensus/ and beacon_node/ — no dangerous unwraps in non-test code. cargo outdated: only rand_xorshift 0.4→0.5 (breaking, blocked by ecosystem). Project in maintenance mode.
