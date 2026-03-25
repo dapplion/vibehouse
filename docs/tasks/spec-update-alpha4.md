@@ -105,6 +105,8 @@ Run 2469: **#4979 merged** (2026-03-25T18:24:01Z) — PTC window cache in Beacon
 
 Run 2470: Post-#4979-merge verification. Detailed spec alignment audit against final merge commit (a196ff3e): confirmed full alignment across all 7 behavioral aspects (window size, compute_ptc, get_ptc cache lookup, process_ptc_window shift+fill, initialize_ptc_window fork upgrade, process_epoch call ordering, fork upgrade sequence). No code changes needed. CI fully green (6/6 jobs pass). Devnet verified: 4-node finalized epoch 8 at slot 80 (gloas fork at epoch 1). No new Gloas spec PRs merged or opened since run 2469. Remaining open PRs unchanged (#5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747). v1.7.0-alpha.5 version bump not yet prepared (no PR open). EF test vectors still v1.6.0-beta.0. No actionable work.
 
+Run 2471: No new spec PRs merged since run 2470. All open Gloas PRs unchanged (#5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747). #4558 (Cell Dissemination) updated today but PeerDAS/fulu scope, not actionable. v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI fully green (6/6 jobs pass). Clippy: zero warnings. No actionable work.
+
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
