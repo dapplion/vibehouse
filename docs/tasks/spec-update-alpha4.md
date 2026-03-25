@@ -65,6 +65,8 @@ Run 2446: Full audit — no new spec PRs merged since run 2445. All open PRs unc
 
 Run 2447: No new spec PRs merged since run 2446. CI green (latest ci, spec-test-version-check, nightly all success). No actionable work.
 
+Run 2451: #5040 merged (fork choice test infra fix — Python test generator bug, no production code impact). All open Gloas PRs unchanged (#4979, #5036, #4843, #4898, #4892, #4960, #4932). v1.7.0-alpha.4 release still not published. CI green. cargo audit: same known advisories. No actionable work.
+
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
