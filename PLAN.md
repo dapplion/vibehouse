@@ -57,9 +57,9 @@ Reference:
 
 **alpha.3 tracking:** 17 Gloas spec PRs audited: all implemented or confirmed not needed.
 
-**Open PRs to watch:** #4898/#4892 (fork choice simplifications, approved but not merged), #4843 (variable PTC deadline, approved, proactively implemented), #5036 (relax bid gossip, proactively implemented)
+**Open PRs to watch:** #4898/#4892 (fork choice simplifications), #4843 (variable PTC deadline, proactively implemented), #4954 (fork choice milliseconds), #4747 (fast confirmation rule)
 
-**Proactive implementation:** #4979 PTC window cache — DONE, **merged 2026-03-25**. Proactive implementation verified to match final merged spec exactly. Added `ptc_window` field to BeaconState, `compute_ptc`/`get_ptc_committee` split, `initialize_ptc_window` (fork upgrade), `process_ptc_window` (epoch processing), EF test handler. EF Gloas test vectors will need updating when spec releases new vectors with this field.
+**Post-alpha.4 merges (2026-03-25):** #4979 PTC window cache (proactively implemented, verified exact match), #5040 fork choice test fix (test infra only), #4558 cell dissemination partial messages (blocked on rust-libp2p support), #5036 reverted. See [docs/tasks/spec-update-alpha4.md](docs/tasks/spec-update-alpha4.md) for full audit.
 
 Spec tests: [docs/tasks/spec-tests.md](docs/tasks/spec-tests.md) — DONE: 79/79 + 139/139 passing, check_all_files_accessed passes, automated release check workflow deployed
 
