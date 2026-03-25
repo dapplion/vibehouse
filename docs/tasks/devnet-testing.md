@@ -22,6 +22,10 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 
 ## Progress log
 
+### run 2421 (Mar 25) — maintenance check, all stable
+
+CI green (all 5 latest runs success, nightly green). Spec fully caught up: v1.7.0-alpha.4 released (Mar 24), all behavioral changes already implemented (#5035 same-epoch proposer prefs, #5022 block-known check, #5008 field name, #4843 variable PTC deadline). #5037 merged today (EIP-8025 fork version removal — not relevant to vibehouse). Open Gloas PRs unchanged: #4979 (PTC window, still open), #4954 (milliseconds, no reviews), #4898/#4892 (fork choice simplifications, approved but stale). cargo audit: same (rsa timing, no fix). Zero clippy/compiler warnings. Production code unwrap audit: all clean in consensus/ and beacon_node/ — no dangerous unwraps in non-test code. cargo outdated: only rand_xorshift 0.4→0.5 (breaking, blocked by ecosystem). Project in maintenance mode.
+
 ### run 2268 (Mar 23) — maintenance check, all stable
 
 CI green (latest run success). Nightly failure (Mar 22-23) was slasher redb-only build dead code — already fixed in commit 5d23ecf85, tonight's nightly should pass. Spec HEAD updated today: 5 merged PRs all CI/infra (action updates, dep bumps, #5023 test generator fix — no spec changes). All open Gloas PRs still open: #4979 (PTC window, 12 review comments), #4843 (variable PTC deadline), #4954 (milliseconds), #4898 (remove pending tiebreaker), #4892 (remove impossible branch). cargo audit: 1 vuln (rsa timing, no fix), 5 unmaintained warnings. Rust 1.94 current, 1.95 due Apr 16. Zero compatible dep updates. Project in maintenance mode.
