@@ -24,12 +24,14 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 #5031, #5030, #5029, #5028, #5027, #5026, #5025, #5017, #5015, #5010, #5009, #5007, #5006, #5004
 
-## Post-alpha.4 merged PRs (run 2361, 2026-03-25)
+## Post-alpha.4 merged PRs (run 2361-2363, 2026-03-25)
 
 | PR | Description | Status |
 |----|-------------|--------|
 | #5035 | Allow same epoch proposer preferences | **Merged 2026-03-25.** Already implemented — gossip validation accepts current+next epoch (gossip_methods.rs:4111), slot-not-passed check (4124), epoch_offset index calc (4166-4171). VC broadcasts for both epochs (duties_service.rs:1676-1726). |
 | #5037 | Remove fork version/epoch in EIP-8025 specs | Not relevant — EIP-8025 not implemented |
+| #4962 | Sanity/blocks tests for missed payload withdrawal interactions | **Merged 2026-03-25.** Test vectors only (4 tests for missed payload + withdrawal edge cases). Verified (run 2363): vibehouse already handles all 4 scenarios correctly — `process_withdrawals_gloas` returns early on EMPTY parent without clearing `payload_expected_withdrawals`, envelope validation checks stale withdrawals, block production uses stale value directly. Integration test `gloas_stale_withdrawal_carryover_across_empty_parent` covers this. |
+| #4939 | Request missing payload envelopes for index-1 attestation | **Merged 2026-03-24.** Already implemented — envelope request via ExecutionPayloadEnvelopesByRoot RPC when index-1 attestation arrives without envelope. |
 
 ### Open Gloas PRs (still monitoring)
 
@@ -53,8 +55,6 @@ No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2362, 20
 |----|-------------|-------|
 | #4979 | PTC window cache in BeaconState | Major change, renamed to `ptc_window`, still under active design discussion, not merged (as of 2026-03-25). Implementation verified against latest PR diff (run 2362) — matches exactly. |
 | #5036 | Relax bid gossip dependency on proposer preferences | Open — proactively implemented (commit 1c7e608d4) |
-| #5035 | Allow same epoch proposer preferences | **Merged 2026-03-25** — proactively implemented (commit 3edc6f63d) |
-| #4962 | Sanity/blocks tests for missed payload withdrawal interactions | Test vectors |
 | #4960 | Fork choice test for new validator deposit | Test vectors |
 | #4954 | Update fork choice store to use milliseconds | Open, 0 reviews, large refactor (28 files) — not worth implementing proactively |
 | #4932 | Sanity/blocks tests with payload attestation coverage | Test vectors |
