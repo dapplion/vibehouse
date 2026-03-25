@@ -118,3 +118,5 @@ Run 2494: No new spec PRs merged since run 2493. All 8 open Gloas PRs unchanged 
 Run 2495: No new spec PRs merged since run 2494. All 8 open Gloas PRs unchanged (#5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI in progress for run 2489 commit (ef-tests+clippy+network passed, 3 jobs running). No actionable work.
 
 Run 2496: No new spec PRs merged since run 2495. All 8 open Gloas PRs unchanged (#5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI in progress for run 2489 commit (5/6 passed: ef-tests, clippy, network+op_pool, http_api, check — beacon_chain+unit tests still running). No actionable work.
+
+Run 2497: No new spec PRs merged since run 2496. All 8 open Gloas PRs unchanged (#5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI green — all 6 jobs passed for run 2489 commit (11b70dfc1). No actionable work.
