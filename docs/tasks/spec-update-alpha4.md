@@ -57,6 +57,8 @@ Run 2441: Full audit — no new spec PRs merged since run 2440. All open PRs unc
 
 Run 2443: Full audit — no new spec PRs merged since run 2441. All open PRs unchanged. v1.7.0-alpha.4 release still not published. Note: #4843 (variable PTC deadline) received negative analysis from ethDreamer ("doesn't seem worth it"), may be dropped — our proactive implementation stands but may need reverting if PR is closed. #4979 (PTC window) was briefly closed in favor of #4992, then reopened (discussion ongoing). #4992 (alternative 2-committee approach, 8KB) was closed. Devnet verified post-alloy 1.8.1 update: finalized epoch 8 at slot 81 (4 nodes, gloas fork at epoch 1). execution_layer tests: 143/143 pass. Clippy: zero warnings. No actionable work.
 
+Run 2444: Full audit — no new spec PRs merged since run 2443. All open PRs unchanged (#4979, #5036, #4843, #4898, #4892, #4960, #4932). #4979 (PTC window) updated today with commit "State that update_fast_confirmation_variables must be called once" on #4747, but #4979 itself has no new commits since Mar 24 (doc-only fixes already verified). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). Clippy: zero warnings. cargo audit: same known RSA advisory (no fix). Tests: 1033 state_processing pass, 140 EF (fake_crypto) pass, 80 EF (real crypto) pass. No actionable work.
+
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
