@@ -47,7 +47,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 ## Test Vectors
 
-No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2404, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new Gloas PRs merged since run 2403. Nightly CI run 23533380698: all 25 jobs green. Clippy clean (0 warnings). Workspace tests pass (excluding web3signer — needs external Docker). All stable, no action needed.
+No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2405, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new Gloas PRs merged since run 2404. Nightly CI run 23533380698: all 25 jobs green. Clippy clean (0 warnings). Workspace tests pass (excluding web3signer — needs external Docker). Verified #4843 variable PTC deadline: our `<=` comparison (line 1907 beacon_chain.rs) matches latest spec commit (64fa9c13). All stable, no action needed.
 
 ## Open Gloas PRs to Watch
 
