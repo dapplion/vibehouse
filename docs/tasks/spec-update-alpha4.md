@@ -47,13 +47,13 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 ## Test Vectors
 
-No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2420, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new Gloas PRs merged since run 2419. All 10 open Gloas PRs unchanged. Clippy clean. No action needed.
+No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2423, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new Gloas PRs merged since run 2422. PR #4979 has 2 new commits (e7b19104 "Fix epoch restrictions in paragraph", 89ce53b0 "Fix typo") — both doc-only, no behavioral changes; implementation still aligned. All 10 open Gloas PRs unchanged. Build and clippy clean. No action needed.
 
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
 |----|-------------|-------|
-| #4979 | PTC window cache in BeaconState | Major change, renamed to `ptc_window`, still under active design discussion, not merged (as of 2026-03-25). Also tagged `heze`. Implementation verified (run 2394) — Mar 23 commit (31745d0d) adds MIN_SEED_LOOKAHEAD back; vibehouse already uses it in PtcWindowSlots = (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH. Still aligned. |
+| #4979 | PTC window cache in BeaconState | Major change, renamed to `ptc_window`, still under active design discussion, not merged (as of 2026-03-25). Also tagged `heze`. Implementation verified (run 2423) — Mar 24 commits (e7b19104 "Fix epoch restrictions in paragraph", 89ce53b0 "Fix typo") are doc-only; vibehouse implementation unchanged and aligned. |
 | #5036 | Relax bid gossip dependency on proposer preferences | Open — proactively implemented (commit 1c7e608d4). Verified (run 2374): latest commit (4e455a3) is doc-only, no behavioral changes. |
 | #4960 | Fork choice test for new validator deposit | Test vectors |
 | #4954 | Update fork choice store to use milliseconds | Open, 0 reviews, large refactor (28 files), also tagged `heze` — not worth implementing proactively |
