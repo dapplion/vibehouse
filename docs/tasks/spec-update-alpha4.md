@@ -93,6 +93,8 @@ Run 2463: No new spec PRs merged since run 2462. Fixed CI failure: http_api test
 
 Run 2464: No new spec PRs merged since run 2463. All open Gloas PRs unchanged (#4979, #5036, #4843, #4898, #4892, #4960, #4932, #4954). #4979 still 15 commits (last: 89ce53b0 Mar 24), mergeable:clean. v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0 (Sep 2025). CI in progress for run 2463 http_api fix (all 6 jobs running). No actionable work.
 
+Run 2465: No new spec PRs merged since run 2464. All open Gloas PRs unchanged (#4979, #5036, #4843, #4898, #4892, #4960, #4932, #4954). v1.7.0-alpha.4 release still not published (latest release = v1.6.1). EF test vectors still v1.6.0-beta.0. CI in progress for run 2463 http_api fix (check+clippy passed, 5 test jobs running). Nightly green (Mar 24+25). cargo audit: same known advisories (1 rsa vuln, 5 unmaintained). No actionable work.
+
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
