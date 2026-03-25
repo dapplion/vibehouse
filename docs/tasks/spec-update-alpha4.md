@@ -28,38 +28,38 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 | PR | Description | Status |
 |----|-------------|--------|
-| #5035 | Allow same epoch proposer preferences | Already implemented — gossip validation accepts current+next epoch (gossip_methods.rs:4111), slot-not-passed check (4124), epoch_offset index calc (4166-4171). VC broadcasts for both epochs (duties_service.rs:1676-1726). |
+| #5035 | Allow same epoch proposer preferences | **Merged 2026-03-25.** Already implemented — gossip validation accepts current+next epoch (gossip_methods.rs:4111), slot-not-passed check (4124), epoch_offset index calc (4166-4171). VC broadcasts for both epochs (duties_service.rs:1676-1726). |
 | #5037 | Remove fork version/epoch in EIP-8025 specs | Not relevant — EIP-8025 not implemented |
 
 ### Open Gloas PRs (still monitoring)
 
 | PR | Description | Status |
 |----|-------------|--------|
-| #4979 | PTC window cache | **Proactively implemented** — all code done, EF test handler skips schema-mismatched vectors |
+| #4979 | PTC window cache | **Proactively implemented** — all code done, EF test handler skips schema-mismatched vectors. Verified implementation matches latest PR diff (run 2362). |
 | #5036 | Relax bid gossip dependency on proposer preferences | **Proactively implemented** — bid validation uses conditional `if let Some(preferences)` (gloas_verification.rs:480) |
 | #4898 | Simplify fork choice is_supporting_vote | Approved, not merged. Already implemented debug_assert. |
 | #4892 | Assert slot >= block slot in fork choice | Approved, not merged. Already implemented debug_assert. |
-| #4843 | Variable PTC deadline | Still in discussion, 1 approval, multiple comments. Not ready. |
+| #4843 | Variable PTC deadline | 11 reviews, active discussion. Not ready. |
 | #4960 | Gloas fork choice test (new validator deposit) | Test vectors — will integrate when released |
 | #4932 | Gloas sanity/blocks tests with payload attestation coverage | Test vectors — will integrate when released |
 
 ## Test Vectors
 
-No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2361, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025).
+No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2362, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025).
 
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
 |----|-------------|-------|
-| #4979 | PTC window cache in BeaconState | Major change, renamed to `ptc_window`, still under active design discussion, not merged (as of 2026-03-25) |
+| #4979 | PTC window cache in BeaconState | Major change, renamed to `ptc_window`, still under active design discussion, not merged (as of 2026-03-25). Implementation verified against latest PR diff (run 2362) — matches exactly. |
 | #5036 | Relax bid gossip dependency on proposer preferences | Open — proactively implemented (commit 1c7e608d4) |
-| #5035 | Allow same epoch proposer preferences | Open — proactively implemented (commit 3edc6f63d) |
+| #5035 | Allow same epoch proposer preferences | **Merged 2026-03-25** — proactively implemented (commit 3edc6f63d) |
 | #4962 | Sanity/blocks tests for missed payload withdrawal interactions | Test vectors |
 | #4960 | Fork choice test for new validator deposit | Test vectors |
 | #4954 | Update fork choice store to use milliseconds | Open, 0 reviews, large refactor (28 files) — not worth implementing proactively |
 | #4932 | Sanity/blocks tests with payload attestation coverage | Test vectors |
 | #4898 | Remove pending status from tiebreaker | 1 approval, still open — vibehouse already matches post-PR behavior |
 | #4892 | Remove impossible branch in forkchoice | 2 approvals, still open — vibehouse already uses debug_assert + == (matches post-PR) |
-| #4747 | Fast Confirmation Rule | Open, actively updated Mar 2026 — new feature, monitor |
-| #4843 | Variable PTC deadline | Open, Jan 2026 |
+| #4747 | Fast Confirmation Rule | Open, 127 reviews, actively updated 2026-03-24 — new feature, monitor |
+| #4843 | Variable PTC deadline | Open, 11 reviews, last updated 2026-03-20 |
 | #4840 | Add support for EIP-7843 to Gloas | Open, Jan 2026 |
