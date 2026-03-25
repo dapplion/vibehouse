@@ -99,6 +99,8 @@ Run 2466: No new spec PRs merged since run 2465. All open Gloas PRs unchanged (#
 
 Run 2467: No new spec PRs merged since run 2466. All open Gloas PRs unchanged (#4979, #5036, #4843, #4898, #4892, #4960, #4932, #4954). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI in progress for run 2463 http_api fix (4/6 jobs green: check+clippy, ef-tests, network+op_pool all pass; unit, beacon_chain, http_api still running). #5040 merged today (fork choice test infra fix, Python only — already tracked in run 2451). No actionable work.
 
+Run 2468: No new spec PRs merged since run 2467. All open Gloas PRs unchanged (#4979, #5036, #4843, #4898, #4892, #4960, #4932, #4954). #4979 still 15 commits (last: 89ce53b0 Mar 24), mergeable:clean. #4747 still dirty/conflicting (79 commits). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI for run 2463 http_api fix: 4/6 green (check+clippy, ef-tests, network+op_pool, — unit/beacon_chain/http_api still running). cargo audit: same known advisories (1 rsa vuln, 5 unmaintained). Clippy running. Only 3 TODOs remain in Rust code (all blocked on external deps). No actionable work.
+
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
