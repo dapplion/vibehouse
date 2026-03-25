@@ -47,14 +47,14 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 ## Test Vectors
 
-No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2373, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new merged Gloas PRs since last check (run 2373). CI for #4843 commit: check+clippy+fmt+EF tests passed; network test flake (test_rpc_block_reprocessing timing 3×10ms too tight for CI) — fixed in commit 305356005 (20×50ms). cargo audit: only upstream RSA advisory (unfixable). All open PRs still open, no new merges. Clean build: zero compiler warnings, zero clippy warnings. #5036 re-verified (run 2373): new validator.md commit is doc-only, implementation already aligned (conditional `if let Some(preferences)` pattern). #4979 re-verified: doc-only commits, already aligned.
+No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2374, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new merged Gloas PRs since last check (run 2374). CI healthy: check+clippy+fmt+EF tests passed, remaining jobs in progress. cargo audit: only upstream RSA advisory (unfixable). All open PRs still open, no new merges. #4979: latest commits (e7b1910, 89ce53b) are doc/typo fixes only. #5036: latest commit (4e455a3) is doc-only. Both already aligned.
 
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
 |----|-------------|-------|
-| #4979 | PTC window cache in BeaconState | Major change, renamed to `ptc_window`, still under active design discussion, not merged (as of 2026-03-25). Implementation verified (run 2373) — all recent commits are doc/typo fixes; no behavioral changes, vibehouse already aligned. |
-| #5036 | Relax bid gossip dependency on proposer preferences | Open — proactively implemented (commit 1c7e608d4). Verified (run 2373): new validator.md commit is doc-only, no behavioral changes. |
+| #4979 | PTC window cache in BeaconState | Major change, renamed to `ptc_window`, still under active design discussion, not merged (as of 2026-03-25). Implementation verified (run 2374) — latest commits (e7b1910, 89ce53b) are doc/typo fixes; no behavioral changes, vibehouse already aligned. |
+| #5036 | Relax bid gossip dependency on proposer preferences | Open — proactively implemented (commit 1c7e608d4). Verified (run 2374): latest commit (4e455a3) is doc-only, no behavioral changes. |
 | #4960 | Fork choice test for new validator deposit | Test vectors |
 | #4954 | Update fork choice store to use milliseconds | Open, 0 reviews, large refactor (28 files) — not worth implementing proactively |
 | #4932 | Sanity/blocks tests with payload attestation coverage | Test vectors |
