@@ -96,3 +96,5 @@ Run 2483: No new spec PRs merged since run 2482. Only Python dep updates (#5042 
 Run 2484: No new spec PRs merged since run 2483. All open Gloas PRs unchanged (#5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). #5036 still contested (jtraglia comment unchanged). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.5.0. CI green. No actionable work.
 
 Run 2485: No new spec PRs merged since run 2484. All open Gloas PRs unchanged. v1.7.0-alpha.4 release still not published. CI green. cargo audit unchanged (1 rsa vuln no fix, 5 unmaintained). No actionable work.
+
+Run 2486: No new spec PRs merged since run 2485. All open Gloas PRs unchanged. #5036 update: both author (nflaig) and reviewer (jtraglia) now against the PR — likely to be closed. v1.7.0-alpha.4 release still not published (latest = v1.6.1). CI green. No actionable work.
