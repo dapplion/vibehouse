@@ -2897,21 +2897,22 @@ async fn bid_submission_accepted_valid_builder() {
     let state = &head.beacon_state;
     let head_root = head.beacon_block_root;
     let current_slot = harness.chain.slot().unwrap();
+    let next_slot = current_slot + 1;
     let spec = &harness.chain.spec;
 
-    // Insert proposer preferences for the current slot (required for bid validation)
+    // Insert proposer preferences for the next slot (required for bid validation)
     let fee_recipient = Address::repeat_byte(0x42);
     let gas_limit = 30_000_000u64;
 
     let preferences = ProposerPreferences {
-        proposal_slot: current_slot.as_u64(),
+        proposal_slot: next_slot.as_u64(),
         validator_index: 0,
         fee_recipient,
         gas_limit,
     };
 
     let pref_domain = spec.get_domain(
-        current_slot.epoch(E::slots_per_epoch()),
+        next_slot.epoch(E::slots_per_epoch()),
         Domain::ProposerPreferences,
         &state.fork(),
         state.genesis_validators_root(),
@@ -2931,7 +2932,7 @@ async fn bid_submission_accepted_valid_builder() {
 
     // Create and sign a valid builder bid
     let bid_msg: ExecutionPayloadBid<E> = ExecutionPayloadBid {
-        slot: current_slot,
+        slot: next_slot,
         execution_payment: 1,
         builder_index: 0,
         value: 100,
@@ -2942,7 +2943,7 @@ async fn bid_submission_accepted_valid_builder() {
     };
 
     let bid_domain = spec.get_domain(
-        current_slot.epoch(E::slots_per_epoch()),
+        next_slot.epoch(E::slots_per_epoch()),
         Domain::BeaconBuilder,
         &state.fork(),
         state.genesis_validators_root(),
@@ -2983,19 +2984,20 @@ async fn bid_submission_duplicate_returns_ok() {
     let state = &head.beacon_state;
     let head_root = head.beacon_block_root;
     let current_slot = harness.chain.slot().unwrap();
+    let next_slot = current_slot + 1;
     let spec = &harness.chain.spec;
 
     let fee_recipient = Address::repeat_byte(0x42);
     let gas_limit = 30_000_000u64;
 
     let preferences = ProposerPreferences {
-        proposal_slot: current_slot.as_u64(),
+        proposal_slot: next_slot.as_u64(),
         validator_index: 0,
         fee_recipient,
         gas_limit,
     };
     let pref_domain = spec.get_domain(
-        current_slot.epoch(E::slots_per_epoch()),
+        next_slot.epoch(E::slots_per_epoch()),
         Domain::ProposerPreferences,
         &state.fork(),
         state.genesis_validators_root(),
@@ -3013,7 +3015,7 @@ async fn bid_submission_duplicate_returns_ok() {
         .expect("should accept proposer preferences");
 
     let bid_msg: ExecutionPayloadBid<E> = ExecutionPayloadBid {
-        slot: current_slot,
+        slot: next_slot,
         execution_payment: 1,
         builder_index: 0,
         value: 100,
@@ -3023,7 +3025,7 @@ async fn bid_submission_duplicate_returns_ok() {
         ..Default::default()
     };
     let bid_domain = spec.get_domain(
-        current_slot.epoch(E::slots_per_epoch()),
+        next_slot.epoch(E::slots_per_epoch()),
         Domain::BeaconBuilder,
         &state.fork(),
         state.genesis_validators_root(),
@@ -3764,6 +3766,7 @@ async fn bid_submission_rejected_invalid_signature() {
     let state = &head.beacon_state;
     let head_root = head.beacon_block_root;
     let current_slot = harness.chain.slot().unwrap();
+    let next_slot = current_slot + 1;
     let spec = &harness.chain.spec;
 
     // Insert proposer preferences (required for bid validation)
@@ -3771,14 +3774,14 @@ async fn bid_submission_rejected_invalid_signature() {
     let gas_limit = 30_000_000u64;
 
     let preferences = ProposerPreferences {
-        proposal_slot: current_slot.as_u64(),
+        proposal_slot: next_slot.as_u64(),
         validator_index: 0,
         fee_recipient,
         gas_limit,
     };
 
     let pref_domain = spec.get_domain(
-        current_slot.epoch(E::slots_per_epoch()),
+        next_slot.epoch(E::slots_per_epoch()),
         Domain::ProposerPreferences,
         &state.fork(),
         state.genesis_validators_root(),
@@ -3798,7 +3801,7 @@ async fn bid_submission_rejected_invalid_signature() {
 
     // Create the bid message — all fields valid
     let bid_msg: ExecutionPayloadBid<E> = ExecutionPayloadBid {
-        slot: current_slot,
+        slot: next_slot,
         execution_payment: 1,
         builder_index: 0,
         value: 100,
@@ -3810,7 +3813,7 @@ async fn bid_submission_rejected_invalid_signature() {
 
     // Sign with the WRONG key (validator 0 instead of builder 0)
     let bid_domain = spec.get_domain(
-        current_slot.epoch(E::slots_per_epoch()),
+        next_slot.epoch(E::slots_per_epoch()),
         Domain::BeaconBuilder,
         &state.fork(),
         state.genesis_validators_root(),
@@ -3929,6 +3932,7 @@ async fn bid_submission_rejected_insufficient_balance() {
     let state = &head.beacon_state;
     let head_root = head.beacon_block_root;
     let current_slot = harness.chain.slot().unwrap();
+    let next_slot = current_slot + 1;
     let spec = &harness.chain.spec;
 
     // Insert proposer preferences
@@ -3936,13 +3940,13 @@ async fn bid_submission_rejected_insufficient_balance() {
     let gas_limit = 30_000_000u64;
 
     let preferences = ProposerPreferences {
-        proposal_slot: current_slot.as_u64(),
+        proposal_slot: next_slot.as_u64(),
         validator_index: 0,
         fee_recipient,
         gas_limit,
     };
     let pref_domain = spec.get_domain(
-        current_slot.epoch(E::slots_per_epoch()),
+        next_slot.epoch(E::slots_per_epoch()),
         Domain::ProposerPreferences,
         &state.fork(),
         state.genesis_validators_root(),
@@ -3961,7 +3965,7 @@ async fn bid_submission_rejected_insufficient_balance() {
 
     // Bid with value that exceeds builder's available balance
     let bid_msg: ExecutionPayloadBid<E> = ExecutionPayloadBid {
-        slot: current_slot,
+        slot: next_slot,
         execution_payment: 1,
         builder_index: 0,
         value: 999_999_999_999,
@@ -3972,7 +3976,7 @@ async fn bid_submission_rejected_insufficient_balance() {
     };
 
     let bid_domain = spec.get_domain(
-        current_slot.epoch(E::slots_per_epoch()),
+        next_slot.epoch(E::slots_per_epoch()),
         Domain::BeaconBuilder,
         &state.fork(),
         state.genesis_validators_root(),
@@ -4022,6 +4026,7 @@ async fn bid_submission_rejected_fee_recipient_mismatch() {
     let state = &head.beacon_state;
     let head_root = head.beacon_block_root;
     let current_slot = harness.chain.slot().unwrap();
+    let next_slot = current_slot + 1;
     let spec = &harness.chain.spec;
 
     // Submit proposer preferences with one fee_recipient
@@ -4029,13 +4034,13 @@ async fn bid_submission_rejected_fee_recipient_mismatch() {
     let gas_limit = 30_000_000u64;
 
     let preferences = ProposerPreferences {
-        proposal_slot: current_slot.as_u64(),
+        proposal_slot: next_slot.as_u64(),
         validator_index: 0,
         fee_recipient,
         gas_limit,
     };
     let pref_domain = spec.get_domain(
-        current_slot.epoch(E::slots_per_epoch()),
+        next_slot.epoch(E::slots_per_epoch()),
         Domain::ProposerPreferences,
         &state.fork(),
         state.genesis_validators_root(),
@@ -4055,7 +4060,7 @@ async fn bid_submission_rejected_fee_recipient_mismatch() {
     // Create bid with DIFFERENT fee_recipient
     let wrong_fee_recipient = Address::repeat_byte(0x99);
     let bid_msg: ExecutionPayloadBid<E> = ExecutionPayloadBid {
-        slot: current_slot,
+        slot: next_slot,
         execution_payment: 1,
         builder_index: 0,
         value: 100,
@@ -4066,7 +4071,7 @@ async fn bid_submission_rejected_fee_recipient_mismatch() {
     };
 
     let bid_domain = spec.get_domain(
-        current_slot.epoch(E::slots_per_epoch()),
+        next_slot.epoch(E::slots_per_epoch()),
         Domain::BeaconBuilder,
         &state.fork(),
         state.genesis_validators_root(),
@@ -4116,6 +4121,7 @@ async fn bid_submission_rejected_gas_limit_mismatch() {
     let state = &head.beacon_state;
     let head_root = head.beacon_block_root;
     let current_slot = harness.chain.slot().unwrap();
+    let next_slot = current_slot + 1;
     let spec = &harness.chain.spec;
 
     // Submit proposer preferences with gas_limit=30M
@@ -4123,13 +4129,13 @@ async fn bid_submission_rejected_gas_limit_mismatch() {
     let gas_limit = 30_000_000u64;
 
     let preferences = ProposerPreferences {
-        proposal_slot: current_slot.as_u64(),
+        proposal_slot: next_slot.as_u64(),
         validator_index: 0,
         fee_recipient,
         gas_limit,
     };
     let pref_domain = spec.get_domain(
-        current_slot.epoch(E::slots_per_epoch()),
+        next_slot.epoch(E::slots_per_epoch()),
         Domain::ProposerPreferences,
         &state.fork(),
         state.genesis_validators_root(),
@@ -4149,7 +4155,7 @@ async fn bid_submission_rejected_gas_limit_mismatch() {
     // Create bid with DIFFERENT gas_limit
     let wrong_gas_limit = 50_000_000u64;
     let bid_msg: ExecutionPayloadBid<E> = ExecutionPayloadBid {
-        slot: current_slot,
+        slot: next_slot,
         execution_payment: 1,
         builder_index: 0,
         value: 100,
@@ -4160,7 +4166,7 @@ async fn bid_submission_rejected_gas_limit_mismatch() {
     };
 
     let bid_domain = spec.get_domain(
-        current_slot.epoch(E::slots_per_epoch()),
+        next_slot.epoch(E::slots_per_epoch()),
         Domain::BeaconBuilder,
         &state.fork(),
         state.genesis_validators_root(),
@@ -4212,6 +4218,7 @@ async fn bid_submission_rejected_not_highest_value() {
     let state = &head.beacon_state;
     let head_root = head.beacon_block_root;
     let current_slot = harness.chain.slot().unwrap();
+    let next_slot = current_slot + 1;
     let spec = &harness.chain.spec;
 
     let fee_recipient = Address::repeat_byte(0x42);
@@ -4219,13 +4226,13 @@ async fn bid_submission_rejected_not_highest_value() {
 
     // Submit proposer preferences
     let preferences = ProposerPreferences {
-        proposal_slot: current_slot.as_u64(),
+        proposal_slot: next_slot.as_u64(),
         validator_index: 0,
         fee_recipient,
         gas_limit,
     };
     let pref_domain = spec.get_domain(
-        current_slot.epoch(E::slots_per_epoch()),
+        next_slot.epoch(E::slots_per_epoch()),
         Domain::ProposerPreferences,
         &state.fork(),
         state.genesis_validators_root(),
@@ -4244,7 +4251,7 @@ async fn bid_submission_rejected_not_highest_value() {
 
     // Submit first bid with HIGH value from builder 0
     let bid_msg_high: ExecutionPayloadBid<E> = ExecutionPayloadBid {
-        slot: current_slot,
+        slot: next_slot,
         execution_payment: 1,
         builder_index: 0,
         value: 1000,
@@ -4255,7 +4262,7 @@ async fn bid_submission_rejected_not_highest_value() {
     };
 
     let bid_domain = spec.get_domain(
-        current_slot.epoch(E::slots_per_epoch()),
+        next_slot.epoch(E::slots_per_epoch()),
         Domain::BeaconBuilder,
         &state.fork(),
         state.genesis_validators_root(),
@@ -4274,7 +4281,7 @@ async fn bid_submission_rejected_not_highest_value() {
 
     // Submit second bid with LOWER value from builder 1
     let bid_msg_low: ExecutionPayloadBid<E> = ExecutionPayloadBid {
-        slot: current_slot,
+        slot: next_slot,
         execution_payment: 1,
         builder_index: 1,
         value: 50, // lower than 1000
@@ -4562,6 +4569,7 @@ async fn bid_submission_rejected_builder_equivocation() {
     let state = &head.beacon_state;
     let head_root = head.beacon_block_root;
     let current_slot = harness.chain.slot().unwrap();
+    let next_slot = current_slot + 1;
     let spec = &harness.chain.spec;
 
     let fee_recipient = Address::repeat_byte(0x42);
@@ -4569,13 +4577,13 @@ async fn bid_submission_rejected_builder_equivocation() {
 
     // Submit proposer preferences
     let preferences = ProposerPreferences {
-        proposal_slot: current_slot.as_u64(),
+        proposal_slot: next_slot.as_u64(),
         validator_index: 0,
         fee_recipient,
         gas_limit,
     };
     let pref_domain = spec.get_domain(
-        current_slot.epoch(E::slots_per_epoch()),
+        next_slot.epoch(E::slots_per_epoch()),
         Domain::ProposerPreferences,
         &state.fork(),
         state.genesis_validators_root(),
@@ -4593,7 +4601,7 @@ async fn bid_submission_rejected_builder_equivocation() {
         .expect("should accept proposer preferences");
 
     let bid_domain = spec.get_domain(
-        current_slot.epoch(E::slots_per_epoch()),
+        next_slot.epoch(E::slots_per_epoch()),
         Domain::BeaconBuilder,
         &state.fork(),
         state.genesis_validators_root(),
@@ -4601,7 +4609,7 @@ async fn bid_submission_rejected_builder_equivocation() {
 
     // Submit first valid bid
     let bid_msg_1: ExecutionPayloadBid<E> = ExecutionPayloadBid {
-        slot: current_slot,
+        slot: next_slot,
         execution_payment: 1,
         builder_index: 0,
         value: 100,
@@ -4624,7 +4632,7 @@ async fn bid_submission_rejected_builder_equivocation() {
     // Submit second bid from SAME builder, same slot, but different block_hash
     // This produces a different tree hash root → equivocation
     let bid_msg_2: ExecutionPayloadBid<E> = ExecutionPayloadBid {
-        slot: current_slot,
+        slot: next_slot,
         execution_payment: 1,
         builder_index: 0,
         value: 200, // different value → different tree hash root
