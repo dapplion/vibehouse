@@ -53,6 +53,8 @@ Run 2439: Audited all PRs merged since run 2438 — #5035, #4962, #5023, #4939 a
 
 Run 2440: Full audit — no new spec PRs merged since run 2439. All 6 tracked open PRs (#4979, #5036, #4898, #4892, #4960, #4932) still open. v1.7.0-alpha.4 release still not published (spec-test-version-check confirms latest = v1.7.0-alpha.3). CI green, clippy clean (zero warnings), devnet passing (finalized epoch 8), cargo audit clean (1 known RSA advisory in transitive dep, no fix available). Production consensus code verified: zero unwrap() calls in gloas state processing. No actionable work.
 
+Run 2441: Full audit — no new spec PRs merged since run 2440. All open PRs unchanged (#4979, #5036, #4843, #4898, #4892, #4960, #4932). #4843 mergeable:clean (approved), #4979/#5036 still blocked. v1.7.0-alpha.4 tag still not created. CI green, clippy zero warnings. Production safety audit: zero unwrap() calls in all critical production paths (state_processing, fork_choice, beacon_chain core). Devnet verified: finalized epoch 8. No actionable work.
+
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
