@@ -67,6 +67,8 @@ Run 2447: No new spec PRs merged since run 2446. CI green (latest ci, spec-test-
 
 Run 2451: #5040 merged (fork choice test infra fix — Python test generator bug, no production code impact). All open Gloas PRs unchanged (#4979, #5036, #4843, #4898, #4892, #4960, #4932). v1.7.0-alpha.4 release still not published. CI green. cargo audit: same known advisories. No actionable work.
 
+Run 2452: No new spec PRs merged since run 2451. All open Gloas PRs unchanged (#4979, #5036, #4843, #4898, #4892, #4960, #4932). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI green (in-progress run for 2449, all prior runs success). Clippy: zero warnings. No actionable work.
+
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
