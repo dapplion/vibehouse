@@ -98,3 +98,5 @@ Run 2484: No new spec PRs merged since run 2483. All open Gloas PRs unchanged (#
 Run 2485: No new spec PRs merged since run 2484. All open Gloas PRs unchanged. v1.7.0-alpha.4 release still not published. CI green. cargo audit unchanged (1 rsa vuln no fix, 5 unmaintained). No actionable work.
 
 Run 2486: No new spec PRs merged since run 2485. All open Gloas PRs unchanged. #5036 update: both author (nflaig) and reviewer (jtraglia) now against the PR — likely to be closed. v1.7.0-alpha.4 release still not published (latest = v1.6.1). CI green. No actionable work.
+
+Run 2487: No new spec PRs merged since run 2486. All open Gloas PRs unchanged (#5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). CI green (nightly Mar 22 failure was transient nextest 404, Mar 23 was slasher dead_code already fixed in 5d23ecf85). Clippy: zero warnings. cargo audit: unchanged (1 rsa vuln no fix, 5 unmaintained). No actionable work.
