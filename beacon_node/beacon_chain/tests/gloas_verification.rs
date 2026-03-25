@@ -2142,10 +2142,10 @@ async fn envelope_prior_to_finalization_direct() {
 // =============================================================================
 
 /// Bid submitted without proposer preferences proceeds past the preferences check
-/// (consensus-specs #5036). The bid may still fail on signature or other checks,
-/// but the absence of preferences is no longer a rejection/ignore reason.
+/// Spec: [IGNORE] the SignedProposerPreferences for bid.slot has been seen.
+/// Without preferences, the bid should be ignored (ProposerPreferencesNotSeen).
 #[tokio::test]
-async fn bid_no_proposer_preferences_passes_preferences_check() {
+async fn bid_no_proposer_preferences_is_ignored() {
     let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
     let current_slot = harness.chain.slot().unwrap();
 
@@ -2161,11 +2161,14 @@ async fn bid_no_proposer_preferences_passes_preferences_check() {
     bid.message.value = 100;
     bid.message.parent_block_root = head_root;
 
-    // Without preferences, the bid should pass the preferences check and fail
-    // later (e.g. on signature verification or parent block hash).
-    let _err = unwrap_err(
+    // Without preferences, the bid should be ignored per spec.
+    let err = unwrap_err(
         harness.chain.verify_execution_bid_for_gossip(bid),
-        "should fail on a later check, not on preferences",
+        "should ignore bid without proposer preferences",
+    );
+    assert!(
+        matches!(err, ExecutionBidError::ProposerPreferencesNotSeen { .. }),
+        "expected ProposerPreferencesNotSeen, got {err:?}"
     );
 }
 

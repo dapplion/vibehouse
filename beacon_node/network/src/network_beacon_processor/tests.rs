@@ -4737,11 +4737,10 @@ async fn test_gloas_gossip_multiple_bids_best_selected_from_pool() {
 
 /// Gloas gossip: execution bid without proposer preferences is ACCEPTED.
 ///
-/// Per consensus-specs #5036: bids are accepted even when no proposer preferences
-/// have been seen for the slot. Fee recipient and gas limit checks are only
-/// performed when preferences are available.
+/// Spec: [IGNORE] the SignedProposerPreferences for bid.slot has been seen.
+/// Without preferences, the bid is IGNORED (dropped without penalty).
 #[tokio::test]
-async fn test_gloas_gossip_bid_no_preferences_accepted() {
+async fn test_gloas_gossip_bid_no_preferences_ignored() {
     if test_spec::<E>().gloas_fork_epoch.is_none() {
         return;
     }
@@ -4750,7 +4749,7 @@ async fn test_gloas_gossip_bid_no_preferences_accepted() {
     let head = rig.chain.head_snapshot();
     let current_slot = rig.chain.slot().unwrap();
 
-    // Do NOT insert preferences — bid should still be accepted (consensus-specs #5036)
+    // Do NOT insert preferences — bid should be ignored per spec
 
     let bid_msg = ExecutionPayloadBid {
         slot: current_slot,
@@ -4769,7 +4768,7 @@ async fn test_gloas_gossip_bid_no_preferences_accepted() {
     );
 
     let result = drain_validation_result(&mut rig.network_rx).await;
-    assert_accept(result);
+    assert_ignore(result);
 }
 
 /// Gloas gossip: execution bid with mismatched fee_recipient is REJECTED.

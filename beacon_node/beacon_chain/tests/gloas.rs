@@ -13943,15 +13943,14 @@ async fn gloas_payload_attestation_invalid_sig_does_not_poison_cache() {
 }
 
 // =============================================================================
-// Execution bid gossip: no proposer preferences (consensus-specs #5036)
+// Execution bid gossip: no proposer preferences → IGNORE
 // =============================================================================
 
+/// Spec: [IGNORE] the SignedProposerPreferences for bid.slot has been seen.
 /// When a bid arrives for a slot where no proposer preferences have been seen,
-/// the bid passes the preferences check and continues to later validation steps.
-/// Per consensus-specs #5036, bids can flow even if preferences were delayed or
-/// missed. The proposer still validates bids against their own preferences locally.
+/// the bid is ignored (ProposerPreferencesNotSeen).
 #[tokio::test]
-async fn gloas_bid_gossip_accepts_without_proposer_preferences() {
+async fn gloas_bid_gossip_ignores_without_proposer_preferences() {
     // Builder 0: deposit_epoch=0, balance=10 ETH
     let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
     Box::pin(harness.extend_slots(64)).await;
@@ -13968,15 +13967,14 @@ async fn gloas_bid_gossip_accepts_without_proposer_preferences() {
         "no preferences should exist for slot {next_slot} before insertion"
     );
 
-    // Create a bid for next_slot. Without preferences, the bid should pass
-    // all checks including preferences (which are now optional).
+    // Create a bid for next_slot. Without preferences, the bid should be ignored.
     let bid = make_external_bid(&state, head_root, next_slot, 0, 5000);
 
-    // The bid should be accepted — preferences are no longer required
-    assert!(
-        harness.chain.verify_execution_bid_for_gossip(bid).is_ok(),
-        "bid without preferences should be accepted"
-    );
+    match harness.chain.verify_execution_bid_for_gossip(bid) {
+        Err(ExecutionBidError::ProposerPreferencesNotSeen { .. }) => {}
+        Err(e) => panic!("expected ProposerPreferencesNotSeen, got {e:?}"),
+        Ok(_) => panic!("bid without preferences should be ignored"),
+    }
 }
 
 // =============================================================================

@@ -38,7 +38,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 | PR | Description | Status |
 |----|-------------|--------|
 | #4979 | PTC window cache | **Proactively implemented** — all code done, EF test handler skips schema-mismatched vectors. Verified implementation matches latest PR diff including MIN_SEED_LOOKAHEAD constant usage (run 2364). |
-| #5036 | Relax bid gossip dependency on proposer preferences | **Proactively implemented** — bid validation uses conditional `if let Some(preferences)` (gloas_verification.rs:480). Verified matches latest PR diff (run 2364). |
+| #5036 | Relax bid gossip dependency on proposer preferences | **Reverted (run 2488)** — PR is effectively dead (both author and reviewer oppose it). Restored spec-compliant behavior: bids are IGNORED when proposer preferences haven't been seen. |
 | #4898 | Simplify fork choice is_supporting_vote | Approved, not merged. Already implemented debug_assert. |
 | #4892 | Assert slot >= block slot in fork choice | Approved, not merged. Already implemented debug_assert. |
 | #4843 | Variable PTC deadline | **Proactively implemented** (run 2371) — rename payload_present→payload_timely, is_payload_timely→has_payload_quorum, MIN_PAYLOAD_DUE_BPS config, variable deadline in get_payload_attestation_data. Commit a7baf6b57. |
