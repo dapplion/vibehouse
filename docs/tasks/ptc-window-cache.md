@@ -37,6 +37,24 @@ Proactive implementation of the PTC (Payload Timeliness Committee) window cache 
 
 ## Test results
 
-- state_processing: 1026/1026 pass
+- state_processing: 1033/1033 pass (7 new ptc_window tests added in run 2360)
 - types: 1085/1085 pass
 - EF tests: Gloas-specific tests fail (expected — SSZ schema mismatch with pre-#4979 test vectors)
+
+## Spec alignment audit (run 2360, 2026-03-25)
+
+Compared vibehouse implementation against latest #4979 spec diff (commit 89ce53b). All behavioral aspects aligned:
+- Window size calculation: identical
+- Shift logic: identical
+- Fork upgrade initialization: correctly handles via upgrade_to_gloas (builds committee caches first)
+- Cache lookup (get_ptc): index calculation matches spec
+- Genesis path: covered via upgrade chain (genesis.rs calls upgrade_to_gloas which initializes ptc_window)
+
+Unit tests added (commit 3bce060a9):
+- `initialize_ptc_window_correct_size` — verifies window has (2+MIN_SEED_LOOKAHEAD)*SPE slots
+- `initialize_ptc_window_previous_epoch_zeroed` — first epoch all zeros
+- `initialize_ptc_window_current_epoch_populated` — current epoch has non-zero entries
+- `get_ptc_committee_reads_from_cache` — cache matches direct compute_ptc
+- `get_ptc_committee_previous_epoch_returns_zeros` — previous epoch returns zeros
+- `process_ptc_window_shifts_epochs` — verifies left-shift preserves entries correctly
+- `process_ptc_window_fills_new_last_epoch` — verifies window length preserved after shift
