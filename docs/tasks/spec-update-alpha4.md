@@ -55,6 +55,8 @@ Run 2440: Full audit — no new spec PRs merged since run 2439. All 6 tracked op
 
 Run 2441: Full audit — no new spec PRs merged since run 2440. All open PRs unchanged (#4979, #5036, #4843, #4898, #4892, #4960, #4932). #4843 mergeable:clean (approved), #4979/#5036 still blocked. v1.7.0-alpha.4 tag still not created. CI green, clippy zero warnings. Production safety audit: zero unwrap() calls in all critical production paths (state_processing, fork_choice, beacon_chain core). Devnet verified: finalized epoch 8. No actionable work.
 
+Run 2443: Full audit — no new spec PRs merged since run 2441. All open PRs unchanged. v1.7.0-alpha.4 release still not published. Note: #4843 (variable PTC deadline) received negative analysis from ethDreamer ("doesn't seem worth it"), may be dropped — our proactive implementation stands but may need reverting if PR is closed. #4979 (PTC window) was briefly closed in favor of #4992, then reopened (discussion ongoing). #4992 (alternative 2-committee approach, 8KB) was closed. Devnet verified post-alloy 1.8.1 update: finalized epoch 8 at slot 81 (4 nodes, gloas fork at epoch 1). execution_layer tests: 143/143 pass. Clippy: zero warnings. No actionable work.
+
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
