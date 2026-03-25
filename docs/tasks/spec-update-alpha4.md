@@ -47,14 +47,14 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 ## Test Vectors
 
-No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2372, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new merged Gloas PRs since last check (run 2372). CI for #4843 commit: check+clippy+fmt+EF tests passed; network test flake (test_rpc_block_reprocessing timing 3×10ms too tight for CI) — fixed in commit 305356005 (20×50ms). cargo audit: only upstream RSA advisory (unfixable). #4979 re-verified (run 2372): two new commits are doc-only, vibehouse fully aligned. All open PRs still open, no new merges.
+No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2373, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new merged Gloas PRs since last check (run 2373). CI for #4843 commit: check+clippy+fmt+EF tests passed; network test flake (test_rpc_block_reprocessing timing 3×10ms too tight for CI) — fixed in commit 305356005 (20×50ms). cargo audit: only upstream RSA advisory (unfixable). All open PRs still open, no new merges. Clean build: zero compiler warnings, zero clippy warnings. #5036 re-verified (run 2373): new validator.md commit is doc-only, implementation already aligned (conditional `if let Some(preferences)` pattern). #4979 re-verified: doc-only commits, already aligned.
 
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
 |----|-------------|-------|
-| #4979 | PTC window cache in BeaconState | Major change, renamed to `ptc_window`, still under active design discussion, not merged (as of 2026-03-25). Implementation verified against latest PR diff (run 2372) — two new commits since run 2364 are doc-only (use MIN_SEED_LOOKAHEAD constant in text); no behavioral changes, vibehouse already aligned. |
-| #5036 | Relax bid gossip dependency on proposer preferences | Open — proactively implemented (commit 1c7e608d4) |
+| #4979 | PTC window cache in BeaconState | Major change, renamed to `ptc_window`, still under active design discussion, not merged (as of 2026-03-25). Implementation verified (run 2373) — all recent commits are doc/typo fixes; no behavioral changes, vibehouse already aligned. |
+| #5036 | Relax bid gossip dependency on proposer preferences | Open — proactively implemented (commit 1c7e608d4). Verified (run 2373): new validator.md commit is doc-only, no behavioral changes. |
 | #4960 | Fork choice test for new validator deposit | Test vectors |
 | #4954 | Update fork choice store to use milliseconds | Open, 0 reviews, large refactor (28 files) — not worth implementing proactively |
 | #4932 | Sanity/blocks tests with payload attestation coverage | Test vectors |
@@ -63,3 +63,5 @@ No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2372, 20
 | #4747 | Fast Confirmation Rule | Open, 127 reviews, actively updated 2026-03-24 — new feature, monitor |
 | #4843 | Variable PTC deadline | Open, APPROVED, 11 reviews. **Proactively implemented** (run 2371, commit a7baf6b57): renamed payload_present→payload_timely across 27 files, is_payload_timely→has_payload_quorum in fork choice, added MIN_PAYLOAD_DUE_BPS (3000) config, variable deadline in get_payload_attestation_data (interpolates linearly from MIN to MAX based on SSZ size). Envelope arrival timing tracked per block root. |
 | #4840 | Add support for EIP-7843 to Gloas | Open, Jan 2026 |
+| #4630 | EIP-7688: Use forward compatible SSZ types in Gloas | Open, stale since Feb 2026. SSZ refactor, light client related. Not worth proactive implementation. |
+| #4558 | Add Cell Dissemination via Partial Message Specification | Open, updated Mar 2026. PeerDAS/fulu + gloas. Monitor. |
