@@ -84,3 +84,5 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 Run 2477-2478: #4558 merged, #5041/#5042 merged (Python tooling only). No actionable Gloas changes. v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.5.0. CI green, clippy clean.
 
 Run 2479: No new spec PRs merged since run 2478. All open Gloas PRs unchanged (#5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest release = v1.6.1). EF test vectors still v1.5.0. CI fully green. Clippy: zero warnings. cargo audit: same known advisories (1 rsa vuln, 5 unmaintained). 11 TODOs remain in Rust code (all blocked on external deps: EIP-7892 ×3, blst safe API, lmdb, PeerDAS checkpoint sync, misc non-critical). No actionable work.
+
+Run 2480: #5040 merged (fork choice compliance test bug fix — Python test infra only, no production code). All open Gloas PRs unchanged (#5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). CI green. 10 TODOs in Rust (all blocked on external deps). No actionable work.
