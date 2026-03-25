@@ -63,6 +63,8 @@ Run 2445: Full audit — no new spec PRs merged since run 2444. All open PRs unc
 
 Run 2446: Full audit — no new spec PRs merged since run 2445. All open PRs unchanged (#4979, #5036, #4843, #4898, #4892, #4960, #4932). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI fully green — alloy 1.8.1 update passed all 6 jobs (check+clippy, ef-tests, beacon_chain, http_api, unit tests, network+op_pool). cargo audit: same RSA advisory (no fix). Rust toolchain up to date (1.94.0 stable, 1.96.0-nightly). No actionable work.
 
+Run 2447: No new spec PRs merged since run 2446. CI green (latest ci, spec-test-version-check, nightly all success). No actionable work.
+
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
