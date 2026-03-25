@@ -113,6 +113,8 @@ Run 2473: No new spec PRs merged since run 2472. All open Gloas PRs unchanged (#
 
 Run 2474: No new spec PRs merged since run 2473. All open Gloas PRs unchanged (#5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4558, #4630, #4840). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0 (consensus-spec-tests latest tag). CI fully green. Clippy: zero warnings. Dependencies: only trivial windows-sys additions available. No actionable work.
 
+Run 2475: No new spec PRs merged since run 2474. All open Gloas PRs unchanged (#5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4558, #4630, #4840). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.5.0 (consensus-spec-tests latest release). CI fully green. Clippy: zero warnings. No actionable work.
+
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
