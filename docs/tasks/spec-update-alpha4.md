@@ -47,7 +47,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 ## Test Vectors
 
-No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2406, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new Gloas PRs merged since run 2405. Nightly CI all green (run 23533380698). Clippy clean (0 warnings, stable + nightly). All dependencies current (only major version bumps available). Zero production unwraps in consensus/state_processing and consensus/fork_choice. Prior nightly failures explained: Mar 22 = nextest download 404, Mar 23 = dead code in slasher redb build (fixed in 5d23ecf85). All stable, no action needed.
+No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2407, 2026-03-25). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). No new Gloas PRs merged since run 2406. Nightly CI all green (26/26 jobs, run 23533380698). Clippy clean (0 warnings, stable + nightly). All dependencies current. Audited #4950 (by_root serve range) — no code change needed, store retention naturally covers required range. All proactive implementations (#4979, #5036, #4843) verified current. No action needed.
 
 ## Open Gloas PRs to Watch
 
