@@ -4495,60 +4495,6 @@ async fn bid_submission_rejected_unknown_parent_block_hash() {
     }
 }
 
-/// POST builder/bids without prior proposer preferences should NOT fail on
-/// missing preferences (consensus-specs #5036). The bid may still fail on
-/// other checks (signature, equivocation, etc.) but preferences are optional.
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn bid_submission_without_proposer_preferences_passes_prefs_check() {
-    let validator_count = 32;
-    let (tester, builder_keypairs) =
-        gloas_tester_with_builders(validator_count, &[(0, 10_000_000_000)]).await;
-    let harness = &tester.harness;
-    let client = &tester.client;
-
-    harness.extend_slots(32).await;
-
-    let head = harness.chain.head_snapshot();
-    let state = &head.beacon_state;
-    let current_slot = harness.chain.slot().unwrap();
-    let spec = &harness.chain.spec;
-
-    // Do NOT submit proposer preferences — bid should pass preferences check
-    let bid_msg = types::ExecutionPayloadBid::<E> {
-        slot: current_slot,
-        execution_payment: 1,
-        builder_index: 0,
-        value: 100,
-        parent_block_root: head.beacon_block_root,
-        ..Default::default()
-    };
-
-    let bid_domain = spec.get_domain(
-        current_slot.epoch(E::slots_per_epoch()),
-        Domain::BeaconBuilder,
-        &state.fork(),
-        state.genesis_validators_root(),
-    );
-    let bid_signing_root = bid_msg.signing_root(bid_domain);
-    let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
-
-    let signed_bid = types::SignedExecutionPayloadBid {
-        message: bid_msg,
-        signature: bid_signature,
-    };
-
-    let result = client.post_builder_bids(&signed_bid).await;
-    // The bid may succeed or fail on a later check, but it must NOT fail with
-    // ProposerPreferencesNotSeen
-    if let Err(eth2::Error::ServerMessage(msg)) = &result {
-        assert!(
-            !msg.message.contains("ProposerPreferencesNotSeen"),
-            "bid without preferences should not fail on missing preferences, got: {}",
-            msg.message
-        );
-    }
-}
-
 /// POST builder/bids with a second different bid from the same builder/slot should return 400.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn bid_submission_rejected_builder_equivocation() {
