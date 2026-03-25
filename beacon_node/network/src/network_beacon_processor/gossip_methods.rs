@@ -4080,7 +4080,8 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     /// Process a gossip proposer preferences message (gloas ePBS).
     ///
     /// Validates per the consensus-specs p2p-interface.md:
-    /// - [IGNORE] proposal_slot is in the next epoch
+    /// - [IGNORE] proposal_slot is in the current or next epoch
+    /// - [IGNORE] proposal_slot has not already passed
     /// - [REJECT] validator_index matches proposer_lookahead for that slot
     /// - [IGNORE] first valid message for this validator+slot
     /// - [REJECT] valid signature
