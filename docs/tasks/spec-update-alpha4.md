@@ -110,3 +110,5 @@ Run 2490: No new spec PRs merged since run 2489. All open Gloas PRs unchanged (#
 Run 2491: No new spec PRs merged since run 2490. All open Gloas PRs unchanged (#5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI in progress (check+clippy passed, 5 jobs running). #5036: no change (both author nflaig and reviewer jtraglia against it). No actionable work.
 
 Run 2492: No new spec PRs merged since run 2491. All open Gloas PRs unchanged. v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). CI in progress for run 2489 commit (remove stale test). cargo audit unchanged (1 rsa vuln no fix, 5 unmaintained). No actionable work.
+
+Run 2493: No new spec PRs merged since run 2492. All 8 open Gloas PRs unchanged (#5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI in progress for run 2489 commit (ef-tests+clippy passed, 4 jobs still running). No actionable work.
