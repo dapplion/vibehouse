@@ -128,4 +128,4 @@ Run 2547: Audit gap fix — found two Gloas-labeled PRs (#5001, #5002) merged be
 
 Run 2548: No new spec PRs merged since run 2547. All open Gloas PRs unchanged (#4843, #4898, #4892, #4954, #4747, #4840, #4630, #5036). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI green (latest run success Mar 25). No actionable work.
 
-Runs 2549-2550: No new spec PRs merged since run 2548. All open Gloas PRs unchanged (#4843, #4898, #4892, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI green (all runs success, nightly Mar 25 green). cargo audit unchanged. No actionable work.
+Runs 2549-2551: No new spec PRs merged since run 2548. All open Gloas PRs unchanged (#4843, #4898, #4892, #4954, #4747, #4840, #4630). #4747 still conflicting (138 review comments, mergeable=false). #5036 still open but effectively dead. v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI green (all runs success, nightly Mar 25 green). No actionable work.
