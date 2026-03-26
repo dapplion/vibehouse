@@ -123,4 +123,4 @@ Runs 2490-2609: Continuous monitoring, no new Gloas-relevant spec PRs merged. Su
 
 Run 2610 (2026-03-26): No new spec PRs merged since run 2609 (latest merged: #5042 Mar 25, Python dep update). All open Gloas PRs unchanged. v1.7.0-alpha.4 release still not published. CI green, nightly green. No actionable work. Consolidated run log (runs 2490-2609 were 40+ repetitive monitoring entries).
 
-Runs 2611-2613 (2026-03-26): No new spec PRs merged. All open Gloas PRs unchanged (#4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). CI green, clippy zero warnings. No actionable work.
+Runs 2611-2614 (2026-03-26): No new spec PRs merged. All open Gloas PRs unchanged (#4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI green, clippy zero warnings. No actionable work.
