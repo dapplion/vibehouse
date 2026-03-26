@@ -111,9 +111,10 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Run 2879: Proactively optimized `compute_ptc` to pre-compute effective balances (matching #5044).
 - Run 2922: #5044 merged (compute_ptc speedup) — already implemented. #5046 merged (Python cache) — not relevant.
 
-**Steady state (as of run 2969):**
+**Steady state (as of run 2970):**
 - v1.7.0-alpha.4 release: NOT published (latest = v1.6.1). Tag a9bc79a7 exists but release action timed out.
 - EF test vectors: still v1.6.0-beta.0 (upstream nightly generation failing since 2026-03-08). Latest consensus-spec-tests release: v1.5.0 (2025-05-07).
-- CI: fully green (ci, nightly, spec-test-check). Clean build. cargo audit unchanged (1 rsa vuln, 5 unmaintained).
-- All open Gloas PRs unchanged — #4843 (variable PTC deadline) still open, #4747 (FCR) still open with 142 reviews.
+- CI: fully green (ci, nightly, spec-test-check). Clean build, zero warnings. cargo audit unchanged (1 rsa vuln).
+- All open Gloas PRs unchanged — #4843 (variable PTC deadline) still open, #4747 (FCR) still open with 146 review comments, mergeable_state=dirty.
 - No new consensus-specs merges since #5044/#5046 (2026-03-26T19:03Z).
+- Run 2970: Full verification — 140/140 EF tests, 1033/1033 state_processing, 327/327 fork_choice, 9/9 EF fork_choice all pass. Dependencies fully up to date. No actionable work.
