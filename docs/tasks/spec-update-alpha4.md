@@ -111,10 +111,11 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Run 2879: Proactively optimized `compute_ptc` to pre-compute effective balances (matching #5044).
 - Run 2922: #5044 merged (compute_ptc speedup) — already implemented. #5046 merged (Python cache) — not relevant.
 
-**Steady state (as of run 2965):**
+**Steady state (as of run 2966):**
 - v1.7.0-alpha.4 release: NOT published (latest = v1.6.1). Tag a9bc79a7 exists but release action timed out.
-- EF test vectors: still v1.6.0-beta.0 (upstream nightly generation failing since 2026-03-08).
-- CI: fully green (ci, nightly, spec-test-check). Clippy zero warnings.
+- EF test vectors: still v1.6.0-beta.0 (upstream nightly generation failing since 2026-03-08). Latest consensus-spec-tests release: v1.5.0 (2025-05-07).
+- CI: fully green (ci, nightly, spec-test-check). Clippy zero warnings. Clean build (19s incremental).
 - cargo audit: 1 rsa vuln (no fix available), 5 unmaintained (all transitive, not actionable).
-- Remaining TODOs: ~8, all blocked on external deps (EIP-7892 ×3, blst safe API, PeerDAS checkpoint sync).
+- Remaining TODOs: 7, all blocked on external deps (EIP-7892 ×2, PeerDAS checkpoint sync, refactoring deferred to #36).
 - All open Gloas PRs unchanged — see "Open Gloas PRs to Watch" table above.
+- No new consensus-specs merges since #5044/#5046 (2026-03-26T19:03Z).
