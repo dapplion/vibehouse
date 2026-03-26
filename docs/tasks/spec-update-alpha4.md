@@ -193,4 +193,4 @@ Run 2922 (2026-03-26): **#5044 merged** (2026-03-26T19:03:01Z) — "Speed up com
 
 Run 2923 (2026-03-26): **#5046 merged** (2026-03-26T19:02:36Z) — "Increase compute_shuffled_index cache from 96 to 65536 entries". Python test infra only. No vibehouse code changes needed.
 
-Runs 2924-2945 (2026-03-26): Continuous monitoring. No new spec PRs merged or opened. All open Gloas PRs unchanged (#5045, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). #4840 (EIP-7843) no longer in open list — appears stale/removed. v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3) — #5044 and #5046 merges should unblock test generation. EF test vectors still v1.6.0-beta.0. CI fully green. No actionable work.
+Runs 2924-2946 (2026-03-26): Continuous monitoring. No new spec PRs merged or opened since #5044/#5046 (Mar 26 19:03Z). All open Gloas PRs unchanged (#5045, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3) — #5044 and #5046 merges should unblock test generation. EF test vectors still v1.6.0-beta.0. CI fully green. No actionable work.
