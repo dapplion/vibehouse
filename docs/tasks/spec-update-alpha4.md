@@ -188,3 +188,5 @@ Run 2898 (2026-03-26): No new spec PRs merged or opened since run 2895. All open
 Run 2896 (2026-03-26): No new spec PRs merged or opened since run 2895. All open Gloas PRs unchanged (#5044, #5045, #5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). #5044 still blocking alpha.4 release (0 reviews). v1.7.0-alpha.4 release still not published (latest = v1.6.1). CI fully green. No actionable work.
 
 Run 2897 (2026-03-26): No new spec PRs merged or opened since run 2896. All open Gloas PRs unchanged (#5044, #5045, #5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). #5044 still blocking alpha.4 release (0 reviews). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). CI fully green (ci, nightly, spec-test-check all passing). No actionable work.
+
+Run 2899 (2026-03-26): No new spec PRs merged or opened since run 2897. All open Gloas PRs unchanged. v1.7.0-alpha.4 release still not published. CI fully green. Clippy zero warnings. cargo audit: 1 rsa vuln (no fix), 5 unmaintained (all transitive). rand_xorshift 0.4→0.5 not viable (requires rand_core 0.9, incompatible with rand 0.8 ecosystem). No actionable work.
