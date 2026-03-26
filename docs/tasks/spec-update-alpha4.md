@@ -18,6 +18,9 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 | #5023 | Fix block root filenames and Gloas comptests | Test infra only — no production code changes |
 | #5014 | Update EIP8025 p2p protocol | Not relevant — EIP-8025 is a separate unscheduled feature |
 | #5005 | Fix builder voluntary exit success test | Test-only fix, already handled |
+| #5004 | Add dependencies section to release notes | Release tooling only |
+| #5002 | Make wordings clearer for self build payload signature verification | Documentation-only change in p2p-interface.md — no behavioral change |
+| #5001 | Add `parent_block_root` to bid filtering key | Already implemented — vibehouse uses `(Slot, ExecutionBlockHash, Hash256)` 3-tuple key in `observed_execution_bids.rs` |
 | #5034 | Bump version to v1.7.0-alpha.4 | Version bump only |
 
 ### CI/tooling PRs (not relevant)
@@ -120,3 +123,5 @@ Runs 2502-2535: Continuous monitoring. No new Gloas-relevant spec PRs merged. Al
 Runs 2536-2545: No new spec PRs merged since run 2535. All open Gloas PRs unchanged (#4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). #4747 still conflicting (138 review comments, mergeable=false). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI green (nightly Mar 25 success), build clean. No actionable work.
 
 Run 2546: No new spec PRs merged since run 2545. All open Gloas PRs unchanged (#4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). Latest consensus-specs release still v1.6.1 (no v1.7.0-alpha.4 published). EF test vectors still v1.6.0-beta.0. CI green (all 6 jobs success), nightly green (25/25 jobs success Mar 25). No actionable work.
+
+Run 2547: Audit gap fix — found two Gloas-labeled PRs (#5001, #5002) merged between alpha.3 (Mar 11) and alpha.4 (Mar 24) that were missed in the original audit. **#5001** "Add `parent_block_root` to bid filtering key" (merged Mar 12): changes bid highest-value tracking from `(slot, parent_block_hash)` to `(slot, parent_block_hash, parent_block_root)`. **Already implemented** — vibehouse uses `HashMap<(Slot, ExecutionBlockHash, Hash256), u64>` in `observed_execution_bids.rs:48` with the full 3-tuple key since initial implementation. **#5002** "Make wordings clearer for self build payload signature verification" (merged Mar 13): documentation-only change in p2p-interface.md, references `verify_execution_payload_envelope_signature` instead of describing the check inline. No behavioral change, no code impact. No new Gloas PRs merged since run 2546. All open Gloas PRs unchanged (#4843, #4898, #4892, #4954, #4747, #4840, #4630, #5036). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI green. No actionable work.
