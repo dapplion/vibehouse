@@ -54,7 +54,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 ## Test Vectors
 
-No v1.7.0-alpha.4 release/tag created yet on consensus-specs (as of run 2519, 2026-03-26). Version bump PR (#5034) merged Mar 24 but no GitHub release published. Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025).
+v1.7.0-alpha.4 tag exists (commit a9bc79a7, pushed 2026-03-25T19:22Z) but no GitHub Release published yet (latest release = v1.7.0-alpha.3). Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025).
 
 Run 2439: Audited all PRs merged since run 2438 — #5035, #4962, #5023, #4939 all already handled (no code changes needed). Devnet verified: 4-node finalized epoch 8 with all recent proactive implementations (variable PTC deadline, bid gossip relaxation, same-epoch preferences) working correctly. CI green.
 
@@ -154,4 +154,4 @@ Run 2584: No new spec PRs merged since run 2583. All open Gloas PRs unchanged (#
 
 Runs 2585-2591: No new spec PRs merged since run 2584. All open Gloas PRs unchanged (#4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). #4747 still dirty/conflicting. #4630 still conflicting. #5036 still open but dead. Three approved PRs (#4898, #4892, #4843) still not merged. v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI green (nightly Mar 25 success). cargo audit unchanged (1 rsa vuln, 5 unmaintained). All 10 TODOs blocked on external deps. No actionable work.
 
-Runs 2592-2598: No new spec PRs merged since run 2591. All open Gloas PRs unchanged (#4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). #4747 updated Mar 25 but still conflicting. #5036 still open but dead. v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI green, clippy zero warnings, cargo audit unchanged (1 rsa no fix, 5 unmaintained). No actionable work.
+Runs 2592-2599: No new spec PRs merged since run 2591. All open Gloas PRs unchanged (#4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). #4747 updated Mar 25 but still conflicting. #5036 still open but dead. v1.7.0-alpha.4 tag exists (a9bc79a7) but no GitHub release published yet (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI green, nightly green (Mar 25), clippy zero warnings, cargo audit unchanged (1 rsa no fix, 5 unmaintained). No actionable work.
