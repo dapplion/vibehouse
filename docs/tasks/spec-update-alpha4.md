@@ -83,7 +83,8 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 | ~~#5035~~ | ~~Allow same epoch proposer preferences~~ | **MERGED 2026-03-25.** Already implemented — no code changes needed. |
 | ~~#4558~~ | ~~Cell Dissemination via Partial Messages~~ | **MERGED 2026-03-25.** Adds `PartialDataColumnHeader` + validation for `data_column_sidecar_{subnet_id}`. **Not actionable** — requires Gossipsub partial messages extension (no Rust libp2p implementation). |
 | ~~#5036~~ | ~~Relax bid gossip dependency on proposer preferences~~ | **Effectively dead** — both author and reviewer opposed. Proactive implementation reverted (run 2488). |
-| ~~#5044~~ | ~~Speed up `compute_ptc`~~ | **MERGED 2026-03-26.** Pre-fetches effective_balances, changes `compute_balance_weighted_acceptance` signature. **Already implemented** — vibehouse pre-computes effective_balances (gloas.rs:465-477). No code changes needed. |
+| ~~#5044~~ | ~~Speed up `compute_ptc`~~ | **MERGED 2026-03-26T19:03:01Z.** Pre-fetches effective_balances, changes `compute_balance_weighted_acceptance` signature. **Already implemented** — vibehouse pre-computes effective_balances (gloas.rs:465-477). No code changes needed. |
+| ~~#5046~~ | ~~Increase `compute_shuffled_index` cache~~ | **MERGED 2026-03-26T19:02:36Z.** Python test infra LRU cache optimization. Not relevant to vibehouse. |
 | #4843 | Variable PTC deadline | Open, APPROVED. **Proactively implemented** (commit a7baf6b57). |
 | #4898 | Remove pending status from tiebreaker | Open — vibehouse already matches post-PR behavior. |
 | #4892 | Remove impossible branch in forkchoice | Open — vibehouse already uses debug_assert + ==. |
@@ -182,6 +183,10 @@ Run 2910 (2026-03-26): No new spec PRs merged or opened since run 2909. All open
 Run 2911 (2026-03-26): No new spec PRs merged since run 2910. New PR: #5046 "Increase compute_shuffled_index cache from 96 to 65536 entries" (jtraglia) — Python test infra only (LRU cache size in pysetup/spec_builders/phase0.py for faster mainnet preset test generation). Not relevant to vibehouse. #5044 still open (0 reviews, blocking alpha.4 release). All open Gloas PRs unchanged (#5044, #5045, #5046, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI green. No actionable work.
 
 Run 2912 (2026-03-26): No new spec PRs merged or opened since run 2911. All open Gloas PRs unchanged (#5044, #5045, #5046, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI in progress (cmake 0.1.58 update). No actionable work.
+
+Runs 2913-2957 (2026-03-26): No new Gloas-relevant spec PRs opened. #5044 and #5046 merged (both Python test infra optimizations — compute_ptc speedup and shuffled_index cache). All other open Gloas PRs unchanged (#5045, #5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI green (all jobs passing). No actionable work.
+
+Run 2958 (2026-03-26): #5044 merged (2026-03-26T19:03:01Z) — compute_ptc optimization, pre-compute effective_balances. Already implemented in vibehouse (gloas.rs:465-477). #5046 merged (2026-03-26T19:02:36Z) — Python LRU cache size increase, not relevant. No new Gloas PRs opened. All open Gloas PRs unchanged (#5045, #5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published. CI green. No actionable work.
 
 Run 2913 (2026-03-26): No new spec PRs merged or opened since run 2912. All open Gloas PRs unchanged (#5044, #5045, #5046, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI green (1 run in progress). No actionable work.
 
