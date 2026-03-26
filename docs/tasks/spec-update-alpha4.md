@@ -50,6 +50,9 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 | #4960 | Gloas fork choice test (new validator deposit) | Test vectors — will integrate when released |
 | #4932 | Gloas sanity/blocks tests with payload attestation coverage | Test vectors — will integrate when released |
 | #4954 | Update fork choice store to use milliseconds | Open. Converts `Store.time`→`Store.time_ms`, `Store.genesis_time`→`Store.genesis_time_ms`. Not merged yet — will implement when merged. |
+| #5044 | Speed up `compute_ptc` | Open (2026-03-26). Optimizes `compute_balance_weighted_selection`: pre-fetches effective_balances before loop, changes `compute_balance_weighted_acceptance` signature to take balance directly. **Proactively implemented** — vibehouse now pre-computes flat indices + effective_balances arrays before the selection loop. Also adds Python-side `cache_this` for test generation speed (not relevant to us). |
+| #4840 | Add support for EIP-7843 to Gloas | Open (2026-01-15). Raises blob throughput limits. Not merged — will implement when merged. |
+| #4630 | EIP-7688: Forward compatible SSZ types in Gloas | Open (2025-10-01). StableContainer/Profile types for light client compatibility. Not merged — will implement when merged. |
 | #4747 | Fast Confirmation Rule | Open, 79 commits, actively debated. Design doc: `docs/workstreams/fast-confirmation-rule.md`. 6 new Store fields, ~25 functions, Gloas compatibility needed. Will implement when merged. |
 
 ## Test Vectors
@@ -59,6 +62,8 @@ v1.7.0-alpha.4 tag exists (commit a9bc79a7, pushed 2026-03-25T19:22Z) but no Git
 Run 2439: Audited all PRs merged since run 2438 — #5035, #4962, #5023, #4939 all already handled (no code changes needed). Devnet verified: 4-node finalized epoch 8 with all recent proactive implementations (variable PTC deadline, bid gossip relaxation, same-epoch preferences) working correctly. CI green.
 
 Runs 2440-2460: Continuous monitoring, no new spec PRs merged. Key observations: #4843 (variable PTC deadline) received negative analysis from ethDreamer; #4979 was briefly closed for #4992 then reopened; #4992 (alternative approach) was closed. Heze fork assessment (run 2454): FOCIL spec complete but too early for implementation. Devnet verified multiple times (finalized epoch 8). All audits clean (clippy, cargo audit, zero unwrap() in production paths). No actionable work.
+
+Run 2879: New PR #5044 opened (2026-03-26) — "Speed up compute_ptc". Pre-fetches effective_balances before selection loop. Proactively implemented the optimization in vibehouse: flatten committees into parallel indices/effective_balances Vecs, use indexed lookups in the loop instead of repeated state.validators() access. Also added #4840 (EIP-7843 blob limits) and #4630 (EIP-7688 forward-compatible SSZ) to monitoring list. All state_processing tests (1033) and EF spec tests (36/36) pass.
 
 Run 2461/2463: Fixed HTTP API gap — `post_beacon_pool_proposer_preferences` was missing epoch/slot validation that gossip path already had. Added checks + fixed 8 bid tests using `current_slot + 1`. CI green.
 

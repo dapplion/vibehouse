@@ -443,9 +443,9 @@ pub fn compute_ptc<E: EthSpec>(
     seed_input[32..].copy_from_slice(&slot_bytes);
     let seed = hash_fixed(&seed_input);
 
-    // Get all committees for this slot and compute total validator count.
-    // Instead of concatenating all validator indices into an intermediate Vec,
-    // look up candidates directly from the committees by flat index.
+    // Flatten all committees into parallel indices/effective_balances arrays.
+    // Pre-fetching balances avoids repeated state.validators() lookups in the
+    // selection loop (matches consensus-specs PR #5044 optimization).
     let committees = state
         .get_beacon_committees_at_slot(slot)
         .map_err(BlockProcessingError::BeaconStateError)?;
@@ -461,6 +461,22 @@ pub fn compute_ptc<E: EthSpec>(
         ));
     }
 
+    let mut indices = Vec::with_capacity(total);
+    let mut effective_balances = Vec::with_capacity(total);
+    let validators = state.validators();
+    for committee in &committees {
+        for &idx in committee.committee {
+            let balance = validators
+                .get(idx)
+                .ok_or(BlockProcessingError::PayloadAttestationInvalid(
+                    PayloadAttestationInvalid::AttesterIndexOutOfBounds,
+                ))?
+                .effective_balance;
+            indices.push(idx as u64);
+            effective_balances.push(balance);
+        }
+    }
+
     let max_effective_balance = spec.max_effective_balance_electra;
     let max_random_value = (1u64 << 16).saturating_sub(1); // 2^16 - 1
 
@@ -474,23 +490,6 @@ pub fn compute_ptc<E: EthSpec>(
     let mut random_bytes = [0u8; 32];
     while selected.len() < ptc_size {
         let next_index = i.safe_rem(total as u64)? as usize;
-        // shuffle_indices=False, so just use next_index directly.
-        // Look up the validator at this flat index across all committees.
-        let candidate_index = {
-            let mut remaining = next_index;
-            let mut found = None;
-            for committee in &committees {
-                let len = committee.committee.len();
-                if remaining < len {
-                    found = committee.committee.get(remaining).map(|&idx| idx as u64);
-                    break;
-                }
-                remaining = remaining.saturating_sub(len);
-            }
-            found.ok_or(BlockProcessingError::PayloadAttestationInvalid(
-                PayloadAttestationInvalid::AttesterIndexOutOfBounds,
-            ))?
-        };
 
         // compute_balance_weighted_acceptance
         let hash_group = i.safe_div(16)?;
@@ -513,17 +512,20 @@ pub fn compute_ptc<E: EthSpec>(
         )?;
         let random_value = u64::from(u16::from_le_bytes([random_byte_0, random_byte_1]));
 
-        let effective_balance = state
-            .validators()
-            .get(candidate_index as usize)
-            .ok_or(BlockProcessingError::PayloadAttestationInvalid(
+        let candidate_balance = *effective_balances.get(next_index).ok_or(
+            BlockProcessingError::PayloadAttestationInvalid(
                 PayloadAttestationInvalid::AttesterIndexOutOfBounds,
-            ))?
-            .effective_balance;
-
-        if effective_balance.safe_mul(max_random_value)?
+            ),
+        )?;
+        if candidate_balance.safe_mul(max_random_value)?
             >= max_effective_balance.safe_mul(random_value)?
         {
+            let candidate_index =
+                *indices
+                    .get(next_index)
+                    .ok_or(BlockProcessingError::PayloadAttestationInvalid(
+                        PayloadAttestationInvalid::AttesterIndexOutOfBounds,
+                    ))?;
             selected.push(candidate_index);
         }
         i.safe_add_assign(1)?;
