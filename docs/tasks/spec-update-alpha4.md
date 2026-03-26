@@ -232,3 +232,5 @@ Run 2935 (2026-03-26): No new spec PRs merged or opened since run 2934. All open
 Run 2936 (2026-03-26): No new spec PRs merged or opened since run 2935. All open Gloas PRs unchanged (#5045, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI fully green. No actionable work.
 
 Run 2937 (2026-03-26): No new spec PRs merged or opened since run 2936. All open Gloas PRs unchanged (#5045, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI fully green. No actionable work.
+
+Run 2938 (2026-03-26): No new spec PRs merged or opened since run 2937. All open Gloas PRs unchanged (#5045, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI fully green. cargo audit unchanged (1 rsa vuln, 5 unmaintained). No actionable work.
