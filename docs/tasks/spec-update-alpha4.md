@@ -57,7 +57,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 ## Test Vectors
 
-v1.7.0-alpha.4 tag exists (commit a9bc79a7, pushed 2026-03-25T19:22Z) but no GitHub Release published yet (latest release = v1.7.0-alpha.3). Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025).
+v1.7.0-alpha.4 tag exists (commit a9bc79a7, pushed 2026-03-25T19:22Z) but no GitHub Release published yet (latest release = v1.7.0-alpha.3). Spec-test-check workflow will auto-detect when it's published. Current pinned version: v1.7.0-alpha.3. EF test vectors also not updated (latest: v1.6.0-beta.0 from Sep 2025). Upstream nightly spec test generation has been failing since 2026-03-08 (cancelled runs).
 
 Run 2439: Audited all PRs merged since run 2438 — #5035, #4962, #5023, #4939 all already handled (no code changes needed). Devnet verified: 4-node finalized epoch 8 with all recent proactive implementations (variable PTC deadline, bid gossip relaxation, same-epoch preferences) working correctly. CI green.
 
