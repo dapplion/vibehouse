@@ -30,6 +30,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 2778 (Mar 26) — holding pattern, everything green
+
+- CI: all green (CI, nightly, spec-test-version-check). Build: zero warnings, zero clippy warnings. cargo audit: unchanged (1 rsa vuln + 5 unmaintained).
+- Spec: no new merges since Mar 25. Open Gloas PRs unchanged. #4892 (remove impossible branch) closest to merging (2 approvals) but idle since Feb 9. #4954 (milliseconds) has 0 reviews. #4747 (fast confirmation rule) still under active debate.
+- alpha.4 release still not published (version bump merged Mar 24 but no GitHub release/test vectors).
+- No code changes — holding pattern.
+
 ### run 2448 (Mar 25) — holding pattern, everything green
 
 - CI: all green (CI, nightly, spec-test-version-check). Build: zero warnings. cargo audit: unchanged (1 rsa vuln + 5 unmaintained).
