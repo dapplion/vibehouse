@@ -166,3 +166,5 @@ Runs 2820-2886 (2026-03-26): Continuous monitoring. Notable events:
 - CI green (ci, nightly, spec-test-check all passing). Zero compiler warnings. cargo audit: 1 rsa vuln, 5 unmaintained (all transitive, not actionable). All remaining TODOs blocked on external deps.
 
 Run 2887 (2026-03-26): No new spec PRs merged or opened since run 2886. All open Gloas PRs unchanged. CI fully green (all 6 jobs passed for `pre-compute effective balances` commit b36968193). v1.7.0-alpha.4 release still not published. No actionable work.
+
+Run 2888 (2026-03-26): No new spec PRs merged since run 2887. #5044 (Speed up compute_ptc) and #5045 (remove @always_bls) both still open with 0 reviews. All other open Gloas PRs unchanged (#4747, #5036, #4843, #4898, #4892, #4960, #4932, #4954, #4840, #4630). v1.7.0-alpha.4 release still not published. CI fully green (ci, nightly, spec-test-check). No actionable work.
