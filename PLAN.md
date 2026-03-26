@@ -57,7 +57,7 @@ Reference:
 
 **alpha.3 tracking:** 17 Gloas spec PRs audited: all implemented or confirmed not needed.
 
-**Open PRs to watch:** #4898/#4892 (fork choice simplifications), #4843 (variable PTC deadline, proactively implemented), #4954 (fork choice milliseconds), #4747 (fast confirmation rule)
+**Open PRs to watch:** #4898/#4892 (fork choice simplifications), #4843 (variable PTC deadline, proactively implemented), #4954 (fork choice milliseconds), #4747 (fast confirmation rule — [design doc](docs/workstreams/fast-confirmation-rule.md) ready, implementation blocked on PR merge)
 
 **Post-alpha.4 merges (2026-03-25):** #4979 PTC window cache (proactively implemented, verified exact match), #5040 fork choice test fix (test infra only), #4558 cell dissemination partial messages (blocked on rust-libp2p support), #5036 reverted. See [docs/tasks/spec-update-alpha4.md](docs/tasks/spec-update-alpha4.md) for full audit.
 

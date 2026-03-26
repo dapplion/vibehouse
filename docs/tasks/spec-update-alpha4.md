@@ -50,7 +50,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 | #4960 | Gloas fork choice test (new validator deposit) | Test vectors — will integrate when released |
 | #4932 | Gloas sanity/blocks tests with payload attestation coverage | Test vectors — will integrate when released |
 | #4954 | Update fork choice store to use milliseconds | Open. Converts `Store.time`→`Store.time_ms`, `Store.genesis_time`→`Store.genesis_time_ms`. Not merged yet — will implement when merged. |
-| #4747 | Fast Confirmation Rule | Open. Adds `confirmed_root` to fork choice Store. Still in review — not yet actionable. |
+| #4747 | Fast Confirmation Rule | Open, 79 commits, actively debated. Design doc: `docs/workstreams/fast-confirmation-rule.md`. 6 new Store fields, ~25 functions, Gloas compatibility needed. Will implement when merged. |
 
 ## Test Vectors
 
@@ -126,3 +126,5 @@ Runs 2490-2609: Continuous monitoring, no new Gloas-relevant spec PRs merged. Su
 Run 2610 (2026-03-26): No new spec PRs merged since run 2609 (latest merged: #5042 Mar 25, Python dep update). All open Gloas PRs unchanged. v1.7.0-alpha.4 release still not published. CI green, nightly green. No actionable work. Consolidated run log (runs 2490-2609 were 40+ repetitive monitoring entries).
 
 Runs 2611-2628 (2026-03-26): No new spec PRs merged. All open Gloas PRs unchanged (#4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI green, nightly green, clippy zero warnings, cargo audit unchanged (1 rsa vuln no fix, 5 unmaintained). No actionable work.
+
+Run 2629 (2026-03-26): No new spec PRs merged or opened since run 2628. All open Gloas PRs unchanged. **FCR research**: Created comprehensive design doc at `docs/workstreams/fast-confirmation-rule.md` analyzing PR #4747 (8157 additions, 22 files). Key findings: 6 new Store fields, ~25 new functions, CONFIRMATION_BYZANTINE_THRESHOLD=25 config constant, significant integration complexity (per-slot timing hook, head caching for performance, Gloas ForkChoiceNode compatibility). Implementation requires PR merge first — still in active review with 79 commits and ongoing debate.
