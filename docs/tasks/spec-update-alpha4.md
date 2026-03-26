@@ -170,3 +170,5 @@ Runs 2887-2903 (2026-03-26): No new spec PRs merged or opened. All open Gloas PR
 Run 2904 (2026-03-26): No new spec PRs merged or opened since run 2903. #5045 and #5044 updated but still open. All open Gloas PRs unchanged. v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI fully green. No actionable work.
 
 Run 2905 (2026-03-26): No new spec PRs merged or opened since run 2904. All open Gloas PRs unchanged (#5044, #5045, #5036, #4843, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI fully green (ci, nightly, spec-test-check). No actionable work.
+
+Run 2906 (2026-03-26): No new spec PRs merged or opened since run 2905. All open Gloas PRs unchanged (#5044, #5045, #5036, #4843, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI fully green (ci, nightly, spec-test-check). No actionable work.
