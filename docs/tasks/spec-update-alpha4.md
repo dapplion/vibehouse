@@ -198,3 +198,5 @@ Run 2918 (2026-03-26): No new spec PRs merged or opened since run 2917. All open
 Run 2919 (2026-03-26): No new spec PRs merged or opened since run 2918. All open Gloas PRs unchanged (#5044, #5045, #5046, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI in progress (cmake 0.1.58 update). No actionable work.
 
 Run 2920 (2026-03-26): No new spec PRs merged or opened since run 2919. All open Gloas PRs unchanged (#5044, #5045, #5046, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI fully green (cmake 0.1.58 update passed). No actionable work.
+
+Run 2921 (2026-03-26): No new spec PRs merged or opened since run 2920. #5046 (compute_shuffled_index cache — Python test infra only) still open. All open Gloas PRs unchanged (#5044, #5045, #5046, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI fully green. No actionable work.
