@@ -187,50 +187,10 @@ Run 2913 (2026-03-26): No new spec PRs merged or opened since run 2912. All open
 
 Run 2914 (2026-03-26): No new spec PRs merged or opened since run 2913. #5044 still open (0 reviews, blocking alpha.4 release). #5046 also open. All open Gloas PRs unchanged. v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI green (cmake 0.1.58 update in progress). 10 TODOs all blocked on external deps. No actionable work.
 
-Run 2915 (2026-03-26): No new spec PRs merged or opened since run 2914. All open Gloas PRs unchanged (#5044, #5045, #5046, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI: 1 run in progress, previous green. No actionable work.
+Run 2915-2921 (2026-03-26): Monitoring, no new spec PRs. CI green (cmake 0.1.58 update passed).
 
-Run 2916 (2026-03-26): No new spec PRs merged or opened since run 2915. All open Gloas PRs unchanged. v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI in progress (cmake 0.1.58 — check/clippy/ef-tests/network passed, beacon_chain/unit/http_api still running). Nightly green (3 consecutive). Clippy zero warnings. cargo audit unchanged. cargo update: 0 packages to update. No actionable work.
+Run 2922 (2026-03-26): **#5044 merged** (2026-03-26T19:03:01Z) — "Speed up compute_ptc". Pre-fetches effective_balances in `compute_balance_weighted_selection`. **No vibehouse code changes needed** — our implementation already pre-computes effective_balances Vec (gloas.rs:465-477). Was blocking alpha.4 release (test generation timed out at 12h).
 
-Run 2917 (2026-03-26): No new spec PRs merged or opened since run 2916. All open Gloas PRs unchanged (#5044, #5045, #5046, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI in progress (cmake 0.1.58 update). No actionable work.
+Run 2923 (2026-03-26): **#5046 merged** (2026-03-26T19:02:36Z) — "Increase compute_shuffled_index cache from 96 to 65536 entries". Python test infra only. No vibehouse code changes needed.
 
-Run 2918 (2026-03-26): No new spec PRs merged or opened since run 2917. All open Gloas PRs unchanged (#5044, #5045, #5046, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI in progress (cmake 0.1.58 update, 28min). No actionable work.
-
-Run 2919 (2026-03-26): No new spec PRs merged or opened since run 2918. All open Gloas PRs unchanged (#5044, #5045, #5046, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI in progress (cmake 0.1.58 update). No actionable work.
-
-Run 2920 (2026-03-26): No new spec PRs merged or opened since run 2919. All open Gloas PRs unchanged (#5044, #5045, #5046, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI fully green (cmake 0.1.58 update passed). No actionable work.
-
-Run 2921 (2026-03-26): No new spec PRs merged or opened since run 2920. #5046 (compute_shuffled_index cache — Python test infra only) still open. All open Gloas PRs unchanged (#5044, #5045, #5046, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI fully green. No actionable work.
-
-Run 2922 (2026-03-26): **#5044 merged** (2026-03-26T19:03:01Z) — "Speed up compute_ptc". Pre-fetches effective_balances in `compute_balance_weighted_selection`, changes `compute_balance_weighted_acceptance` to take `effective_balance` directly instead of `(state, index)`. **No vibehouse code changes needed** — our implementation already pre-computes effective_balances Vec (gloas.rs:465-477) and uses indexed lookups (gloas.rs:515). #5044 was blocking alpha.4 release (test generation timed out at 12h); with this merged, release should unblock soon. #5045 (remove @always_bls) and #5046 (shuffled_index cache) still open — both test infra only. All other open Gloas PRs unchanged (#4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). CI fully green, nightly green.
-
-Run 2923 (2026-03-26): **#5046 merged** (2026-03-26T19:02:36Z) — "Increase compute_shuffled_index cache from 96 to 65536 entries". Python test infra only (LRU cache size for faster mainnet test generation). No vibehouse code changes needed. No other new spec PRs merged or opened. All open Gloas PRs unchanged (#5045, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI fully green. No actionable work.
-
-Run 2924 (2026-03-26): No new spec PRs merged or opened since run 2923. All open Gloas PRs unchanged (#5045, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI fully green. With #5044 and #5046 merged (both unblocking test generation), alpha.4 release should be imminent. No actionable work.
-
-Run 2925 (2026-03-26): No new spec PRs merged or opened since run 2924. All open Gloas PRs unchanged (#5045, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI fully green. No actionable work.
-
-Run 2926 (2026-03-26): No new spec PRs merged or opened since run 2925. All open Gloas PRs unchanged (#5045, #5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI fully green. No actionable work.
-
-Run 2927 (2026-03-26): No new spec PRs merged or opened since run 2926. All open Gloas PRs unchanged (#5045, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI fully green. No actionable work.
-
-Run 2928 (2026-03-26): No new spec PRs merged or opened since run 2927. All open Gloas PRs unchanged (#5045, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI fully green. All deps at latest compatible versions (9 behind latest are major version bumps). No actionable work.
-
-Run 2929 (2026-03-26): No new spec PRs merged or opened since run 2928. All open Gloas PRs unchanged (#5045, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI fully green. No actionable work.
-
-Run 2930 (2026-03-26): No new spec PRs merged or opened since run 2929. All open Gloas PRs unchanged (#5045, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI fully green. No actionable work.
-
-Run 2931 (2026-03-26): Verified #5035 ("Allow same epoch proposer preferences", merged Mar 25) already fully implemented — gossip validation (gossip_methods.rs:4126) accepts current+next epoch, checks proposal_slot > current_slot; VC broadcasting (duties_service.rs:1676-1706) fetches current-epoch duties and filters future slots. No new spec PRs merged or opened since run 2930. All open Gloas PRs unchanged (#5045, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI fully green. No actionable work.
-
-Run 2932 (2026-03-26): No new spec PRs merged or opened since run 2931. All open Gloas PRs unchanged (#5045, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 tag still not published (latest = v1.7.0-alpha.3, latest release = v1.6.1). EF test vectors still v1.6.0-beta.0. CI fully green. No dependency updates available. No actionable work.
-
-Run 2933 (2026-03-26): No new spec PRs merged or opened since run 2932. All open Gloas PRs unchanged (#5045, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI fully green. No actionable work.
-
-Run 2934 (2026-03-26): No new spec PRs merged or opened since run 2933. All open Gloas PRs unchanged (#5045, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI fully green. No actionable work.
-
-Run 2935 (2026-03-26): No new spec PRs merged or opened since run 2934. All open Gloas PRs unchanged (#5045, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI fully green. No actionable work.
-
-Run 2936 (2026-03-26): No new spec PRs merged or opened since run 2935. All open Gloas PRs unchanged (#5045, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI fully green. No actionable work.
-
-Run 2937 (2026-03-26): No new spec PRs merged or opened since run 2936. All open Gloas PRs unchanged (#5045, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI fully green. No actionable work.
-
-Run 2938 (2026-03-26): No new spec PRs merged or opened since run 2937. All open Gloas PRs unchanged (#5045, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI fully green. cargo audit unchanged (1 rsa vuln, 5 unmaintained). No actionable work.
+Runs 2924-2939 (2026-03-26): Continuous monitoring. No new spec PRs merged or opened. All open Gloas PRs unchanged (#5045, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI fully green. cargo audit unchanged (1 rsa vuln, 5 unmaintained). No actionable work.
