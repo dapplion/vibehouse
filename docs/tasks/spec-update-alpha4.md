@@ -147,3 +147,5 @@ Run 2568: No new spec PRs merged since run 2567. All open Gloas PRs unchanged (#
 Run 2569: No new spec PRs merged since run 2568. All 8 open Gloas PRs unchanged (#4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). #5036 still open but dead. v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI green. Build clean (zero clippy warnings). No actionable work.
 
 Run 2570: No new spec PRs merged since run 2569. All open Gloas PRs unchanged (#4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). v1.7.0-alpha.4 release still not published (latest = v1.7.0-alpha.3). EF test vectors still v1.6.0-beta.0. CI green (latest run success). No actionable work.
+
+Run 2571: No new spec PRs merged since run 2570. All open Gloas PRs unchanged (#4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). #4747 updated Mar 25 but still dirty/conflicting (138 review comments, mergeable=false). v1.7.0-alpha.4 release still not published (latest = v1.6.1). EF test vectors still v1.6.0-beta.0. CI green. No actionable work.
