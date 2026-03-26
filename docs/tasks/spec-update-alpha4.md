@@ -180,3 +180,5 @@ Run 2892 (2026-03-26): No new spec PRs merged or opened since run 2891. All open
 Run 2893 (2026-03-26): No new spec PRs merged or opened since run 2892. All open Gloas PRs unchanged. #5044 still 0 reviews, 0 comments — blocking alpha.4 release. #5045 still open (test infra). v1.7.0-alpha.4 release still not published. CI fully green (ci, nightly, spec-test-check). No actionable work.
 
 Run 2894 (2026-03-26): No new spec PRs merged or opened since run 2893. All open Gloas PRs unchanged (#5044, #5045, #5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). #5044 still 0 reviews, blocking alpha.4 release. v1.7.0-alpha.4 release still not published (latest = v1.6.1). CI fully green. No actionable work.
+
+Run 2895 (2026-03-26): No new spec PRs merged or opened since run 2894. All open Gloas PRs unchanged (#5044, #5045, #5036, #4843, #4898, #4892, #4960, #4932, #4954, #4747, #4840, #4630). #5044 still 0 reviews, blocking alpha.4 release. v1.7.0-alpha.4 release still not published (latest = v1.6.1). CI fully green (ci, nightly, spec-test-check all passing). No actionable work.
