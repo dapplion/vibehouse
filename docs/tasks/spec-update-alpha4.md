@@ -120,5 +120,6 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Only outdated root dep: rand_xorshift 0.4→0.5 (requires rand 0.9→0.10 workspace migration — not viable)
 - Non-Gloas merges: #5048 (testing label exclusion)
 - Non-Gloas open: #5047/#5033 (gossip validation bellatrix/altair), #5045 (remove @always_bls) — none relevant
-- Dep updates during this period: cmake 0.1.57→0.1.58, data-encoding-macro-internal syn 1→2
+- Dep updates during this period: cmake 0.1.57→0.1.58, data-encoding-macro-internal syn 1→2, keccak-asm 0.1.6, sha3-asm 0.1.6, simd-adler32 0.3.9, uuid 1.23.0
+- #5048 merged 2026-03-27 (testing label exclusion) — not relevant
 - All 8 open Gloas PRs unchanged throughout: #4843 (blocked), #4898/#4892 (approved/stale), #4954 (blocked), #4747 (dirty, 146+ review comments), #4960/#4932 (test vectors), #4840/#4630 (stale). #5036 effectively dead.
