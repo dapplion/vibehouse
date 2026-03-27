@@ -125,3 +125,4 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - #5048 merged 2026-03-27 (testing label exclusion) — not relevant
 - All 8 open Gloas PRs unchanged throughout: #4843 (blocked), #4898/#4892 (approved/stale), #4954 (blocked), #4747 (dirty, 146+ review comments), #4960/#4932 (test vectors), #4840/#4630 (stale). #5036 effectively dead.
 - Run 3047 (2026-03-27): Full health check — clippy clean, 0 new spec merges, 0 new issues, all deps at latest, CI in-progress (last green). 10 known TODOs all BLOCKED or non-critical (issue #36). No actionable work.
+- Run 3048 (2026-03-27): Monitoring — #5048 (testing label exclusion) only merge since last run. No new Gloas PRs merged. v1.7.0-alpha.4 still not published. All deps at latest (cargo update --dry-run clean). Open Gloas PRs unchanged. No actionable work.
