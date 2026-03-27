@@ -1,4 +1,5 @@
 use crate::EpochProcessingError;
+use crate::per_block_processing::errors::{BlockProcessingError, PayloadAttestationInvalid};
 use crate::per_block_processing::gloas::{compute_ptc, compute_ptc_from_committees};
 use safe_arith::SafeArith;
 use ssz_types::FixedVector;
@@ -151,11 +152,23 @@ pub fn process_ptc_window<E: EthSpec>(
     let lookahead_cache = CommitteeCache::initialized::<E>(state, next_epoch, spec)
         .map_err(EpochProcessingError::BeaconStateError)?;
     let start_slot = next_epoch.start_slot(E::slots_per_epoch());
+    let ptc_size = E::ptc_size();
     let new_ptcs: Vec<FixedVector<u64, E::PtcSize>> = (0..slots_per_epoch as u64)
         .map(|i| {
             let slot = Slot::new(start_slot.as_u64().safe_add(i)?);
-            let ptc = compute_ptc_from_committees(state, slot, spec, &lookahead_cache)
-                .map_err(|e| EpochProcessingError::PtcWindowComputeError(format!("{e:?}")))?;
+            let ptc = match compute_ptc_from_committees(state, slot, spec, &lookahead_cache) {
+                Ok(ptc) => ptc,
+                // Slots with no committee members (e.g. very few validators on mainnet
+                // preset) have no PTC — fill with zeros.
+                Err(BlockProcessingError::PayloadAttestationInvalid(
+                    PayloadAttestationInvalid::NoActiveValidators,
+                )) => vec![0u64; ptc_size],
+                Err(e) => {
+                    return Err(EpochProcessingError::PtcWindowComputeError(format!(
+                        "{e:?}"
+                    )));
+                }
+            };
             Ok(FixedVector::new(ptc)?)
         })
         .collect::<Result<_, EpochProcessingError>>()?;
