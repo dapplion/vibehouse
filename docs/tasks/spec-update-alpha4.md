@@ -120,7 +120,7 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Run 3222: Updated Rust stable 1.94.0→1.94.1 and nightly to 1.96.0-nightly.
 - Run 3227: Reverted payload_timely→payload_present to match alpha.4 test vectors.
 
-**Steady state summary (runs 3202-3271, 2026-03-27):**
+**Steady state summary (runs 3202-3272, 2026-03-27):**
 - No new consensus-specs merges affecting vibehouse since #5048 (2026-03-27)
 - Non-relevant merges: #5051 (test timeout), #5052 (Python cache reduction), #5053 (CI rename)
 - v1.7.0-alpha.4 published as GitHub prerelease with test vectors
@@ -132,3 +132,4 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Issue #36: 5 blocked, 2 non-critical remaining
 - Devnet verified multiple times: 4-node finalized_epoch=8, clean Gloas fork transition
 - Run 3271: Rust 1.94.1 stable + 1.96.0-nightly up to date. Devnet verified: finalized_epoch=8
+- Run 3272: No new spec merges. CI green. All deps at latest. No new open issues. Steady state continues
