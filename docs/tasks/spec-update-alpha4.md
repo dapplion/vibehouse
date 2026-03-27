@@ -41,6 +41,9 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 | #5044 | Speed up `compute_ptc` | **Merged 2026-03-26.** Pre-fetches effective_balances before loop. **Already implemented** — vibehouse pre-computes flat indices + effective_balances arrays before the selection loop (gloas.rs:465-477). No code changes needed. |
 | #5046 | Increase `compute_shuffled_index` cache from 96 to 65536 | **Merged 2026-03-26.** Python spec tooling only (pysetup/spec_builders/phase0.py). Not relevant to vibehouse. |
 | #5048 | Exclude version file from testing label | **Merged 2026-03-27.** CI/automation only — no code changes. |
+| #5051 | Increase test timeout from 12 to 24 hours | **Merged 2026-03-27.** CI infra only — no code changes. |
+| #5052 | Reduce `compute_shuffled_index` cache from 65536 to 1024 | **Merged 2026-03-27.** Python spec tooling only (reverts #5046 cache size). Not relevant to vibehouse. |
+| #5053 | Rename nightly-tests.yml to tests.yml | **Merged 2026-03-27.** CI file rename only — no code changes. |
 
 ### Open Gloas PRs (still monitoring)
 
