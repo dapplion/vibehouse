@@ -6,8 +6,8 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 ## Status: DONE
 
 ### Current results
-- **79/79 ef_tests pass (real crypto, 0 skipped)** — both mainnet + minimal presets
-- **139/139 fake_crypto pass (0 skipped)** — both mainnet + minimal presets (Fulu + Gloas DataColumnSidecar variants both pass, includes new Gloas fork choice tests from alpha.3)
+- **80/80 ef_tests pass (real crypto, 0 skipped)** — both mainnet + minimal presets
+- **140/140 fake_crypto pass (0 skipped)** — both mainnet + minimal presets (Fulu + Gloas DataColumnSidecar variants both pass, includes new Gloas fork choice tests from alpha.3)
 - **check_all_files_accessed passes** — all files accessed, intentionally excluded patterns maintained
 - All 9 fork_choice test categories pass (get_head, on_block, ex_ante, reorg, withholding, get_proposer_head, deposit_with_reorg, should_override_forkchoice_update, on_execution_payload)
 - 40/40 gloas execution_payload envelope tests pass (process_execution_payload_envelope spec validation)
@@ -29,6 +29,15 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, operations, random, rewards, sanity, ssz_static, transition
 
 ## Progress log
+
+### run 3063 (Mar 27) — nightly investigation, test counts updated
+
+- Investigated nightly test vectors (Mar 25 run 23519332648). Downloaded and validated: 140/140 fake_crypto, 80/80 real crypto, check_all_files_accessed passes. Nightly vectors are pre-#4979 (ptc_window) — run started at 00:44 UTC, before #4979 merged at 18:24 UTC.
+- Mar 26+27 nightly runs were CANCELLED upstream (partially failed CI). No post-ptc_window test vectors available yet.
+- Restored to alpha.3 release vectors for CI stability. Alpha.3 vectors also produce 140/140 and 80/80 — the +1 test over documented 139/79 is from test runner code changes (not new vectors).
+- Spec: only new merge since Mar 25 is #5048 (CI labeler config, not relevant). All 8 open Gloas PRs unchanged (#5036, #4954, #4898, #4892, #4843, #4840, #4747, #4630). #4892 closest to merge (2 approvals) — already implemented via debug_assert. #4898 already implemented in get_payload_tiebreaker.
+- Zero clippy warnings. CI green. cargo audit: unchanged (1 rsa vuln, no fix available).
+- Updated PLAN.md test counts to 80/80 + 140/140.
 
 ### run 2779 (Mar 26) — holding pattern, everything green
 
