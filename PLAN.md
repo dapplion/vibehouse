@@ -61,7 +61,7 @@ Reference:
 
 **Post-alpha.4 merges (2026-03-25):** #4979 PTC window cache (proactively implemented, verified exact match), #5040 fork choice test fix (test infra only), #4558 cell dissemination partial messages (blocked on rust-libp2p support), #5036 reverted. See [docs/tasks/spec-update-alpha4.md](docs/tasks/spec-update-alpha4.md) for full audit.
 
-Spec tests: [docs/tasks/spec-tests.md](docs/tasks/spec-tests.md) — DONE: 80/80 + 140/140 passing, check_all_files_accessed passes, automated release check workflow deployed
+Spec tests: [docs/tasks/spec-tests.md](docs/tasks/spec-tests.md) — DONE: 80/80 + 140/140 passing (v1.7.0-alpha.4 vectors), check_all_files_accessed passes, automated release check workflow deployed
 
 ### 4. ZK execution proofs (stateless validation) — DONE (stub proofs, SP1 infra ready)
 [docs/tasks/zk-execution-proofs.md](docs/tasks/zk-execution-proofs.md) | [GitHub #28](https://github.com/dapplion/vibehouse/issues/28)
