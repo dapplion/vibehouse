@@ -133,3 +133,4 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Devnet verified multiple times: 4-node finalized_epoch=8, clean Gloas fork transition
 - Run 3271: Rust 1.94.1 stable + 1.96.0-nightly up to date. Devnet verified: finalized_epoch=8
 - Run 3272: No new spec merges. CI green. All deps at latest. No new open issues. Steady state continues
+- Run 3273: No new Gloas spec merges. Non-relevant merges since last run: #5052 (Python cache), #5053 (CI rename). All 8 open Gloas PRs unchanged. CI green (ci, nightly, spec-test-check). All deps at latest. Steady state continues
