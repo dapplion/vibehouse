@@ -48,7 +48,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 | #5036 | Relax bid gossip dependency on proposer preferences | **Reverted (run 2488)** — PR is effectively dead (both author and reviewer oppose it). Restored spec-compliant behavior: bids are IGNORED when proposer preferences haven't been seen. |
 | #4898 | Simplify fork choice is_supporting_vote | Approved, not merged. Already implemented debug_assert. |
 | #4892 | Assert slot >= block slot in fork choice | Approved, not merged. Already implemented debug_assert. |
-| #4843 | Variable PTC deadline | **Proactively implemented** (run 2371) — rename payload_present→payload_timely, is_payload_timely→has_payload_quorum, MIN_PAYLOAD_DUE_BPS config, variable deadline in get_payload_attestation_data. Commit a7baf6b57. |
+| #4843 | Variable PTC deadline | **Partially implemented** — MIN_PAYLOAD_DUE_BPS config, variable deadline in get_payload_attestation_data. Field rename (payload_present→payload_timely) **reverted** (run 3227) because test vectors use `payload_present` and #4843 hasn't merged. Will re-apply rename when #4843 merges. |
 | #4960 | Gloas fork choice test (new validator deposit) | Test vectors — will integrate when released |
 | #4932 | Gloas sanity/blocks tests with payload attestation coverage | Test vectors — will integrate when released |
 | #4954 | Update fork choice store to use milliseconds | Open. Converts `Store.time`→`Store.time_ms`, `Store.genesis_time`→`Store.genesis_time_ms`. Not merged yet — will implement when merged. |
@@ -61,6 +61,8 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 **v1.7.0-alpha.4 released** (2026-03-27T13:58:28Z). Test vectors downloaded and integrated. Pinned version updated from v1.7.0-alpha.3 to v1.7.0-alpha.4.
 
 **Bug found and fixed (run 3199):** `process_ptc_window` epoch processing test (`process_ptc_window__shifts_all_epochs`) failed because the lookahead epoch (current + MIN_SEED_LOOKAHEAD + 1 = N+2) exceeded `CommitteeCache::initialized`'s epoch bound of N+1. Fix: (1) relaxed CommitteeCache epoch bound from `current_epoch + 1` to `current_epoch + MIN_SEED_LOOKAHEAD + 1` (safe because required RANDAO mix is available), (2) refactored `compute_ptc` into inner/outer functions so `process_ptc_window` can pass an explicit committee cache for the lookahead epoch. All tests passing: 80/80 + 140/140 EF tests, 1033 state_processing, 1085 types, 4998 workspace.
+
+**Field rename fix (run 3227):** Alpha.4 release was re-published with #4979 (PTC window cache) included, meaning test vectors now use `payload_present` for the PayloadAttestationData boolean field. Our proactive #4843 implementation had renamed this to `payload_timely`, causing SSZ static test failures. Reverted to `payload_present` (26 files, 25 Rust source files). Also removed the Gloas test loading skip workaround since alpha.4 vectors now include `ptc_window` field correctly. All tests passing: 80/80 + 140/140 EF tests, 327 fork_choice, 1033 state_processing.
 
 Run 2439: Audited all PRs merged since run 2438 — #5035, #4962, #5023, #4939 all already handled (no code changes needed). Devnet verified: 4-node finalized epoch 8 with all recent proactive implementations (variable PTC deadline, bid gossip relaxation, same-epoch preferences) working correctly. CI green.
 
