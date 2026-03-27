@@ -2507,7 +2507,7 @@ async fn test_gloas_gossip_payload_attestation_unknown_root_ignored() {
         data: PayloadAttestationData {
             beacon_block_root: Hash256::repeat_byte(0xff), // unknown root
             slot: current_slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         },
         signature: bls::Signature::empty(),
@@ -2540,7 +2540,7 @@ async fn test_gloas_gossip_payload_attestation_future_slot_rejected() {
         data: PayloadAttestationData {
             beacon_block_root: head.beacon_block_root,
             slot: Slot::new(999), // far future
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: false,
         },
         signature: bls::Signature::empty(),
@@ -2574,7 +2574,7 @@ async fn test_gloas_gossip_payload_attestation_past_slot_rejected() {
         data: PayloadAttestationData {
             beacon_block_root: head.beacon_block_root,
             slot: Slot::new(0), // far past
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: false,
         },
         signature: bls::Signature::empty(),
@@ -2609,7 +2609,7 @@ async fn test_gloas_gossip_payload_attestation_non_ptc_validator_rejected() {
         data: PayloadAttestationData {
             beacon_block_root: head.beacon_block_root,
             slot: current_slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         },
         signature: bls::Signature::empty(),
@@ -2631,7 +2631,7 @@ async fn test_gloas_gossip_payload_attestation_non_ptc_validator_rejected() {
 /// using Domain::PtcAttester.
 fn build_valid_payload_attestation_message(
     rig: &TestRig,
-    payload_timely: bool,
+    payload_present: bool,
 ) -> (types::PayloadAttestationMessage, u64, usize) {
     let head = rig.chain.head_snapshot();
     let head_state = &head.beacon_state;
@@ -2654,7 +2654,7 @@ fn build_valid_payload_attestation_message(
     let data = PayloadAttestationData {
         beacon_block_root: head.beacon_block_root,
         slot: current_slot,
-        payload_timely,
+        payload_present,
         blob_data_available: true,
     };
 
@@ -2708,9 +2708,9 @@ async fn test_gloas_gossip_payload_attestation_valid_accepted() {
 /// Gloas gossip: payload attestation equivocation from a PTC member is REJECTED.
 ///
 /// Per spec: a PTC member who sends two payload attestations for the same slot
-/// with different `payload_timely` values is equivocating. The first attestation
+/// with different `payload_present` values is equivocating. The first attestation
 /// is accepted, the second is rejected with peer penalty.
-/// This test sends payload_timely=true (Accept), then payload_timely=false from
+/// This test sends payload_present=true (Accept), then payload_present=false from
 /// the same validator (Reject). Equivocating PTC members must be penalized to
 /// prevent conflicting payload status attacks.
 #[tokio::test]
@@ -2721,7 +2721,7 @@ async fn test_gloas_gossip_payload_attestation_equivocation_rejected() {
 
     let mut rig = gloas_rig(SMALL_CHAIN).await;
 
-    // First attestation: payload_timely=true → should be accepted
+    // First attestation: payload_present=true → should be accepted
     let (message1, _validator_index, _ptc_bit) =
         build_valid_payload_attestation_message(&rig, true);
 
@@ -2732,7 +2732,7 @@ async fn test_gloas_gossip_payload_attestation_equivocation_rejected() {
     let result = drain_validation_result(&mut rig.network_rx).await;
     assert_accept(result);
 
-    // Second attestation from the same PTC member: payload_timely=false → equivocation
+    // Second attestation from the same PTC member: payload_present=false → equivocation
     let (message2, _validator_index2, _ptc_bit2) =
         build_valid_payload_attestation_message(&rig, false);
 
@@ -2775,7 +2775,7 @@ async fn test_gloas_gossip_payload_attestation_invalid_signature_rejected() {
     let data = PayloadAttestationData {
         beacon_block_root: head.beacon_block_root,
         slot: current_slot,
-        payload_timely: true,
+        payload_present: true,
         blob_data_available: true,
     };
 
@@ -2887,7 +2887,7 @@ async fn test_gloas_gossip_payload_attestation_accumulates_ptc_weight() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_timely: true,
+        payload_present: true,
         blob_data_available: true,
     };
     let signing_root = data.signing_root(domain);
@@ -5186,7 +5186,7 @@ async fn test_gloas_sse_event_execution_bid() {
 
 /// Verifies that a PayloadAttestation SSE event is emitted when a valid PTC
 /// attestation is processed via gossip. The event should contain the slot,
-/// beacon_block_root, payload_timely, and blob_data_available flags.
+/// beacon_block_root, payload_present, and blob_data_available flags.
 #[tokio::test]
 async fn test_gloas_sse_event_payload_attestation() {
     if test_spec::<E>().gloas_fork_epoch.is_none() {
@@ -5218,7 +5218,7 @@ async fn test_gloas_sse_event_payload_attestation() {
         EventKind::PayloadAttestation(sse_att) => {
             assert_eq!(sse_att.slot, expected_data.slot);
             assert_eq!(sse_att.beacon_block_root, expected_data.beacon_block_root);
-            assert_eq!(sse_att.payload_timely, expected_data.payload_timely);
+            assert_eq!(sse_att.payload_present, expected_data.payload_present);
             assert_eq!(
                 sse_att.blob_data_available,
                 expected_data.blob_data_available

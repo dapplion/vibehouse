@@ -830,15 +830,15 @@ async fn payload_attestation_data_returns_head_slot() {
         Hash256::zero(),
         "block root should not be zero"
     );
-    // After self-build envelope processing, payload_timely should be true
+    // After self-build envelope processing, payload_present should be true
     assert!(
-        data.payload_timely,
+        data.payload_present,
         "payload should be present after envelope processing"
     );
 }
 
 /// GET validator/payload_attestation_data for a future slot uses head block root,
-/// so payload_timely reflects the head block's payload status.
+/// so payload_present reflects the head block's payload status.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn payload_attestation_data_future_slot_uses_head() {
     let validator_count = 32;
@@ -917,7 +917,7 @@ async fn post_payload_attestation_valid_ptc_member() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_timely: true,
+        payload_present: true,
         blob_data_available: true,
     };
     let epoch = head_slot.epoch(E::slots_per_epoch());
@@ -986,7 +986,7 @@ async fn post_payload_attestation_non_ptc_rejected() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_timely: true,
+        payload_present: true,
         blob_data_available: false,
     };
     let epoch = head_slot.epoch(E::slots_per_epoch());
@@ -1686,12 +1686,12 @@ async fn payload_attestation_data_past_slot() {
     assert_eq!(data.slot, Slot::new(1), "slot should match requested slot");
     // Slot 1 had a self-build envelope processed, so payload should be present
     assert!(
-        data.payload_timely,
-        "past slot with processed envelope should have payload_timely=true"
+        data.payload_present,
+        "past slot with processed envelope should have payload_present=true"
     );
 }
 
-/// GET validator/payload_attestation_data pre-Gloas returns payload_timely=false.
+/// GET validator/payload_attestation_data pre-Gloas returns payload_present=false.
 /// The endpoint works regardless of fork, but pre-Gloas blocks have no payload revealed.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn payload_attestation_data_pre_gloas_returns_not_present() {
@@ -1728,8 +1728,8 @@ async fn payload_attestation_data_pre_gloas_returns_not_present() {
 
     let data = response.data;
     assert!(
-        !data.payload_timely,
-        "pre-Gloas blocks should have payload_timely=false"
+        !data.payload_present,
+        "pre-Gloas blocks should have payload_present=false"
     );
     assert!(
         !data.blob_data_available,
@@ -2311,7 +2311,7 @@ async fn post_payload_attestation_wrong_signature() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_timely: true,
+        payload_present: true,
         blob_data_available: false,
     };
     let epoch = head_slot.epoch(E::slots_per_epoch());
@@ -2387,7 +2387,7 @@ async fn post_payload_attestation_mixed_valid_invalid() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_timely: true,
+        payload_present: true,
         blob_data_available: true,
     };
     let message_root = data.signing_root(domain);
@@ -3241,7 +3241,7 @@ async fn get_payload_attestation_pool_after_post() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_timely: true,
+        payload_present: true,
         blob_data_available: true,
     };
     let epoch = head_slot.epoch(E::slots_per_epoch());
@@ -3336,7 +3336,7 @@ async fn get_payload_attestation_pool_slot_filter() {
         data: PayloadAttestationData {
             beacon_block_root: head_root,
             slot: Slot::new(1),
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         },
         signature: AggregateSignature::empty(),
@@ -3350,7 +3350,7 @@ async fn get_payload_attestation_pool_slot_filter() {
         data: PayloadAttestationData {
             beacon_block_root: head_root,
             slot: Slot::new(2),
-            payload_timely: false,
+            payload_present: false,
             blob_data_available: false,
         },
         signature: AggregateSignature::empty(),
@@ -3377,7 +3377,7 @@ async fn get_payload_attestation_pool_slot_filter() {
         "should have 1 attestation for slot 1"
     );
     assert_eq!(slot1_result.data[0].data.slot, Slot::new(1));
-    assert!(slot1_result.data[0].data.payload_timely);
+    assert!(slot1_result.data[0].data.payload_present);
 
     // GET with slot=2 filter — should return only slot 2 attestation
     let slot2_result = client
@@ -3390,7 +3390,7 @@ async fn get_payload_attestation_pool_slot_filter() {
         "should have 1 attestation for slot 2"
     );
     assert_eq!(slot2_result.data[0].data.slot, Slot::new(2));
-    assert!(!slot2_result.data[0].data.payload_timely);
+    assert!(!slot2_result.data[0].data.payload_present);
 
     // GET with slot=99 filter — should return empty
     let empty_result = client
@@ -3589,7 +3589,7 @@ async fn post_payload_attestation_unknown_block_root() {
     let data = PayloadAttestationData {
         beacon_block_root: unknown_root,
         slot: head_slot,
-        payload_timely: true,
+        payload_present: true,
         blob_data_available: true,
     };
     let epoch = head_slot.epoch(E::slots_per_epoch());

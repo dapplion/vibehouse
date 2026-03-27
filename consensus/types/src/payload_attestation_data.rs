@@ -20,8 +20,8 @@ pub struct PayloadAttestationData {
     pub beacon_block_root: Hash256,
     /// Slot of the beacon block
     pub slot: Slot,
-    /// Whether the execution payload was revealed on time
-    pub payload_timely: bool,
+    /// Whether the execution payload was present on time
+    pub payload_present: bool,
     /// Whether blob data is available
     pub blob_data_available: bool,
 }
@@ -33,7 +33,7 @@ impl TestRandom for PayloadAttestationData {
         Self {
             beacon_block_root: Hash256::random_for_test(rng),
             slot: Slot::random_for_test(rng),
-            payload_timely: bool::random_for_test(rng),
+            payload_present: bool::random_for_test(rng),
             blob_data_available: bool::random_for_test(rng),
         }
     }
@@ -48,17 +48,17 @@ mod tests {
     ssz_and_tree_hash_tests!(PayloadAttestationData);
 
     #[test]
-    fn ssz_roundtrip_payload_timely_true() {
+    fn ssz_roundtrip_payload_present_true() {
         let data = PayloadAttestationData {
             beacon_block_root: Hash256::repeat_byte(0xaa),
             slot: Slot::new(123),
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: false,
         };
         let bytes = data.as_ssz_bytes();
         let decoded = PayloadAttestationData::from_ssz_bytes(&bytes).unwrap();
         assert_eq!(data, decoded);
-        assert!(decoded.payload_timely);
+        assert!(decoded.payload_present);
         assert!(!decoded.blob_data_available);
     }
 
@@ -67,13 +67,13 @@ mod tests {
         let data = PayloadAttestationData {
             beacon_block_root: Hash256::repeat_byte(0xbb),
             slot: Slot::new(456),
-            payload_timely: false,
+            payload_present: false,
             blob_data_available: true,
         };
         let bytes = data.as_ssz_bytes();
         let decoded = PayloadAttestationData::from_ssz_bytes(&bytes).unwrap();
         assert_eq!(data, decoded);
-        assert!(!decoded.payload_timely);
+        assert!(!decoded.payload_present);
         assert!(decoded.blob_data_available);
     }
 
@@ -82,7 +82,7 @@ mod tests {
         let data = PayloadAttestationData {
             beacon_block_root: Hash256::repeat_byte(0xcc),
             slot: Slot::new(789),
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         };
         let bytes = data.as_ssz_bytes();
@@ -91,15 +91,15 @@ mod tests {
     }
 
     #[test]
-    fn tree_hash_changes_with_payload_timely() {
+    fn tree_hash_changes_with_payload_present() {
         let data_false = PayloadAttestationData {
             beacon_block_root: Hash256::repeat_byte(0x01),
             slot: Slot::new(1),
-            payload_timely: false,
+            payload_present: false,
             blob_data_available: false,
         };
         let data_true = PayloadAttestationData {
-            payload_timely: true,
+            payload_present: true,
             ..data_false
         };
         assert_ne!(data_false.tree_hash_root(), data_true.tree_hash_root());
@@ -110,7 +110,7 @@ mod tests {
         let data_false = PayloadAttestationData {
             beacon_block_root: Hash256::repeat_byte(0x02),
             slot: Slot::new(2),
-            payload_timely: false,
+            payload_present: false,
             blob_data_available: false,
         };
         let data_true = PayloadAttestationData {
@@ -125,7 +125,7 @@ mod tests {
         let data = PayloadAttestationData {
             beacon_block_root: Hash256::repeat_byte(0xdd),
             slot: Slot::new(42),
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         };
         let copied = data;
@@ -143,7 +143,7 @@ mod tests {
         let data = PayloadAttestationData {
             beacon_block_root: Hash256::ZERO,
             slot: Slot::new(0),
-            payload_timely: false,
+            payload_present: false,
             blob_data_available: false,
         };
         assert_eq!(data.beacon_block_root, Hash256::ZERO);

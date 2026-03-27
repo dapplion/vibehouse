@@ -4075,7 +4075,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 event_handler.register(EventKind::PayloadAttestation(SsePayloadAttestation {
                     slot: att.data.slot,
                     beacon_block_root: att.data.beacon_block_root,
-                    payload_timely: att.data.payload_timely,
+                    payload_present: att.data.payload_present,
                     blob_data_available: att.data.blob_data_available,
                 }));
             }

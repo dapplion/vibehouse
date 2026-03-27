@@ -262,7 +262,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> PayloadAttestationServ
                     debug!(
                         validator_index = duty.validator_index,
                         slot = slot.as_u64(),
-                        payload_timely = attestation_data.payload_timely,
+                        payload_present = attestation_data.payload_present,
                         "Signed payload attestation"
                     );
                     messages.push(message);
@@ -306,7 +306,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> PayloadAttestationServ
         info!(
             slot = slot.as_u64(),
             count = num_messages,
-            payload_timely = attestation_data.payload_timely,
+            payload_present = attestation_data.payload_present,
             "Published payload attestations"
         );
 
@@ -676,7 +676,7 @@ mod produce_tests {
         let attestation_data = ApiPayloadAttestationData {
             beacon_block_root: Hash256::repeat_byte(0xaa),
             slot: current_slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         };
 
@@ -720,7 +720,7 @@ mod produce_tests {
         let attestation_data = ApiPayloadAttestationData {
             beacon_block_root: Hash256::repeat_byte(0xbb),
             slot: current_slot,
-            payload_timely: false,
+            payload_present: false,
             blob_data_available: false,
         };
 
@@ -803,7 +803,7 @@ mod produce_tests {
         let attestation_data = ApiPayloadAttestationData {
             beacon_block_root: Hash256::repeat_byte(0xcc),
             slot: current_slot,
-            payload_timely: false,
+            payload_present: false,
             blob_data_available: false,
         };
 
@@ -871,10 +871,10 @@ mod produce_tests {
 
     /// Payload_present=false in attestation data → correctly propagated to sign call.
     ///
-    /// Tests that the payload_timely=false flag from the BN is faithfully passed
+    /// Tests that the payload_present=false flag from the BN is faithfully passed
     /// through to sign_payload_attestation (not converted to true somewhere).
     #[tokio::test]
-    async fn produce_payload_timely_false_propagated() {
+    async fn produce_payload_present_false_propagated() {
         let spec = spec_with_gloas(Some(0));
         let slots_per_epoch = E::slots_per_epoch();
         let current_slot = Slot::new(slots_per_epoch);
@@ -886,7 +886,7 @@ mod produce_tests {
         let attestation_data = ApiPayloadAttestationData {
             beacon_block_root: Hash256::repeat_byte(0xdd),
             slot: current_slot,
-            payload_timely: false,
+            payload_present: false,
             blob_data_available: false,
         };
 
@@ -907,7 +907,7 @@ mod produce_tests {
             .await
             .unwrap();
 
-        // Sign was called (payload_timely=false is still a valid duty)
+        // Sign was called (payload_present=false is still a valid duty)
         assert_eq!(signed.lock().unwrap().clone(), vec![500u64]);
     }
 
@@ -930,7 +930,7 @@ mod produce_tests {
         let attestation_data = ApiPayloadAttestationData {
             beacon_block_root: Hash256::repeat_byte(0xee),
             slot: current_slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         };
 
@@ -1031,7 +1031,7 @@ mod produce_tests {
         let attestation_data = ApiPayloadAttestationData {
             beacon_block_root: Hash256::repeat_byte(0xff),
             slot: current_slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         };
 

@@ -103,23 +103,11 @@ pub trait Handler {
         .filter_map(as_directory)
         .flat_map(|suite| fs::read_dir(suite.path()).expect("suite dir exists"))
         .filter_map(as_directory)
-        .filter_map(|test_case_dir| {
+        .map(|test_case_dir| {
             let path = test_case_dir.path();
-            match Self::Case::load_from_dir(&path, fork_name) {
-                Ok(case) => Some((path, case)),
-                Err(e) if fork_name == ForkName::Gloas => {
-                    // Gloas test vectors may use a pre-#4979 SSZ schema
-                    // (missing ptc_window field). Skip gracefully until
-                    // updated test vectors are released.
-                    eprintln!(
-                        "Skipping Gloas test (schema mismatch): {}: {:?}",
-                        path.display(),
-                        e
-                    );
-                    None
-                }
-                Err(e) => panic!("test should load: {e:?}"),
-            }
+            let case = Self::Case::load_from_dir(&path, fork_name)
+                .unwrap_or_else(|e| panic!("test should load: {e:?}"));
+            (path, case)
         })
         .collect();
 

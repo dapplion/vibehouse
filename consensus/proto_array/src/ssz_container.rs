@@ -66,7 +66,7 @@ mod tests {
     };
 
     /// Build a ProtoArrayForkChoice with one Gloas block (non-trivial Gloas fields)
-    /// and one vote with Gloas payload_timely tracking.
+    /// and one vote with Gloas payload_present tracking.
     fn make_gloas_fork_choice() -> ProtoArrayForkChoice {
         let genesis_checkpoint = Checkpoint {
             epoch: Epoch::new(0),
@@ -174,7 +174,7 @@ mod tests {
     #[test]
     fn vote_tracker_ssz_round_trip_byte_equality() {
         // VoteTracker fields are private, so we verify round-trip via byte equality.
-        // The make_gloas_fork_choice helper sets a vote with payload_timely=true,
+        // The make_gloas_fork_choice helper sets a vote with payload_present=true,
         // which exercises the Gloas-specific fields.
         let fc = make_gloas_fork_choice();
         let vote = &fc.votes.0[0];
@@ -182,7 +182,7 @@ mod tests {
         let encoded = vote.as_ssz_bytes();
         let decoded = VoteTracker::from_ssz_bytes(&encoded).expect("VoteTracker decode failed");
 
-        // Byte-level equality guarantees all fields (including Gloas slot/payload_timely)
+        // Byte-level equality guarantees all fields (including Gloas slot/payload_present)
         // survived the round-trip
         assert_eq!(decoded.as_ssz_bytes(), encoded);
         assert_eq!(*vote, decoded);

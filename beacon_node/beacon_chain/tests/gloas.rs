@@ -442,7 +442,7 @@ async fn gloas_parent_payload_check_skips_pre_gloas_parent() {
 fn make_payload_attestation(
     block_root: Hash256,
     slot: Slot,
-    payload_timely: bool,
+    payload_present: bool,
     blob_data_available: bool,
 ) -> PayloadAttestation<E> {
     let mut aggregation_bits = BitVector::default();
@@ -454,7 +454,7 @@ fn make_payload_attestation(
         data: PayloadAttestationData {
             beacon_block_root: block_root,
             slot,
-            payload_timely,
+            payload_present,
             blob_data_available,
         },
         signature: AggregateSignature::empty(),
@@ -586,7 +586,7 @@ async fn gloas_payload_attestation_data_head_slot() {
     );
     // The harness processes envelopes during extend_slots, so payload should be present
     assert!(
-        data.payload_timely,
+        data.payload_present,
         "payload should be present (envelope was processed)"
     );
 }
@@ -659,7 +659,7 @@ async fn gloas_payload_attestation_pool_insert_and_get() {
 
     assert_eq!(result.len(), 1, "should find the inserted attestation");
     assert_eq!(result[0].data.beacon_block_root, head_root);
-    assert!(result[0].data.payload_timely);
+    assert!(result[0].data.payload_present);
 }
 
 /// Test that get_payload_attestations_for_block filters by parent_block_root.
@@ -734,12 +734,12 @@ async fn gloas_payload_attestation_pool_max_limit() {
     // Insert attestations for all 4 possible data combinations.
     // Each combination gets multiple validators to verify aggregation works.
     let combos: [(bool, bool); 4] = [(true, true), (true, false), (false, true), (false, false)];
-    for (payload_timely, blob_data_available) in &combos {
+    for (payload_present, blob_data_available) in &combos {
         for bit in 0..E::ptc_size() {
             let mut att = make_payload_attestation(
                 head_root,
                 head_slot,
-                *payload_timely,
+                *payload_present,
                 *blob_data_available,
             );
             let _ = att.aggregation_bits.set(bit, true);
@@ -1345,7 +1345,7 @@ async fn gloas_validator_ptc_duties_unique_positions() {
     }
 }
 
-/// Test that the payload_attestation_data returns payload_timely=false when
+/// Test that the payload_attestation_data returns payload_present=false when
 /// fork choice has payload_revealed=false for the block.
 #[tokio::test]
 async fn gloas_payload_attestation_data_unrevealed() {
@@ -1376,8 +1376,8 @@ async fn gloas_payload_attestation_data_unrevealed() {
     assert_eq!(data.slot, head_slot);
     assert_eq!(data.beacon_block_root, head_root);
     assert!(
-        !data.payload_timely,
-        "payload_timely should be false when payload not revealed"
+        !data.payload_present,
+        "payload_present should be false when payload not revealed"
     );
 }
 
@@ -1430,7 +1430,7 @@ async fn gloas_import_payload_attestation_message_happy_path() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_timely: true,
+        payload_present: true,
         blob_data_available: true,
     };
 
@@ -1453,7 +1453,7 @@ async fn gloas_import_payload_attestation_message_happy_path() {
     let attestation = result.unwrap();
     assert_eq!(attestation.data.slot, head_slot);
     assert_eq!(attestation.data.beacon_block_root, head_root);
-    assert!(attestation.data.payload_timely);
+    assert!(attestation.data.payload_present);
     assert!(attestation.data.blob_data_available);
 
     // Verify it was added to the pool
@@ -1488,7 +1488,7 @@ async fn gloas_import_payload_attestation_message_not_in_ptc() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_timely: true,
+        payload_present: true,
         blob_data_available: false,
     };
 
@@ -1530,7 +1530,7 @@ async fn gloas_import_payload_attestation_message_unknown_validator() {
         data: PayloadAttestationData {
             beacon_block_root: head_root,
             slot: head_slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: false,
         },
         signature: Signature::empty(),
@@ -1547,7 +1547,7 @@ async fn gloas_import_payload_attestation_message_unknown_validator() {
     );
 }
 
-/// Test that importing a message with payload_timely=false also works (the PTC member
+/// Test that importing a message with payload_present=false also works (the PTC member
 /// is attesting that the payload was NOT present).
 #[tokio::test]
 async fn gloas_import_payload_attestation_message_payload_absent() {
@@ -1564,7 +1564,7 @@ async fn gloas_import_payload_attestation_message_payload_absent() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_timely: false,
+        payload_present: false,
         blob_data_available: false,
     };
 
@@ -1585,7 +1585,7 @@ async fn gloas_import_payload_attestation_message_payload_absent() {
     );
 
     let attestation = result.unwrap();
-    assert!(!attestation.data.payload_timely);
+    assert!(!attestation.data.payload_present);
 }
 
 /// Test that the aggregation_bits field in the returned attestation has exactly one bit set
@@ -1608,7 +1608,7 @@ async fn gloas_import_payload_attestation_message_single_bit_set() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_timely: true,
+        payload_present: true,
         blob_data_available: true,
     };
 
@@ -1663,7 +1663,7 @@ async fn gloas_import_payload_attestation_message_second_ptc_member() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_timely: true,
+        payload_present: true,
         blob_data_available: true,
     };
 
@@ -1711,7 +1711,7 @@ async fn gloas_import_payload_attestation_message_invalid_signature() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_timely: true,
+        payload_present: true,
         blob_data_available: false,
     };
 
@@ -1755,7 +1755,7 @@ async fn gloas_import_payload_attestation_message_unknown_block_root() {
     let data = PayloadAttestationData {
         beacon_block_root: unknown_root,
         slot: head_slot,
-        payload_timely: true,
+        payload_present: true,
         blob_data_available: false,
     };
 
@@ -1807,7 +1807,7 @@ async fn gloas_get_all_payload_attestations_unfiltered() {
         let data = PayloadAttestationData {
             beacon_block_root: head_root,
             slot: head_slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         };
         let signature =
@@ -1853,7 +1853,7 @@ async fn gloas_get_all_payload_attestations_filtered_by_slot() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_timely: true,
+        payload_present: true,
         blob_data_available: true,
     };
     let signature =
@@ -1907,7 +1907,7 @@ async fn gloas_get_payload_attestations_for_block_aggregates() {
         let data = PayloadAttestationData {
             beacon_block_root: head_root,
             slot: head_slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         };
         let signature =
@@ -1968,7 +1968,7 @@ async fn gloas_get_payload_attestations_for_block_filters_by_root() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_timely: true,
+        payload_present: true,
         blob_data_available: true,
     };
     let signature =
@@ -3038,7 +3038,7 @@ async fn gloas_block_production_includes_pool_attestations() {
     // Verify the included attestation targets the correct block
     assert_eq!(payload_attestations[0].data.beacon_block_root, head_root);
     assert_eq!(payload_attestations[0].data.slot, head_slot);
-    assert!(payload_attestations[0].data.payload_timely);
+    assert!(payload_attestations[0].data.payload_present);
 }
 
 /// Test that block production only includes attestations matching the parent block root.
@@ -3091,15 +3091,19 @@ async fn gloas_block_production_respects_max_payload_attestations() {
 
     let max_atts = E::max_payload_attestations();
 
-    // Insert attestations with all 4 possible data combinations (payload_timely x blob_data_available).
+    // Insert attestations with all 4 possible data combinations (payload_present x blob_data_available).
     // With MAX_PAYLOAD_ATTESTATIONS=4 this should result in exactly max_atts aggregated attestations.
-    for (payload_timely, blob_data_available) in
+    for (payload_present, blob_data_available) in
         [(true, true), (true, false), (false, true), (false, false)]
     {
         // Insert multiple validators for each data combination (they'll get aggregated)
         for i in 0..3 {
-            let mut att =
-                make_payload_attestation(head_root, head_slot, payload_timely, blob_data_available);
+            let mut att = make_payload_attestation(
+                head_root,
+                head_slot,
+                payload_present,
+                blob_data_available,
+            );
             let _ = att.aggregation_bits.set(i % E::ptc_size(), true);
             harness.chain.insert_payload_attestation_to_pool(att);
         }
@@ -3175,7 +3179,7 @@ async fn gloas_block_production_aggregates_matching_payload_attestations() {
         num_attesters,
         "aggregated attestation should have {num_attesters} attesters"
     );
-    assert!(aggregated.data.payload_timely);
+    assert!(aggregated.data.payload_present);
     assert!(aggregated.data.blob_data_available);
 }
 
@@ -3189,7 +3193,7 @@ async fn gloas_block_production_separates_different_payload_attestation_data() {
     let head_root = head.beacon_block_root;
     let head_slot = head.beacon_block.slot();
 
-    // Insert two attestations with different payload_timely values
+    // Insert two attestations with different payload_present values
     let att_present = make_payload_attestation(head_root, head_slot, true, true);
     let att_absent = make_payload_attestation(head_root, head_slot, false, true);
     harness
@@ -5829,7 +5833,7 @@ async fn fc_on_payload_attestation_rejects_future_slot() {
         data: PayloadAttestationData {
             beacon_block_root: block_root,
             slot: slot + 100, // far future
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         },
         ..PayloadAttestation::empty()
@@ -5877,7 +5881,7 @@ async fn fc_on_payload_attestation_rejects_too_old() {
         data: PayloadAttestationData {
             beacon_block_root: old_root,
             slot: old_slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         },
         ..PayloadAttestation::empty()
@@ -5932,7 +5936,7 @@ async fn fc_on_payload_attestation_ignores_slot_mismatch() {
         data: PayloadAttestationData {
             beacon_block_root: block_root,
             slot: slot + 1, // block is at `slot`, attestation says `slot + 1`
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         },
         ..PayloadAttestation::empty()
@@ -6013,7 +6017,7 @@ async fn fc_on_payload_attestation_quorum_triggers_payload_revealed() {
         data: PayloadAttestationData {
             beacon_block_root: block_root,
             slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: false,
         },
         ..PayloadAttestation::empty()
@@ -6056,7 +6060,7 @@ async fn fc_on_payload_attestation_quorum_triggers_payload_revealed() {
         data: PayloadAttestationData {
             beacon_block_root: block_root,
             slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: false,
         },
         ..PayloadAttestation::empty()
@@ -6098,7 +6102,7 @@ async fn fc_on_payload_attestation_quorum_triggers_payload_revealed() {
 }
 
 /// on_payload_attestation: blob_data_available quorum is tracked independently
-/// from payload_timely quorum.
+/// from payload_present quorum.
 #[tokio::test]
 async fn fc_on_payload_attestation_blob_quorum_independent() {
     let harness = gloas_harness_at_epoch(0);
@@ -6124,12 +6128,12 @@ async fn fc_on_payload_attestation_blob_quorum_independent() {
     let ptc_size = harness.spec.ptc_size;
     let quorum_threshold = ptc_size / 2;
 
-    // Send blob_data_available=true but payload_timely=false
+    // Send blob_data_available=true but payload_present=false
     let attestation = PayloadAttestation::<E> {
         data: PayloadAttestationData {
             beacon_block_root: block_root,
             slot,
-            payload_timely: false,
+            payload_present: false,
             blob_data_available: true,
         },
         ..PayloadAttestation::empty()
@@ -6160,10 +6164,10 @@ async fn fc_on_payload_attestation_blob_quorum_independent() {
         .get_block(&block_root)
         .unwrap();
 
-    // payload_timely=false → ptc_weight should remain 0
+    // payload_present=false → ptc_weight should remain 0
     assert_eq!(
         node.ptc_weight, 0,
-        "ptc_weight should be 0 when payload_timely=false"
+        "ptc_weight should be 0 when payload_present=false"
     );
     // payload_revealed stays true because produce_gloas_block creates a self-build
     // block with envelope_received=true, and on_execution_bid preserves payload state
@@ -6196,7 +6200,7 @@ async fn fc_on_payload_attestation_rejects_unknown_root() {
         data: PayloadAttestationData {
             beacon_block_root: unknown_root,
             slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         },
         ..PayloadAttestation::empty()
@@ -6285,7 +6289,7 @@ async fn fc_bid_then_payload_lifecycle() {
     );
 }
 
-/// on_payload_attestation with payload_timely=true sets execution_status
+/// on_payload_attestation with payload_present=true sets execution_status
 /// to Optimistic via bid_block_hash when quorum is reached.
 #[tokio::test]
 async fn fc_payload_attestation_quorum_sets_optimistic_from_bid_hash() {
@@ -6339,7 +6343,7 @@ async fn fc_payload_attestation_quorum_sets_optimistic_from_bid_hash() {
         data: PayloadAttestationData {
             beacon_block_root: block_root,
             slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: false,
         },
         ..PayloadAttestation::empty()
@@ -6425,7 +6429,7 @@ async fn fc_on_payload_attestation_exact_quorum_does_not_reveal() {
         data: PayloadAttestationData {
             beacon_block_root: block_root,
             slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: false,
         },
         ..PayloadAttestation::empty()
@@ -6514,7 +6518,7 @@ async fn fc_on_payload_attestation_one_above_quorum_reveals() {
         data: PayloadAttestationData {
             beacon_block_root: block_root,
             slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: false,
         },
         ..PayloadAttestation::empty()
@@ -6838,7 +6842,7 @@ async fn fc_full_external_builder_lifecycle() {
         data: PayloadAttestationData {
             beacon_block_root: block_root,
             slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         },
         ..PayloadAttestation::empty()
@@ -6959,7 +6963,7 @@ async fn gloas_import_attestation_updates_fork_choice_ptc_weight() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_timely: true,
+        payload_present: true,
         blob_data_available: false,
     };
 
@@ -7005,7 +7009,7 @@ async fn gloas_import_attestation_updates_blob_data_weight() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_timely: false,
+        payload_present: false,
         blob_data_available: true,
     };
 
@@ -7033,7 +7037,7 @@ async fn gloas_import_attestation_updates_blob_data_weight() {
     );
     assert_eq!(
         node.ptc_weight, 0,
-        "ptc_weight should be 0 when payload_timely=false"
+        "ptc_weight should be 0 when payload_present=false"
     );
 }
 
@@ -7075,7 +7079,7 @@ async fn gloas_import_attestation_quorum_triggers_payload_revealed() {
         let data = PayloadAttestationData {
             beacon_block_root: head_root,
             slot: head_slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: false,
         };
 
@@ -7123,7 +7127,7 @@ async fn gloas_import_attestation_quorum_triggers_payload_revealed() {
     );
 }
 
-/// Importing a payload attestation with payload_timely=false should NOT increment
+/// Importing a payload attestation with payload_present=false should NOT increment
 /// ptc_weight but should still succeed (valid attestation for absent payload).
 #[tokio::test]
 async fn gloas_import_attestation_payload_absent_no_ptc_weight() {
@@ -7140,7 +7144,7 @@ async fn gloas_import_attestation_payload_absent_no_ptc_weight() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_timely: false,
+        payload_present: false,
         blob_data_available: false,
     };
 
@@ -7156,7 +7160,7 @@ async fn gloas_import_attestation_payload_absent_no_ptc_weight() {
     let result = harness.chain.import_payload_attestation_message(message);
     assert!(
         result.is_ok(),
-        "should import attestation with payload_timely=false: {:?}",
+        "should import attestation with payload_present=false: {:?}",
         result.err()
     );
 
@@ -7164,7 +7168,7 @@ async fn gloas_import_attestation_payload_absent_no_ptc_weight() {
     let node = fc.get_block(&head_root).unwrap();
     assert_eq!(
         node.ptc_weight, 0,
-        "ptc_weight should remain 0 when payload_timely=false"
+        "ptc_weight should remain 0 when payload_present=false"
     );
     assert_eq!(
         node.ptc_blob_data_available_weight, 0,
@@ -7175,7 +7179,7 @@ async fn gloas_import_attestation_payload_absent_no_ptc_weight() {
 /// PTC blob_data_available quorum via import_payload_attestation_message updates
 /// get_payload_attestation_data: when enough PTC members attest with
 /// blob_data_available=true to cross quorum, the validator-facing API should
-/// reflect blob_data_available=true even without payload_timely.
+/// reflect blob_data_available=true even without payload_present.
 #[tokio::test]
 async fn gloas_blob_quorum_via_ptc_updates_attestation_data() {
     let harness = gloas_harness_at_epoch(0);
@@ -7222,7 +7226,7 @@ async fn gloas_blob_quorum_via_ptc_updates_attestation_data() {
         let data = PayloadAttestationData {
             beacon_block_root: head_root,
             slot: head_slot,
-            payload_timely: false,
+            payload_present: false,
             blob_data_available: true,
         };
 
@@ -7260,10 +7264,10 @@ async fn gloas_blob_quorum_via_ptc_updates_attestation_data() {
         node.payload_data_available,
         "payload_data_available should be true after blob quorum"
     );
-    // payload_timely votes were all false — ptc_weight should remain 0
+    // payload_present votes were all false — ptc_weight should remain 0
     assert_eq!(
         node.ptc_weight, 0,
-        "ptc_weight should be 0 (all votes had payload_timely=false)"
+        "ptc_weight should be 0 (all votes had payload_present=false)"
     );
     drop(fc);
 
@@ -7277,13 +7281,13 @@ async fn gloas_blob_quorum_via_ptc_updates_attestation_data() {
         "blob_data_available should be true after PTC quorum"
     );
     assert!(
-        data_after.payload_timely,
-        "payload_timely should still be true (envelope was processed, payload_revealed=true)"
+        data_after.payload_present,
+        "payload_present should still be true (envelope was processed, payload_revealed=true)"
     );
 }
 
-/// PTC payload_timely quorum WITHOUT envelope: when no envelope is processed but
-/// enough PTC members attest payload_timely=true (quorum via gossip), fork choice
+/// PTC payload_present quorum WITHOUT envelope: when no envelope is processed but
+/// enough PTC members attest payload_present=true (quorum via gossip), fork choice
 /// flips payload_revealed=true and get_payload_attestation_data reflects it. This
 /// tests the social consensus path where the node trusts PTC attestations even
 /// though it never received the envelope directly.
@@ -7314,21 +7318,21 @@ async fn gloas_ptc_payload_quorum_without_envelope() {
         node.ptc_blob_data_available_weight = 0;
     }
 
-    // Before PTC votes: payload_timely should be false
+    // Before PTC votes: payload_present should be false
     let data_before = harness
         .chain
         .get_payload_attestation_data(head_slot)
         .expect("should get payload attestation data");
     assert!(
-        !data_before.payload_timely,
-        "payload_timely should be false before PTC quorum (no envelope)"
+        !data_before.payload_present,
+        "payload_present should be false before PTC quorum (no envelope)"
     );
     assert!(
         !data_before.blob_data_available,
         "blob_data_available should be false before PTC quorum"
     );
 
-    // Import payload_timely=true AND blob_data_available=true from all PTC members
+    // Import payload_present=true AND blob_data_available=true from all PTC members
     let ptc =
         get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
     let quorum_threshold = harness.spec.ptc_size / 2;
@@ -7337,7 +7341,7 @@ async fn gloas_ptc_payload_quorum_without_envelope() {
         let data = PayloadAttestationData {
             beacon_block_root: head_root,
             slot: head_slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         };
 
@@ -7388,8 +7392,8 @@ async fn gloas_ptc_payload_quorum_without_envelope() {
         .get_payload_attestation_data(head_slot)
         .expect("should get payload attestation data after quorum");
     assert!(
-        data_after.payload_timely,
-        "payload_timely should be true after PTC quorum (no envelope)"
+        data_after.payload_present,
+        "payload_present should be true after PTC quorum (no envelope)"
     );
     assert!(
         data_after.blob_data_available,
@@ -7433,7 +7437,7 @@ async fn gloas_blob_quorum_strictly_greater_than_threshold() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_timely: false,
+        payload_present: false,
         blob_data_available: true,
     };
     let signature =
@@ -8051,13 +8055,13 @@ async fn gloas_block_production_uses_gloas_withdrawals() {
 }
 
 // =============================================================================
-// Attestation production: payload_timely (data.index) determination
+// Attestation production: payload_present (data.index) determination
 // =============================================================================
 // These tests exercise the full `produce_unaggregated_attestation` → `empty_for_signing`
 // pipeline in a Gloas context, verifying that `data.index` correctly reflects the
-// payload_timely state from fork choice. The payload_timely logic at
+// payload_present state from fork choice. The payload_present logic at
 // beacon_chain.rs:2206-2217 reads `payload_revealed` from the fork choice node:
-//   - Same-slot attestation (block.slot == request_slot): always payload_timely=false → index=0
+//   - Same-slot attestation (block.slot == request_slot): always payload_present=false → index=0
 //   - Non-same-slot (block.slot < request_slot) with payload_revealed=true: index=1
 //   - Non-same-slot (block.slot < request_slot) with payload_revealed=false: index=0
 //
@@ -8069,7 +8073,7 @@ async fn gloas_block_production_uses_gloas_withdrawals() {
 /// payload_revealed state. Per spec, same-slot attestations cannot know whether
 /// the payload is present (the envelope arrives after the block).
 #[tokio::test]
-async fn gloas_attestation_same_slot_payload_timely_false() {
+async fn gloas_attestation_same_slot_payload_present_false() {
     let harness = gloas_harness_at_epoch(0);
     // Produce blocks so chain advances and has valid execution status
     Box::pin(harness.extend_slots(3)).await;
@@ -8093,11 +8097,11 @@ async fn gloas_attestation_same_slot_payload_timely_false() {
         .produce_unaggregated_attestation(head_slot, 0)
         .expect("should produce attestation");
 
-    // Same-slot: data.index must be 0 (payload_timely=false)
+    // Same-slot: data.index must be 0 (payload_present=false)
     assert_eq!(
         attestation.data().index,
         0,
-        "same-slot Gloas attestation should have index=0 (payload_timely=false), \
+        "same-slot Gloas attestation should have index=0 (payload_present=false), \
          even though payload_revealed=true in fork choice. \
          Same-slot attestors cannot know if the envelope has arrived."
     );
@@ -8136,11 +8140,11 @@ async fn gloas_attestation_non_same_slot_payload_revealed_index_one() {
         .produce_unaggregated_attestation(attest_slot, 0)
         .expect("should produce attestation for skip slot");
 
-    // Non-same-slot with payload_revealed=true: data.index must be 1 (payload_timely=true)
+    // Non-same-slot with payload_revealed=true: data.index must be 1 (payload_present=true)
     assert_eq!(
         attestation.data().index,
         1,
-        "non-same-slot Gloas attestation should have index=1 (payload_timely=true) \
+        "non-same-slot Gloas attestation should have index=1 (payload_present=true) \
          when payload_revealed=true in fork choice. \
          head_slot={head_slot}, attest_slot={attest_slot}"
     );
@@ -8240,7 +8244,7 @@ async fn fulu_attestation_always_index_zero() {
         .produce_unaggregated_attestation(attest_slot, 0)
         .expect("should produce Fulu attestation");
 
-    // Pre-Gloas: index is always 0 (no payload_timely repurposing)
+    // Pre-Gloas: index is always 0 (no payload_present repurposing)
     assert_eq!(
         attestation.data().index,
         0,
@@ -8250,7 +8254,7 @@ async fn fulu_attestation_always_index_zero() {
 
 /// After envelope processing, a Gloas block transitions from Optimistic
 /// to Valid execution status, enabling attestation production. The attestation
-/// should have data.index=1 (payload_timely=true) for non-same-slot.
+/// should have data.index=1 (payload_present=true) for non-same-slot.
 ///
 /// This tests the full lifecycle: block import (Optimistic, no attestation) →
 /// envelope processing (Valid, attestation possible with index=1).
@@ -8308,24 +8312,24 @@ async fn gloas_attestation_enabled_after_envelope_processing() {
     );
 }
 
-// ── Early attester cache Gloas payload_timely tests ──────────────────────
+// ── Early attester cache Gloas payload_present tests ──────────────────────
 //
 // The early attester cache (early_attester_cache.rs) is a fast-path for
 // attestation production that bypasses canonical_head. It independently
-// computes `payload_timely` from the proto_block's `payload_revealed` field:
+// computes `payload_present` from the proto_block's `payload_revealed` field:
 //
-//   payload_timely = gloas_enabled && request_slot > block.slot && payload_revealed
+//   payload_present = gloas_enabled && request_slot > block.slot && payload_revealed
 //
 // Previously, ZERO tests exercised this logic with Gloas enabled. The existing
 // tests in attestation_production.rs use default_spec() which doesn't enable
-// Gloas, so the early cache always computed payload_timely=false regardless of
+// Gloas, so the early cache always computed payload_present=false regardless of
 // the proto_block's payload_revealed state.
 
 /// Early attester cache: same-slot attestation in Gloas should always have
-/// index=0 (payload_timely=false), even when payload_revealed=true.
+/// index=0 (payload_present=false), even when payload_revealed=true.
 /// Same-slot attestors cannot know if the envelope has arrived yet.
 #[tokio::test]
-async fn gloas_early_cache_same_slot_payload_timely_false() {
+async fn gloas_early_cache_same_slot_payload_present_false() {
     let harness = gloas_harness_at_epoch(0);
     Box::pin(harness.extend_slots(3)).await;
 
@@ -8382,12 +8386,12 @@ async fn gloas_early_cache_same_slot_payload_timely_false() {
     assert_eq!(
         early_att.data().index,
         0,
-        "same-slot early cache attestation should have index=0 (payload_timely=false)"
+        "same-slot early cache attestation should have index=0 (payload_present=false)"
     );
 }
 
 /// Early attester cache: non-same-slot attestation with payload_revealed=true
-/// should have index=1 (payload_timely=true).
+/// should have index=1 (payload_present=true).
 #[tokio::test]
 async fn gloas_early_cache_non_same_slot_payload_revealed_index_one() {
     let harness = gloas_harness_at_epoch(0);
@@ -8432,7 +8436,7 @@ async fn gloas_early_cache_non_same_slot_payload_revealed_index_one() {
         )
         .unwrap();
 
-    // Attest at a LATER slot (non-same-slot) — should get payload_timely=true
+    // Attest at a LATER slot (non-same-slot) — should get payload_present=true
     let attest_slot = head_slot + 1;
     let early_att = harness
         .chain
@@ -8449,7 +8453,7 @@ async fn gloas_early_cache_non_same_slot_payload_revealed_index_one() {
 }
 
 /// Early attester cache: non-same-slot attestation with payload_revealed=false
-/// should have index=0 (payload_timely=false). This tests the safety boundary:
+/// should have index=0 (payload_present=false). This tests the safety boundary:
 /// if the payload hasn't been revealed, even non-same-slot attestations must NOT
 /// indicate payload presence.
 #[tokio::test]
@@ -8599,15 +8603,15 @@ async fn gloas_early_cache_matches_canonical_attestation() {
     assert_eq!(
         canonical_skip.data().index,
         1,
-        "non-same-slot: both should have index=1 (payload_timely=true)"
+        "non-same-slot: both should have index=1 (payload_present=true)"
     );
 }
 
 /// Pre-Gloas (Fulu) early attester cache: index should always be the committee
-/// index, never payload_timely. Verifies the Gloas payload_timely logic is
+/// index, never payload_present. Verifies the Gloas payload_present logic is
 /// NOT triggered for pre-Gloas forks.
 #[tokio::test]
-async fn fulu_early_cache_uses_committee_index_not_payload_timely() {
+async fn fulu_early_cache_uses_committee_index_not_payload_present() {
     // Set Gloas at epoch 100 so we run entirely in Fulu
     let harness = gloas_harness_at_epoch(100);
     Box::pin(harness.extend_slots(3)).await;
@@ -8658,7 +8662,7 @@ async fn fulu_early_cache_uses_committee_index_not_payload_timely() {
         .unwrap();
 
     // Non-same-slot attestation at skip slot — should have index=0 (committee index)
-    // NOT index=1 (which would mean payload_timely=true if Gloas were active)
+    // NOT index=1 (which would mean payload_present=true if Gloas were active)
     let attest_slot = head_slot + 1;
     let early_att = harness
         .chain
@@ -8670,7 +8674,7 @@ async fn fulu_early_cache_uses_committee_index_not_payload_timely() {
     assert_eq!(
         early_att.data().index,
         0,
-        "Fulu early cache attestation should have index=0 (committee index, not payload_timely)"
+        "Fulu early cache attestation should have index=0 (committee index, not payload_present)"
     );
 }
 
@@ -10942,7 +10946,7 @@ async fn gloas_load_parent_empty_parent_unrevealed_payload() {
 
 /// Request attestation for a historical slot (request_slot < head_state.slot())
 /// where the historical block's payload was revealed. Verifies that `data.index`
-/// is 1 (payload_timely=true), exercising the `request_slot < head_state.slot()`
+/// is 1 (payload_present=true), exercising the `request_slot < head_state.slot()`
 /// branch in produce_unaggregated_attestation.
 ///
 /// This branch looks up `payload_revealed` on the proto_node for the historical
@@ -10999,7 +11003,7 @@ async fn gloas_attestation_historical_slot_payload_revealed() {
     assert_eq!(
         attestation.data().index,
         1,
-        "historical slot Gloas attestation should have index=1 (payload_timely=true) \
+        "historical slot Gloas attestation should have index=1 (payload_present=true) \
          when payload_revealed=true on the historical block. \
          head_slot={}, request_slot=3",
         head_state.slot()
@@ -11391,15 +11395,15 @@ async fn gloas_proposer_preferences_pool_dedup_and_pruning() {
 }
 
 // =============================================================================
-// PTC attestation payload_timely=false does NOT trigger payload_revealed
+// PTC attestation payload_present=false does NOT trigger payload_revealed
 // =============================================================================
 
-/// Test that PTC members voting `payload_timely=false` does NOT cause
+/// Test that PTC members voting `payload_present=false` does NOT cause
 /// `payload_revealed` to become true, even if they reach quorum.
 ///
 /// The `on_payload_attestation` code only accumulates `ptc_weight` when
-/// `attestation.data.payload_timely == true`. This test verifies the negative
-/// case: all PTC members vote `payload_timely=false`, and payload_revealed
+/// `attestation.data.payload_present == true`. This test verifies the negative
+/// case: all PTC members vote `payload_present=false`, and payload_revealed
 /// remains false despite reaching "quorum" in count.
 #[tokio::test]
 async fn gloas_payload_absent_attestations_do_not_reveal_payload() {
@@ -11429,12 +11433,12 @@ async fn gloas_payload_absent_attestations_do_not_reveal_payload() {
     let ptc =
         get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
 
-    // Import attestations from ALL PTC members with payload_timely=false
+    // Import attestations from ALL PTC members with payload_present=false
     for (i, &validator_index) in ptc.iter().enumerate() {
         let data = PayloadAttestationData {
             beacon_block_root: head_root,
             slot: head_slot,
-            payload_timely: false, // voting ABSENT
+            payload_present: false, // voting ABSENT
             blob_data_available: false,
         };
 
@@ -11456,16 +11460,16 @@ async fn gloas_payload_absent_attestations_do_not_reveal_payload() {
         );
     }
 
-    // Verify: ptc_weight should remain 0 (payload_timely=false doesn't accumulate weight)
+    // Verify: ptc_weight should remain 0 (payload_present=false doesn't accumulate weight)
     let fc = harness.chain.canonical_head.fork_choice_read_lock();
     let node = fc.get_block(&head_root).unwrap();
     assert_eq!(
         node.ptc_weight, 0,
-        "ptc_weight should remain 0 when all votes are payload_timely=false"
+        "ptc_weight should remain 0 when all votes are payload_present=false"
     );
     assert!(
         !node.payload_revealed,
-        "payload_revealed should remain false when no payload_timely=true votes"
+        "payload_revealed should remain false when no payload_present=true votes"
     );
 }
 
@@ -13847,8 +13851,8 @@ async fn gloas_bid_gossip_rejects_builder_equivocation() {
 // Payload attestation gossip: ValidatorEquivocation
 // =============================================================================
 
-/// When a PTC validator submits a payload attestation with `payload_timely=true`
-/// and then a second attestation for the same slot/block with `payload_timely=false`,
+/// When a PTC validator submits a payload attestation with `payload_present=true`
+/// and then a second attestation for the same slot/block with `payload_present=false`,
 /// the second attestation is rejected with `ValidatorEquivocation`. This is the
 /// primary equivocation detection for payload attesters — a validator that votes
 /// both ways is misbehaving.
@@ -13856,7 +13860,7 @@ async fn gloas_bid_gossip_rejects_builder_equivocation() {
 /// The equivocation check (check 5) runs before signature verification (check 6).
 /// The first attestation is recorded as `New` in the observation tracker even if
 /// it later fails at the signature check. The second attestation (different
-/// `payload_timely`) then triggers equivocation before reaching signature check.
+/// `payload_present`) then triggers equivocation before reaching signature check.
 #[tokio::test]
 async fn gloas_payload_attestation_invalid_sig_does_not_poison_cache() {
     let harness = gloas_harness_at_epoch(0);
@@ -13879,7 +13883,7 @@ async fn gloas_payload_attestation_invalid_sig_does_not_poison_cache() {
         .position(|&idx| idx == ptc_member_index)
         .expect("PTC member should be in PTC committee");
 
-    // First attestation: payload_timely=true, invalid signature.
+    // First attestation: payload_present=true, invalid signature.
     // Since BLS verification runs BEFORE recording in observed_payload_attestations,
     // this invalid attestation should NOT mark the validator as "seen".
     let mut aggregation_bits_1 = BitVector::default();
@@ -13892,7 +13896,7 @@ async fn gloas_payload_attestation_invalid_sig_does_not_poison_cache() {
         data: PayloadAttestationData {
             beacon_block_root: head_root,
             slot: head_slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         },
         signature: AggregateSignature::empty(),
@@ -13921,7 +13925,7 @@ async fn gloas_payload_attestation_invalid_sig_does_not_poison_cache() {
         data: PayloadAttestationData {
             beacon_block_root: head_root,
             slot: head_slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         },
         signature: AggregateSignature::empty(),
@@ -14135,7 +14139,7 @@ async fn gloas_payload_attestation_gossip_rejects_empty_aggregation_bits() {
         data: PayloadAttestationData {
             beacon_block_root: head_root,
             slot: head_slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         },
         signature: AggregateSignature::empty(),
@@ -14184,7 +14188,7 @@ async fn gloas_payload_attestation_gossip_rejects_future_slot() {
         data: PayloadAttestationData {
             beacon_block_root: head_root,
             slot: future_slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         },
         signature: AggregateSignature::empty(),
@@ -14245,7 +14249,7 @@ async fn gloas_payload_attestation_gossip_rejects_past_slot() {
         data: PayloadAttestationData {
             beacon_block_root: head_root,
             slot: past_slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         },
         signature: AggregateSignature::empty(),
@@ -15142,7 +15146,7 @@ async fn gloas_get_advanced_hot_state_blinded_envelope_fallback() {
 // get_payload_attestation_data: past slot with block not in fork choice
 // =============================================================================
 
-/// Verify that `get_payload_attestation_data` returns `payload_timely=false` when
+/// Verify that `get_payload_attestation_data` returns `payload_present=false` when
 /// the block root at the requested past slot is NOT in fork choice (e.g., the block
 /// has been pruned due to finalization).
 ///
@@ -15206,7 +15210,7 @@ async fn gloas_payload_attestation_data_past_slot_block_pruned_from_fc() {
         data.beacon_block_root, old_block_root,
         "data should contain the block root from state.get_block_root()"
     );
-    // If the block was pruned from FC, payload_timely should be false.
+    // If the block was pruned from FC, payload_present should be false.
     // If it's still in FC, it depends on whether its envelope was processed.
     // Either way, the function should return successfully.
 }
@@ -15452,7 +15456,7 @@ async fn gloas_gossip_unaggregated_large_index_rejected() {
 }
 
 /// Gloas gossip: same-slot unaggregated attestation with data.index = 1 is rejected.
-/// Per the spec, same-slot attestations MUST have index=0 (payload_timely=false)
+/// Per the spec, same-slot attestations MUST have index=0 (payload_present=false)
 /// because the envelope hasn't been seen yet at the same slot.
 #[tokio::test]
 async fn gloas_gossip_unaggregated_same_slot_index_one_rejected() {
@@ -15469,7 +15473,7 @@ async fn gloas_gossip_unaggregated_same_slot_index_one_rejected() {
         "pre-condition: attestation should be same-slot as head block"
     );
 
-    // Tamper: set index to 1 (payload_timely=true, invalid for same-slot)
+    // Tamper: set index to 1 (payload_present=true, invalid for same-slot)
     attestation.data.index = 1;
 
     let err = harness
@@ -15485,7 +15489,7 @@ async fn gloas_gossip_unaggregated_same_slot_index_one_rejected() {
 }
 
 /// Gloas gossip: same-slot unaggregated attestation with data.index = 0 is accepted.
-/// This is the valid case — same-slot attestations always have payload_timely=false.
+/// This is the valid case — same-slot attestations always have payload_present=false.
 /// We extend using SomeValidators(vec![]) so no attestations are included in blocks,
 /// ensuring the gossip check won't reject as PriorAttestationKnown.
 #[tokio::test]
@@ -15516,7 +15520,7 @@ async fn gloas_gossip_unaggregated_same_slot_index_zero_accepted() {
 
 /// Gloas gossip: non-same-slot unaggregated attestation with data.index = 1 is accepted.
 /// When the attestation is for a later slot than the head block, index=1
-/// (payload_timely=true) is valid in Gloas. We re-sign the attestation after
+/// (payload_present=true) is valid in Gloas. We re-sign the attestation after
 /// changing the index to produce a valid signature.
 /// We extend without attestations to avoid PriorAttestationKnown duplicates.
 #[tokio::test]
@@ -15546,7 +15550,7 @@ async fn gloas_gossip_unaggregated_non_same_slot_index_one_accepted() {
         .next()
         .expect("should produce attestation for skip slot");
 
-    // Change index to 1 (payload_timely=true) and re-sign
+    // Change index to 1 (payload_present=true) and re-sign
     attestation.data.index = 1;
     let validator_index = attestation.attester_index as usize;
     let fork = harness
@@ -15667,7 +15671,7 @@ async fn gloas_gossip_aggregate_large_index_rejected() {
 }
 
 /// Gloas gossip: same-slot aggregate attestation with data.index = 1 is rejected.
-/// Per the spec, same-slot attestations MUST have index=0 (payload_timely=false)
+/// Per the spec, same-slot attestations MUST have index=0 (payload_present=false)
 /// because the envelope hasn't been seen yet at the same slot.
 /// This check is in verify_early_checks for aggregates at the head_block.slot == data.slot guard.
 #[tokio::test]
@@ -15686,7 +15690,7 @@ async fn gloas_gossip_aggregate_same_slot_index_one_rejected() {
         "pre-condition: aggregate should be same-slot as head block"
     );
 
-    // Tamper: set index to 1 (payload_timely=true, invalid for same-slot)
+    // Tamper: set index to 1 (payload_present=true, invalid for same-slot)
     set_aggregate_data_index(&mut aggregate, 1);
 
     let err = harness
@@ -15702,7 +15706,7 @@ async fn gloas_gossip_aggregate_same_slot_index_one_rejected() {
 }
 
 /// Gloas gossip: same-slot aggregate attestation with data.index = 0 is accepted.
-/// This is the valid case — same-slot attestations always have payload_timely=false (index=0).
+/// This is the valid case — same-slot attestations always have payload_present=false (index=0).
 /// We extend without attestations so the aggregate isn't rejected as already-known.
 #[tokio::test]
 async fn gloas_gossip_aggregate_same_slot_index_zero_accepted() {
@@ -15732,7 +15736,7 @@ async fn gloas_gossip_aggregate_same_slot_index_zero_accepted() {
 }
 
 /// Gloas gossip: non-same-slot aggregate attestation with data.index = 1 does not trigger
-/// the CommitteeIndexNonZero rejection. In Gloas, index=1 (payload_timely=true) is valid
+/// the CommitteeIndexNonZero rejection. In Gloas, index=1 (payload_present=true) is valid
 /// for non-same-slot attestations. We tamper with the index and verify that any error
 /// returned is NOT CommitteeIndexNonZero — proving the Gloas-specific checks correctly
 /// allow index=1 for non-same-slot aggregates.
@@ -15771,7 +15775,7 @@ async fn gloas_gossip_aggregate_non_same_slot_index_one_not_committee_rejected()
         "pre-condition: aggregate should be non-same-slot"
     );
 
-    // Tamper: set index to 1 (payload_timely=true, valid for non-same-slot in Gloas)
+    // Tamper: set index to 1 (payload_present=true, valid for non-same-slot in Gloas)
     set_aggregate_data_index(&mut aggregate, 1);
 
     // The aggregate may fail for other reasons (e.g., signature mismatch since we
@@ -15830,7 +15834,7 @@ async fn gloas_payload_attestation_gossip_rejects_unknown_block_root() {
         data: PayloadAttestationData {
             beacon_block_root: unknown_root,
             slot: head_slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         },
         signature: AggregateSignature::empty(),
@@ -15853,12 +15857,12 @@ async fn gloas_payload_attestation_gossip_rejects_unknown_block_root() {
 // =============================================================================
 
 /// When the same validator submits two payload attestations with identical
-/// `payload_timely` values for the same slot/block, the second should fail at
+/// `payload_present` values for the same slot/block, the second should fail at
 /// signature verification (not at equivocation detection). The equivocation
 /// tracker records `Duplicate` for same-value re-submissions, which is silently
 /// skipped — the validator's observation is already recorded.
 ///
-/// This verifies the distinction between equivocation (different payload_timely
+/// This verifies the distinction between equivocation (different payload_present
 /// values, which is malicious) and duplication (same value, which is benign).
 /// The check is in gloas_verification.rs:596-621.
 #[tokio::test]
@@ -15877,7 +15881,7 @@ async fn gloas_payload_attestation_gossip_duplicate_same_value_not_equivocation(
     assert!(!ptc.is_empty(), "PTC committee should not be empty");
     let ptc_position = 0;
 
-    // First attestation: payload_timely=true
+    // First attestation: payload_present=true
     let mut aggregation_bits = BitVector::default();
     aggregation_bits
         .set(ptc_position, true)
@@ -15888,7 +15892,7 @@ async fn gloas_payload_attestation_gossip_duplicate_same_value_not_equivocation(
         data: PayloadAttestationData {
             beacon_block_root: head_root,
             slot: head_slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         },
         signature: AggregateSignature::empty(),
@@ -15904,13 +15908,13 @@ async fn gloas_payload_attestation_gossip_duplicate_same_value_not_equivocation(
         result_1.err()
     );
 
-    // Second attestation: SAME payload_timely=true (not equivocation, just duplicate)
+    // Second attestation: SAME payload_present=true (not equivocation, just duplicate)
     let attestation_2 = PayloadAttestation::<E> {
         aggregation_bits,
         data: PayloadAttestationData {
             beacon_block_root: head_root,
             slot: head_slot,
-            payload_timely: true, // same value as first
+            payload_present: true, // same value as first
             blob_data_available: true,
         },
         signature: AggregateSignature::empty(),
@@ -15934,7 +15938,7 @@ async fn gloas_payload_attestation_gossip_duplicate_same_value_not_equivocation(
         Err(PayloadAttestationError::ValidatorEquivocation { .. }) => {
             panic!(
                 "duplicate same-value attestation should NOT be equivocation — \
-                 equivocation requires different payload_timely values"
+                 equivocation requires different payload_present values"
             );
         }
         Err(other) => panic!("expected EmptyAggregationBits or InvalidSignature, got {other:?}"),
@@ -16068,7 +16072,7 @@ async fn gloas_payload_attestation_gossip_genesis_root_passes_block_check() {
         data: PayloadAttestationData {
             beacon_block_root: head_root,
             slot: head_slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: true,
         },
         signature: AggregateSignature::empty(),
@@ -17945,7 +17949,7 @@ async fn gloas_in_block_attestation_does_not_double_count_ptc_weight() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_timely: true,
+        payload_present: true,
         blob_data_available: false,
     };
 
@@ -18031,7 +18035,7 @@ async fn gloas_full_ptc_gossip_then_block_no_double_count() {
         let data = PayloadAttestationData {
             beacon_block_root: head_root,
             slot: head_slot,
-            payload_timely: true,
+            payload_present: true,
             blob_data_available: false,
         };
         let signature =
@@ -18114,7 +18118,7 @@ async fn gloas_partial_gossip_full_inblock_no_double_count() {
     let data = PayloadAttestationData {
         beacon_block_root: head_root,
         slot: head_slot,
-        payload_timely: true,
+        payload_present: true,
         blob_data_available: false,
     };
     let sig = sign_payload_attestation_data(&data, ptc[0] as usize, state, &harness.spec);
@@ -18638,7 +18642,7 @@ async fn gloas_index_1_attestation_for_unrevealed_payload_rejected_at_fork_choic
         "attestation should target the external bid block"
     );
 
-    // Change index to 1 (payload_timely=true) and re-sign
+    // Change index to 1 (payload_present=true) and re-sign
     attestation.data.index = 1;
     let validator_index = attestation.attester_index as usize;
     let fork = harness

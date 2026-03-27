@@ -28,13 +28,13 @@ struct AttestationKey {
 pub enum AttestationObservationOutcome {
     /// This is the first attestation from this validator for this slot/block.
     New,
-    /// We've already seen an attestation from this validator for this slot/block with the same payload_timely value.
+    /// We've already seen an attestation from this validator for this slot/block with the same payload_present value.
     Duplicate,
-    /// The validator has already attested with a different payload_timely value for this slot/block.
+    /// The validator has already attested with a different payload_present value for this slot/block.
     /// This is equivocation and should be penalized.
     Equivocation {
-        existing_payload_timely: bool,
-        new_payload_timely: bool,
+        existing_payload_present: bool,
+        new_payload_present: bool,
     },
 }
 
@@ -43,11 +43,11 @@ pub enum AttestationObservationOutcome {
 /// Structure: (Slot, BeaconBlockRoot, ValidatorIndex) -> PayloadPresent
 /// This allows us to:
 /// - Check if we've seen an attestation from a specific validator for a specific block
-/// - Detect when a validator submits conflicting attestations (different payload_timely values)
+/// - Detect when a validator submits conflicting attestations (different payload_present values)
 #[derive(Debug, Educe)]
 #[educe(Default(bound(E: EthSpec)))]
 pub struct ObservedPayloadAttestations<E: EthSpec> {
-    /// Map of (slot, block_root, validator_index) -> payload_timely
+    /// Map of (slot, block_root, validator_index) -> payload_present
     observed_attestations: HashMap<AttestationKey, bool>,
     /// Set of slots we've observed, for efficient pruning
     observed_slots: HashSet<Slot>,
@@ -69,7 +69,7 @@ impl<E: EthSpec> ObservedPayloadAttestations<E> {
         slot: Slot,
         beacon_block_root: Hash256,
         validator_index: u64,
-        payload_timely: bool,
+        payload_present: bool,
     ) -> AttestationObservationOutcome {
         let key = AttestationKey {
             slot,
@@ -79,13 +79,13 @@ impl<E: EthSpec> ObservedPayloadAttestations<E> {
 
         match self.observed_attestations.get(&key) {
             None => AttestationObservationOutcome::New,
-            Some(&existing_payload_timely) => {
-                if existing_payload_timely == payload_timely {
+            Some(&existing_payload_present) => {
+                if existing_payload_present == payload_present {
                     AttestationObservationOutcome::Duplicate
                 } else {
                     AttestationObservationOutcome::Equivocation {
-                        existing_payload_timely,
-                        new_payload_timely: payload_timely,
+                        existing_payload_present,
+                        new_payload_present: payload_present,
                     }
                 }
             }
@@ -103,7 +103,7 @@ impl<E: EthSpec> ObservedPayloadAttestations<E> {
         slot: Slot,
         beacon_block_root: Hash256,
         validator_index: u64,
-        payload_timely: bool,
+        payload_present: bool,
     ) -> AttestationObservationOutcome {
         let key = AttestationKey {
             slot,
@@ -118,18 +118,18 @@ impl<E: EthSpec> ObservedPayloadAttestations<E> {
         match self.observed_attestations.get(&key) {
             None => {
                 // First attestation from this validator for this slot/block
-                self.observed_attestations.insert(key, payload_timely);
+                self.observed_attestations.insert(key, payload_present);
                 AttestationObservationOutcome::New
             }
-            Some(&existing_payload_timely) => {
-                if existing_payload_timely == payload_timely {
+            Some(&existing_payload_present) => {
+                if existing_payload_present == payload_present {
                     // Same attestation, already seen
                     AttestationObservationOutcome::Duplicate
                 } else {
                     // Conflicting attestation - equivocation!
                     AttestationObservationOutcome::Equivocation {
-                        existing_payload_timely,
-                        new_payload_timely: payload_timely,
+                        existing_payload_present,
+                        new_payload_present: payload_present,
                     }
                 }
             }
@@ -212,18 +212,18 @@ mod tests {
         let block_root = Hash256::from_low_u64_be(1);
         let validator_index = 42;
 
-        // First attestation with payload_timely=true
+        // First attestation with payload_present=true
         cache.observe_attestation(slot, block_root, validator_index, true);
 
-        // Conflicting attestation with payload_timely=false
+        // Conflicting attestation with payload_present=false
         let outcome = cache.observe_attestation(slot, block_root, validator_index, false);
         match outcome {
             AttestationObservationOutcome::Equivocation {
-                existing_payload_timely,
-                new_payload_timely,
+                existing_payload_present,
+                new_payload_present,
             } => {
-                assert!(existing_payload_timely);
-                assert!(!new_payload_timely);
+                assert!(existing_payload_present);
+                assert!(!new_payload_present);
             }
             _ => panic!("Expected equivocation, got {outcome:?}"),
         }
@@ -308,18 +308,18 @@ mod tests {
         let block_root = Hash256::from_low_u64_be(1);
         let validator = 42;
 
-        // First: payload_timely = false
+        // First: payload_present = false
         cache.observe_attestation(slot, block_root, validator, false);
 
-        // Second: payload_timely = true → equivocation
+        // Second: payload_present = true → equivocation
         let outcome = cache.observe_attestation(slot, block_root, validator, true);
         match outcome {
             AttestationObservationOutcome::Equivocation {
-                existing_payload_timely,
-                new_payload_timely,
+                existing_payload_present,
+                new_payload_present,
             } => {
-                assert!(!existing_payload_timely);
-                assert!(new_payload_timely);
+                assert!(!existing_payload_present);
+                assert!(new_payload_present);
             }
             _ => panic!("Expected equivocation, got {outcome:?}"),
         }

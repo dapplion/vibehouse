@@ -48,7 +48,7 @@ impl<E: EthSpec> PayloadAttestation<E> {
             data: PayloadAttestationData {
                 beacon_block_root: Hash256::default(),
                 slot: Slot::default(),
-                payload_timely: false,
+                payload_present: false,
                 blob_data_available: false,
             },
             signature: AggregateSignature::empty(),
@@ -77,7 +77,7 @@ mod tests {
     fn test_empty_payload_attestation() {
         let attestation = PayloadAttestation::<MainnetEthSpec>::empty();
         assert_eq!(attestation.num_attesters(), 0);
-        assert!(!attestation.data.payload_timely);
+        assert!(!attestation.data.payload_present);
         assert!(!attestation.data.blob_data_available);
     }
 
@@ -115,10 +115,10 @@ mod tests {
     }
 
     #[test]
-    fn payload_timely_true() {
+    fn payload_present_true() {
         let mut att = PayloadAttestation::<E>::empty();
-        att.data.payload_timely = true;
-        assert!(att.data.payload_timely);
+        att.data.payload_present = true;
+        assert!(att.data.payload_present);
         assert!(!att.data.blob_data_available);
     }
 
@@ -126,16 +126,16 @@ mod tests {
     fn blob_data_available_true() {
         let mut att = PayloadAttestation::<E>::empty();
         att.data.blob_data_available = true;
-        assert!(!att.data.payload_timely);
+        assert!(!att.data.payload_present);
         assert!(att.data.blob_data_available);
     }
 
     #[test]
     fn both_flags_true() {
         let mut att = PayloadAttestation::<E>::empty();
-        att.data.payload_timely = true;
+        att.data.payload_present = true;
         att.data.blob_data_available = true;
-        assert!(att.data.payload_timely);
+        assert!(att.data.payload_present);
         assert!(att.data.blob_data_available);
     }
 
@@ -144,7 +144,7 @@ mod tests {
         let mut att = PayloadAttestation::<E>::empty();
         att.data.slot = Slot::new(42);
         att.data.beacon_block_root = Hash256::repeat_byte(0xab);
-        att.data.payload_timely = true;
+        att.data.payload_present = true;
         att.data.blob_data_available = true;
         att.aggregation_bits.set(0, true).unwrap();
         att.aggregation_bits.set(1, true).unwrap();
@@ -153,7 +153,7 @@ mod tests {
         let decoded = PayloadAttestation::<E>::from_ssz_bytes(&bytes).unwrap();
         assert_eq!(att, decoded);
         assert_eq!(decoded.num_attesters(), 2);
-        assert!(decoded.data.payload_timely);
+        assert!(decoded.data.payload_present);
         assert!(decoded.data.blob_data_available);
     }
 
@@ -170,7 +170,7 @@ mod tests {
         let root1_modified = att1.tree_hash_root();
         assert_ne!(root1, root1_modified, "setting a bit should change hash");
 
-        att2.data.payload_timely = true;
+        att2.data.payload_present = true;
         let root2_modified = att2.tree_hash_root();
         assert_ne!(root2, root2_modified, "changing flag should change hash");
         assert_ne!(
@@ -192,7 +192,7 @@ mod tests {
     #[test]
     fn clone_preserves_equality() {
         let mut att = PayloadAttestation::<E>::empty();
-        att.data.payload_timely = true;
+        att.data.payload_present = true;
         att.aggregation_bits.set(1, true).unwrap();
         let cloned = att.clone();
         assert_eq!(att, cloned);

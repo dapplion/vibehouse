@@ -107,7 +107,7 @@ pub struct ProtoNode {
     /// Gloas ePBS: Has the builder revealed the execution payload for this block?
     /// Always true for self-build and pre-gloas blocks.
     pub payload_revealed: bool,
-    /// Gloas ePBS: Accumulated PTC votes for payload_timely=true.
+    /// Gloas ePBS: Accumulated PTC votes for payload_present=true.
     /// Used to determine if payload timeliness quorum has been reached.
     pub ptc_weight: u64,
     /// Gloas ePBS: Accumulated PTC votes for blob_data_available=true.

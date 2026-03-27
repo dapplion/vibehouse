@@ -427,7 +427,7 @@ pub struct BeaconChain<T: BeaconChainTypes> {
         Mutex<crate::observed_payload_envelopes::ObservedPayloadEnvelopes<T::EthSpec>>,
     /// Tracks per-block-root envelope timing for the variable PTC deadline (spec PR #4843).
     /// Stores (arrival_time_ms_into_slot, envelope_ssz_size) for each received envelope.
-    /// Used by `get_payload_attestation_data` to determine `payload_timely`.
+    /// Used by `get_payload_attestation_data` to determine `payload_present`.
     pub payload_envelope_timings:
         parking_lot::RwLock<std::collections::HashMap<Hash256, (u64, u64)>>,
     /// Interfaces with the execution client.
@@ -1851,7 +1851,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let block_root = if slot >= head_slot {
             // Same slot or future: use head block root directly.
             // For future slots, the block hasn't arrived yet — the PTC will vote
-            // payload_timely=false. Return head block root as best-effort.
+            // payload_present=false. Return head block root as best-effort.
             head_block_root
         } else {
             // Look through fork choice for the block at this slot
@@ -1884,11 +1884,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         };
         drop(fc);
 
-        // Spec PR #4843: Variable PTC deadline — payload_timely is true only if the
+        // Spec PR #4843: Variable PTC deadline — payload_present is true only if the
         // envelope was received AND arrived within the size-dependent deadline.
         // get_payload_due_ms interpolates between MIN_PAYLOAD_DUE_BPS (size=0) and
         // PAYLOAD_ATTESTATION_DUE_BPS (size=MAX_PAYLOAD_SIZE).
-        let payload_timely = if payload_revealed {
+        let payload_present = if payload_revealed {
             if let Some(&(arrival_ms, ssz_size)) =
                 self.payload_envelope_timings.read().get(&block_root)
             {
@@ -1918,7 +1918,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         Ok(PayloadAttestationData {
             beacon_block_root: block_root,
             slot,
-            payload_timely,
+            payload_present,
             blob_data_available,
         })
     }
@@ -2162,7 +2162,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let target;
         let current_epoch_attesting_info: Option<(Checkpoint, usize)>;
         let attester_cache_key;
-        let payload_timely;
+        let payload_present;
         let head_timer = metrics::start_timer(&metrics::ATTESTATION_PRODUCTION_HEAD_SCRAPE_SECONDS);
         // The following braces are to prevent the `cached_head` Arc from being held for longer than
         // required. It also helps reduce the diff for a very large PR (#3244).
@@ -2243,11 +2243,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             attester_cache_key =
                 AttesterCacheKey::new(request_epoch, head_state, beacon_block_root)?;
 
-            // [Gloas/EIP-7732] Determine payload_timely for attestation data.index.
+            // [Gloas/EIP-7732] Determine payload_present for attestation data.index.
             // Per spec: same-slot attestations always have data.index = 0.
             // Non-same-slot attestations set data.index based on whether the
             // payload was revealed: 1 if FULL (payload present), 0 otherwise.
-            payload_timely = if head_state.fork_name_unchecked().gloas_enabled() {
+            payload_present = if head_state.fork_name_unchecked().gloas_enabled() {
                 let fc = self.canonical_head.fork_choice_read_lock();
                 match request_slot.cmp(&head_state.slot()) {
                     std::cmp::Ordering::Greater => {
@@ -2344,7 +2344,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             justified_checkpoint,
             target,
             &self.spec,
-            payload_timely,
+            payload_present,
         )?)
     }
 
@@ -5593,7 +5593,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                                         attestation.data.slot,
                                         attestation.data.beacon_block_root,
                                         idx,
-                                        attestation.data.payload_timely,
+                                        attestation.data.payload_present,
                                     );
                                     matches!(
                                         outcome,
