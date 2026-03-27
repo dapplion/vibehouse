@@ -1,8 +1,8 @@
 use crate::EpochProcessingError;
-use crate::per_block_processing::gloas::compute_ptc;
+use crate::per_block_processing::gloas::{compute_ptc, compute_ptc_from_committees};
 use safe_arith::SafeArith;
 use ssz_types::FixedVector;
-use types::{BeaconState, BuilderPendingPayment, ChainSpec, Epoch, EthSpec, Slot};
+use types::{BeaconState, BuilderPendingPayment, ChainSpec, CommitteeCache, Epoch, EthSpec, Slot};
 
 /// Processes the builder pending payments from the previous epoch.
 ///
@@ -138,7 +138,9 @@ pub fn process_ptc_window<E: EthSpec>(
         })
         .collect::<Result<_, _>>()?;
 
-    // Compute PTC for the next+lookahead epoch
+    // Compute PTC for the next+lookahead epoch.
+    // This epoch (current + MIN_SEED_LOOKAHEAD + 1) is beyond the state's built-in
+    // committee cache slots (prev/current/next), so we build a temporary cache.
     let next_epoch = Epoch::new(
         state
             .current_epoch()
@@ -146,17 +148,15 @@ pub fn process_ptc_window<E: EthSpec>(
             .safe_add(spec.min_seed_lookahead.as_u64())?
             .safe_add(1)?,
     );
-    let ptc_size = E::ptc_size();
-    let empty_ptc = || FixedVector::new(vec![0u64; ptc_size]);
+    let lookahead_cache = CommitteeCache::initialized::<E>(state, next_epoch, spec)
+        .map_err(EpochProcessingError::BeaconStateError)?;
     let start_slot = next_epoch.start_slot(E::slots_per_epoch());
     let new_ptcs: Vec<FixedVector<u64, E::PtcSize>> = (0..slots_per_epoch as u64)
         .map(|i| {
             let slot = Slot::new(start_slot.as_u64().safe_add(i)?);
-            match compute_ptc(state, slot, spec) {
-                Ok(ptc) => Ok(FixedVector::new(ptc)?),
-                // Committee caches may not cover this epoch yet (e.g. epoch N+2 from state at N)
-                Err(_) => Ok(empty_ptc()?),
-            }
+            let ptc = compute_ptc_from_committees(state, slot, spec, &lookahead_cache)
+                .map_err(|e| EpochProcessingError::PtcWindowComputeError(format!("{e:?}")))?;
+            Ok(FixedVector::new(ptc)?)
         })
         .collect::<Result<_, EpochProcessingError>>()?;
 

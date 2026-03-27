@@ -75,11 +75,18 @@ impl CommitteeCache {
         // Check that the cache is being built for an in-range epoch.
         //
         // We allow caches to be constructed for historic epochs.
+        // The maximum future epoch we can compute is current + MIN_SEED_LOOKAHEAD + 1,
+        // because the required RANDAO mix (from epoch - MIN_SEED_LOOKAHEAD - 1) must be
+        // available. This covers the PTC window lookahead in Gloas which needs epoch N+2.
         let reqd_randao_epoch = epoch
             .saturating_sub(spec.min_seed_lookahead)
             .saturating_sub(1u64);
 
-        if reqd_randao_epoch < state.min_randao_epoch() || epoch > state.current_epoch() + 1 {
+        let max_future_epoch = state
+            .current_epoch()
+            .safe_add(spec.min_seed_lookahead)?
+            .safe_add(1u64)?;
+        if reqd_randao_epoch < state.min_randao_epoch() || epoch > max_future_epoch {
             return Err(Error::EpochOutOfBounds);
         }
 

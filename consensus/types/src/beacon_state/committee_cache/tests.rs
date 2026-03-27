@@ -126,9 +126,9 @@ async fn shuffles_for_the_right_epoch() {
         }
     };
 
-    // We can initialize the committee cache at recent epochs in the past, and one epoch into the
-    // future.
-    for e in (0..=epoch.as_u64() + 1).map(Epoch::new) {
+    // We can initialize the committee cache at recent epochs in the past, and up to
+    // MIN_SEED_LOOKAHEAD + 1 epochs into the future (needed for PTC window computation).
+    for e in (0..=epoch.as_u64() + 1 + spec.min_seed_lookahead.as_u64()).map(Epoch::new) {
         let seed = state.get_seed(e, Domain::BeaconAttester, spec).unwrap();
         let cache = CommitteeCache::initialized(&state, e, spec)
             .unwrap_or_else(|_| panic!("failed at epoch {e}"));
@@ -136,9 +136,9 @@ async fn shuffles_for_the_right_epoch() {
         assert_shuffling_positions_accurate(&cache);
     }
 
-    // We should *not* be able to build a committee cache for the epoch after the next epoch.
+    // We should *not* be able to build a committee cache beyond the lookahead limit.
     assert_eq!(
-        CommitteeCache::initialized(&state, epoch + 2, spec),
+        CommitteeCache::initialized(&state, epoch + 2 + spec.min_seed_lookahead.as_u64(), spec),
         Err(BeaconStateError::EpochOutOfBounds)
     );
 }
