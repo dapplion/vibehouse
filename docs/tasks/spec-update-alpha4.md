@@ -111,16 +111,17 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Run 2879: Proactively optimized `compute_ptc` to pre-compute effective balances (matching #5044).
 - Run 2922: #5044 merged (compute_ptc speedup) — already implemented. #5046 merged (Python cache) — not relevant.
 
-**Steady state (runs 2971-3046, 2026-03-26/27):**
+**Steady state (runs 2971-3047, 2026-03-26/27):**
 - No new consensus-specs merges since #5048 (2026-03-27)
 - v1.7.0-alpha.4: tag a9bc79a7 exists, no GitHub Release published (latest = v1.7.0-alpha.3)
 - EF test vectors: still v1.5.0 (2025-05-07). Upstream nightly generation failing since 2026-03-08. No new test vectors expected until alpha.4 release is published
 - CI: fully green (ci, nightly, spec-test-check). Zero clippy/compiler warnings
 - cargo audit: 1 rsa vuln in jsonwebtoken transitive dep (no fix available). 5 unmaintained warnings (ansi_term, bincode, derivative, filesystem, paste — all transitive, no action)
-- Only outdated root dep: rand_xorshift 0.4→0.5 (requires rand 0.9→0.10 workspace migration — not viable)
+- Only outdated root deps require major version bumps: rand 0.9→0.10, reqwest 0.12→0.13, sha2 0.10→0.11, bincode 1→3. None viable as minor updates
 - No transitive dep updates available (cargo update --dry-run clean)
 - Non-Gloas merges: #5048 (testing label exclusion)
 - Non-Gloas open: #5047/#5033 (gossip validation bellatrix/altair), #5045 (remove @always_bls) — none relevant
 - Dep updates during this period: cmake 0.1.57→0.1.58, data-encoding-macro-internal syn 1→2, keccak-asm 0.1.6, sha3-asm 0.1.6, simd-adler32 0.3.9, uuid 1.23.0
 - #5048 merged 2026-03-27 (testing label exclusion) — not relevant
 - All 8 open Gloas PRs unchanged throughout: #4843 (blocked), #4898/#4892 (approved/stale), #4954 (blocked), #4747 (dirty, 146+ review comments), #4960/#4932 (test vectors), #4840/#4630 (stale). #5036 effectively dead.
+- Run 3047 (2026-03-27): Full health check — clippy clean, 0 new spec merges, 0 new issues, all deps at latest, CI in-progress (last green). 10 known TODOs all BLOCKED or non-critical (issue #36). No actionable work.
