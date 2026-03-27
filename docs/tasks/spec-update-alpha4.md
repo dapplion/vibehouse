@@ -111,10 +111,10 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Run 2879: Proactively optimized `compute_ptc` to pre-compute effective balances (matching #5044).
 - Run 2922: #5044 merged (compute_ptc speedup) — already implemented. #5046 merged (Python cache) — not relevant.
 
-**Steady state (runs 2971-3044, 2026-03-26/27):**
+**Steady state (runs 2971-3045, 2026-03-26/27):**
 - No new consensus-specs merges since #5048 (2026-03-27)
-- v1.7.0-alpha.4: tag a9bc79a7 exists, no GitHub Release published (latest = v1.6.1)
-- EF test vectors: still v1.5.0 (2025-05-07). Upstream nightly generation failing since 2026-03-08
+- v1.7.0-alpha.4: tag a9bc79a7 exists, no GitHub Release published (latest = v1.7.0-alpha.3)
+- EF test vectors: still v1.5.0 (2025-05-07). Upstream nightly generation failing since 2026-03-08. No new test vectors expected until alpha.4 release is published
 - CI: fully green (ci, nightly, spec-test-check). Zero clippy/compiler warnings
 - cargo audit: 1 rsa vuln in jsonwebtoken transitive dep (no fix available)
 - Only outdated root dep: rand_xorshift 0.4→0.5 (requires rand 0.9→0.10 workspace migration — not viable)
