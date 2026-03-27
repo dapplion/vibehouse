@@ -111,8 +111,8 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Run 2879: Proactively optimized `compute_ptc` to pre-compute effective balances (matching #5044).
 - Run 2922: #5044 merged (compute_ptc speedup) — already implemented. #5046 merged (Python cache) — not relevant.
 
-**Steady state (runs 2971-3042, 2026-03-26/27):**
-- No new consensus-specs merges since #5044/#5046 (2026-03-26T19:03Z)
+**Steady state (runs 2971-3044, 2026-03-26/27):**
+- No new consensus-specs merges since #5048 (2026-03-27)
 - v1.7.0-alpha.4: tag a9bc79a7 exists, no GitHub Release published (latest = v1.6.1)
 - EF test vectors: still v1.5.0 (2025-05-07). Upstream nightly generation failing since 2026-03-08
 - CI: fully green (ci, nightly, spec-test-check). Zero clippy/compiler warnings
