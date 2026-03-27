@@ -152,3 +152,4 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Run 3247 (2026-03-27): Steady state. No new consensus-specs merges since #5048. All deps at latest (0 compatible updates). CI: green (latest run passed 18:04 UTC). All 9 open Gloas PRs unchanged. No new issues or PRs on vibehouse. No actionable work.
 - Run 3248 (2026-03-27): Steady state. No new consensus-specs merges since #5048. All deps at latest (0 compatible updates). CI: green. All 9 open Gloas PRs unchanged. No actionable work.
 - Run 3249 (2026-03-27): Steady state. No new consensus-specs merges since #5048. CI: green. All 9 open Gloas PRs unchanged. No actionable work.
+- Run 3250 (2026-03-27): Steady state. No new consensus-specs merges since #5048. All deps at latest (0 compatible updates). CI: green. New PR #5052 (reduce compute_shuffled_index cache — Python tooling only, not relevant). All 9 open Gloas PRs unchanged. No actionable work.
