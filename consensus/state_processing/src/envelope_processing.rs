@@ -557,7 +557,7 @@ mod tests {
     /// The state_root is set to a dummy value; call `fix_envelope_state_root`
     /// to compute and set the real post-processing state root.
     fn make_valid_envelope(state: &BeaconState<E>) -> SignedExecutionPayloadEnvelope<E> {
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid().unwrap();
         let latest_block_hash = *state.latest_block_hash().unwrap();
 
         // Compute the expected block header root (after fixing state_root)
@@ -1275,7 +1275,7 @@ mod tests {
         state: &BeaconState<E>,
         parent_state_root: Option<Hash256>,
     ) -> SignedExecutionPayloadEnvelope<E> {
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid().unwrap();
         let latest_block_hash = *state.latest_block_hash().unwrap();
 
         // Compute the beacon_block_root accounting for parent_state_root
@@ -2361,7 +2361,7 @@ mod tests {
         state: &BeaconState<E>,
         execution_requests: ExecutionRequests<E>,
     ) -> SignedExecutionPayloadEnvelope<E> {
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid().unwrap();
         let latest_block_hash = *state.latest_block_hash().unwrap();
 
         let mut header = *state.latest_block_header();

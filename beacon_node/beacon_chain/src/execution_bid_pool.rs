@@ -132,8 +132,8 @@ mod tests {
         pool.insert(make_bid(10, 3, 200));
 
         let best = pool.get_best_bid(Slot::new(10), Hash256::zero()).unwrap();
-        assert_eq!(best.message.value, 500);
-        assert_eq!(best.message.builder_index, 2);
+        assert_eq!(best.as_gloas().unwrap().message.value, 500);
+        assert_eq!(best.as_gloas().unwrap().message.builder_index, 2);
     }
 
     #[test]
@@ -150,7 +150,7 @@ mod tests {
         pool.insert(make_bid(10, 1, 999));
 
         let best = pool.get_best_bid(Slot::new(10), Hash256::zero()).unwrap();
-        assert_eq!(best.message.value, 100); // First bid kept
+        assert_eq!(best.as_gloas().unwrap().message.value, 100); // First bid kept
         assert_eq!(pool.bid_count_for_slot(Slot::new(10)), 1);
     }
 
@@ -181,12 +181,16 @@ mod tests {
         assert_eq!(
             pool.get_best_bid(Slot::new(10), Hash256::zero())
                 .unwrap()
+                .as_gloas()
+                .unwrap()
                 .message
                 .value,
             500
         );
         assert_eq!(
             pool.get_best_bid(Slot::new(11), Hash256::zero())
+                .unwrap()
+                .as_gloas()
                 .unwrap()
                 .message
                 .value,
@@ -236,8 +240,8 @@ mod tests {
         pool.insert(make_bid(10, 1, 42));
 
         let best = pool.get_best_bid(Slot::new(10), Hash256::zero()).unwrap();
-        assert_eq!(best.message.value, 42);
-        assert_eq!(best.message.builder_index, 1);
+        assert_eq!(best.as_gloas().unwrap().message.value, 42);
+        assert_eq!(best.as_gloas().unwrap().message.builder_index, 1);
     }
 
     #[test]
@@ -251,6 +255,8 @@ mod tests {
         assert_eq!(pool.total_bid_count(), 1);
         assert_eq!(
             pool.get_best_bid(Slot::new(10), Hash256::zero())
+                .unwrap()
+                .as_gloas()
                 .unwrap()
                 .message
                 .value,
@@ -267,7 +273,7 @@ mod tests {
 
         assert_eq!(pool.bid_count_for_slot(Slot::new(10)), 100);
         let best = pool.get_best_bid(Slot::new(10), Hash256::zero()).unwrap();
-        assert_eq!(best.message.value, 990); // 99 * 10
+        assert_eq!(best.as_gloas().unwrap().message.value, 990); // 99 * 10
     }
 
     #[test]
@@ -279,7 +285,7 @@ mod tests {
 
         // Should return one of the three (all tied)
         let best = pool.get_best_bid(Slot::new(10), Hash256::zero()).unwrap();
-        assert_eq!(best.message.value, 100);
+        assert_eq!(best.as_gloas().unwrap().message.value, 100);
     }
 
     #[test]
@@ -306,8 +312,8 @@ mod tests {
         value: u64,
         parent_block_root: Hash256,
     ) -> SignedExecutionPayloadBid<E> {
-        SignedExecutionPayloadBid {
-            message: ExecutionPayloadBid {
+        SignedExecutionPayloadBid::Gloas(SignedExecutionPayloadBidGloas {
+            message: ExecutionPayloadBidGloas {
                 slot: Slot::new(slot),
                 builder_index,
                 value,
@@ -319,10 +325,9 @@ mod tests {
                 gas_limit: 30_000_000,
                 execution_payment: value,
                 blob_kzg_commitments: KzgCommitments::<E>::default(),
-                inclusion_list_bits: BitVector::default(),
             },
             signature: Signature::empty(),
-        }
+        })
     }
 
     fn make_bid_full(
@@ -332,8 +337,8 @@ mod tests {
         parent_block_root: Hash256,
         parent_block_hash: ExecutionBlockHash,
     ) -> SignedExecutionPayloadBid<E> {
-        SignedExecutionPayloadBid {
-            message: ExecutionPayloadBid {
+        SignedExecutionPayloadBid::Gloas(SignedExecutionPayloadBidGloas {
+            message: ExecutionPayloadBidGloas {
                 slot: Slot::new(slot),
                 builder_index,
                 value,
@@ -345,10 +350,9 @@ mod tests {
                 gas_limit: 30_000_000,
                 execution_payment: value,
                 blob_kzg_commitments: KzgCommitments::<E>::default(),
-                inclusion_list_bits: BitVector::default(),
             },
             signature: Signature::empty(),
-        }
+        })
     }
 
     #[test]
@@ -362,13 +366,13 @@ mod tests {
 
         // Querying with root_a should return only the bid for root_a
         let best = pool.get_best_bid(Slot::new(10), root_a).unwrap();
-        assert_eq!(best.message.value, 1000);
-        assert_eq!(best.message.builder_index, 1);
+        assert_eq!(best.as_gloas().unwrap().message.value, 1000);
+        assert_eq!(best.as_gloas().unwrap().message.builder_index, 1);
 
         // Querying with root_b should return only the bid for root_b
         let best = pool.get_best_bid(Slot::new(10), root_b).unwrap();
-        assert_eq!(best.message.value, 500);
-        assert_eq!(best.message.builder_index, 2);
+        assert_eq!(best.as_gloas().unwrap().message.value, 500);
+        assert_eq!(best.as_gloas().unwrap().message.builder_index, 2);
     }
 
     #[test]
@@ -396,8 +400,8 @@ mod tests {
         pool.insert(make_bid_with_parent(10, 3, 5000, root_b));
 
         let best = pool.get_best_bid(Slot::new(10), root_a).unwrap();
-        assert_eq!(best.message.value, 900);
-        assert_eq!(best.message.builder_index, 2);
+        assert_eq!(best.as_gloas().unwrap().message.value, 900);
+        assert_eq!(best.as_gloas().unwrap().message.builder_index, 2);
     }
 
     /// Simulate a re-org scenario: bids arrive for parent root A, then the head
@@ -418,7 +422,7 @@ mod tests {
 
         // Verify all 3 bids visible via root_a
         let best_a = pool.get_best_bid(Slot::new(10), root_a).unwrap();
-        assert_eq!(best_a.message.value, 3000);
+        assert_eq!(best_a.as_gloas().unwrap().message.value, 3000);
 
         // Phase 2: head re-orgs to root_b — no bids for root_b yet
         assert!(
@@ -430,12 +434,12 @@ mod tests {
         pool.insert(make_bid_with_parent(10, 4, 500, root_b));
 
         let best_b = pool.get_best_bid(Slot::new(10), root_b).unwrap();
-        assert_eq!(best_b.message.value, 500);
-        assert_eq!(best_b.message.builder_index, 4);
+        assert_eq!(best_b.as_gloas().unwrap().message.value, 500);
+        assert_eq!(best_b.as_gloas().unwrap().message.builder_index, 4);
 
         // Root A bids are still there but filtered out for root_b queries
         let best_a = pool.get_best_bid(Slot::new(10), root_a).unwrap();
-        assert_eq!(best_a.message.value, 3000);
+        assert_eq!(best_a.as_gloas().unwrap().message.value, 3000);
     }
 
     /// Bids with the same parent_block_root but different parent_block_hash values
@@ -454,8 +458,11 @@ mod tests {
 
         // The highest-value bid wins regardless of parent_block_hash
         let best = pool.get_best_bid(Slot::new(10), root).unwrap();
-        assert_eq!(best.message.value, 500);
-        assert_eq!(best.message.parent_block_hash, exec_hash_b);
+        assert_eq!(best.as_gloas().unwrap().message.value, 500);
+        assert_eq!(
+            best.as_gloas().unwrap().message.parent_block_hash,
+            exec_hash_b
+        );
     }
 
     /// Verify that pruning at sequential slots correctly preserves bids
@@ -503,6 +510,6 @@ mod tests {
         // removed the slot entirely
         pool.insert(make_bid(5, 1, 999));
         let best = pool.get_best_bid(Slot::new(5), Hash256::zero()).unwrap();
-        assert_eq!(best.message.value, 999);
+        assert_eq!(best.as_gloas().unwrap().message.value, 999);
     }
 }
