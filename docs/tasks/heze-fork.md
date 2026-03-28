@@ -65,7 +65,7 @@ Heze adds inclusion lists — a mechanism for committees of 16 validators per sl
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1. Types & Constants | ForkName, ChainSpec, EthSpec, new types, superstruct variants | DONE |
-| 2. State Transitions | Fork upgrade, inclusion list committee computation | NOT STARTED |
+| 2. State Transitions | Fork upgrade, inclusion list committee computation | IN PROGRESS |
 | 3. Fork Choice | IL satisfaction tracking, should_extend_payload changes | NOT STARTED |
 | 4. P2P Networking | Gossip topic, req/resp protocol, validation | NOT STARTED |
 | 5. Beacon Chain Integration | IL store, builder bid validation | NOT STARTED |
@@ -95,3 +95,26 @@ Changes:
 - **Validator**: web3signer Heze handling
 - **EF tests**: fork upgrade, transition, merkle proof test runners — Heze support
 - **Tests**: 1088/1088 types tests pass, 1033/1033 state_processing tests pass
+
+### Phase 2: State Transitions — Part 1 (run 3347)
+
+Adding core FOCIL types and helpers from the Heze spec (EIP-7805).
+
+**Completed:**
+
+1. **InclusionList type** (`consensus/types/src/inclusion_list.rs`): New container with `slot`, `validator_index`, `inclusion_list_committee_root`, `transactions` (bounded by `MaxTransactionsPerPayload`). SSZ, TreeHash, serde all derived. 4 tests.
+
+2. **SignedInclusionList type** (`consensus/types/src/signed_inclusion_list.rs`): Signed wrapper (`message: InclusionList`, `signature: BLSSignature`). `SignedRoot` impl on `InclusionList`. 5 tests.
+
+3. **get_inclusion_list_committee** (`consensus/state_processing/src/per_block_processing/heze.rs`): Returns `INCLUSION_LIST_COMMITTEE_SIZE` (16) validator indices by concatenating all beacon committees for the slot and cycling through via modulo. Matches spec exactly. 5 tests.
+
+4. **is_valid_inclusion_list_signature** (same file): Validates signed inclusion list using `DOMAIN_INCLUSION_LIST_COMMITTEE` domain. Follows same pattern as bid signature verification.
+
+5. **InclusionListInvalid error variant**: Added to `BlockProcessingError` for inclusion list validation failures.
+
+Tests: 1101/1101 types tests pass (+13 new), 1038/1038 state_processing tests pass (+5 new)
+
+**Remaining for Phase 2:**
+- Add `inclusion_list_bits: Bitvector[INCLUSION_LIST_COMMITTEE_SIZE]` to `ExecutionPayloadBid` for Heze (requires superstructing the bid type or splitting the BeaconState field)
+- Update `upgrade_to_heze` to initialize `inclusion_list_bits` as empty bitvector
+- These have wider blast radius and will be done in the next sub-task

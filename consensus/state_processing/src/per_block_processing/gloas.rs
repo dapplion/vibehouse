@@ -960,7 +960,7 @@ pub(crate) fn initiate_builder_exit<E: EthSpec>(
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use bls::FixedBytesExtended;
     use ssz_types::BitVector;
@@ -973,7 +973,7 @@ mod tests {
         SlashingsCache, SyncCommittee, Vector,
     };
 
-    type E = MinimalEthSpec;
+    pub(crate) type E = MinimalEthSpec;
 
     /// Build a minimal Gloas state with `n` validators, each with `balance` Gwei,
     /// and a single active builder at index 0 with `builder_balance` Gwei.
@@ -3234,7 +3234,7 @@ mod tests {
     // ── get_ptc_committee tests ──────────────────────────────────
 
     /// Build a state with committee caches initialized (needed for get_ptc_committee).
-    fn make_gloas_state_with_committees(
+    pub(crate) fn make_gloas_state_with_committees(
         num_validators: usize,
         balance: u64,
         builder_balance: u64,

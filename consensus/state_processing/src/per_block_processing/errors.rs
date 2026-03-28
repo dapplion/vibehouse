@@ -105,6 +105,9 @@ pub enum BlockProcessingError {
     },
     PayloadAttestationInvalid(PayloadAttestationInvalid),
     EnvelopeProcessingError(Box<EnvelopeProcessingError>),
+    InclusionListInvalid {
+        reason: String,
+    },
 }
 
 impl From<BeaconStateError> for BlockProcessingError {
