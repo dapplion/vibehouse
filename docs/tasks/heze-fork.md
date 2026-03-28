@@ -419,3 +419,18 @@ Fixed 3 spec compliance gaps in `inclusion_list` gossip validation (p2p-interfac
 3. **Committee root mismatch → IGNORE** (spec condition 4): Was incorrectly `[REJECT]` with peer penalty. Changed to `[IGNORE]` since committee root depends on the peer's chain view (different head → different committee), not malice.
 
 Tests: 205/205 network (heze), 20/20 inclusion_list_store, 17/17 EF operations+SSZ, 5/5 heze state_processing. Zero clippy warnings.
+
+### Network-level gossip validation tests (run 3601+)
+
+Added 6 network-level integration tests for the inclusion list gossip validation pipeline in `network_beacon_processor/tests.rs`:
+
+1. `test_heze_gossip_inclusion_list_valid_accepted`: valid IL from committee member → Accept
+2. `test_heze_gossip_inclusion_list_wrong_slot_rejected`: far-future slot → Reject
+3. `test_heze_gossip_inclusion_list_not_in_committee_rejected`: non-committee validator → Reject
+4. `test_heze_gossip_inclusion_list_wrong_committee_root_ignored`: mismatched committee root → Ignore
+5. `test_heze_gossip_inclusion_list_invalid_signature_rejected`: bad signature → Reject
+6. `test_heze_gossip_inclusion_list_duplicate_ignored`: second identical submission → Ignore
+
+Created `heze_rig()`, `make_inclusion_list()`, and `sign_inclusion_list()` test helpers following the existing Gloas gossip test patterns. Added `tree_hash` dev-dependency to network crate for committee root computation.
+
+Tests: 211/211 network (heze), 60/60 Gloas gossip tests (gloas). Zero clippy warnings.
