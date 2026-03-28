@@ -146,10 +146,10 @@ use types::{
     EmptyMetadata, EnrForkId, Epoch, Eth1Data, EthSpec, ExecPayload, ExecutionBlockHash,
     ExecutionPayloadBid, ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExecutionPayloadHeader,
     ExecutionRequests, FixedBytesExtended, ForkName, ForkVersionedResponse, FullPayload, Graffiti,
-    Hash256, InconsistentFork, KzgProofs, LightClientBootstrap, LightClientFinalityUpdate,
-    LightClientOptimisticUpdate, LightClientUpdate, PayloadAttestation, PayloadAttestationData,
-    PayloadAttestationMessage, ProposerSlashing, PublicKey, PublicKeyBytes, RelativeEpoch,
-    Signature, SignedAggregateAndProof, SignedBeaconBlock, SignedBeaconBlockHash,
+    Hash256, InclusionListStore, InconsistentFork, KzgProofs, LightClientBootstrap,
+    LightClientFinalityUpdate, LightClientOptimisticUpdate, LightClientUpdate, PayloadAttestation,
+    PayloadAttestationData, PayloadAttestationMessage, ProposerSlashing, PublicKey, PublicKeyBytes,
+    RelativeEpoch, Signature, SignedAggregateAndProof, SignedBeaconBlock, SignedBeaconBlockHash,
     SignedBlindedBeaconBlock, SignedBlindedExecutionPayloadEnvelope, SignedBlsToExecutionChange,
     SignedContributionAndProof, SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope,
     SignedProposerPreferences, SignedVoluntaryExit, SingleAttestation, Slot, SubnetId,
@@ -430,6 +430,10 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     /// Used by `get_payload_attestation_data` to determine `payload_present`.
     pub payload_envelope_timings:
         parking_lot::RwLock<std::collections::HashMap<Hash256, (u64, u64)>>,
+    /// Local store for FOCIL inclusion lists (Heze fork, EIP-7805).
+    /// Tracks received inclusion lists per slot, detects equivocations, provides
+    /// inclusion_list_bits and transactions for bid validation and block production.
+    pub inclusion_list_store: Mutex<InclusionListStore<T::EthSpec>>,
     /// Interfaces with the execution client.
     pub execution_layer: Option<ExecutionLayer<T::EthSpec>>,
     /// Stores information about the canonical head and finalized/justified checkpoints of the
@@ -2601,9 +2605,18 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Computes ms offset into the current slot and the envelope's SSZ size.
         self.record_envelope_timing(beacon_block_root, &verified_envelope.envelope().message);
 
+        // Determine inclusion list satisfaction for Heze FOCIL.
+        // Pre-Heze: always satisfied. Heze: check if payload transactions include IL transactions.
+        let inclusion_list_satisfied =
+            self.check_inclusion_list_satisfaction(&verified_envelope.envelope().message);
+
         self.canonical_head
             .fork_choice_write_lock()
-            .on_execution_payload(beacon_block_root, payload_block_hash)
+            .on_execution_payload(
+                beacon_block_root,
+                payload_block_hash,
+                inclusion_list_satisfied,
+            )
             .map_err(Into::into)
     }
 
@@ -3066,6 +3079,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         let payload_block_hash = signed_envelope.message.payload.block_hash;
 
+        // Compute IL satisfaction before persisting (which moves the Arc).
+        let inclusion_list_satisfied =
+            self.check_inclusion_list_satisfaction(&signed_envelope.message);
+
         // Persist the envelope.
         self.store
             .do_atomically_with_block_and_blobs_cache(vec![StoreOp::PutPayloadEnvelope(
@@ -3077,7 +3094,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Update fork choice: EMPTY → FULL.
         self.canonical_head
             .fork_choice_write_lock()
-            .on_execution_payload(beacon_block_root, payload_block_hash)
+            .on_execution_payload(
+                beacon_block_root,
+                payload_block_hash,
+                inclusion_list_satisfied,
+            )
             .map_err(Error::ForkChoiceError)?;
 
         // Update canonical head snapshot if this block is the current head.
@@ -3440,7 +3461,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // (FULL) even though it was rejected.
         {
             let mut fc = self.canonical_head.fork_choice_write_lock();
-            fc.on_execution_payload(beacon_block_root, payload_block_hash)
+            // Self-build path: IL is always satisfied (proposer includes own IL txs).
+            fc.on_execution_payload(beacon_block_root, payload_block_hash, true)
                 .map_err(Into::<Error>::into)?;
 
             // Mark the block as fully verified if the EL confirmed validity. The block
@@ -7765,7 +7787,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                             value: 0,
                             execution_payment: 0,
                             blob_kzg_commitments: kzg_commitments.unwrap_or_default(),
-                            inclusion_list_bits: BitVector::default(),
+                            inclusion_list_bits: self.compute_inclusion_list_bits_for_slot(slot),
                         };
 
                         let signed_bid = SignedExecutionPayloadBid {

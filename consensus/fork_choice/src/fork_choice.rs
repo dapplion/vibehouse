@@ -1524,10 +1524,15 @@ where
     ///
     /// This is called after gossip verification of the `SignedExecutionPayloadEnvelope`.
     /// The fork choice tree uses `payload_revealed` to determine block viability.
+    ///
+    /// `inclusion_list_satisfied`: Whether the payload satisfies the inclusion list
+    /// requirements from FOCIL (Heze, EIP-7805). Pre-Heze, always pass `true`.
+    /// The caller determines this by checking the InclusionListStore.
     pub fn on_execution_payload(
         &mut self,
         beacon_block_root: Hash256,
         payload_block_hash: ExecutionBlockHash,
+        inclusion_list_satisfied: bool,
     ) -> Result<(), Error<T::Error>> {
         let block_index = self
             .proto_array
@@ -1545,21 +1550,18 @@ where
 
         node.payload_revealed = true;
         node.envelope_received = true;
-        node.inclusion_list_satisfied = true;
         // When the envelope is received locally, blob data is also available
         node.payload_data_available = true;
         // Set execution status so that head_hash is available for forkchoice_updated.
         // Starts as Optimistic until the EL confirms via newPayload.
         node.execution_status = ExecutionStatus::Optimistic(payload_block_hash);
-        // Heze FOCIL: Record inclusion list satisfaction.
-        // TODO(heze-phase5): Wire up actual EL is_inclusion_list_satisfied check.
-        // For now, always mark as satisfied. The real check will be added when
-        // beacon chain integration (Phase 5) wires the InclusionListStore + EL call.
-        node.inclusion_list_satisfied = true;
+        // Heze FOCIL: Record whether the payload satisfies inclusion list requirements.
+        node.inclusion_list_satisfied = inclusion_list_satisfied;
 
         debug!(
             ?beacon_block_root,
             ?payload_block_hash,
+            inclusion_list_satisfied,
             slot = %node.slot,
             "Marked payload as revealed via execution payload envelope"
         );
@@ -2755,7 +2757,7 @@ mod tests {
             let unknown = root(999);
             let hash = ExecutionBlockHash::repeat_byte(0xBB);
 
-            let err = fc.on_execution_payload(unknown, hash).unwrap_err();
+            let err = fc.on_execution_payload(unknown, hash, true).unwrap_err();
             assert!(
                 matches!(err, Error::MissingProtoArrayBlock(_)),
                 "expected MissingProtoArrayBlock, got {err:?}"
@@ -2769,7 +2771,7 @@ mod tests {
             insert_block(&mut fc, 1, block_root);
 
             let hash = ExecutionBlockHash::repeat_byte(0xCC);
-            fc.on_execution_payload(block_root, hash).unwrap();
+            fc.on_execution_payload(block_root, hash, true).unwrap();
 
             let idx = *fc
                 .proto_array
@@ -2789,7 +2791,7 @@ mod tests {
             let genesis_root = root(0);
             let hash = ExecutionBlockHash::repeat_byte(0xDD);
 
-            fc.on_execution_payload(genesis_root, hash).unwrap();
+            fc.on_execution_payload(genesis_root, hash, true).unwrap();
 
             let idx = *fc
                 .proto_array
@@ -2813,8 +2815,8 @@ mod tests {
             let hash1 = ExecutionBlockHash::repeat_byte(0x11);
             let hash2 = ExecutionBlockHash::repeat_byte(0x22);
 
-            fc.on_execution_payload(block_root, hash1).unwrap();
-            fc.on_execution_payload(block_root, hash2).unwrap();
+            fc.on_execution_payload(block_root, hash1, true).unwrap();
+            fc.on_execution_payload(block_root, hash2, true).unwrap();
 
             let idx = *fc
                 .proto_array
@@ -2919,7 +2921,8 @@ mod tests {
 
             // Reveal payload via envelope
             let envelope_hash = ExecutionBlockHash::repeat_byte(0xEE);
-            fc.on_execution_payload(block_root, envelope_hash).unwrap();
+            fc.on_execution_payload(block_root, envelope_hash, true)
+                .unwrap();
 
             let idx = *fc
                 .proto_array
@@ -3031,7 +3034,8 @@ mod tests {
 
             // 3. Envelope arrives (execution payload reveal)
             let envelope_hash = ExecutionBlockHash::repeat_byte(0xBB);
-            fc.on_execution_payload(block_root, envelope_hash).unwrap();
+            fc.on_execution_payload(block_root, envelope_hash, true)
+                .unwrap();
 
             let node = &fc.proto_array.core_proto_array().nodes[idx];
             assert!(node.payload_revealed);
@@ -3612,7 +3616,7 @@ mod tests {
 
             // Reveal the payload (simulates on_execution_payload)
             let hash = ExecutionBlockHash::repeat_byte(0xaa);
-            fc.on_execution_payload(block_root, hash).unwrap();
+            fc.on_execution_payload(block_root, hash, true).unwrap();
 
             fc.fc_store.current_slot = Slot::new(3);
 
@@ -3870,7 +3874,8 @@ mod tests {
 
             // Envelope arrives first
             let envelope_hash = ExecutionBlockHash::repeat_byte(0xCC);
-            fc.on_execution_payload(block_root, envelope_hash).unwrap();
+            fc.on_execution_payload(block_root, envelope_hash, true)
+                .unwrap();
 
             let node = &fc.proto_array.core_proto_array().nodes[idx];
             assert!(node.payload_revealed);
@@ -3927,7 +3932,8 @@ mod tests {
 
             // No bid has been processed — go directly to envelope
             let envelope_hash = ExecutionBlockHash::repeat_byte(0xEE);
-            fc.on_execution_payload(root(1), envelope_hash).unwrap();
+            fc.on_execution_payload(root(1), envelope_hash, true)
+                .unwrap();
 
             let idx = *fc
                 .proto_array
@@ -4108,7 +4114,8 @@ mod tests {
 
             // NOW the envelope arrives — sets envelope_received=true
             let envelope_hash = ExecutionBlockHash::repeat_byte(0xBB);
-            fc.on_execution_payload(root(1), envelope_hash).unwrap();
+            fc.on_execution_payload(root(1), envelope_hash, true)
+                .unwrap();
 
             // Re-vote FULL at higher epoch again
             for i in 0..3u64 {
@@ -4170,7 +4177,8 @@ mod tests {
 
             // Builder directly reveals envelope — no PTC needed
             let envelope_hash = ExecutionBlockHash::repeat_byte(0xBB);
-            fc.on_execution_payload(root(1), envelope_hash).unwrap();
+            fc.on_execution_payload(root(1), envelope_hash, true)
+                .unwrap();
 
             let node = &fc.proto_array.core_proto_array().nodes[idx];
             assert!(node.payload_revealed);
@@ -4388,7 +4396,8 @@ mod tests {
             // Envelope arrives first — sets payload_revealed, envelope_received,
             // payload_data_available, execution_status
             let envelope_hash = ExecutionBlockHash::repeat_byte(0xCC);
-            fc.on_execution_payload(block_root, envelope_hash).unwrap();
+            fc.on_execution_payload(block_root, envelope_hash, true)
+                .unwrap();
 
             let idx = *fc
                 .proto_array
@@ -4511,7 +4520,8 @@ mod tests {
 
             // Envelope arrives — reveals payload but should NOT touch PTC weights
             let envelope_hash = ExecutionBlockHash::repeat_byte(0xDD);
-            fc.on_execution_payload(block_root, envelope_hash).unwrap();
+            fc.on_execution_payload(block_root, envelope_hash, true)
+                .unwrap();
 
             let node = &fc.proto_array.core_proto_array().nodes[idx];
             assert!(node.payload_revealed, "envelope should reveal payload");
@@ -4682,7 +4692,8 @@ mod tests {
 
             // Now envelope arrives — should set envelope_received but NOT touch weights
             let envelope_hash = ExecutionBlockHash::repeat_byte(0xBB);
-            fc.on_execution_payload(block_root, envelope_hash).unwrap();
+            fc.on_execution_payload(block_root, envelope_hash, true)
+                .unwrap();
 
             let node = &fc.proto_array.core_proto_array().nodes[idx];
             assert!(node.envelope_received, "envelope_received should be set");
@@ -4708,7 +4719,7 @@ mod tests {
             let mut fc = new_fc();
             let unknown = root(999);
             let hash = ExecutionBlockHash::repeat_byte(0xAA);
-            let err = fc.on_execution_payload(unknown, hash).unwrap_err();
+            let err = fc.on_execution_payload(unknown, hash, true).unwrap_err();
             assert!(
                 matches!(err, Error::MissingProtoArrayBlock(r) if r == unknown),
                 "expected MissingProtoArrayBlock for unknown root, got {err:?}"
@@ -4905,7 +4916,8 @@ mod tests {
 
             // Envelope arrives with a different payload_block_hash
             let envelope_hash = ExecutionBlockHash::repeat_byte(0xBB);
-            fc.on_execution_payload(block_root, envelope_hash).unwrap();
+            fc.on_execution_payload(block_root, envelope_hash, true)
+                .unwrap();
 
             let node = &fc.proto_array.core_proto_array().nodes[idx];
             assert_eq!(
@@ -4974,7 +4986,8 @@ mod tests {
             );
 
             let envelope_hash = ExecutionBlockHash::repeat_byte(0xDD);
-            fc.on_execution_payload(block_root, envelope_hash).unwrap();
+            fc.on_execution_payload(block_root, envelope_hash, true)
+                .unwrap();
 
             let node = &fc.proto_array.core_proto_array().nodes[idx];
             assert!(node.payload_revealed, "envelope should reveal payload");
@@ -5004,7 +5017,8 @@ mod tests {
 
             // Envelope arrives first → payload_revealed=true
             let envelope_hash = ExecutionBlockHash::repeat_byte(0xAA);
-            fc.on_execution_payload(block_root, envelope_hash).unwrap();
+            fc.on_execution_payload(block_root, envelope_hash, true)
+                .unwrap();
 
             let idx = *fc
                 .proto_array
@@ -5062,7 +5076,8 @@ mod tests {
 
             // Envelope reveals payload
             let envelope_hash = ExecutionBlockHash::repeat_byte(0xBB);
-            fc.on_execution_payload(block_root, envelope_hash).unwrap();
+            fc.on_execution_payload(block_root, envelope_hash, true)
+                .unwrap();
 
             let idx = *fc
                 .proto_array
@@ -5474,7 +5489,7 @@ mod tests {
             );
 
             let hash = ExecutionBlockHash::repeat_byte(0xAA);
-            fc.on_execution_payload(block_root, hash).unwrap();
+            fc.on_execution_payload(block_root, hash, true).unwrap();
 
             let node = &fc.proto_array.core_proto_array().nodes[idx];
             assert!(
@@ -5503,7 +5518,7 @@ mod tests {
             insert_block(&mut fc, 1, block_root);
 
             let hash = ExecutionBlockHash::repeat_byte(0xBB);
-            fc.on_execution_payload(block_root, hash).unwrap();
+            fc.on_execution_payload(block_root, hash, true).unwrap();
 
             let idx = *fc
                 .proto_array
@@ -5555,7 +5570,7 @@ mod tests {
 
             // First make it optimistic via envelope
             let hash = ExecutionBlockHash::repeat_byte(0xBB);
-            fc.on_execution_payload(block_root, hash).unwrap();
+            fc.on_execution_payload(block_root, hash, true).unwrap();
 
             let idx = *fc
                 .proto_array
@@ -5605,14 +5620,16 @@ mod tests {
             let parent_root = root(1);
             insert_block(&mut fc, 1, parent_root);
             let parent_hash = ExecutionBlockHash::repeat_byte(0xAA);
-            fc.on_execution_payload(parent_root, parent_hash).unwrap();
+            fc.on_execution_payload(parent_root, parent_hash, true)
+                .unwrap();
 
             // Insert child block at slot 2 (child of genesis for simplicity,
             // but with a parent_hash matching parent's execution hash)
             let child_root = root(2);
             insert_block(&mut fc, 2, child_root);
             let child_hash = ExecutionBlockHash::repeat_byte(0xBB);
-            fc.on_execution_payload(child_root, child_hash).unwrap();
+            fc.on_execution_payload(child_root, child_hash, true)
+                .unwrap();
 
             // Validate parent first
             fc.on_valid_execution_payload(parent_root).unwrap();
@@ -5677,7 +5694,8 @@ mod tests {
 
             // 1. Envelope arrives first (before bid)
             let envelope_hash = ExecutionBlockHash::repeat_byte(0xEE);
-            fc.on_execution_payload(block_root, envelope_hash).unwrap();
+            fc.on_execution_payload(block_root, envelope_hash, true)
+                .unwrap();
 
             let node = &fc.proto_array.core_proto_array().nodes[idx];
             assert!(node.payload_revealed);

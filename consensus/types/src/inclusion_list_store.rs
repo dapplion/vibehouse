@@ -1,4 +1,4 @@
-use crate::{EthSpec, Hash256, InclusionList, Slot};
+use crate::{EthSpec, Hash256, InclusionList, SignedInclusionList, Slot};
 use std::collections::{HashMap, HashSet};
 
 /// Key for the inclusion list store: (slot, inclusion_list_committee_root).
@@ -16,6 +16,9 @@ pub struct InclusionListStore<E: EthSpec> {
     pub inclusion_lists: HashMap<InclusionListKey, HashSet<InclusionList<E>>>,
     /// Validator indices that have equivocated, indexed by (slot, committee_root).
     pub equivocators: HashMap<InclusionListKey, HashSet<u64>>,
+    /// Cache of signed inclusion lists for RPC serving, indexed by (slot, committee_root)
+    /// then validator_index.
+    pub signed_cache: HashMap<InclusionListKey, HashMap<u64, SignedInclusionList<E>>>,
 }
 
 impl<E: EthSpec> InclusionListStore<E> {
@@ -23,6 +26,7 @@ impl<E: EthSpec> InclusionListStore<E> {
         Self {
             inclusion_lists: HashMap::new(),
             equivocators: HashMap::new(),
+            signed_cache: HashMap::new(),
         }
     }
 
@@ -80,6 +84,41 @@ impl<E: EthSpec> InclusionListStore<E> {
                 .entry(key)
                 .or_default()
                 .insert(inclusion_list);
+        }
+    }
+
+    /// Process a received signed inclusion list, detecting equivocations and caching
+    /// the signed version for RPC serving.
+    pub fn process_signed_inclusion_list(
+        &mut self,
+        signed_il: SignedInclusionList<E>,
+        is_before_view_freeze_cutoff: bool,
+    ) {
+        let validator_index = signed_il.message.validator_index;
+        let key = (
+            signed_il.message.slot,
+            signed_il.message.inclusion_list_committee_root,
+        );
+
+        // Process the unsigned IL (equivocation detection, storage).
+        self.process_inclusion_list(signed_il.message.clone(), is_before_view_freeze_cutoff);
+
+        // Cache the signed version if the unsigned was accepted (i.e., it's in the store
+        // and the validator is not an equivocator).
+        if self
+            .inclusion_lists
+            .get(&key)
+            .is_some_and(|lists| lists.iter().any(|il| il.validator_index == validator_index))
+        {
+            self.signed_cache
+                .entry(key)
+                .or_default()
+                .insert(validator_index, signed_il);
+        } else {
+            // If validator became equivocator, remove from signed cache too.
+            if let Some(cache) = self.signed_cache.get_mut(&key) {
+                cache.remove(&validator_index);
+            }
         }
     }
 
@@ -175,6 +214,7 @@ impl<E: EthSpec> InclusionListStore<E> {
         self.inclusion_lists
             .retain(|(slot, _), _| *slot >= min_slot);
         self.equivocators.retain(|(slot, _), _| *slot >= min_slot);
+        self.signed_cache.retain(|(slot, _), _| *slot >= min_slot);
     }
 }
 

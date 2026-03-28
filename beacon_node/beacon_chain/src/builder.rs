@@ -1079,6 +1079,7 @@ where
             observed_payload_attestations: <_>::default(),
             observed_payload_envelopes: <_>::default(),
             payload_envelope_timings: <_>::default(),
+            inclusion_list_store: <_>::default(),
             execution_layer: self.execution_layer.clone(),
             genesis_validators_root,
             genesis_time,

@@ -564,7 +564,9 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Handle an `InclusionListByCommitteeIndices` request from the peer.
-    /// Phase 5 will implement full serving from InclusionListStore.
+    ///
+    /// Serves inclusion lists from the local InclusionListStore for the requested
+    /// committee member indices at the current slot.
     pub(crate) fn handle_inclusion_list_by_committee_indices_request(
         self: Arc<Self>,
         peer_id: PeerId,
@@ -574,14 +576,42 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         let client = self.network_globals.client(&peer_id);
         Span::current().record("client", field::display(client.kind));
 
+        let mut send_count = 0usize;
+
+        // Get current slot for lookups.
+        let Some(current_slot) = self.chain.slot_clock.now() else {
+            debug!(%peer_id, "Unable to read slot for IL request");
+            self.send_response(
+                peer_id,
+                inbound_request_id,
+                Response::InclusionListByCommitteeIndices(None),
+            );
+            return;
+        };
+
+        // Query the beacon chain for matching inclusion lists.
+        if let Ok(signed_ils) = self.chain.get_inclusion_lists_by_committee_indices(
+            current_slot,
+            request.committee_indices.as_slice(),
+        ) {
+            for signed_il in &signed_ils {
+                self.send_response(
+                    peer_id,
+                    inbound_request_id,
+                    Response::InclusionListByCommitteeIndices(Some(Arc::new(signed_il.clone()))),
+                );
+                send_count += 1;
+            }
+        }
+
         debug!(
             %peer_id,
             requested = request.committee_indices.len(),
-            "InclusionListByCommitteeIndices request received (stub)"
+            returned = send_count,
+            "InclusionListByCommitteeIndices response processed"
         );
 
-        // Terminate the stream with no responses for now.
-        // Phase 5 will serve inclusion lists from the InclusionListStore.
+        // Terminate the stream.
         self.send_response(
             peer_id,
             inbound_request_id,

@@ -5778,7 +5778,7 @@ async fn fc_on_execution_payload_marks_revealed() {
         .chain
         .canonical_head
         .fork_choice_write_lock()
-        .on_execution_payload(block_root, payload_hash)
+        .on_execution_payload(block_root, payload_hash, true)
         .expect("on_execution_payload should succeed");
 
     let node = harness
@@ -5816,6 +5816,7 @@ async fn fc_on_execution_payload_rejects_unknown_root() {
         .on_execution_payload(
             Hash256::repeat_byte(0xff),
             ExecutionBlockHash::repeat_byte(0x01),
+            true,
         );
 
     assert!(
@@ -6273,7 +6274,7 @@ async fn fc_bid_then_payload_lifecycle() {
         .chain
         .canonical_head
         .fork_choice_write_lock()
-        .on_execution_payload(block_root, payload_hash)
+        .on_execution_payload(block_root, payload_hash, true)
         .unwrap();
 
     let node = harness
@@ -6714,7 +6715,8 @@ async fn fc_on_valid_execution_payload_transitions_to_valid() {
     // Set up: simulate block with Optimistic status (post-envelope, pre-EL-validation)
     {
         let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
-        fc.on_execution_payload(block_root, payload_hash).unwrap();
+        fc.on_execution_payload(block_root, payload_hash, true)
+            .unwrap();
 
         // Verify it's Optimistic
         let node = fc.get_block(&block_root).unwrap();
@@ -6889,7 +6891,7 @@ async fn fc_full_external_builder_lifecycle() {
         .chain
         .canonical_head
         .fork_choice_write_lock()
-        .on_execution_payload(block_root, bid_hash)
+        .on_execution_payload(block_root, bid_hash, true)
         .unwrap();
 
     let node = harness

@@ -4487,26 +4487,147 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         }
     }
 
-    /// Process a gossip-received inclusion list (Heze FOCIL).
+    /// Process a gossip-received inclusion list (Heze FOCIL, EIP-7805).
     ///
-    /// For now this is a stub that accepts the message for propagation. Full validation
-    /// (signature check, committee membership, equivocation detection, timing) will be
-    /// wired in Phase 5 (Beacon Chain Integration) when InclusionListStore is integrated
-    /// into the beacon chain.
+    /// Validates the inclusion list (slot, committee membership, committee root, signature,
+    /// duplicate/equivocation detection) then imports it into the InclusionListStore.
     pub(crate) fn process_gossip_inclusion_list(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
         signed_il: types::SignedInclusionList<T::EthSpec>,
     ) {
-        debug!(
-            slot = %signed_il.message.slot,
-            validator_index = signed_il.message.validator_index,
-            peer = %peer_id,
-            "Received gossip inclusion list"
-        );
+        use beacon_chain::heze_verification::InclusionListError;
 
-        // Accept for now — full validation wired in beacon chain integration phase.
+        let validator_index = signed_il.message.validator_index;
+        let il_slot = signed_il.message.slot;
+
+        let verified = match self.chain.verify_inclusion_list_for_gossip(signed_il) {
+            Ok(verified) => verified,
+            // [IGNORE] Slot not current
+            Err(InclusionListError::SlotNotCurrent { .. }) => {
+                debug!(
+                    validator_index,
+                    slot = %il_slot,
+                    %peer_id,
+                    "Ignoring inclusion list for non-current slot"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                return;
+            }
+            // [REJECT] Pre-Heze fork
+            Err(InclusionListError::PreHezeFork { .. }) => {
+                warn!(
+                    validator_index,
+                    slot = %il_slot,
+                    %peer_id,
+                    "Rejecting inclusion list from pre-Heze fork"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::LowToleranceError,
+                    "inclusion_list_pre_heze",
+                );
+                return;
+            }
+            // [REJECT] Not in committee
+            Err(InclusionListError::NotInCommittee { .. }) => {
+                warn!(
+                    validator_index,
+                    slot = %il_slot,
+                    %peer_id,
+                    "Rejecting inclusion list: validator not in committee"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::LowToleranceError,
+                    "inclusion_list_not_in_committee",
+                );
+                return;
+            }
+            // [REJECT] Committee root mismatch
+            Err(InclusionListError::CommitteeRootMismatch { .. }) => {
+                warn!(
+                    validator_index,
+                    slot = %il_slot,
+                    %peer_id,
+                    "Rejecting inclusion list: committee root mismatch"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::LowToleranceError,
+                    "inclusion_list_committee_root_mismatch",
+                );
+                return;
+            }
+            // [REJECT] Invalid signature
+            Err(InclusionListError::InvalidSignature) => {
+                warn!(
+                    validator_index,
+                    slot = %il_slot,
+                    %peer_id,
+                    "Rejecting inclusion list: invalid signature"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::LowToleranceError,
+                    "inclusion_list_bad_signature",
+                );
+                return;
+            }
+            // [IGNORE] Duplicate
+            Err(InclusionListError::Duplicate { .. }) => {
+                debug!(
+                    validator_index,
+                    slot = %il_slot,
+                    %peer_id,
+                    "Ignoring duplicate inclusion list"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                return;
+            }
+            // [IGNORE] Equivocator
+            Err(InclusionListError::Equivocator { .. }) => {
+                debug!(
+                    validator_index,
+                    slot = %il_slot,
+                    %peer_id,
+                    "Ignoring inclusion list from equivocator"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                return;
+            }
+            // Internal errors
+            Err(InclusionListError::BeaconChainError(e)) => {
+                debug!(
+                    validator_index,
+                    slot = %il_slot,
+                    %peer_id,
+                    error = ?e,
+                    "Dropping inclusion list due to internal error"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::HighToleranceError,
+                    "inclusion_list_internal_error",
+                );
+                return;
+            }
+        };
+
         self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Accept);
+
+        // Import to InclusionListStore
+        self.chain.import_inclusion_list(&verified);
+        debug!(
+            validator_index,
+            slot = %il_slot,
+            "Successfully imported inclusion list"
+        );
     }
 }

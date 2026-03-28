@@ -834,7 +834,7 @@ impl<E: EthSpec> Tester<E> {
             .chain
             .canonical_head
             .fork_choice_write_lock()
-            .on_execution_payload(beacon_block_root, payload_block_hash);
+            .on_execution_payload(beacon_block_root, payload_block_hash, true);
 
         if valid {
             result.map_err(|e| {
