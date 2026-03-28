@@ -6175,6 +6175,7 @@ dependencies = [
  "tokio-stream",
  "tracing",
  "tracing-subscriber",
+ "tree_hash",
  "types",
  "vibehouse_network",
  "vibehouse_tracing",

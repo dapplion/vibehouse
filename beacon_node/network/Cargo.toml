@@ -55,3 +55,4 @@ kzg = { workspace = true }
 matches = "0.1.8"
 rand_chacha = "0.9.0"
 state_processing = { workspace = true }
+tree_hash = { workspace = true }

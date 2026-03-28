@@ -40,11 +40,12 @@ use types::{
     DataColumnSidecarList, DataColumnSubnetId, Domain, Epoch, EthSpec, ExecutionBlockHash,
     ExecutionPayloadBid, ExecutionPayloadBidGloas, ExecutionPayloadBidHeze,
     ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExecutionProof, ExecutionProofSubnetId,
-    ForkName, Hash256, Keypair, MainnetEthSpec, PayloadAttestationData, ProposerPreferences,
-    ProposerSlashing, RuntimeVariableList, SignedAggregateAndProof, SignedBeaconBlock,
-    SignedExecutionPayloadBid, SignedExecutionPayloadBidGloas, SignedExecutionPayloadBidHeze,
-    SignedExecutionPayloadEnvelope, SignedProposerPreferences, SignedRoot, SignedVoluntaryExit,
-    SingleAttestation, Slot, SubnetId, VariableList,
+    ForkName, Hash256, InclusionList, Keypair, MainnetEthSpec, PayloadAttestationData,
+    ProposerPreferences, ProposerSlashing, RuntimeVariableList, SignedAggregateAndProof,
+    SignedBeaconBlock, SignedExecutionPayloadBid, SignedExecutionPayloadBidGloas,
+    SignedExecutionPayloadBidHeze, SignedExecutionPayloadEnvelope, SignedInclusionList,
+    SignedProposerPreferences, SignedRoot, SignedVoluntaryExit, SigningData, SingleAttestation,
+    Slot, SubnetId, VariableList,
 };
 use vibehouse_network::rpc::InboundRequestId;
 use vibehouse_network::rpc::methods::{
@@ -6537,4 +6538,248 @@ async fn test_gloas_envelope_before_block_full_gossip_pipeline() {
             .is_none(),
         "pending_gossip_envelopes buffer should be drained after block import"
     );
+}
+
+// ======================================================================
+// Heze FOCIL inclusion list gossip tests
+// ======================================================================
+
+/// Create a Heze-enabled TestRig with both Gloas and Heze from genesis.
+async fn heze_rig(chain_length: u64) -> TestRig {
+    let mut spec = test_spec::<E>();
+    spec.shard_committee_period = 2;
+    spec.gloas_fork_epoch = Some(Epoch::new(0));
+    spec.heze_fork_epoch = Some(Epoch::new(0));
+    TestRig::new_parametric(
+        chain_length,
+        BeaconProcessorConfig::default(),
+        NodeCustodyType::Fullnode,
+        spec,
+    )
+    .await
+}
+
+/// Construct an unsigned InclusionList for the given slot with the validator at
+/// the specified position in the IL committee. Computes the committee root from
+/// the chain's head state.
+fn make_inclusion_list(rig: &TestRig, slot: Slot, committee_position: usize) -> InclusionList<E> {
+    use state_processing::per_block_processing::heze::get_inclusion_list_committee;
+
+    let head = rig.chain.head_snapshot();
+    let state = &head.beacon_state;
+    let committee = get_inclusion_list_committee(state, slot, &rig.chain.spec).expect("committee");
+
+    let committee_fixed: ssz_types::FixedVector<u64, <E as EthSpec>::InclusionListCommitteeSize> =
+        ssz_types::FixedVector::new(committee.clone()).expect("committee size");
+    let committee_root = tree_hash::TreeHash::tree_hash_root(&committee_fixed);
+
+    let validator_index = committee[committee_position];
+
+    InclusionList {
+        slot,
+        validator_index,
+        inclusion_list_committee_root: committee_root,
+        transactions: <_>::default(),
+    }
+}
+
+/// Sign an inclusion list using the deterministic test keypairs.
+fn sign_inclusion_list(rig: &TestRig, il: InclusionList<E>) -> SignedInclusionList<E> {
+    let head = rig.chain.head_snapshot();
+    let state = &head.beacon_state;
+    let spec = &rig.chain.spec;
+
+    let epoch = il.slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(
+        epoch,
+        Domain::InclusionListCommittee,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+
+    let signing_root = tree_hash::TreeHash::tree_hash_root(&SigningData {
+        object_root: tree_hash::TreeHash::tree_hash_root(&il),
+        domain,
+    });
+
+    let keypairs = generate_deterministic_keypairs(VALIDATOR_COUNT);
+    let signature = keypairs[il.validator_index as usize].sk.sign(signing_root);
+
+    SignedInclusionList {
+        message: il,
+        signature,
+    }
+}
+
+/// Heze gossip: a valid inclusion list from a committee member is ACCEPTED.
+#[tokio::test]
+async fn test_heze_gossip_inclusion_list_valid_accepted() {
+    if test_spec::<E>().heze_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = heze_rig(SMALL_CHAIN).await;
+    let current_slot = rig.chain.slot().unwrap();
+
+    let il = make_inclusion_list(&rig, current_slot, 0);
+    let signed_il = sign_inclusion_list(&rig, il);
+
+    rig.network_beacon_processor
+        .send_gossip_inclusion_list(junk_message_id(), junk_peer_id(), Box::new(signed_il))
+        .unwrap();
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+}
+
+/// Heze gossip: inclusion list for a far-future slot is REJECTED.
+///
+/// Per spec: [REJECT] message.slot is equal to the previous or current slot.
+#[tokio::test]
+async fn test_heze_gossip_inclusion_list_wrong_slot_rejected() {
+    if test_spec::<E>().heze_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = heze_rig(SMALL_CHAIN).await;
+    let current_slot = rig.chain.slot().unwrap();
+
+    // Build an IL for a far-future slot. We can't use make_inclusion_list
+    // because the committee computation might fail for a far-future slot,
+    // so we construct it manually with dummy values.
+    let il = InclusionList {
+        slot: current_slot + 100,
+        validator_index: 0,
+        inclusion_list_committee_root: Hash256::ZERO,
+        transactions: <_>::default(),
+    };
+    let signed_il = SignedInclusionList {
+        message: il,
+        signature: bls::Signature::empty(),
+    };
+
+    rig.network_beacon_processor
+        .send_gossip_inclusion_list(junk_message_id(), junk_peer_id(), Box::new(signed_il))
+        .unwrap();
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
+/// Heze gossip: inclusion list from a validator not in the committee is REJECTED.
+///
+/// Per spec: [REJECT] inclusion_list.validator_index is in the inclusion list committee.
+#[tokio::test]
+async fn test_heze_gossip_inclusion_list_not_in_committee_rejected() {
+    if test_spec::<E>().heze_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = heze_rig(SMALL_CHAIN).await;
+    let current_slot = rig.chain.slot().unwrap();
+
+    // Make a valid IL but change the validator_index to one not in the committee
+    let il = make_inclusion_list(&rig, current_slot, 0);
+    let wrong_il = InclusionList {
+        validator_index: 9999, // doesn't exist
+        ..il
+    };
+    let signed_il = SignedInclusionList {
+        message: wrong_il,
+        signature: bls::Signature::empty(),
+    };
+
+    rig.network_beacon_processor
+        .send_gossip_inclusion_list(junk_message_id(), junk_peer_id(), Box::new(signed_il))
+        .unwrap();
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
+/// Heze gossip: inclusion list with wrong committee root is IGNORED.
+///
+/// Per spec: [IGNORE] The inclusion_list_committee for slot message.slot
+/// on the current branch corresponds to message.inclusion_list_committee_root.
+#[tokio::test]
+async fn test_heze_gossip_inclusion_list_wrong_committee_root_ignored() {
+    if test_spec::<E>().heze_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = heze_rig(SMALL_CHAIN).await;
+    let current_slot = rig.chain.slot().unwrap();
+
+    let mut il = make_inclusion_list(&rig, current_slot, 0);
+    il.inclusion_list_committee_root = Hash256::repeat_byte(0xff); // wrong root
+    let signed_il = sign_inclusion_list(&rig, il);
+
+    rig.network_beacon_processor
+        .send_gossip_inclusion_list(junk_message_id(), junk_peer_id(), Box::new(signed_il))
+        .unwrap();
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
+}
+
+/// Heze gossip: inclusion list with invalid signature is REJECTED.
+///
+/// Per spec: [REJECT] The signature is valid.
+#[tokio::test]
+async fn test_heze_gossip_inclusion_list_invalid_signature_rejected() {
+    if test_spec::<E>().heze_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = heze_rig(SMALL_CHAIN).await;
+    let current_slot = rig.chain.slot().unwrap();
+
+    let il = make_inclusion_list(&rig, current_slot, 0);
+    // Use an empty signature instead of a valid one
+    let signed_il = SignedInclusionList {
+        message: il,
+        signature: bls::Signature::empty(),
+    };
+
+    rig.network_beacon_processor
+        .send_gossip_inclusion_list(junk_message_id(), junk_peer_id(), Box::new(signed_il))
+        .unwrap();
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
+/// Heze gossip: sending the same valid inclusion list twice results in IGNORE (duplicate).
+///
+/// Per spec: [IGNORE] The message is either the first or second valid message
+/// received from the validator.
+#[tokio::test]
+async fn test_heze_gossip_inclusion_list_duplicate_ignored() {
+    if test_spec::<E>().heze_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = heze_rig(SMALL_CHAIN).await;
+    let current_slot = rig.chain.slot().unwrap();
+
+    let il = make_inclusion_list(&rig, current_slot, 0);
+    let signed_il = sign_inclusion_list(&rig, il);
+
+    // First submission: Accept
+    rig.network_beacon_processor
+        .send_gossip_inclusion_list(
+            junk_message_id(),
+            junk_peer_id(),
+            Box::new(signed_il.clone()),
+        )
+        .unwrap();
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+
+    // Second submission (exact duplicate): Ignore
+    rig.network_beacon_processor
+        .send_gossip_inclusion_list(junk_message_id(), junk_peer_id(), Box::new(signed_il))
+        .unwrap();
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
 }
