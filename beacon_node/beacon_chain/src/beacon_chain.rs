@@ -153,8 +153,8 @@ use types::{
     RelativeEpoch, Signature, SignedAggregateAndProof, SignedBeaconBlock, SignedBeaconBlockHash,
     SignedBlindedBeaconBlock, SignedBlindedExecutionPayloadEnvelope, SignedBlsToExecutionChange,
     SignedContributionAndProof, SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope,
-    SignedProposerPreferences, SignedVoluntaryExit, SingleAttestation, Slot, SubnetId,
-    SyncAggregate, SyncCommittee, SyncCommitteeContribution, SyncCommitteeMessage,
+    SignedInclusionList, SignedProposerPreferences, SignedVoluntaryExit, SingleAttestation, Slot,
+    SubnetId, SyncAggregate, SyncCommittee, SyncCommitteeContribution, SyncCommitteeMessage,
     SyncContributionData, SyncDuty, SyncSubnetId, Uint256, VariableList, Withdrawals,
 };
 
@@ -3788,6 +3788,22 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let prune_before =
             current_slot.saturating_sub(T::EthSpec::slots_per_epoch().saturating_mul(2));
         pool.retain(|&s, _| s >= prune_before);
+    }
+
+    /// Retrieves all signed inclusion lists from the store, optionally filtering by slot.
+    ///
+    /// Used by the `GET /eth/v1/beacon/pool/inclusion_lists` REST API endpoint.
+    pub fn get_all_inclusion_lists(
+        &self,
+        slot_filter: Option<Slot>,
+    ) -> Vec<SignedInclusionList<T::EthSpec>> {
+        let store = self.inclusion_list_store.lock();
+        store
+            .signed_cache
+            .iter()
+            .filter(|((slot, _), _)| slot_filter.is_none() || slot_filter == Some(*slot))
+            .flat_map(|(_, by_validator)| by_validator.values().cloned())
+            .collect()
     }
 
     /// Retrieves all payload attestations from the pool, optionally filtering by slot.

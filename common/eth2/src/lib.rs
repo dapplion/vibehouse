@@ -1078,6 +1078,27 @@ impl BeaconNodeHttpClient {
         Ok(())
     }
 
+    /// `GET beacon/pool/inclusion_lists`
+    pub async fn get_beacon_pool_inclusion_lists<E: EthSpec>(
+        &self,
+        slot: Option<Slot>,
+    ) -> Result<GenericResponse<Vec<SignedInclusionList<E>>>, Error> {
+        let mut path = self.eth_path(V1)?;
+
+        path.path_segments_mut()
+            .map_err(|()| Error::InvalidUrl(self.server.clone()))?
+            .push("beacon")
+            .push("pool")
+            .push("inclusion_lists");
+
+        if let Some(slot) = slot {
+            path.query_pairs_mut()
+                .append_pair("slot", &slot.to_string());
+        }
+
+        self.get(path).await
+    }
+
     /// `GET beacon/execution_payload_envelope/{block_id}`
     ///
     /// Returns the signed execution payload envelope for a Gloas block.

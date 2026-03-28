@@ -511,6 +511,11 @@ pub struct PayloadAttestationPoolQuery {
     pub slot: Option<Slot>,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct InclusionListPoolQuery {
+    pub slot: Option<Slot>,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ValidatorsQuery {

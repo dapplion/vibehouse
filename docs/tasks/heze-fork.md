@@ -70,7 +70,7 @@ Heze adds inclusion lists — a mechanism for committees of 16 validators per sl
 | 4. P2P Networking | Gossip topic, req/resp protocol, validation | DONE |
 | 5. Beacon Chain Integration | IL store, builder bid validation | DONE |
 | 6. Validator Client | IL committee duties, IL construction, bid validation | DONE |
-| 7. REST API | IL endpoints | NOT STARTED |
+| 7. REST API | IL endpoints | DONE |
 
 ## Progress Log
 
@@ -309,4 +309,24 @@ Tests: 12/12 vibehouse_validator_store pass (3 new: correct domain, wrong domain
 
 **Design note:** Transactions in inclusion lists are currently empty. The EL integration (`engine_getInclusionList` or equivalent) to populate them will be added when the execution layer FOCIL spec is finalized.
 
-**Next:** Phase 7 — REST API (inclusion list endpoints).
+### Phase 7: REST API (run 3355)
+
+Completing the REST API for Heze FOCIL inclusion lists.
+
+**Already implemented in Phase 6:**
+- `POST /eth/v1/beacon/pool/inclusion_lists` — submit signed IL for gossip (Phase 6 Part 2)
+- `POST /eth/v1/validator/duties/inclusion_list/{epoch}` — IL committee duty discovery (Phase 6 Part 1)
+
+**Completed:**
+
+1. **GET /eth/v1/beacon/pool/inclusion_lists** (`beacon_node/http_api/src/lib.rs`): Returns all signed inclusion lists from the InclusionListStore. Optional `?slot=N` query parameter for filtering. Mirrors `get_beacon_pool_payload_attestations` pattern.
+
+2. **BeaconChain::get_all_inclusion_lists** (`beacon_chain.rs`): Public method iterating `inclusion_list_store.signed_cache`, with optional slot filter. Returns `Vec<SignedInclusionList>`.
+
+3. **InclusionListPoolQuery** (`common/eth2/src/types.rs`): Query struct with `slot: Option<Slot>`.
+
+4. **eth2 client method** (`common/eth2/src/lib.rs`): `get_beacon_pool_inclusion_lists(slot: Option<Slot>)` returning `GenericResponse<Vec<SignedInclusionList<E>>>`.
+
+Tests: all pool tests pass (fulu), 26/26 inclusion list types tests pass. Clean clippy.
+
+**Phase 7 complete.** All Heze fork phases are now DONE.

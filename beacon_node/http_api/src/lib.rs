@@ -661,7 +661,7 @@ pub fn serve<T: BeaconChainTypes>(
         // Inclusion lists (Heze FOCIL)
         .route(
             "/eth/v1/beacon/pool/inclusion_lists",
-            post(post_beacon_pool_inclusion_lists::<T>),
+            get(get_beacon_pool_inclusion_lists::<T>).post(post_beacon_pool_inclusion_lists::<T>),
         )
         // Execution payload envelope
         .route(
@@ -2790,6 +2790,20 @@ async fn post_builder_bids<T: BeaconChainTypes>(
 }
 
 // -- Inclusion list pool routes --
+
+async fn get_beacon_pool_inclusion_lists<T: BeaconChainTypes>(
+    State(state): State<SharedState<T>>,
+    Query(query): Query<api_types::InclusionListPoolQuery>,
+) -> Result<Response, ApiError> {
+    let chain = state.chain()?;
+    state
+        .task_spawner()
+        .blocking_json_task(Priority::P1, move || {
+            let inclusion_lists = chain.get_all_inclusion_lists(query.slot);
+            Ok(api_types::GenericResponse::from(inclusion_lists))
+        })
+        .await
+}
 
 async fn post_beacon_pool_inclusion_lists<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
