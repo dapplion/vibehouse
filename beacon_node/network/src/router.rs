@@ -289,6 +289,15 @@ impl<T: BeaconChainTypes> Router<T> {
                             request,
                         ),
                 ),
+            RequestType::InclusionListByCommitteeIndices(request) => self
+                .handle_beacon_processor_send_result(
+                    self.network_beacon_processor
+                        .send_inclusion_list_by_committee_indices_request(
+                            peer_id,
+                            inbound_request_id,
+                            request,
+                        ),
+                ),
             _ => {}
         }
     }
@@ -328,6 +337,10 @@ impl<T: BeaconChainTypes> Router<T> {
             }
             Response::ExecutionPayloadEnvelopesByRoot(envelope) => {
                 self.on_envelopes_by_root_response(peer_id, app_request_id, envelope);
+            }
+            Response::InclusionListByCommitteeIndices(_il) => {
+                // Phase 5: handle inclusion list responses in beacon chain integration
+                debug!(%peer_id, "Received inclusion list by committee indices response");
             }
             // Light client responses should not be received
             Response::LightClientBootstrap(_)

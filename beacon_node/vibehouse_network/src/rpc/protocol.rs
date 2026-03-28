@@ -1,9 +1,10 @@
 use super::methods::{
     BlobsByRangeRequest, BlobsByRootRequest, BlocksByRootRequest, DataColumnsByRangeRequest,
     DataColumnsByRootRequest, ExecutionPayloadEnvelopesByRootRequest, GoodbyeReason,
-    LightClientBootstrapRequest, LightClientUpdatesByRangeRequest, MAX_ERROR_LEN, MaxErrorLen,
-    MetaDataV1, MetaDataV3, MetadataRequest, OldBlocksByRangeRequest, OldBlocksByRangeRequestV2,
-    Ping, ResponseTermination, RpcErrorResponse, StatusMessage, StatusMessageV1, StatusMessageV2,
+    InclusionListByCommitteeIndicesRequest, LightClientBootstrapRequest,
+    LightClientUpdatesByRangeRequest, MAX_ERROR_LEN, MaxErrorLen, MetaDataV1, MetaDataV3,
+    MetadataRequest, OldBlocksByRangeRequest, OldBlocksByRangeRequestV2, Ping, ResponseTermination,
+    RpcErrorResponse, StatusMessage, StatusMessageV1, StatusMessageV2,
 };
 use crate::rpc::codec::SSZSnappyInboundCodec;
 use futures::future::BoxFuture;
@@ -76,6 +77,9 @@ pub(super) static SIGNED_EXECUTION_PAYLOAD_ENVELOPE_MAX: LazyLock<usize> = LazyL
     // Use the same upper bound as bellatrix blocks since both contain a full execution payload.
     *SIGNED_BEACON_BLOCK_BELLATRIX_MAX
 });
+
+/// Maximum bytes per signed inclusion list (spec: MAX_BYTES_PER_INCLUSION_LIST = 8192).
+pub(super) const SIGNED_INCLUSION_LIST_MAX: usize = 8192;
 
 pub(super) static BLOB_SIDECAR_SIZE_MINIMAL: LazyLock<usize> =
     LazyLock::new(BlobSidecar::<MinimalEthSpec>::max_size);
@@ -282,6 +286,9 @@ pub enum Protocol {
     /// The `ExecutionPayloadEnvelopesByRoot` protocol name.
     #[strum(serialize = "execution_payload_envelopes_by_root")]
     ExecutionPayloadEnvelopesByRoot,
+    /// The `InclusionListByCommitteeIndices` protocol name.
+    #[strum(serialize = "inclusion_list_by_committee_indices")]
+    InclusionListByCommitteeIndices,
 }
 
 impl Protocol {
@@ -303,6 +310,9 @@ impl Protocol {
             Protocol::DataColumnsByRange => Some(ResponseTermination::DataColumnsByRange),
             Protocol::ExecutionPayloadEnvelopesByRoot => {
                 Some(ResponseTermination::ExecutionPayloadEnvelopesByRoot)
+            }
+            Protocol::InclusionListByCommitteeIndices => {
+                Some(ResponseTermination::InclusionListByCommitteeIndices)
             }
         }
     }
@@ -337,6 +347,7 @@ pub enum SupportedProtocol {
     LightClientFinalityUpdateV1,
     LightClientUpdatesByRangeV1,
     ExecutionPayloadEnvelopesByRootV1,
+    InclusionListByCommitteeIndicesV1,
 }
 
 impl SupportedProtocol {
@@ -356,7 +367,8 @@ impl SupportedProtocol {
             | SupportedProtocol::LightClientOptimisticUpdateV1
             | SupportedProtocol::LightClientFinalityUpdateV1
             | SupportedProtocol::LightClientUpdatesByRangeV1
-            | SupportedProtocol::ExecutionPayloadEnvelopesByRootV1 => "1",
+            | SupportedProtocol::ExecutionPayloadEnvelopesByRootV1
+            | SupportedProtocol::InclusionListByCommitteeIndicesV1 => "1",
             SupportedProtocol::StatusV2
             | SupportedProtocol::BlocksByRangeV2
             | SupportedProtocol::BlocksByRootV2
@@ -391,6 +403,9 @@ impl SupportedProtocol {
             SupportedProtocol::LightClientUpdatesByRangeV1 => Protocol::LightClientUpdatesByRange,
             SupportedProtocol::ExecutionPayloadEnvelopesByRootV1 => {
                 Protocol::ExecutionPayloadEnvelopesByRoot
+            }
+            SupportedProtocol::InclusionListByCommitteeIndicesV1 => {
+                Protocol::InclusionListByCommitteeIndices
             }
         }
     }
@@ -435,6 +450,12 @@ impl SupportedProtocol {
         if fork_context.fork_exists(ForkName::Gloas) {
             supported.push(ProtocolId::new(
                 SupportedProtocol::ExecutionPayloadEnvelopesByRootV1,
+                Encoding::SSZSnappy,
+            ));
+        }
+        if fork_context.fork_exists(ForkName::Heze) {
+            supported.push(ProtocolId::new(
+                SupportedProtocol::InclusionListByCommitteeIndicesV1,
                 Encoding::SSZSnappy,
             ));
         }
@@ -568,6 +589,10 @@ impl ProtocolId {
             Protocol::ExecutionPayloadEnvelopesByRoot => {
                 RpcLimits::new(0, spec.max_execution_payload_envelopes_by_root_request)
             }
+            Protocol::InclusionListByCommitteeIndices => {
+                // Request is a list of u64 committee indices, each 8 bytes.
+                RpcLimits::new(0, spec.max_request_inclusion_lists.saturating_mul(8))
+            }
         }
     }
 
@@ -609,6 +634,9 @@ impl ProtocolId {
             Protocol::ExecutionPayloadEnvelopesByRoot => {
                 RpcLimits::new(0, *SIGNED_EXECUTION_PAYLOAD_ENVELOPE_MAX)
             }
+            Protocol::InclusionListByCommitteeIndices => {
+                RpcLimits::new(0, SIGNED_INCLUSION_LIST_MAX)
+            }
         }
     }
 
@@ -626,7 +654,8 @@ impl ProtocolId {
             | SupportedProtocol::LightClientOptimisticUpdateV1
             | SupportedProtocol::LightClientFinalityUpdateV1
             | SupportedProtocol::LightClientUpdatesByRangeV1
-            | SupportedProtocol::ExecutionPayloadEnvelopesByRootV1 => true,
+            | SupportedProtocol::ExecutionPayloadEnvelopesByRootV1
+            | SupportedProtocol::InclusionListByCommitteeIndicesV1 => true,
             SupportedProtocol::StatusV1
             | SupportedProtocol::StatusV2
             | SupportedProtocol::BlocksByRootV1
@@ -766,6 +795,7 @@ pub enum RequestType<E: EthSpec> {
     LightClientFinalityUpdate,
     LightClientUpdatesByRange(LightClientUpdatesByRangeRequest),
     ExecutionPayloadEnvelopesByRoot(ExecutionPayloadEnvelopesByRootRequest),
+    InclusionListByCommitteeIndices(InclusionListByCommitteeIndicesRequest),
     Ping(Ping),
     MetaData(MetadataRequest<E>),
 }
@@ -792,6 +822,7 @@ impl<E: EthSpec> RequestType<E> {
             RequestType::DataColumnsByRange(req) => req.max_requested::<E>(),
             RequestType::LightClientUpdatesByRange(req) => req.count,
             RequestType::ExecutionPayloadEnvelopesByRoot(req) => req.block_roots.len() as u64,
+            RequestType::InclusionListByCommitteeIndices(req) => req.committee_indices.len() as u64,
         }
     }
 
@@ -834,6 +865,9 @@ impl<E: EthSpec> RequestType<E> {
             RequestType::ExecutionPayloadEnvelopesByRoot(_) => {
                 SupportedProtocol::ExecutionPayloadEnvelopesByRootV1
             }
+            RequestType::InclusionListByCommitteeIndices(_) => {
+                SupportedProtocol::InclusionListByCommitteeIndicesV1
+            }
         }
     }
 
@@ -851,6 +885,9 @@ impl<E: EthSpec> RequestType<E> {
             RequestType::DataColumnsByRange(_) => ResponseTermination::DataColumnsByRange,
             RequestType::ExecutionPayloadEnvelopesByRoot(_) => {
                 ResponseTermination::ExecutionPayloadEnvelopesByRoot
+            }
+            RequestType::InclusionListByCommitteeIndices(_) => {
+                ResponseTermination::InclusionListByCommitteeIndices
             }
             RequestType::Status(_)
             | RequestType::Goodbye(_)
@@ -927,6 +964,10 @@ impl<E: EthSpec> RequestType<E> {
                 SupportedProtocol::ExecutionPayloadEnvelopesByRootV1,
                 Encoding::SSZSnappy,
             )],
+            RequestType::InclusionListByCommitteeIndices(_) => vec![ProtocolId::new(
+                SupportedProtocol::InclusionListByCommitteeIndicesV1,
+                Encoding::SSZSnappy,
+            )],
         }
     }
 
@@ -946,7 +987,8 @@ impl<E: EthSpec> RequestType<E> {
             | RequestType::BlobsByRoot(_)
             | RequestType::DataColumnsByRoot(_)
             | RequestType::DataColumnsByRange(_)
-            | RequestType::ExecutionPayloadEnvelopesByRoot(_) => false,
+            | RequestType::ExecutionPayloadEnvelopesByRoot(_)
+            | RequestType::InclusionListByCommitteeIndices(_) => false,
         }
     }
 }
@@ -1058,6 +1100,11 @@ impl<E: EthSpec> std::fmt::Display for RequestType<E> {
                 f,
                 "Execution payload envelopes by root: {} roots",
                 req.block_roots.len()
+            ),
+            RequestType::InclusionListByCommitteeIndices(req) => write!(
+                f,
+                "Inclusion list by committee indices: {} indices",
+                req.committee_indices.len()
             ),
         }
     }

@@ -15,7 +15,7 @@ use types::blob_sidecar::BlobIdentifier;
 use types::{ColumnIndex, Epoch, EthSpec, Hash256, Slot};
 use vibehouse_network::rpc::methods::{
     BlobsByRangeRequest, BlobsByRootRequest, DataColumnsByRangeRequest, DataColumnsByRootRequest,
-    ExecutionPayloadEnvelopesByRootRequest,
+    ExecutionPayloadEnvelopesByRootRequest, InclusionListByCommitteeIndicesRequest,
 };
 use vibehouse_network::rpc::{
     BlocksByRangeRequest, BlocksByRootRequest, GoodbyeReason, InboundRequestId,
@@ -560,6 +560,32 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             requested = request.block_roots.len(),
             returned = send_count,
             "ExecutionPayloadEnvelopesByRoot outgoing response processed"
+        );
+    }
+
+    /// Handle an `InclusionListByCommitteeIndices` request from the peer.
+    /// Phase 5 will implement full serving from InclusionListStore.
+    pub(crate) fn handle_inclusion_list_by_committee_indices_request(
+        self: Arc<Self>,
+        peer_id: PeerId,
+        inbound_request_id: InboundRequestId,
+        request: InclusionListByCommitteeIndicesRequest,
+    ) {
+        let client = self.network_globals.client(&peer_id);
+        Span::current().record("client", field::display(client.kind));
+
+        debug!(
+            %peer_id,
+            requested = request.committee_indices.len(),
+            "InclusionListByCommitteeIndices request received (stub)"
+        );
+
+        // Terminate the stream with no responses for now.
+        // Phase 5 will serve inclusion lists from the InclusionListStore.
+        self.send_response(
+            peer_id,
+            inbound_request_id,
+            Response::InclusionListByCommitteeIndices(None),
         );
     }
 

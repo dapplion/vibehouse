@@ -18,7 +18,7 @@ use types::{
     ChainSpec, ColumnIndex, DataColumnSidecar, DataColumnsByRootIdentifier, Epoch, EthSpec,
     ForkContext, Hash256, LightClientBootstrap, LightClientFinalityUpdate,
     LightClientOptimisticUpdate, LightClientUpdate, RuntimeVariableList, SignedBeaconBlock,
-    SignedExecutionPayloadEnvelope, Slot, blob_sidecar::BlobSidecar,
+    SignedExecutionPayloadEnvelope, SignedInclusionList, Slot, blob_sidecar::BlobSidecar,
 };
 
 /// Maximum length of error message.
@@ -568,6 +568,23 @@ impl ExecutionPayloadEnvelopesByRootRequest {
     }
 }
 
+/// Request inclusion lists from a peer by committee indices.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InclusionListByCommitteeIndicesRequest {
+    /// The list of committee member indices for which inclusion lists are requested.
+    pub committee_indices: RuntimeVariableList<u64>,
+}
+
+impl InclusionListByCommitteeIndicesRequest {
+    pub fn new(committee_indices: Vec<u64>, spec: &ChainSpec) -> Result<Self, String> {
+        let committee_indices =
+            RuntimeVariableList::new(committee_indices, spec.max_request_inclusion_lists).map_err(
+                |e| format!("InclusionListByCommitteeIndicesRequest too many indices: {e:?}"),
+            )?;
+        Ok(Self { committee_indices })
+    }
+}
+
 /// Request a number of beacon data columns from a peer.
 #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
 pub struct LightClientUpdatesByRangeRequest {
@@ -638,6 +655,9 @@ pub enum RpcSuccessResponse<E: EthSpec> {
     /// A response to a get EXECUTION_PAYLOAD_ENVELOPES_BY_ROOT request.
     ExecutionPayloadEnvelopesByRoot(Arc<SignedExecutionPayloadEnvelope<E>>),
 
+    /// A response to a get INCLUSION_LIST_BY_COMMITTEE_INDICES request.
+    InclusionListByCommitteeIndices(Arc<SignedInclusionList<E>>),
+
     /// A PONG response to a PING request.
     Pong(Ping),
 
@@ -671,6 +691,9 @@ pub enum ResponseTermination {
 
     /// Execution payload envelopes by root stream termination.
     ExecutionPayloadEnvelopesByRoot,
+
+    /// Inclusion list by committee indices stream termination.
+    InclusionListByCommitteeIndices,
 }
 
 impl ResponseTermination {
@@ -685,6 +708,9 @@ impl ResponseTermination {
             ResponseTermination::LightClientUpdatesByRange => Protocol::LightClientUpdatesByRange,
             ResponseTermination::ExecutionPayloadEnvelopesByRoot => {
                 Protocol::ExecutionPayloadEnvelopesByRoot
+            }
+            ResponseTermination::InclusionListByCommitteeIndices => {
+                Protocol::InclusionListByCommitteeIndices
             }
         }
     }
@@ -791,6 +817,9 @@ impl<E: EthSpec> RpcSuccessResponse<E> {
             RpcSuccessResponse::ExecutionPayloadEnvelopesByRoot(_) => {
                 Protocol::ExecutionPayloadEnvelopesByRoot
             }
+            RpcSuccessResponse::InclusionListByCommitteeIndices(_) => {
+                Protocol::InclusionListByCommitteeIndices
+            }
         }
     }
 
@@ -806,6 +835,7 @@ impl<E: EthSpec> RpcSuccessResponse<E> {
             Self::LightClientOptimisticUpdate(r) => Some(r.get_slot()),
             Self::LightClientUpdatesByRange(r) => Some(r.attested_header_slot()),
             Self::ExecutionPayloadEnvelopesByRoot(r) => Some(r.message.slot),
+            Self::InclusionListByCommitteeIndices(r) => Some(r.message.slot),
             Self::MetaData(_) | Self::Status(_) | Self::Pong(_) => None,
         }
     }
@@ -899,6 +929,13 @@ impl<E: EthSpec> std::fmt::Display for RpcSuccessResponse<E> {
                     f,
                     "ExecutionPayloadEnvelopesByRoot Slot: {}",
                     envelope.message.slot,
+                )
+            }
+            RpcSuccessResponse::InclusionListByCommitteeIndices(il) => {
+                write!(
+                    f,
+                    "InclusionListByCommitteeIndices Slot: {}",
+                    il.message.slot,
                 )
             }
         }

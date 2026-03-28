@@ -29,7 +29,8 @@ use types::{
 use vibehouse_network::rpc::InboundRequestId;
 use vibehouse_network::rpc::methods::{
     BlobsByRangeRequest, BlobsByRootRequest, DataColumnsByRangeRequest, DataColumnsByRootRequest,
-    ExecutionPayloadEnvelopesByRootRequest, LightClientUpdatesByRangeRequest,
+    ExecutionPayloadEnvelopesByRootRequest, InclusionListByCommitteeIndicesRequest,
+    LightClientUpdatesByRangeRequest,
 };
 use vibehouse_network::service::api_types::CustodyBackfillBatchId;
 use vibehouse_network::{
@@ -796,6 +797,28 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         self.try_send(BeaconWorkEvent {
             drop_during_sync: false,
             work: Work::ExecutionPayloadEnvelopesByRootRequest(Box::new(process_fn)),
+        })
+    }
+
+    /// Create a new work event to process `InclusionListByCommitteeIndicesRequest`s from the RPC network.
+    pub(crate) fn send_inclusion_list_by_committee_indices_request(
+        self: &Arc<Self>,
+        peer_id: PeerId,
+        inbound_request_id: InboundRequestId,
+        request: InclusionListByCommitteeIndicesRequest,
+    ) -> Result<(), Error<T::EthSpec>> {
+        let processor = self.clone();
+        let process_fn = move || {
+            processor.handle_inclusion_list_by_committee_indices_request(
+                peer_id,
+                inbound_request_id,
+                request,
+            );
+        };
+
+        self.try_send(BeaconWorkEvent {
+            drop_during_sync: false,
+            work: Work::InclusionListByCommitteeIndicesRequest(Box::new(process_fn)),
         })
     }
 

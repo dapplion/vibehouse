@@ -115,6 +115,8 @@ pub(super) struct RPCRateLimiter {
     lc_updates_by_range_rl: Limiter<PeerId>,
     /// ExecutionPayloadEnvelopesByRoot rate limiter.
     epbroots_rl: Limiter<PeerId>,
+    /// InclusionListByCommitteeIndices rate limiter.
+    ilbci_rl: Limiter<PeerId>,
     fork_context: Arc<ForkContext>,
 }
 
@@ -160,6 +162,8 @@ pub(super) struct RPCRateLimiterBuilder {
     lc_updates_by_range_quota: Option<Quota>,
     /// Quota for the ExecutionPayloadEnvelopesByRoot protocol.
     epbroots_quota: Option<Quota>,
+    /// Quota for the InclusionListByCommitteeIndices protocol.
+    ilbci_quota: Option<Quota>,
 }
 
 impl RPCRateLimiterBuilder {
@@ -182,6 +186,7 @@ impl RPCRateLimiterBuilder {
             Protocol::LightClientFinalityUpdate => self.lc_finality_update_quota = q,
             Protocol::LightClientUpdatesByRange => self.lc_updates_by_range_quota = q,
             Protocol::ExecutionPayloadEnvelopesByRoot => self.epbroots_quota = q,
+            Protocol::InclusionListByCommitteeIndices => self.ilbci_quota = q,
         }
         self
     }
@@ -233,6 +238,10 @@ impl RPCRateLimiterBuilder {
             .epbroots_quota
             .ok_or("ExecutionPayloadEnvelopesByRoot quota not specified")?;
 
+        let ilbci_quota = self
+            .ilbci_quota
+            .ok_or("InclusionListByCommitteeIndices quota not specified")?;
+
         // create the rate limiters
         let ping_rl = Limiter::from_quota(ping_quota)?;
         let metadata_rl = Limiter::from_quota(metadata_quota)?;
@@ -249,6 +258,7 @@ impl RPCRateLimiterBuilder {
         let lc_finality_update_rl = Limiter::from_quota(lc_finality_update_quota)?;
         let lc_updates_by_range_rl = Limiter::from_quota(lc_updates_by_range_quota)?;
         let epbroots_rl = Limiter::from_quota(epbroots_quota)?;
+        let ilbci_rl = Limiter::from_quota(ilbci_quota)?;
 
         // check for peers to prune every 30 seconds, starting in 30 seconds
         let prune_every = tokio::time::Duration::from_secs(30);
@@ -273,6 +283,7 @@ impl RPCRateLimiterBuilder {
             lc_finality_update_rl,
             lc_updates_by_range_rl,
             epbroots_rl,
+            ilbci_rl,
             init_time: Instant::now(),
             fork_context,
         })
@@ -327,6 +338,7 @@ impl RPCRateLimiter {
             light_client_finality_update_quota,
             light_client_updates_by_range_quota,
             execution_payload_envelopes_by_root_quota,
+            inclusion_list_by_committee_indices_quota,
         } = config;
 
         Self::builder()
@@ -356,6 +368,10 @@ impl RPCRateLimiter {
             .set_quota(
                 Protocol::ExecutionPayloadEnvelopesByRoot,
                 execution_payload_envelopes_by_root_quota,
+            )
+            .set_quota(
+                Protocol::InclusionListByCommitteeIndices,
+                inclusion_list_by_committee_indices_quota,
             )
             .build(fork_context)
     }
@@ -396,6 +412,7 @@ impl RPCRateLimiter {
             Protocol::LightClientFinalityUpdate => &mut self.lc_finality_update_rl,
             Protocol::LightClientUpdatesByRange => &mut self.lc_updates_by_range_rl,
             Protocol::ExecutionPayloadEnvelopesByRoot => &mut self.epbroots_rl,
+            Protocol::InclusionListByCommitteeIndices => &mut self.ilbci_rl,
         };
         check(limiter)
     }
@@ -421,6 +438,7 @@ impl RPCRateLimiter {
             lc_finality_update_rl,
             lc_updates_by_range_rl,
             epbroots_rl,
+            ilbci_rl,
             fork_context: _,
         } = self;
 
@@ -439,6 +457,7 @@ impl RPCRateLimiter {
         lc_finality_update_rl.prune(time_since_start);
         lc_updates_by_range_rl.prune(time_since_start);
         epbroots_rl.prune(time_since_start);
+        ilbci_rl.prune(time_since_start);
     }
 }
 

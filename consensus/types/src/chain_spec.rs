@@ -340,6 +340,7 @@ pub struct ChainSpec {
     pub max_data_columns_by_root_request: usize,
     pub max_request_payloads: usize,
     pub max_execution_payload_envelopes_by_root_request: usize,
+    pub max_request_inclusion_lists: usize,
 
     /*
      * Application params
@@ -1369,6 +1370,7 @@ impl ChainSpec {
             max_request_payloads: 128,
             max_execution_payload_envelopes_by_root_request:
                 default_max_execution_payload_envelopes_by_root_request(),
+            max_request_inclusion_lists: 16,
 
             /*
              * Application specific
@@ -1766,6 +1768,7 @@ impl ChainSpec {
             max_request_payloads: 128,
             max_execution_payload_envelopes_by_root_request:
                 default_max_execution_payload_envelopes_by_root_request(),
+            max_request_inclusion_lists: 16,
 
             /*
              * Application specific

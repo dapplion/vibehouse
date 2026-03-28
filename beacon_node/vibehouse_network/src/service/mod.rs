@@ -1602,6 +1602,17 @@ impl<E: EthSpec> Network<E> {
                             request_type,
                         })
                     }
+                    RequestType::InclusionListByCommitteeIndices(_) => {
+                        metrics::inc_counter_vec(
+                            &metrics::TOTAL_RPC_REQUESTS,
+                            &["inclusion_list_by_committee_indices"],
+                        );
+                        Some(NetworkEvent::RequestReceived {
+                            peer_id,
+                            inbound_request_id,
+                            request_type,
+                        })
+                    }
                     RequestType::ExecutionPayloadEnvelopesByRoot(_) => {
                         metrics::inc_counter_vec(
                             &metrics::TOTAL_RPC_REQUESTS,
@@ -1679,6 +1690,12 @@ impl<E: EthSpec> Network<E> {
                             peer_id,
                             Response::ExecutionPayloadEnvelopesByRoot(Some(resp)),
                         ),
+                    RpcSuccessResponse::InclusionListByCommitteeIndices(resp) => self
+                        .build_response(
+                            id,
+                            peer_id,
+                            Response::InclusionListByCommitteeIndices(Some(resp)),
+                        ),
                 }
             }
             Ok(RPCReceived::EndOfStream(id, termination)) => {
@@ -1694,6 +1711,9 @@ impl<E: EthSpec> Network<E> {
                     }
                     ResponseTermination::ExecutionPayloadEnvelopesByRoot => {
                         Response::ExecutionPayloadEnvelopesByRoot(None)
+                    }
+                    ResponseTermination::InclusionListByCommitteeIndices => {
+                        Response::InclusionListByCommitteeIndices(None)
                     }
                 };
                 self.build_response(id, peer_id, response)

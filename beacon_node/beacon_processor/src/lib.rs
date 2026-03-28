@@ -136,6 +136,7 @@ pub struct BeaconProcessorQueueLengths {
     dcbroots_queue: usize,
     dcbrange_queue: usize,
     epbroots_queue: usize,
+    ilbci_queue: usize,
     gossip_bls_to_execution_change_queue: usize,
     lc_gossip_finality_update_queue: usize,
     lc_gossip_optimistic_update_queue: usize,
@@ -209,6 +210,7 @@ impl BeaconProcessorQueueLengths {
             dcbroots_queue: 1024,
             dcbrange_queue: 1024,
             epbroots_queue: 1024,
+            ilbci_queue: 1024,
             gossip_bls_to_execution_change_queue: 16384,
             lc_gossip_finality_update_queue: 1024,
             lc_gossip_optimistic_update_queue: 1024,
@@ -633,6 +635,7 @@ pub enum Work<E: EthSpec> {
     BlobsByRangeRequest(BlockingFn),
     BlobsByRootsRequest(BlockingFn),
     ExecutionPayloadEnvelopesByRootRequest(BlockingFn),
+    InclusionListByCommitteeIndicesRequest(BlockingFn),
     DataColumnsByRootsRequest(BlockingFn),
     DataColumnsByRangeRequest(BlockingFn),
     GossipBlsToExecutionChange(BlockingFn),
@@ -693,6 +696,7 @@ pub enum WorkType {
     BlobsByRangeRequest,
     BlobsByRootsRequest,
     ExecutionPayloadEnvelopesByRootRequest,
+    InclusionListByCommitteeIndicesRequest,
     DataColumnsByRootsRequest,
     DataColumnsByRangeRequest,
     GossipBlsToExecutionChange,
@@ -752,6 +756,9 @@ impl<E: EthSpec> Work<E> {
             Work::BlobsByRootsRequest(_) => WorkType::BlobsByRootsRequest,
             Work::ExecutionPayloadEnvelopesByRootRequest(_) => {
                 WorkType::ExecutionPayloadEnvelopesByRootRequest
+            }
+            Work::InclusionListByCommitteeIndicesRequest(_) => {
+                WorkType::InclusionListByCommitteeIndicesRequest
             }
             Work::DataColumnsByRootsRequest(_) => WorkType::DataColumnsByRootsRequest,
             Work::DataColumnsByRangeRequest(_) => WorkType::DataColumnsByRangeRequest,
@@ -937,6 +944,7 @@ impl<E: EthSpec> BeaconProcessor<E> {
         let mut dcbroots_queue = FifoQueue::new(queue_lengths.dcbroots_queue);
         let mut dcbrange_queue = FifoQueue::new(queue_lengths.dcbrange_queue);
         let mut epbroots_queue = FifoQueue::new(queue_lengths.epbroots_queue);
+        let mut ilbci_queue = FifoQueue::new(queue_lengths.ilbci_queue);
 
         let mut gossip_bls_to_execution_change_queue =
             FifoQueue::new(queue_lengths.gossip_bls_to_execution_change_queue);
@@ -1268,6 +1276,8 @@ impl<E: EthSpec> BeaconProcessor<E> {
                                 Some(item)
                             } else if let Some(item) = epbroots_queue.pop() {
                                 Some(item)
+                            } else if let Some(item) = ilbci_queue.pop() {
+                                Some(item)
                             // Check slashings after all other consensus messages so we prioritize
                             // following head.
                             //
@@ -1473,6 +1483,9 @@ impl<E: EthSpec> BeaconProcessor<E> {
                             Work::ExecutionPayloadEnvelopesByRootRequest { .. } => {
                                 epbroots_queue.push(work, work_id);
                             }
+                            Work::InclusionListByCommitteeIndicesRequest { .. } => {
+                                ilbci_queue.push(work, work_id);
+                            }
                             Work::DataColumnsByRootsRequest { .. } => {
                                 dcbroots_queue.push(work, work_id);
                             }
@@ -1543,6 +1556,7 @@ impl<E: EthSpec> BeaconProcessor<E> {
                         WorkType::DataColumnsByRootsRequest => dcbroots_queue.len(),
                         WorkType::DataColumnsByRangeRequest => dcbrange_queue.len(),
                         WorkType::ExecutionPayloadEnvelopesByRootRequest => epbroots_queue.len(),
+                        WorkType::InclusionListByCommitteeIndicesRequest => ilbci_queue.len(),
                         WorkType::GossipBlsToExecutionChange => {
                             gossip_bls_to_execution_change_queue.len()
                         }
@@ -1682,6 +1696,7 @@ impl<E: EthSpec> BeaconProcessor<E> {
             | Work::BlobsByRangeRequest(process_fn)
             | Work::BlobsByRootsRequest(process_fn)
             | Work::ExecutionPayloadEnvelopesByRootRequest(process_fn)
+            | Work::InclusionListByCommitteeIndicesRequest(process_fn)
             | Work::DataColumnsByRootsRequest(process_fn)
             | Work::DataColumnsByRangeRequest(process_fn)
             | Work::GossipVoluntaryExit(process_fn)

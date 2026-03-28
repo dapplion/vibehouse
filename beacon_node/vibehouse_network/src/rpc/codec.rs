@@ -2,11 +2,11 @@ use crate::rpc::RequestType;
 use crate::rpc::methods::{
     BlobsByRangeRequest, BlobsByRootRequest, BlocksByRootRequest, BlocksByRootRequestV1,
     BlocksByRootRequestV2, DataColumnsByRangeRequest, DataColumnsByRootRequest, ErrorType,
-    ExecutionPayloadEnvelopesByRootRequest, GoodbyeReason, LightClientBootstrapRequest,
-    LightClientUpdatesByRangeRequest, MetaData, MetaDataV1, MetaDataV2, MetaDataV3,
-    MetadataRequest, OldBlocksByRangeRequest, OldBlocksByRangeRequestV1, OldBlocksByRangeRequestV2,
-    Ping, RpcErrorResponse, RpcResponse, RpcSuccessResponse, StatusMessage, StatusMessageV1,
-    StatusMessageV2,
+    ExecutionPayloadEnvelopesByRootRequest, GoodbyeReason, InclusionListByCommitteeIndicesRequest,
+    LightClientBootstrapRequest, LightClientUpdatesByRangeRequest, MetaData, MetaDataV1,
+    MetaDataV2, MetaDataV3, MetadataRequest, OldBlocksByRangeRequest, OldBlocksByRangeRequestV1,
+    OldBlocksByRangeRequestV2, Ping, RpcErrorResponse, RpcResponse, RpcSuccessResponse,
+    StatusMessage, StatusMessageV1, StatusMessageV2,
 };
 use crate::rpc::protocol::{
     ERROR_TYPE_MAX, ERROR_TYPE_MIN, Encoding, ProtocolId, RPCError, SupportedProtocol,
@@ -30,7 +30,7 @@ use types::{
     SignedBeaconBlockAltair, SignedBeaconBlockBase, SignedBeaconBlockBellatrix,
     SignedBeaconBlockCapella, SignedBeaconBlockDeneb, SignedBeaconBlockElectra,
     SignedBeaconBlockFulu, SignedBeaconBlockGloas, SignedBeaconBlockHeze,
-    SignedExecutionPayloadEnvelope,
+    SignedExecutionPayloadEnvelope, SignedInclusionList,
 };
 use unsigned_varint::codec::Uvi;
 
@@ -91,6 +91,7 @@ impl<E: EthSpec> SSZSnappyInboundCodec<E> {
                 RpcSuccessResponse::DataColumnsByRoot(res) => res.as_ssz_bytes(),
                 RpcSuccessResponse::DataColumnsByRange(res) => res.as_ssz_bytes(),
                 RpcSuccessResponse::ExecutionPayloadEnvelopesByRoot(res) => res.as_ssz_bytes(),
+                RpcSuccessResponse::InclusionListByCommitteeIndices(res) => res.as_ssz_bytes(),
                 RpcSuccessResponse::LightClientBootstrap(res) => res.as_ssz_bytes(),
                 RpcSuccessResponse::LightClientOptimisticUpdate(res) => res.as_ssz_bytes(),
                 RpcSuccessResponse::LightClientFinalityUpdate(res) => res.as_ssz_bytes(),
@@ -371,6 +372,9 @@ impl<E: EthSpec> Encoder<RequestType<E>> for SSZSnappyOutboundCodec<E> {
             RequestType::DataColumnsByRange(req) => req.as_ssz_bytes(),
             RequestType::DataColumnsByRoot(req) => req.data_column_ids.as_ssz_bytes(),
             RequestType::ExecutionPayloadEnvelopesByRoot(req) => req.block_roots.as_ssz_bytes(),
+            RequestType::InclusionListByCommitteeIndices(req) => {
+                req.committee_indices.as_ssz_bytes()
+            }
             RequestType::Ping(req) => req.as_ssz_bytes(),
             RequestType::LightClientBootstrap(req) => req.as_ssz_bytes(),
             RequestType::LightClientUpdatesByRange(req) => req.as_ssz_bytes(),
@@ -589,6 +593,14 @@ fn handle_rpc_request<E: EthSpec>(
                 )?,
             }),
         )),
+        SupportedProtocol::InclusionListByCommitteeIndicesV1 => Ok(Some(
+            RequestType::InclusionListByCommitteeIndices(InclusionListByCommitteeIndicesRequest {
+                committee_indices: RuntimeVariableList::from_ssz_bytes(
+                    decoded_buffer,
+                    spec.max_request_inclusion_lists,
+                )?,
+            }),
+        )),
         SupportedProtocol::PingV1 => Ok(Some(RequestType::Ping(Ping {
             data: u64::from_ssz_bytes(decoded_buffer)?,
         }))),
@@ -803,6 +815,24 @@ fn handle_rpc_response<E: EthSpec>(
                     Err(RPCError::ErrorResponse(
                         RpcErrorResponse::InvalidRequest,
                         "Invalid fork name for execution payload envelopes by root".to_string(),
+                    ))
+                }
+            }
+            None => Err(RPCError::ErrorResponse(
+                RpcErrorResponse::InvalidRequest,
+                format!("No context bytes provided for {versioned_protocol:?} response"),
+            )),
+        },
+        SupportedProtocol::InclusionListByCommitteeIndicesV1 => match fork_name {
+            Some(fork_name) => {
+                if fork_name.heze_enabled() {
+                    Ok(Some(RpcSuccessResponse::InclusionListByCommitteeIndices(
+                        Arc::new(SignedInclusionList::from_ssz_bytes(decoded_buffer)?),
+                    )))
+                } else {
+                    Err(RPCError::ErrorResponse(
+                        RpcErrorResponse::InvalidRequest,
+                        "Invalid fork name for inclusion list by committee indices".to_string(),
                     ))
                 }
             }
@@ -1306,6 +1336,9 @@ mod tests {
                     decoded,
                     RequestType::ExecutionPayloadEnvelopesByRoot(epbroots)
                 );
+            }
+            RequestType::InclusionListByCommitteeIndices(ilbci) => {
+                assert_eq!(decoded, RequestType::InclusionListByCommitteeIndices(ilbci));
             }
         }
     }

@@ -98,6 +98,7 @@ pub struct RateLimiterConfig {
     pub(super) light_client_finality_update_quota: Quota,
     pub(super) light_client_updates_by_range_quota: Quota,
     pub(super) execution_payload_envelopes_by_root_quota: Quota,
+    pub(super) inclusion_list_by_committee_indices_quota: Quota,
 }
 
 impl RateLimiterConfig {
@@ -130,6 +131,9 @@ impl RateLimiterConfig {
     // Allow up to `MAX_REQUEST_PAYLOADS` (128) payloads per request from the Gloas p2p spec.
     pub const DEFAULT_EXECUTION_PAYLOAD_ENVELOPES_BY_ROOT_QUOTA: Quota =
         Quota::n_every(NonZeroU64::new(128).unwrap(), 10);
+    // Allow up to `INCLUSION_LIST_COMMITTEE_SIZE` (16) inclusion lists per request from the Heze p2p spec.
+    pub const DEFAULT_INCLUSION_LIST_BY_COMMITTEE_INDICES_QUOTA: Quota =
+        Quota::n_every(NonZeroU64::new(16).unwrap(), 10);
 }
 
 impl Default for RateLimiterConfig {
@@ -152,6 +156,8 @@ impl Default for RateLimiterConfig {
             light_client_updates_by_range_quota: Self::DEFAULT_LIGHT_CLIENT_UPDATES_BY_RANGE_QUOTA,
             execution_payload_envelopes_by_root_quota:
                 Self::DEFAULT_EXECUTION_PAYLOAD_ENVELOPES_BY_ROOT_QUOTA,
+            inclusion_list_by_committee_indices_quota:
+                Self::DEFAULT_INCLUSION_LIST_BY_COMMITTEE_INDICES_QUOTA,
         }
     }
 }
@@ -205,6 +211,10 @@ impl Debug for RateLimiterConfig {
                 "execution_payload_envelopes_by_root",
                 fmt_q!(&self.execution_payload_envelopes_by_root_quota),
             )
+            .field(
+                "inclusion_list_by_committee_indices",
+                fmt_q!(&self.inclusion_list_by_committee_indices_quota),
+            )
             .finish()
     }
 }
@@ -232,6 +242,7 @@ impl FromStr for RateLimiterConfig {
         let mut light_client_finality_update_quota = None;
         let mut light_client_updates_by_range_quota = None;
         let mut execution_payload_envelopes_by_root_quota = None;
+        let mut inclusion_list_by_committee_indices_quota = None;
 
         for proto_def in s.split(';') {
             let ProtocolQuota { protocol, quota } = proto_def.parse()?;
@@ -270,6 +281,10 @@ impl FromStr for RateLimiterConfig {
                     execution_payload_envelopes_by_root_quota =
                         execution_payload_envelopes_by_root_quota.or(quota);
                 }
+                Protocol::InclusionListByCommitteeIndices => {
+                    inclusion_list_by_committee_indices_quota =
+                        inclusion_list_by_committee_indices_quota.or(quota);
+                }
             }
         }
         Ok(RateLimiterConfig {
@@ -298,6 +313,8 @@ impl FromStr for RateLimiterConfig {
                 .unwrap_or(Self::DEFAULT_LIGHT_CLIENT_UPDATES_BY_RANGE_QUOTA),
             execution_payload_envelopes_by_root_quota: execution_payload_envelopes_by_root_quota
                 .unwrap_or(Self::DEFAULT_EXECUTION_PAYLOAD_ENVELOPES_BY_ROOT_QUOTA),
+            inclusion_list_by_committee_indices_quota: inclusion_list_by_committee_indices_quota
+                .unwrap_or(Self::DEFAULT_INCLUSION_LIST_BY_COMMITTEE_INDICES_QUOTA),
         })
     }
 }
