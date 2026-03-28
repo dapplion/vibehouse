@@ -7835,6 +7835,101 @@ mod test_gloas_fork_choice {
         );
     }
 
+    // ── Heze: inclusion list satisfaction blocking ──
+    //
+    // These tests verify the EIP-7805 Heze behavior: if a payload envelope
+    // has been received but inclusion list constraints are NOT satisfied,
+    // should_extend_payload must return false regardless of PTC quorum or
+    // proposer boost state.
+
+    #[test]
+    fn should_extend_payload_inclusion_list_not_satisfied_blocks_extension() {
+        // Heze critical path: envelope received + PTC quorum met + blob quorum met,
+        // BUT inclusion_list_satisfied=false → must NOT extend.
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        let node = get_node_mut(&mut fc, &block_root);
+        node.envelope_received = true;
+        node.inclusion_list_satisfied = false; // Heze: IL constraints violated
+        node.ptc_weight = MINIMAL_PTC_THRESHOLD + 1;
+        node.ptc_blob_data_available_weight = MINIMAL_PTC_THRESHOLD + 1;
+
+        let gloas_node = GloasForkChoiceNode {
+            root: block_root,
+            payload_status: GloasPayloadStatus::Full,
+        };
+
+        // Even though PTC quorum is met, IL violation blocks extension
+        assert!(
+            !fc.should_extend_payload_test(
+                &gloas_node,
+                MINIMAL_PTC_THRESHOLD,
+                fc.proto_array.previous_proposer_boost.root
+            ),
+            "envelope_received + inclusion_list_satisfied=false must block extension (Heze EIP-7805)"
+        );
+    }
+
+    #[test]
+    fn should_extend_payload_inclusion_list_not_satisfied_no_envelope_allows_extension() {
+        // When envelope NOT received, the inclusion_list_satisfied check is skipped
+        // (spec: root must be in payload_states AND satisfaction map). No envelope
+        // means the blocking condition doesn't trigger.
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        let node = get_node_mut(&mut fc, &block_root);
+        node.envelope_received = false;
+        node.inclusion_list_satisfied = false; // IL not satisfied, but no envelope
+
+        // No proposer boost (default zero root) → falls through to true
+        let gloas_node = GloasForkChoiceNode {
+            root: block_root,
+            payload_status: GloasPayloadStatus::Full,
+        };
+
+        assert!(
+            fc.should_extend_payload_test(
+                &gloas_node,
+                MINIMAL_PTC_THRESHOLD,
+                fc.proto_array.previous_proposer_boost.root
+            ),
+            "without envelope_received, inclusion_list_satisfied=false does not block"
+        );
+    }
+
+    #[test]
+    fn should_extend_payload_inclusion_list_satisfied_allows_ptc_path() {
+        // When inclusion_list_satisfied=true, the blocking check passes and the
+        // function proceeds to the PTC quorum check as normal.
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        let node = get_node_mut(&mut fc, &block_root);
+        node.envelope_received = true;
+        node.inclusion_list_satisfied = true; // IL satisfied
+        node.ptc_weight = MINIMAL_PTC_THRESHOLD + 1;
+        node.ptc_blob_data_available_weight = MINIMAL_PTC_THRESHOLD + 1;
+
+        let gloas_node = GloasForkChoiceNode {
+            root: block_root,
+            payload_status: GloasPayloadStatus::Full,
+        };
+
+        assert!(
+            fc.should_extend_payload_test(
+                &gloas_node,
+                MINIMAL_PTC_THRESHOLD,
+                fc.proto_array.previous_proposer_boost.root
+            ),
+            "inclusion_list_satisfied=true allows PTC quorum path to proceed"
+        );
+    }
+
     // ── get_ancestor_gloas with skip slots ──
 
     #[test]
