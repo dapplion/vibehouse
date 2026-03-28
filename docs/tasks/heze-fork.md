@@ -330,3 +330,12 @@ Completing the REST API for Heze FOCIL inclusion lists.
 Tests: all pool tests pass (fulu), 26/26 inclusion list types tests pass. Clean clippy.
 
 **Phase 7 complete.** All Heze fork phases are now DONE.
+
+### Test coverage improvement (run 3356)
+
+Added 3 tests for Heze inclusion list satisfaction blocking in `should_extend_payload`:
+- `should_extend_payload_inclusion_list_not_satisfied_blocks_extension`: envelope received + PTC quorum met BUT IL not satisfied → must block (critical EIP-7805 path)
+- `should_extend_payload_inclusion_list_not_satisfied_no_envelope_allows_extension`: no envelope → IL check skipped
+- `should_extend_payload_inclusion_list_satisfied_allows_ptc_path`: IL satisfied → PTC path proceeds normally
+
+This was the only untested branch in should_extend_payload's Heze logic. 209/209 proto_array + 121/121 fork_choice tests pass.
