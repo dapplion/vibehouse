@@ -123,18 +123,17 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Run 3222: Updated Rust stable 1.94.0→1.94.1 and nightly to 1.96.0-nightly.
 - Run 3227: Reverted payload_timely→payload_present to match alpha.4 test vectors.
 
-**Steady state (runs 3202-3313, 2026-03-27 to 2026-03-28):**
+**Steady state (runs 3202-3314, 2026-03-27 to 2026-03-28):**
 - No new consensus-specs merges affecting vibehouse since #5048 (2026-03-27)
 - Non-relevant merges: #5051 (test timeout), #5052 (Python cache reduction), #5053 (CI rename)
 - v1.7.0-alpha.4 published as GitHub prerelease with test vectors
 - CI: all green (ci, nightly, spec-test-check). Zero clippy warnings
 - All deps at latest (0 compatible updates). 9 behind latest requiring major bumps (not viable)
 - Cargo audit: 1 transitive rsa vuln (no fix available)
-- All 8 open Gloas PRs unchanged: #4843 (approved/mergeable), #4898/#4892 (stale), #4954 (unreviewed), #4747 (FCR, 128+ reviews, conflicting), #4960/#4932 (test vectors), #4840/#4630 (stale)
-- New open PRs (not Gloas): #5050 (networking test fix), #5049/#5047/#5033 (executable gossip validation for capella/bellatrix/altair) — all Python test infra, not relevant
+- All 8 open Gloas PRs unchanged: #4843 (approved/mergeable), #4898/#4892 (stale), #4954 (unreviewed), #4747 (FCR, 144 reviews, conflicting), #4960/#4932 (test vectors), #4840/#4630 (stale)
+- New open PRs (not Gloas): #5055 (EIP-8025 refactor), #5054 (test workflow), #5050 (networking test), #5049/#5047 (gossip validation) — all non-Gloas
 - Issue #36: 5 blocked, 2 non-critical remaining
 - Rust 1.94.1 stable + 1.96.0-nightly up to date
 - Devnet verified multiple times: 4-node finalized_epoch=8, clean Gloas fork transition
 - Full test verification (run 3285): 80/80 EF (real crypto) + 140/140 EF (fake crypto) + 2445 core tests + 4998 workspace tests
-- Only outdated dep: rand_xorshift 0.4→0.5 (blocked by rand_core version conflicts)
-- New non-relevant open PRs: #5054 (test workflow), #5050 (networking test), #5049/#5047 (gossip validation) — all Python test infra
+- Run 3314: Updated transitive deps (wasm-bindgen 0.2.115, js-sys 0.3.92, web-sys 0.3.92). 4998 workspace tests pass. Only outdated dep: rand_xorshift 0.4→0.5 (blocked by rand_core version conflicts)
