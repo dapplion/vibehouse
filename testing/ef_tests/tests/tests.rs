@@ -1244,3 +1244,9 @@ fn gossip_attester_slashing() {
     GossipAttesterSlashingHandler::<MinimalEthSpec>::default().run();
     GossipAttesterSlashingHandler::<MainnetEthSpec>::default().run();
 }
+
+#[test]
+fn gossip_voluntary_exit() {
+    GossipVoluntaryExitHandler::<MinimalEthSpec>::default().run();
+    GossipVoluntaryExitHandler::<MainnetEthSpec>::default().run();
+}

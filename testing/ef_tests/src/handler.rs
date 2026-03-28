@@ -1019,6 +1019,26 @@ impl<E: EthSpec + TypeName> Handler for GossipAttesterSlashingHandler<E> {
 
 #[derive(Educe)]
 #[educe(Default(bound()))]
+pub struct GossipVoluntaryExitHandler<E>(PhantomData<E>);
+
+impl<E: EthSpec + TypeName> Handler for GossipVoluntaryExitHandler<E> {
+    type Case = cases::GossipVoluntaryExit<E>;
+
+    fn config_name() -> &'static str {
+        E::name()
+    }
+
+    fn runner_name() -> &'static str {
+        "networking"
+    }
+
+    fn handler_name(&self) -> String {
+        "gossip_voluntary_exit".into()
+    }
+}
+
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct KZGComputeCellsHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec> Handler for KZGComputeCellsHandler<E> {

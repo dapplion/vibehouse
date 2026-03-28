@@ -4,7 +4,9 @@ use crate::decode::{ssz_decode_file, ssz_decode_state, yaml_decode_file};
 use serde::Deserialize;
 use std::collections::HashSet;
 use std::fmt::Debug;
-use types::{AttesterSlashing, BeaconState, ChainSpec, EthSpec, ProposerSlashing};
+use types::{
+    AttesterSlashing, BeaconState, ChainSpec, EthSpec, ProposerSlashing, SignedVoluntaryExit,
+};
 
 /// Expected outcome of a gossip message per the spec.
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
@@ -49,6 +51,14 @@ pub struct GossipAttesterSlashing<E: EthSpec> {
     pub slashings: Vec<(String, AttesterSlashing<E>)>,
 }
 
+/// Gossip validation test for voluntary exits.
+#[derive(Debug, Clone)]
+pub struct GossipVoluntaryExit<E: EthSpec> {
+    pub meta: GossipMeta,
+    pub state: BeaconState<E>,
+    pub exits: Vec<(String, SignedVoluntaryExit)>,
+}
+
 /// Load SSZ-encoded operations from the test directory.
 ///
 /// Files matching the pattern `{prefix}_{hash}.ssz_snappy` are loaded.
@@ -79,6 +89,16 @@ impl<E: EthSpec> LoadCase for GossipProposerSlashing<E> {
             state,
             slashings,
         })
+    }
+}
+
+impl<E: EthSpec> LoadCase for GossipVoluntaryExit<E> {
+    fn load_from_dir(path: &Path, fork_name: ForkName) -> Result<Self, Error> {
+        let spec = &crate::testing_spec::<E>(fork_name);
+        let meta: GossipMeta = yaml_decode_file(&path.join("meta.yaml"))?;
+        let state = ssz_decode_state(&path.join("state.ssz_snappy"), spec)?;
+        let exits = load_operations::<SignedVoluntaryExit>(path, "voluntary_exit_")?;
+        Ok(Self { meta, state, exits })
     }
 }
 
@@ -264,6 +284,43 @@ impl<E: EthSpec> Case for GossipAttesterSlashing<E> {
                 };
                 verify_attester_slashing(state, slashing.to_ref(), verify_sigs, spec)
                     .map(|_slashable_indices| (GossipExpected::Valid, intersection))
+                    .map_err(|e| format!("{e:?}"))
+            },
+        )
+    }
+}
+
+impl<E: EthSpec> Case for GossipVoluntaryExit<E> {
+    fn result(&self, _case_index: usize, _fork_name: ForkName) -> Result<(), Error> {
+        if let Some(bls_setting) = self.meta.bls_setting {
+            bls_setting.check()?;
+        }
+
+        let spec = E::default_spec();
+
+        run_gossip_test(
+            &self.meta,
+            &self.state,
+            &self.exits,
+            &spec,
+            |signed_exit, state, seen, spec| {
+                use state_processing::per_block_processing::verify_exit;
+
+                let validator_index = signed_exit.message.validator_index;
+
+                // Check already-seen (spec: validator_index not already in observed set).
+                if seen.contains(&validator_index) {
+                    return Ok((GossipExpected::Ignore, vec![]));
+                }
+
+                // Validate the exit.
+                let verify_sigs = if cfg!(feature = "fake_crypto") {
+                    state_processing::per_block_processing::VerifySignatures::False
+                } else {
+                    state_processing::per_block_processing::VerifySignatures::True
+                };
+                verify_exit(state, None, signed_exit, verify_sigs, spec)
+                    .map(|_is_builder| (GossipExpected::Valid, vec![validator_index]))
                     .map_err(|e| format!("{e:?}"))
             },
         )
