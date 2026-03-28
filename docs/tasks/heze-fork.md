@@ -67,7 +67,7 @@ Heze adds inclusion lists — a mechanism for committees of 16 validators per sl
 | 1. Types & Constants | ForkName, ChainSpec, EthSpec, new types, superstruct variants | DONE |
 | 2. State Transitions | Fork upgrade, inclusion list committee computation | DONE |
 | 3. Fork Choice | IL satisfaction tracking, should_extend_payload changes | DONE |
-| 4. P2P Networking | Gossip topic, req/resp protocol, validation | IN PROGRESS |
+| 4. P2P Networking | Gossip topic, req/resp protocol, validation | DONE |
 | 5. Beacon Chain Integration | IL store, builder bid validation | NOT STARTED |
 | 6. Validator Client | IL committee duties, IL construction, bid validation | NOT STARTED |
 | 7. REST API | IL endpoints | NOT STARTED |
@@ -182,4 +182,36 @@ Adding gossip topic infrastructure for Heze FOCIL inclusion lists.
 
 Tests: 407/407 vibehouse_network pass, 8/8 beacon_processor pass. Full workspace lint clean.
 
-**Next:** Phase 4 Part 2 — `InclusionListByCommitteeIndices/1` RPC req/resp protocol.
+### Phase 4: P2P Networking — Part 2 (run 3351)
+
+Adding `InclusionListByCommitteeIndices/1` RPC req/resp protocol for FOCIL.
+
+**Completed:**
+
+1. **Protocol enum** (`vibehouse_network/src/rpc/protocol.rs`): `Protocol::InclusionListByCommitteeIndices` with strum serialize `"inclusion_list_by_committee_indices"`. `SupportedProtocol::InclusionListByCommitteeIndicesV1`. Fork-gated on `ForkName::Heze`. Context bytes enabled. Request limit: `max_request_inclusion_lists * 8` bytes. Response limit: `SIGNED_INCLUSION_LIST_MAX` (8192 bytes).
+
+2. **Request type** (`methods.rs`): `InclusionListByCommitteeIndicesRequest` with `committee_indices: RuntimeVariableList<u64>`. Constructor validates against `spec.max_request_inclusion_lists` (16).
+
+3. **Response type** (`methods.rs`): `RpcSuccessResponse::InclusionListByCommitteeIndices(Arc<SignedInclusionList<E>>)`. `ResponseTermination::InclusionListByCommitteeIndices`.
+
+4. **Codec** (`codec.rs`): SSZ encode/decode for both request and response. Response decode gated on `fork_name.heze_enabled()`.
+
+5. **Rate limiter** (`rate_limiter.rs`, `config.rs`): `ilbci_rl` limiter with default quota 16/10s. Full builder/config/prune integration.
+
+6. **Service** (`service/mod.rs`): Request dispatch with metrics, response routing, stream termination handling.
+
+7. **Router** (`router.rs`): Dispatches inbound requests to `send_inclusion_list_by_committee_indices_request`. Response handling logs and defers to Phase 5.
+
+8. **Beacon processor** (`beacon_processor/src/lib.rs`): `Work::InclusionListByCommitteeIndicesRequest` work type with 1024-capacity queue.
+
+9. **Network beacon processor** (`network_beacon_processor/`): `send_inclusion_list_by_committee_indices_request()` and `handle_inclusion_list_by_committee_indices_request()` stub handler (terminates stream with no responses; Phase 5 will serve from InclusionListStore).
+
+10. **Peer manager** (`peer_manager/mod.rs`): Error handling for rate limiting, unsupported protocol, and stream timeout matches.
+
+11. **ChainSpec** (`chain_spec.rs`): `max_request_inclusion_lists: 16` for mainnet and minimal specs.
+
+Tests: 407/407 vibehouse_network pass, 8/8 beacon_processor pass, 47/47 types chain_spec pass. Full workspace build + lint clean.
+
+**Phase 4 complete.** Both gossip topic (Part 1) and RPC req/resp protocol (Part 2) are implemented.
+
+**Next:** Phase 5 — Beacon Chain Integration (InclusionListStore integration, builder bid validation, on_inclusion_list handler).
