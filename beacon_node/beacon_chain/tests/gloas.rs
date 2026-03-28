@@ -308,7 +308,8 @@ async fn gloas_bid_slot_matches_block_slot() {
         let bid = state.latest_execution_payload_bid().unwrap();
 
         assert_eq!(
-            bid.slot, block_slot,
+            *bid.slot(),
+            block_slot,
             "Latest bid slot should match the head block slot"
         );
     }
@@ -833,8 +834,8 @@ async fn gloas_get_best_execution_bid_returns_inserted() {
     let target_slot = Slot::new(3);
 
     // Create a bid and insert it directly into the pool
-    let bid = SignedExecutionPayloadBid::<E> {
-        message: ExecutionPayloadBid {
+    let bid = SignedExecutionPayloadBidGloas::<E> {
+        message: ExecutionPayloadBidGloas {
             slot: target_slot,
             builder_index: 0,
             value: 1000,
@@ -842,13 +843,13 @@ async fn gloas_get_best_execution_bid_returns_inserted() {
         },
         signature: Signature::empty(),
     };
-    harness.chain.execution_bid_pool.lock().insert(bid);
+    harness.chain.execution_bid_pool.lock().insert(bid.into());
 
     let result = harness
         .chain
         .get_best_execution_bid(target_slot, Hash256::zero());
     assert!(result.is_some(), "should return the inserted bid");
-    assert_eq!(result.unwrap().message.value, 1000);
+    assert_eq!(*result.unwrap().to_ref().message().value(), 1000);
 }
 
 /// Test that get_best_execution_bid returns highest-value bid.
@@ -860,8 +861,8 @@ async fn gloas_get_best_execution_bid_highest_value() {
     let target_slot = Slot::new(3);
 
     // Insert two bids with different values from different builders
-    let bid_low = SignedExecutionPayloadBid::<E> {
-        message: ExecutionPayloadBid {
+    let bid_low = SignedExecutionPayloadBidGloas::<E> {
+        message: ExecutionPayloadBidGloas {
             slot: target_slot,
             builder_index: 0,
             value: 500,
@@ -869,8 +870,8 @@ async fn gloas_get_best_execution_bid_highest_value() {
         },
         signature: Signature::empty(),
     };
-    let bid_high = SignedExecutionPayloadBid::<E> {
-        message: ExecutionPayloadBid {
+    let bid_high = SignedExecutionPayloadBidGloas::<E> {
+        message: ExecutionPayloadBidGloas {
             slot: target_slot,
             builder_index: 1,
             value: 2000,
@@ -881,8 +882,8 @@ async fn gloas_get_best_execution_bid_highest_value() {
 
     {
         let mut pool = harness.chain.execution_bid_pool.lock();
-        pool.insert(bid_low);
-        pool.insert(bid_high);
+        pool.insert(bid_low.into());
+        pool.insert(bid_high.into());
     }
 
     let result = harness
@@ -890,7 +891,7 @@ async fn gloas_get_best_execution_bid_highest_value() {
         .get_best_execution_bid(target_slot, Hash256::zero());
     assert!(result.is_some());
     assert_eq!(
-        result.unwrap().message.value,
+        *result.unwrap().to_ref().message().value(),
         2000,
         "should return highest-value bid"
     );
@@ -975,14 +976,14 @@ fn make_external_bid(
     slot: Slot,
     builder_index: u64,
     value: u64,
-) -> SignedExecutionPayloadBid<E> {
+) -> SignedExecutionPayloadBidGloas<E> {
     let gloas_state = state.as_gloas().expect("state should be Gloas");
     let current_epoch = state.current_epoch();
     let randao_mix = *state
         .get_randao_mix(current_epoch)
         .expect("should get randao mix");
 
-    let bid = ExecutionPayloadBid {
+    let bid = ExecutionPayloadBidGloas {
         slot,
         builder_index,
         value,
@@ -994,7 +995,6 @@ fn make_external_bid(
         gas_limit: 30_000_000,
         execution_payment: value,
         blob_kzg_commitments: KzgCommitments::<E>::default(),
-        inclusion_list_bits: BitVector::default(),
     };
 
     let spec = E::default_spec();
@@ -1010,7 +1010,7 @@ fn make_external_bid(
         .sk
         .sign(signing_root);
 
-    SignedExecutionPayloadBid::<E> {
+    SignedExecutionPayloadBidGloas::<E> {
         message: bid,
         signature,
     }
@@ -1060,7 +1060,7 @@ async fn gloas_external_bid_block_production() {
         external_builder_index,
         bid_value,
     );
-    harness.chain.execution_bid_pool.lock().insert(bid);
+    harness.chain.execution_bid_pool.lock().insert(bid.into());
 
     // Advance slot clock and produce block
     harness.advance_slot();
@@ -1079,11 +1079,13 @@ async fn gloas_external_bid_block_production() {
         .signed_execution_payload_bid()
         .expect("Gloas block should have bid");
     assert_eq!(
-        block_bid.message.builder_index, external_builder_index,
+        *block_bid.message().builder_index(),
+        external_builder_index,
         "block should use external builder's bid, not self-build"
     );
     assert_eq!(
-        block_bid.message.value, bid_value,
+        *block_bid.message().value(),
+        bid_value,
         "block bid value should match external bid"
     );
 
@@ -1117,11 +1119,13 @@ async fn gloas_no_external_bid_falls_back_to_self_build() {
         .signed_execution_payload_bid()
         .expect("Gloas block should have bid");
     assert_eq!(
-        block_bid.message.builder_index, harness.spec.builder_index_self_build,
+        *block_bid.message().builder_index(),
+        harness.spec.builder_index_self_build,
         "without external bid, should fall back to self-build"
     );
     assert_eq!(
-        block_bid.message.value, 0,
+        *block_bid.message().value(),
+        0,
         "self-build bid should have value 0"
     );
 
@@ -1146,7 +1150,7 @@ async fn gloas_external_bid_wrong_slot_ignored() {
 
     // Insert bid for a FUTURE slot (next_slot + 1), not the slot we'll produce at
     let bid = make_external_bid(&state, head_root, next_slot + 1, 0, 9999);
-    harness.chain.execution_bid_pool.lock().insert(bid);
+    harness.chain.execution_bid_pool.lock().insert(bid.into());
 
     harness.advance_slot();
     let ((signed_block, _blobs), _state, envelope) =
@@ -1159,7 +1163,8 @@ async fn gloas_external_bid_wrong_slot_ignored() {
         .signed_execution_payload_bid()
         .expect("Gloas block should have bid");
     assert_eq!(
-        block_bid.message.builder_index, harness.spec.builder_index_self_build,
+        *block_bid.message().builder_index(),
+        harness.spec.builder_index_self_build,
         "bid for wrong slot should be ignored, falling back to self-build"
     );
     assert!(
@@ -1184,8 +1189,8 @@ async fn gloas_external_bid_highest_value_selected_for_block() {
     // Insert two bids from different builders with different values
     {
         let mut pool = harness.chain.execution_bid_pool.lock();
-        pool.insert(make_external_bid(&state, head_root, next_slot, 0, 500));
-        pool.insert(make_external_bid(&state, head_root, next_slot, 1, 3000));
+        pool.insert(make_external_bid(&state, head_root, next_slot, 0, 500).into());
+        pool.insert(make_external_bid(&state, head_root, next_slot, 1, 3000).into());
     }
 
     harness.advance_slot();
@@ -1198,10 +1203,11 @@ async fn gloas_external_bid_highest_value_selected_for_block() {
         .signed_execution_payload_bid()
         .expect("Gloas block should have bid");
     assert_eq!(
-        block_bid.message.builder_index, 1,
+        *block_bid.message().builder_index(),
+        1,
         "should select highest-value bid (builder 1 with value 3000)"
     );
-    assert_eq!(block_bid.message.value, 3000);
+    assert_eq!(*block_bid.message().value(), 3000);
     assert!(
         envelope.is_none(),
         "external bid block should not return a self-build envelope"
@@ -3275,11 +3281,11 @@ async fn gloas_self_build_bid_parent_hash_matches_state() {
         .body()
         .signed_execution_payload_bid()
         .expect("Gloas block should have bid")
-        .message
-        .parent_block_hash;
+        .message()
+        .parent_block_hash();
 
     assert_eq!(
-        next_parent_block_hash, latest_block_hash,
+        *next_parent_block_hash, latest_block_hash,
         "next block's bid parent_block_hash should match previous state's latest_block_hash"
     );
 }
@@ -4565,7 +4571,8 @@ async fn gloas_self_build_envelope_enables_next_block_production() {
         .signed_execution_payload_bid()
         .unwrap();
     assert_eq!(
-        next_bid.message.parent_block_hash, signed_envelope.message.payload.block_hash,
+        *next_bid.message().parent_block_hash(),
+        signed_envelope.message.payload.block_hash,
         "next bid's parent_block_hash should be previous envelope's payload block_hash"
     );
 
@@ -5173,13 +5180,16 @@ async fn gloas_envelope_gossip_rejects_not_gloas_block() {
 /// Helper: extract the self-build bid from a freshly produced Gloas block.
 fn extract_self_build_bid<E: EthSpec>(
     block: &SignedBeaconBlock<E>,
-) -> SignedExecutionPayloadBid<E> {
-    block
+) -> SignedExecutionPayloadBidGloas<E> {
+    let bid_ref = block
         .message()
         .body()
         .signed_execution_payload_bid()
-        .expect("Gloas block should have a bid")
-        .clone()
+        .expect("Gloas block should have a bid");
+    match bid_ref {
+        SignedExecutionPayloadBidRef::Gloas(inner) => inner.clone(),
+        _ => panic!("expected Gloas bid variant"),
+    }
 }
 
 /// Helper: call `verify_execution_bid_for_gossip` and assert it returns an error.
@@ -5215,7 +5225,7 @@ async fn gloas_bid_gossip_rejects_slot_not_current_or_next() {
     // Set slot far in the future (well beyond current + 1)
     bid.message.slot = Slot::new(999);
 
-    let err = assert_bid_rejected(&harness, bid, "far-future slot");
+    let err = assert_bid_rejected(&harness, bid.into(), "far-future slot");
     assert!(
         matches!(err, ExecutionBidError::SlotNotCurrentOrNext { .. }),
         "expected SlotNotCurrentOrNext, got {err:?}"
@@ -5240,7 +5250,7 @@ async fn gloas_bid_gossip_rejects_zero_execution_payment() {
     // Self-build bids have execution_payment = 0, which should be rejected.
     assert_eq!(bid.message.execution_payment, 0);
 
-    let err = assert_bid_rejected(&harness, bid, "zero execution_payment");
+    let err = assert_bid_rejected(&harness, bid.into(), "zero execution_payment");
     assert!(
         matches!(err, ExecutionBidError::ZeroExecutionPayment),
         "expected ZeroExecutionPayment, got {err:?}"
@@ -5269,7 +5279,7 @@ async fn gloas_bid_gossip_rejects_unknown_builder() {
     // builder_index is BUILDER_INDEX_SELF_BUILD (u64::MAX) from self-build,
     // which doesn't exist in the empty builders registry
 
-    let err = assert_bid_rejected(&harness, bid, "unknown builder");
+    let err = assert_bid_rejected(&harness, bid.into(), "unknown builder");
     assert!(
         matches!(err, ExecutionBidError::UnknownBuilder { .. }),
         "expected UnknownBuilder, got {err:?}"
@@ -5295,7 +5305,7 @@ async fn gloas_bid_gossip_rejects_nonexistent_builder_index() {
     // Use builder_index = 42 — no builders in the default state
     bid.message.builder_index = 42;
 
-    let err = assert_bid_rejected(&harness, bid, "nonexistent builder index");
+    let err = assert_bid_rejected(&harness, bid.into(), "nonexistent builder index");
     assert!(
         matches!(err, ExecutionBidError::UnknownBuilder { builder_index: 42 }),
         "expected UnknownBuilder with index 42, got {err:?}"
@@ -5597,10 +5607,10 @@ async fn gloas_block_production_gas_limit_from_bid() {
     let head_state = &head.beacon_state;
 
     // Read the gas_limit that get_execution_payload will extract
-    let bid_gas_limit = head_state
+    let bid_gas_limit = *head_state
         .latest_execution_payload_bid()
         .expect("Gloas state should have latest_execution_payload_bid")
-        .gas_limit;
+        .gas_limit();
 
     // The gas_limit should be non-zero (set by the mock EL)
     assert_ne!(
@@ -5646,8 +5656,8 @@ async fn fc_on_execution_bid_rejects_unknown_block_root() {
     let harness = gloas_harness_at_epoch(0);
     let (_, slot) = produce_gloas_block(&harness).await;
 
-    let bid = SignedExecutionPayloadBid::<E> {
-        message: ExecutionPayloadBid {
+    let bid = SignedExecutionPayloadBidGloas::<E> {
+        message: ExecutionPayloadBidGloas {
             slot,
             builder_index: 1,
             block_hash: ExecutionBlockHash::repeat_byte(0xaa),
@@ -5661,7 +5671,7 @@ async fn fc_on_execution_bid_rejects_unknown_block_root() {
         .chain
         .canonical_head
         .fork_choice_write_lock()
-        .on_execution_bid(&bid, unknown_root);
+        .on_execution_bid(&bid.into(), unknown_root);
 
     assert!(result.is_err(), "should reject bid for unknown block root");
 }
@@ -5672,8 +5682,8 @@ async fn fc_on_execution_bid_rejects_slot_mismatch() {
     let harness = gloas_harness_at_epoch(0);
     let (block_root, slot) = produce_gloas_block(&harness).await;
 
-    let bid = SignedExecutionPayloadBid::<E> {
-        message: ExecutionPayloadBid {
+    let bid = SignedExecutionPayloadBidGloas::<E> {
+        message: ExecutionPayloadBidGloas {
             slot: slot + 100, // wrong slot
             builder_index: 1,
             block_hash: ExecutionBlockHash::repeat_byte(0xaa),
@@ -5686,7 +5696,7 @@ async fn fc_on_execution_bid_rejects_slot_mismatch() {
         .chain
         .canonical_head
         .fork_choice_write_lock()
-        .on_execution_bid(&bid, block_root);
+        .on_execution_bid(&bid.into(), block_root);
 
     assert!(result.is_err(), "should reject bid with wrong slot");
 }
@@ -5698,8 +5708,8 @@ async fn fc_on_execution_bid_updates_node_fields() {
     let harness = gloas_harness_at_epoch(0);
     let (block_root, slot) = produce_gloas_block(&harness).await;
 
-    let bid = SignedExecutionPayloadBid::<E> {
-        message: ExecutionPayloadBid {
+    let bid = SignedExecutionPayloadBidGloas::<E> {
+        message: ExecutionPayloadBidGloas {
             slot,
             builder_index: 42,
             block_hash: ExecutionBlockHash::repeat_byte(0xaa),
@@ -5713,7 +5723,7 @@ async fn fc_on_execution_bid_updates_node_fields() {
         .chain
         .canonical_head
         .fork_choice_write_lock()
-        .on_execution_bid(&bid, block_root)
+        .on_execution_bid(&bid.into(), block_root)
         .expect("valid bid should succeed");
 
     let node = harness
@@ -5744,8 +5754,8 @@ async fn fc_on_execution_payload_marks_revealed() {
     let (block_root, slot) = produce_gloas_block(&harness).await;
 
     // Apply a bid (self-build block has envelope_received=true, so payload state is preserved)
-    let bid = SignedExecutionPayloadBid::<E> {
-        message: ExecutionPayloadBid {
+    let bid = SignedExecutionPayloadBidGloas::<E> {
+        message: ExecutionPayloadBidGloas {
             slot,
             builder_index: 1,
             block_hash: ExecutionBlockHash::repeat_byte(0xbb),
@@ -5757,7 +5767,7 @@ async fn fc_on_execution_payload_marks_revealed() {
         .chain
         .canonical_head
         .fork_choice_write_lock()
-        .on_execution_bid(&bid, block_root)
+        .on_execution_bid(&bid.into(), block_root)
         .unwrap();
 
     // Self-build: payload is already revealed (envelope_received=true)
@@ -5918,8 +5928,8 @@ async fn fc_on_payload_attestation_ignores_slot_mismatch() {
     let (block_root, slot) = produce_gloas_block(&harness).await;
 
     // Apply a bid first so we can track weight changes
-    let bid = SignedExecutionPayloadBid::<E> {
-        message: ExecutionPayloadBid {
+    let bid = SignedExecutionPayloadBidGloas::<E> {
+        message: ExecutionPayloadBidGloas {
             slot,
             builder_index: 1,
             ..Default::default()
@@ -5930,7 +5940,7 @@ async fn fc_on_payload_attestation_ignores_slot_mismatch() {
         .chain
         .canonical_head
         .fork_choice_write_lock()
-        .on_execution_bid(&bid, block_root)
+        .on_execution_bid(&bid.into(), block_root)
         .unwrap();
 
     // Attestation with a different slot than the block
@@ -5983,8 +5993,8 @@ async fn fc_on_payload_attestation_quorum_triggers_payload_revealed() {
 
     // Apply a bid. Self-build block has envelope_received=true, so
     // payload_revealed stays true and PTC weights are preserved.
-    let bid = SignedExecutionPayloadBid::<E> {
-        message: ExecutionPayloadBid {
+    let bid = SignedExecutionPayloadBidGloas::<E> {
+        message: ExecutionPayloadBidGloas {
             slot,
             builder_index: 1,
             block_hash: ExecutionBlockHash::repeat_byte(0xdd),
@@ -5996,7 +6006,7 @@ async fn fc_on_payload_attestation_quorum_triggers_payload_revealed() {
         .chain
         .canonical_head
         .fork_choice_write_lock()
-        .on_execution_bid(&bid, block_root)
+        .on_execution_bid(&bid.into(), block_root)
         .unwrap();
 
     let ptc_size = harness.spec.ptc_size;
@@ -6111,8 +6121,8 @@ async fn fc_on_payload_attestation_blob_quorum_independent() {
     let (block_root, slot) = produce_gloas_block(&harness).await;
 
     // Apply bid
-    let bid = SignedExecutionPayloadBid::<E> {
-        message: ExecutionPayloadBid {
+    let bid = SignedExecutionPayloadBidGloas::<E> {
+        message: ExecutionPayloadBidGloas {
             slot,
             builder_index: 1,
             block_hash: ExecutionBlockHash::repeat_byte(0xee),
@@ -6124,7 +6134,7 @@ async fn fc_on_payload_attestation_blob_quorum_independent() {
         .chain
         .canonical_head
         .fork_choice_write_lock()
-        .on_execution_bid(&bid, block_root)
+        .on_execution_bid(&bid.into(), block_root)
         .unwrap();
 
     let ptc_size = harness.spec.ptc_size;
@@ -6241,8 +6251,8 @@ async fn fc_bid_then_payload_lifecycle() {
 
     // 1. Apply bid — self-build block has envelope_received=true, so
     //    on_execution_bid preserves payload_revealed and payload_data_available
-    let bid = SignedExecutionPayloadBid::<E> {
-        message: ExecutionPayloadBid {
+    let bid = SignedExecutionPayloadBidGloas::<E> {
+        message: ExecutionPayloadBidGloas {
             slot,
             builder_index: 7,
             block_hash: payload_hash,
@@ -6255,7 +6265,7 @@ async fn fc_bid_then_payload_lifecycle() {
         .chain
         .canonical_head
         .fork_choice_write_lock()
-        .on_execution_bid(&bid, block_root)
+        .on_execution_bid(&bid.into(), block_root)
         .unwrap();
 
     let node = harness
@@ -6307,8 +6317,8 @@ async fn fc_payload_attestation_quorum_sets_optimistic_from_bid_hash() {
     // the quorum-triggers-reveal path.
     {
         let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
-        let bid = SignedExecutionPayloadBid::<E> {
-            message: ExecutionPayloadBid {
+        let bid = SignedExecutionPayloadBidGloas::<E> {
+            message: ExecutionPayloadBidGloas {
                 slot,
                 builder_index: 2,
                 block_hash: bid_hash,
@@ -6316,7 +6326,7 @@ async fn fc_payload_attestation_quorum_sets_optimistic_from_bid_hash() {
             },
             signature: bls::Signature::empty(),
         };
-        fc.on_execution_bid(&bid, block_root).unwrap();
+        fc.on_execution_bid(&bid.into(), block_root).unwrap();
 
         // Set bid_block_hash on the proto_array node directly
         // (normally set by on_block when block is imported)
@@ -6398,8 +6408,8 @@ async fn fc_on_payload_attestation_exact_quorum_does_not_reveal() {
     // Set up: external builder block with payload_revealed=false
     {
         let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
-        let bid = SignedExecutionPayloadBid::<E> {
-            message: ExecutionPayloadBid {
+        let bid = SignedExecutionPayloadBidGloas::<E> {
+            message: ExecutionPayloadBidGloas {
                 slot,
                 builder_index: 5,
                 block_hash: bid_hash,
@@ -6407,7 +6417,7 @@ async fn fc_on_payload_attestation_exact_quorum_does_not_reveal() {
             },
             signature: bls::Signature::empty(),
         };
-        fc.on_execution_bid(&bid, block_root).unwrap();
+        fc.on_execution_bid(&bid.into(), block_root).unwrap();
 
         let block_index = fc
             .proto_array()
@@ -6487,8 +6497,8 @@ async fn fc_on_payload_attestation_one_above_quorum_reveals() {
     // Set up: external builder block with payload_revealed=false
     {
         let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
-        let bid = SignedExecutionPayloadBid::<E> {
-            message: ExecutionPayloadBid {
+        let bid = SignedExecutionPayloadBidGloas::<E> {
+            message: ExecutionPayloadBidGloas {
                 slot,
                 builder_index: 5,
                 block_hash: bid_hash,
@@ -6496,7 +6506,7 @@ async fn fc_on_payload_attestation_one_above_quorum_reveals() {
             },
             signature: bls::Signature::empty(),
         };
-        fc.on_execution_bid(&bid, block_root).unwrap();
+        fc.on_execution_bid(&bid.into(), block_root).unwrap();
 
         let block_index = fc
             .proto_array()
@@ -6598,8 +6608,8 @@ async fn fc_on_execution_bid_preserves_state_after_ptc_quorum() {
     }
 
     // Late bid arrives — should preserve PTC state because payload_revealed=true
-    let bid = SignedExecutionPayloadBid::<E> {
-        message: ExecutionPayloadBid {
+    let bid = SignedExecutionPayloadBidGloas::<E> {
+        message: ExecutionPayloadBidGloas {
             slot,
             builder_index: 99,
             block_hash: bid_hash,
@@ -6611,7 +6621,7 @@ async fn fc_on_execution_bid_preserves_state_after_ptc_quorum() {
         .chain
         .canonical_head
         .fork_choice_write_lock()
-        .on_execution_bid(&bid, block_root)
+        .on_execution_bid(&bid.into(), block_root)
         .unwrap();
 
     let node = harness
@@ -6666,8 +6676,8 @@ async fn fc_on_execution_bid_resets_state_when_no_quorum_or_envelope() {
         node.payload_data_available = true;
     }
 
-    let bid = SignedExecutionPayloadBid::<E> {
-        message: ExecutionPayloadBid {
+    let bid = SignedExecutionPayloadBidGloas::<E> {
+        message: ExecutionPayloadBidGloas {
             slot,
             builder_index: 10,
             block_hash: ExecutionBlockHash::repeat_byte(0xa4),
@@ -6679,7 +6689,7 @@ async fn fc_on_execution_bid_resets_state_when_no_quorum_or_envelope() {
         .chain
         .canonical_head
         .fork_choice_write_lock()
-        .on_execution_bid(&bid, block_root)
+        .on_execution_bid(&bid.into(), block_root)
         .unwrap();
 
     let node = harness
@@ -6807,8 +6817,8 @@ async fn fc_full_external_builder_lifecycle() {
     // Step 1: Bid arrives
     {
         let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
-        let bid = SignedExecutionPayloadBid::<E> {
-            message: ExecutionPayloadBid {
+        let bid = SignedExecutionPayloadBidGloas::<E> {
+            message: ExecutionPayloadBidGloas {
                 slot,
                 builder_index: 7,
                 block_hash: bid_hash,
@@ -6816,7 +6826,7 @@ async fn fc_full_external_builder_lifecycle() {
             },
             signature: bls::Signature::empty(),
         };
-        fc.on_execution_bid(&bid, block_root).unwrap();
+        fc.on_execution_bid(&bid.into(), block_root).unwrap();
 
         let block_index = fc
             .proto_array()
@@ -7520,8 +7530,8 @@ async fn gloas_bid_pool_insertion_and_retrieval_via_chain() {
     let target_slot = harness.chain.head_snapshot().beacon_block.slot() + 1;
 
     // Insert two bids at different values
-    let bid1 = SignedExecutionPayloadBid::<E> {
-        message: ExecutionPayloadBid {
+    let bid1 = SignedExecutionPayloadBidGloas::<E> {
+        message: ExecutionPayloadBidGloas {
             slot: target_slot,
             builder_index: 0,
             value: 500,
@@ -7529,8 +7539,8 @@ async fn gloas_bid_pool_insertion_and_retrieval_via_chain() {
         },
         signature: Signature::empty(),
     };
-    let bid2 = SignedExecutionPayloadBid::<E> {
-        message: ExecutionPayloadBid {
+    let bid2 = SignedExecutionPayloadBidGloas::<E> {
+        message: ExecutionPayloadBidGloas {
             slot: target_slot,
             builder_index: 1,
             value: 2000,
@@ -7542,8 +7552,8 @@ async fn gloas_bid_pool_insertion_and_retrieval_via_chain() {
     // Insert through the pool (same as import_execution_bid)
     {
         let mut pool = harness.chain.execution_bid_pool.lock();
-        pool.insert(bid1);
-        pool.insert(bid2);
+        pool.insert(bid1.into());
+        pool.insert(bid2.into());
     }
 
     // Verify best bid selection returns highest value
@@ -7551,8 +7561,12 @@ async fn gloas_bid_pool_insertion_and_retrieval_via_chain() {
         .chain
         .get_best_execution_bid(target_slot, Hash256::zero())
         .expect("should have a bid");
-    assert_eq!(best.message.value, 2000, "should return highest-value bid");
-    assert_eq!(best.message.builder_index, 1);
+    assert_eq!(
+        *best.to_ref().message().value(),
+        2000,
+        "should return highest-value bid"
+    );
+    assert_eq!(*best.to_ref().message().builder_index(), 1);
 
     // Verify old-slot bids are pruned
     let future_slot = target_slot + 10;
@@ -7582,8 +7596,8 @@ async fn gloas_import_execution_bid_inserts_into_pool() {
     let head_root = head.beacon_block_root;
     let head_slot = head.beacon_block.slot();
 
-    let bid = SignedExecutionPayloadBid::<E> {
-        message: ExecutionPayloadBid {
+    let bid = SignedExecutionPayloadBidGloas::<E> {
+        message: ExecutionPayloadBidGloas {
             slot: head_slot,
             builder_index: 7,
             parent_block_root: head_root,
@@ -7593,7 +7607,7 @@ async fn gloas_import_execution_bid_inserts_into_pool() {
         signature: Signature::empty(),
     };
 
-    let verified_bid = VerifiedExecutionBid::__new_for_testing(bid);
+    let verified_bid = VerifiedExecutionBid::__new_for_testing(bid.into());
     harness.chain.import_execution_bid(&verified_bid);
 
     // Verify bid is retrievable from pool (must pass matching parent_block_root)
@@ -7601,8 +7615,8 @@ async fn gloas_import_execution_bid_inserts_into_pool() {
         .chain
         .get_best_execution_bid(head_slot, head_root)
         .expect("should have a bid in the pool");
-    assert_eq!(best.message.value, 5000);
-    assert_eq!(best.message.builder_index, 7);
+    assert_eq!(*best.to_ref().message().value(), 5000);
+    assert_eq!(*best.to_ref().message().builder_index(), 7);
 }
 
 // =============================================================================
@@ -7642,7 +7656,8 @@ async fn gloas_fork_transition_bid_parent_hash_from_fulu_header() {
         .expect("first Gloas block should have a bid");
 
     assert_eq!(
-        bid.message.parent_block_hash, fulu_el_block_hash,
+        *bid.message().parent_block_hash(),
+        fulu_el_block_hash,
         "first Gloas bid parent_block_hash should equal the last Fulu EL header block_hash"
     );
 }
@@ -7688,7 +7703,8 @@ async fn gloas_fork_transition_latest_block_hash_matches_fulu_header() {
         .signed_execution_payload_bid()
         .expect("Gloas block should have bid");
     assert_eq!(
-        bid.message.parent_block_hash, fulu_el_block_hash,
+        *bid.message().parent_block_hash(),
+        fulu_el_block_hash,
         "bid parent_block_hash proves latest_block_hash was set from Fulu header"
     );
 }
@@ -7725,7 +7741,7 @@ async fn gloas_fork_transition_chain_continues_full_epoch() {
 
         if let Ok(bid) = block.message().body().signed_execution_payload_bid() {
             assert_ne!(
-                bid.message.block_hash,
+                *bid.message().block_hash(),
                 ExecutionBlockHash::zero(),
                 "Gloas block at slot {slot} should have non-zero bid block_hash"
             );
@@ -7931,7 +7947,7 @@ async fn gloas_block_blob_commitments_in_bid_not_body() {
         .expect("Gloas block should have a bid");
     // Self-build blocks have empty blob commitments (no blobs in test)
     assert!(
-        bid.message.blob_kzg_commitments.len()
+        bid.message().blob_kzg_commitments().len()
             <= harness
                 .chain
                 .spec
@@ -7959,9 +7975,9 @@ async fn gloas_block_production_bid_gas_limit_matches_state() {
         .latest_execution_payload_bid()
         .expect("Gloas state should have latest_execution_payload_bid");
     assert!(
-        latest_bid.gas_limit > 0,
+        *latest_bid.gas_limit() > 0,
         "latest_execution_payload_bid gas_limit should be non-zero, got {}",
-        latest_bid.gas_limit
+        *latest_bid.gas_limit()
     );
 
     // The head block's bid should also have a matching gas_limit
@@ -7974,7 +7990,8 @@ async fn gloas_block_production_bid_gas_limit_matches_state() {
         .signed_execution_payload_bid
         .message;
     assert_eq!(
-        block_bid.gas_limit, latest_bid.gas_limit,
+        block_bid.gas_limit,
+        *latest_bid.gas_limit(),
         "block bid gas_limit should match state's latest_execution_payload_bid gas_limit"
     );
 }
@@ -8699,14 +8716,14 @@ async fn gloas_non_stateless_execution_proof_uses_da_checker_path() {
     let head_slot = head.beacon_block.slot();
 
     // Get the block hash from the bid
-    let block_hash = head
+    let block_hash = *head
         .beacon_block
         .message()
         .body()
         .signed_execution_payload_bid()
         .expect("Gloas block should have bid")
-        .message
-        .block_hash;
+        .message()
+        .block_hash();
 
     // Verify this is NOT a stateless harness
     assert!(
@@ -8817,7 +8834,7 @@ async fn gloas_canonical_head_parent_random_reads_from_bid() {
         .body()
         .signed_execution_payload_bid()
         .expect("Gloas block should have a bid");
-    let expected_prev_randao = bid.message.prev_randao;
+    let expected_prev_randao = *bid.message().prev_randao();
 
     // parent_random() should return this value
     let parent_random = cached_head
@@ -8977,7 +8994,7 @@ async fn gloas_external_bid_block_import_payload_unrevealed() {
     // Insert an external bid for the next slot
     let state = harness.chain.head_beacon_state_cloned();
     let bid = make_external_bid(&state, head_root, next_slot, 0, 5000);
-    harness.chain.execution_bid_pool.lock().insert(bid);
+    harness.chain.execution_bid_pool.lock().insert(bid.into());
 
     // Produce a block using the external bid
     harness.advance_slot();
@@ -8990,7 +9007,7 @@ async fn gloas_external_bid_block_import_payload_unrevealed() {
         .body()
         .signed_execution_payload_bid()
         .expect("should have bid");
-    assert_eq!(block_bid.message.builder_index, 0);
+    assert_eq!(*block_bid.message().builder_index(), 0);
     assert!(
         envelope.is_none(),
         "external bid should not produce self-build envelope"
@@ -9051,7 +9068,8 @@ async fn gloas_external_bid_import_fork_choice_builder_index() {
         .signed_execution_payload_bid()
         .expect("should have bid");
     assert_eq!(
-        prev_head_bid.message.builder_index, harness.spec.builder_index_self_build,
+        *prev_head_bid.message().builder_index(),
+        harness.spec.builder_index_self_build,
         "previous head should be self-build"
     );
 
@@ -9059,7 +9077,7 @@ async fn gloas_external_bid_import_fork_choice_builder_index() {
     let state = harness.chain.head_beacon_state_cloned();
     let external_builder_index = 0u64;
     let bid = make_external_bid(&state, head_root, next_slot, external_builder_index, 5000);
-    harness.chain.execution_bid_pool.lock().insert(bid);
+    harness.chain.execution_bid_pool.lock().insert(bid.into());
 
     harness.advance_slot();
     let ((signed_block, blobs), _state, _envelope) =
@@ -9085,11 +9103,13 @@ async fn gloas_external_bid_import_fork_choice_builder_index() {
         .signed_execution_payload_bid()
         .expect("stored block should have bid");
     assert_eq!(
-        stored_bid.message.builder_index, external_builder_index,
+        *stored_bid.message().builder_index(),
+        external_builder_index,
         "stored block bid should have external builder_index"
     );
     assert_eq!(
-        stored_bid.message.value, 5000,
+        *stored_bid.message().value(),
+        5000,
         "stored block bid should have correct value"
     );
 }
@@ -9109,7 +9129,11 @@ async fn gloas_external_bid_envelope_reveals_payload_in_fork_choice() {
     // Insert external bid and produce block
     let state = harness.chain.head_beacon_state_cloned();
     let bid = make_external_bid(&state, head_root, next_slot, 0, 5000);
-    harness.chain.execution_bid_pool.lock().insert(bid.clone());
+    harness
+        .chain
+        .execution_bid_pool
+        .lock()
+        .insert(bid.clone().into());
 
     harness.advance_slot();
     let ((signed_block, blobs), _state, _envelope) =
@@ -9225,7 +9249,7 @@ async fn gloas_external_bid_withheld_chain_continues_on_empty_path() {
     let state = harness.chain.head_beacon_state_cloned();
     let bid = make_external_bid(&state, head_root_before, external_bid_slot, 0, 5000);
     let external_bid_block_hash = bid.message.block_hash;
-    harness.chain.execution_bid_pool.lock().insert(bid);
+    harness.chain.execution_bid_pool.lock().insert(bid.into());
 
     // Produce and import the block using the external bid
     harness.advance_slot();
@@ -9244,7 +9268,8 @@ async fn gloas_external_bid_withheld_chain_continues_on_empty_path() {
         .signed_execution_payload_bid()
         .expect("should have bid");
     assert_eq!(
-        block_bid.message.builder_index, 0,
+        *block_bid.message().builder_index(),
+        0,
         "should use external builder (index 0)"
     );
 
@@ -9316,7 +9341,8 @@ async fn gloas_external_bid_withheld_chain_continues_on_empty_path() {
         .signed_execution_payload_bid()
         .expect("continuation block should have bid");
     assert_eq!(
-        next_bid.message.parent_block_hash, grandparent_block_hash,
+        *next_bid.message().parent_block_hash(),
+        grandparent_block_hash,
         "continuation bid.parent_block_hash should be the grandparent's EL hash \
          (EMPTY path: external bid payload was withheld)"
     );
@@ -9395,7 +9421,7 @@ async fn gloas_external_bid_withheld_latest_block_hash_skip() {
     let ext_slot = head_slot + 1;
     let state = harness.chain.head_beacon_state_cloned();
     let bid = make_external_bid(&state, head_root, ext_slot, 0, 5000);
-    harness.chain.execution_bid_pool.lock().insert(bid);
+    harness.chain.execution_bid_pool.lock().insert(bid.into());
 
     // Produce + import external bid block (no envelope)
     harness.advance_slot();
@@ -9463,7 +9489,7 @@ async fn gloas_external_bid_withheld_chain_recovers_multiple_blocks() {
     let ext_slot = head_slot + 1;
     let state = harness.chain.head_beacon_state_cloned();
     let bid = make_external_bid(&state, head_root, ext_slot, 0, 5000);
-    harness.chain.execution_bid_pool.lock().insert(bid);
+    harness.chain.execution_bid_pool.lock().insert(bid.into());
 
     // Produce + import external bid block (no envelope)
     harness.advance_slot();
@@ -9526,7 +9552,8 @@ async fn gloas_external_bid_withheld_chain_recovers_multiple_blocks() {
         .payload
         .block_hash;
     assert_eq!(
-        b2_bid.message.parent_block_hash, env1_block_hash,
+        *b2_bid.message().parent_block_hash(),
+        env1_block_hash,
         "second continuation bid.parent_block_hash should be the first continuation's \
          EL block hash (FULL path: payload was revealed)"
     );
@@ -9583,7 +9610,7 @@ async fn gloas_external_bid_withheld_attestation_index_1_rejected() {
     let ext_slot = head_slot + 1;
     let state = harness.chain.head_beacon_state_cloned();
     let bid = make_external_bid(&state, head_root, ext_slot, 0, 5000);
-    harness.chain.execution_bid_pool.lock().insert(bid);
+    harness.chain.execution_bid_pool.lock().insert(bid.into());
 
     // Produce + import external bid block (no envelope)
     harness.advance_slot();
@@ -9640,7 +9667,7 @@ async fn gloas_external_bid_withheld_is_parent_block_full_returns_false() {
     let state = harness.chain.head_beacon_state_cloned();
     let bid = make_external_bid(&state, head_root, ext_slot, 0, 5000);
     let ext_bid_block_hash = bid.message.block_hash;
-    harness.chain.execution_bid_pool.lock().insert(bid);
+    harness.chain.execution_bid_pool.lock().insert(bid.into());
 
     // Produce the external bid block
     harness.advance_slot();
@@ -9655,7 +9682,8 @@ async fn gloas_external_bid_withheld_is_parent_block_full_returns_false() {
 
     // The bid should have the external bid's block_hash (zero from make_external_bid)
     assert_eq!(
-        latest_bid.block_hash, ext_bid_block_hash,
+        *latest_bid.block_hash(),
+        ext_bid_block_hash,
         "latest_execution_payload_bid.block_hash should be the external bid's block_hash"
     );
 
@@ -9666,12 +9694,13 @@ async fn gloas_external_bid_withheld_is_parent_block_full_returns_false() {
     );
 
     // is_parent_block_full checks: bid.block_hash == state.latest_block_hash
-    let is_full = latest_bid.block_hash == latest_hash;
+    let is_full = *latest_bid.block_hash() == latest_hash;
     assert!(
         !is_full,
         "is_parent_block_full should be false when payload was withheld: \
          bid.block_hash={:?}, latest_block_hash={:?}",
-        latest_bid.block_hash, latest_hash
+        *latest_bid.block_hash(),
+        latest_hash
     );
 
     // Import the block to verify it's accepted by the chain
@@ -9781,14 +9810,16 @@ async fn gloas_skip_slot_latest_block_hash_continuity() {
     // The bid's parent_block_hash should equal the last processed envelope's block_hash
     // (the state's latest_block_hash before the skip), NOT some default or skipped value.
     assert_eq!(
-        next_bid.message.parent_block_hash, latest_hash_before_skip,
+        *next_bid.message().parent_block_hash(),
+        latest_hash_before_skip,
         "bid parent_block_hash after skip slot should equal latest_block_hash \
          from the last processed envelope (skip_slot={skip_slot}, produce_slot={produce_slot})"
     );
 
     // The parent_block_root should reference the head (last actual block), not the skip slot
     assert_eq!(
-        next_bid.message.parent_block_root, head_root,
+        *next_bid.message().parent_block_root(),
+        head_root,
         "bid parent_block_root should reference the last actual block root, not the skip slot"
     );
 }
@@ -10544,15 +10575,15 @@ async fn gloas_range_sync_import_with_envelopes() {
             .body()
             .signed_execution_payload_bid()
             .expect("should be Gloas")
-            .message
-            .block_hash;
+            .message()
+            .block_hash();
         let cur_parent_hash = blocks[i]
             .message()
             .body()
             .signed_execution_payload_bid()
             .expect("should be Gloas")
-            .message
-            .parent_block_hash;
+            .message()
+            .parent_block_hash();
         assert_eq!(
             cur_parent_hash,
             prev_bid_hash,
@@ -10663,7 +10694,7 @@ async fn gloas_load_parent_no_patch_needed_when_envelope_processed() {
 
     // The head block's bid.block_hash should match the state's latest_block_hash
     // (because the envelope was processed).
-    let head_bid_hash = harness
+    let head_bid_hash = *harness
         .chain
         .head_snapshot()
         .beacon_block
@@ -10671,8 +10702,8 @@ async fn gloas_load_parent_no_patch_needed_when_envelope_processed() {
         .body()
         .signed_execution_payload_bid()
         .expect("should be Gloas")
-        .message
-        .block_hash;
+        .message()
+        .block_hash();
     assert_eq!(
         head_latest_hash, head_bid_hash,
         "with envelope processed, latest_block_hash should match head bid block_hash"
@@ -11054,7 +11085,11 @@ async fn gloas_external_builder_envelope_invalid_signature_rejected() {
     // Insert external bid and produce block with it
     let state = harness.chain.head_beacon_state_cloned();
     let bid = make_external_bid(&state, head_root, next_slot, 0, 5000);
-    harness.chain.execution_bid_pool.lock().insert(bid.clone());
+    harness
+        .chain
+        .execution_bid_pool
+        .lock()
+        .insert(bid.clone().into());
 
     harness.advance_slot();
     let ((signed_block, blobs), _state, _envelope) =
@@ -11114,7 +11149,11 @@ async fn gloas_external_builder_envelope_valid_signature_accepted() {
     // Insert external bid and produce block
     let state = harness.chain.head_beacon_state_cloned();
     let bid = make_external_bid(&state, head_root, next_slot, 0, 5000);
-    harness.chain.execution_bid_pool.lock().insert(bid.clone());
+    harness
+        .chain
+        .execution_bid_pool
+        .lock()
+        .insert(bid.clone().into());
 
     harness.advance_slot();
     let ((signed_block, blobs), _state, _envelope) =
@@ -11193,7 +11232,11 @@ async fn gloas_external_builder_envelope_buffered_then_processed() {
     // Insert external bid and produce block (but don't import yet)
     let state = harness.chain.head_beacon_state_cloned();
     let bid = make_external_bid(&state, head_root, next_slot, 0, 5000);
-    harness.chain.execution_bid_pool.lock().insert(bid.clone());
+    harness
+        .chain
+        .execution_bid_pool
+        .lock()
+        .insert(bid.clone().into());
 
     harness.advance_slot();
     let ((signed_block, blobs), _state, _envelope) =
@@ -11537,7 +11580,7 @@ async fn gloas_on_execution_bid_resets_reveal_and_weight_fields() {
     // Apply directly via fork choice (bypassing gossip verification)
     {
         let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
-        fc.on_execution_bid(&bid, head_root)
+        fc.on_execution_bid(&bid.into(), head_root)
             .expect("on_execution_bid should succeed");
     }
 
@@ -13542,10 +13585,13 @@ async fn gloas_process_payload_envelope_state_transition_fails_after_el_valid() 
             .expect("state should be in cache");
 
         // Corrupt the bid's builder_index to a value that won't match the envelope
-        let original_builder_index = state.latest_execution_payload_bid().unwrap().builder_index;
-        state
-            .latest_execution_payload_bid_mut()
+        let original_builder_index = *state
+            .latest_execution_payload_bid()
             .unwrap()
+            .builder_index();
+        state
+            .latest_execution_payload_bid_gloas_mut()
+            .expect("should be Gloas")
             .builder_index = original_builder_index + 999;
 
         state.apply_pending_mutations().unwrap();
@@ -13600,7 +13646,7 @@ async fn gloas_process_payload_envelope_state_transition_fails_after_el_valid() 
         // The state should still have the corrupted builder_index (state transition never completed)
         let bid = state.latest_execution_payload_bid().unwrap();
         assert_ne!(
-            bid.builder_index,
+            *bid.builder_index(),
             verified.envelope().message.builder_index,
             "cached state should still have corrupted builder_index (state transition failed)"
         );
@@ -13671,11 +13717,14 @@ async fn gloas_self_build_envelope_state_transition_fails_after_el_valid() {
             .expect("should not error")
             .expect("state should be in cache");
 
-        let original_builder_index = state.latest_execution_payload_bid().unwrap().builder_index;
-        state
-            .latest_execution_payload_bid_mut()
+        let original_builder_index = state
+            .latest_execution_payload_bid()
             .unwrap()
-            .builder_index = original_builder_index + 999;
+            .builder_index();
+        state
+            .latest_execution_payload_bid_gloas_mut()
+            .expect("should be Gloas")
+            .builder_index = *original_builder_index + 999;
 
         state.apply_pending_mutations().unwrap();
 
@@ -13728,7 +13777,8 @@ async fn gloas_self_build_envelope_state_transition_fails_after_el_valid() {
 
         let bid = state.latest_execution_payload_bid().unwrap();
         assert_ne!(
-            bid.builder_index, signed_envelope.message.builder_index,
+            *bid.builder_index(),
+            signed_envelope.message.builder_index,
             "cached state should still have corrupted builder_index (state transition failed)"
         );
     }
@@ -13778,7 +13828,11 @@ async fn gloas_bid_gossip_rejects_insufficient_builder_balance() {
     // (balance = MIN_DEPOSIT_AMOUNT, no pending withdrawals), so this should fail.
     let bid = make_external_bid(&state, head_root, next_slot, 0, 200);
 
-    let err = assert_bid_rejected(&harness, bid, "bid value exceeds builder excess balance");
+    let err = assert_bid_rejected(
+        &harness,
+        bid.into(),
+        "bid value exceeds builder excess balance",
+    );
     match err {
         ExecutionBidError::InsufficientBuilderBalance {
             builder_index,
@@ -13824,7 +13878,7 @@ async fn gloas_bid_gossip_rejects_builder_equivocation() {
     // First bid: value=5000. Properly signed, passes all checks including
     // signature verification and equivocation detection (recorded as New).
     let bid_1 = make_external_bid(&state, head_root, next_slot, 0, 5000);
-    let result_1 = harness.chain.verify_execution_bid_for_gossip(bid_1);
+    let result_1 = harness.chain.verify_execution_bid_for_gossip(bid_1.into());
     assert!(
         result_1.is_ok(),
         "first bid should pass: {:?}",
@@ -13836,7 +13890,7 @@ async fn gloas_bid_gossip_rejects_builder_equivocation() {
     // because we already recorded a different bid root from builder 0.
     let bid_2 = make_external_bid(&state, head_root, next_slot, 0, 6000);
 
-    let err = assert_bid_rejected(&harness, bid_2, "second bid should be equivocation");
+    let err = assert_bid_rejected(&harness, bid_2.into(), "second bid should be equivocation");
     match err {
         ExecutionBidError::BuilderEquivocation {
             builder_index,
@@ -13977,7 +14031,7 @@ async fn gloas_bid_gossip_ignores_without_proposer_preferences() {
     // Create a bid for next_slot. Without preferences, the bid should be ignored.
     let bid = make_external_bid(&state, head_root, next_slot, 0, 5000);
 
-    match harness.chain.verify_execution_bid_for_gossip(bid) {
+    match harness.chain.verify_execution_bid_for_gossip(bid.into()) {
         Err(ExecutionBidError::ProposerPreferencesNotSeen { .. }) => {}
         Err(e) => panic!("expected ProposerPreferencesNotSeen, got {e:?}"),
         Ok(_) => panic!("bid without preferences should be ignored"),
@@ -14036,7 +14090,11 @@ async fn gloas_bid_gossip_rejects_fee_recipient_mismatch() {
         "bid fee_recipient should differ from preferences"
     );
 
-    let err = assert_bid_rejected(&harness, bid, "bid should fail with fee_recipient mismatch");
+    let err = assert_bid_rejected(
+        &harness,
+        bid.into(),
+        "bid should fail with fee_recipient mismatch",
+    );
     match err {
         ExecutionBidError::FeeRecipientMismatch { expected, received } => {
             assert_eq!(expected, proposer_fee_recipient);
@@ -14100,7 +14158,11 @@ async fn gloas_bid_gossip_rejects_gas_limit_mismatch() {
         "bid gas_limit should be 30M (default)"
     );
 
-    let err = assert_bid_rejected(&harness, bid, "bid should fail with gas_limit mismatch");
+    let err = assert_bid_rejected(
+        &harness,
+        bid.into(),
+        "bid should fail with gas_limit mismatch",
+    );
     match err {
         ExecutionBidError::GasLimitMismatch { expected, received } => {
             assert_eq!(expected, proposer_gas_limit);
@@ -14321,7 +14383,7 @@ async fn gloas_bid_gossip_rejects_inactive_builder() {
     );
 
     let bid = make_external_bid(&state, head_root, next_slot, 0, 5000);
-    let err = assert_bid_rejected(&harness, bid, "inactive builder");
+    let err = assert_bid_rejected(&harness, bid.into(), "inactive builder");
     match err {
         ExecutionBidError::InactiveBuilder { builder_index } => {
             assert_eq!(builder_index, 0);
@@ -14362,7 +14424,7 @@ async fn gloas_bid_gossip_rejects_duplicate_bid() {
     let bid_root = bid.tree_hash_root();
 
     // First submission: passes all checks (signature, equivocation=New, highest value).
-    let result = harness.chain.verify_execution_bid_for_gossip(bid);
+    let result = harness.chain.verify_execution_bid_for_gossip(bid.into());
     assert!(result.is_ok(), "first bid should pass: {:?}", result.err());
 
     // Second submission: same bid, same root → Duplicate.
@@ -14373,7 +14435,7 @@ async fn gloas_bid_gossip_rejects_duplicate_bid() {
         "second bid should have same root as first"
     );
 
-    let err = assert_bid_rejected(&harness, bid_2, "duplicate bid");
+    let err = assert_bid_rejected(&harness, bid_2.into(), "duplicate bid");
     match err {
         ExecutionBidError::DuplicateBid {
             bid_root: rejected_root,
@@ -14411,7 +14473,7 @@ async fn gloas_bid_gossip_rejects_invalid_parent_root() {
     let unknown_root = Hash256::from_low_u64_be(0xdead);
     bid.message.parent_block_root = unknown_root;
 
-    let err = assert_bid_rejected(&harness, bid, "invalid parent root");
+    let err = assert_bid_rejected(&harness, bid.into(), "invalid parent root");
     match err {
         ExecutionBidError::InvalidParentRoot { received } => {
             assert_eq!(received, unknown_root);
@@ -14428,18 +14490,18 @@ async fn gloas_bid_gossip_rejects_invalid_parent_root() {
 /// DOMAIN_BEACON_BUILDER, matching the signing logic in
 /// `execution_payload_bid_signature_set` (signature_sets.rs:670-699).
 fn sign_bid_with_builder(
-    bid_msg: &ExecutionPayloadBid<E>,
+    bid_msg: &ExecutionPayloadBidGloas<E>,
     keypair: &Keypair,
     slot: Slot,
     fork: &Fork,
     genesis_validators_root: Hash256,
     spec: &ChainSpec,
-) -> SignedExecutionPayloadBid<E> {
+) -> SignedExecutionPayloadBidGloas<E> {
     let epoch = slot.epoch(E::slots_per_epoch());
     let domain = spec.get_domain(epoch, Domain::BeaconBuilder, fork, genesis_validators_root);
     let signing_root = bid_msg.signing_root(domain);
     let signature = keypair.sk.sign(signing_root);
-    SignedExecutionPayloadBid {
+    SignedExecutionPayloadBidGloas {
         message: bid_msg.clone(),
         signature,
     }
@@ -14500,7 +14562,7 @@ async fn gloas_bid_gossip_rejects_invalid_signature() {
         &harness.spec,
     );
 
-    let err = assert_bid_rejected(&harness, bid, "bid with invalid signature");
+    let err = assert_bid_rejected(&harness, bid.into(), "bid with invalid signature");
     assert!(
         matches!(err, ExecutionBidError::InvalidSignature),
         "expected InvalidSignature, got {err:?}"
@@ -14558,7 +14620,7 @@ async fn gloas_bid_gossip_valid_signature_accepted() {
     );
 
     // The bid should pass all checks including BLS signature verification.
-    let result = harness.chain.verify_execution_bid_for_gossip(bid);
+    let result = harness.chain.verify_execution_bid_for_gossip(bid.into());
     assert!(
         result.is_ok(),
         "correctly-signed bid should pass all gossip verification, got: {:?}",
@@ -14712,15 +14774,15 @@ async fn gloas_range_sync_full_parent_patch_condition_verified() {
             .body()
             .signed_execution_payload_bid()
             .expect("should be Gloas")
-            .message
-            .block_hash;
+            .message()
+            .block_hash();
         let cur_parent_hash = blocks[i]
             .message()
             .body()
             .signed_execution_payload_bid()
             .expect("should be Gloas")
-            .message
-            .parent_block_hash;
+            .message()
+            .parent_block_hash();
         assert_eq!(
             cur_parent_hash,
             prev_bid_hash,
@@ -14729,7 +14791,7 @@ async fn gloas_range_sync_full_parent_patch_condition_verified() {
             i
         );
         assert_ne!(
-            prev_bid_hash,
+            *prev_bid_hash,
             ExecutionBlockHash::zero(),
             "block {i}'s bid.block_hash should be non-zero (non-genesis)"
         );
@@ -14776,14 +14838,14 @@ async fn gloas_range_sync_full_parent_patch_condition_verified() {
     // After import, verify the state's latest_block_hash matches the bid's block_hash
     // at the head — this proves the FULL parent path (patching or normal) worked correctly
     let head = harness2.chain.head_snapshot();
-    let head_bid_hash = head
+    let head_bid_hash = *head
         .beacon_block
         .message()
         .body()
         .signed_execution_payload_bid()
         .expect("should be Gloas")
-        .message
-        .block_hash;
+        .message()
+        .block_hash();
     let head_latest_hash = *head
         .beacon_state
         .latest_block_hash()
@@ -14831,7 +14893,7 @@ async fn gloas_load_parent_empty_parent_does_not_patch() {
 
     // The head state's latest_block_hash should equal the head bid's block_hash
     // (because the envelope was processed in the normal extend_slots path)
-    let head_bid_block_hash = head_bid.message.block_hash;
+    let head_bid_block_hash = *head_bid.message().block_hash();
     let head_latest_block_hash = *head_state
         .latest_block_hash()
         .expect("should have latest_block_hash");
@@ -14858,7 +14920,8 @@ async fn gloas_load_parent_empty_parent_does_not_patch() {
 
     // The child's parent_block_hash should equal the head bid's block_hash (FULL path)
     assert_eq!(
-        child_bid.message.parent_block_hash, head_bid_block_hash,
+        *child_bid.message().parent_block_hash(),
+        head_bid_block_hash,
         "self-build child should reference parent's bid.block_hash (FULL path)"
     );
 
@@ -14907,13 +14970,13 @@ async fn gloas_get_advanced_hot_state_reapplies_envelope_from_db() {
     let head_root = head_block.canonical_root();
 
     // Verify the head state's latest_block_hash matches the head bid (post-envelope)
-    let head_bid_hash = head_block
+    let head_bid_hash = *head_block
         .message()
         .body()
         .signed_execution_payload_bid()
         .expect("should be Gloas")
-        .message
-        .block_hash;
+        .message()
+        .block_hash();
     let head_latest_hash = *head_state
         .latest_block_hash()
         .expect("should have latest_block_hash");
@@ -15037,13 +15100,13 @@ async fn gloas_get_advanced_hot_state_blinded_envelope_fallback() {
     let head_root = head_block.canonical_root();
 
     // Get the expected latest_block_hash (post-envelope)
-    let head_bid_hash = head_block
+    let head_bid_hash = *head_block
         .message()
         .body()
         .signed_execution_payload_bid()
         .expect("should be Gloas")
-        .message
-        .block_hash;
+        .message()
+        .block_hash();
     let head_latest_hash = *head_state
         .latest_block_hash()
         .expect("should have latest_block_hash");
@@ -15315,14 +15378,16 @@ async fn gloas_multi_epoch_latest_block_hash_consistency() {
     );
 
     // Verify latest_block_hash consistency at the head
-    let head_bid = head
+    let head_bid = match head
         .beacon_block
         .message()
         .body()
         .signed_execution_payload_bid()
         .expect("should be Gloas")
-        .message
-        .clone();
+    {
+        SignedExecutionPayloadBidRef::Gloas(inner) => inner.message.clone(),
+        _ => panic!("expected Gloas bid"),
+    };
     let head_latest_hash = *head
         .beacon_state
         .latest_block_hash()
@@ -15374,7 +15439,7 @@ async fn gloas_multi_epoch_latest_block_hash_consistency() {
     if let Ok(bid) = recent_block.message().body().signed_execution_payload_bid() {
         // Verify the recent block is a Gloas block with a non-zero bid hash
         assert_ne!(
-            bid.message.block_hash,
+            *bid.message().block_hash(),
             ExecutionBlockHash::zero(),
             "recent block's bid.block_hash should be non-zero"
         );
@@ -16145,7 +16210,8 @@ async fn gloas_fork_transition_with_skipped_fork_slot() {
         .signed_execution_payload_bid()
         .expect("Gloas block should have bid");
     assert_eq!(
-        bid.message.parent_block_hash, fulu_el_block_hash,
+        *bid.message().parent_block_hash(),
+        fulu_el_block_hash,
         "first Gloas bid parent_block_hash should match Fulu header even with skipped fork slot"
     );
 }
@@ -16197,7 +16263,8 @@ async fn gloas_fork_transition_with_multiple_skipped_slots() {
         .signed_execution_payload_bid()
         .expect("Gloas block should have bid");
     assert_eq!(
-        bid.message.parent_block_hash, fulu_el_block_hash,
+        *bid.message().parent_block_hash(),
+        fulu_el_block_hash,
         "parent_block_hash should match Fulu header after multiple skipped slots"
     );
 
@@ -16259,7 +16326,8 @@ async fn gloas_fork_transition_with_skipped_last_fulu_slot() {
         .signed_execution_payload_bid()
         .expect("Gloas block should have bid");
     assert_eq!(
-        bid.message.parent_block_hash, fulu_el_block_hash,
+        *bid.message().parent_block_hash(),
+        fulu_el_block_hash,
         "parent_block_hash should match the last produced Fulu block's header"
     );
 
@@ -16462,7 +16530,11 @@ async fn gloas_external_bid_records_pending_payment_in_state() {
     // Create external bid with non-zero value
     let bid_value = 5000u64;
     let bid = make_external_bid(&state, head_root, next_slot, 0, bid_value);
-    harness.chain.execution_bid_pool.lock().insert(bid.clone());
+    harness
+        .chain
+        .execution_bid_pool
+        .lock()
+        .insert(bid.clone().into());
 
     // Produce and import the block (picks external bid from pool)
     harness.advance_slot();
@@ -16475,11 +16547,13 @@ async fn gloas_external_bid_records_pending_payment_in_state() {
         .signed_execution_payload_bid()
         .expect("should have bid");
     assert_eq!(
-        block_bid.message.builder_index, 0,
+        *block_bid.message().builder_index(),
+        0,
         "block should use external builder bid"
     );
     assert_eq!(
-        block_bid.message.value, bid_value,
+        *block_bid.message().value(),
+        bid_value,
         "block bid value should match"
     );
 
@@ -16650,7 +16724,7 @@ async fn gloas_external_builder_revealed_next_block_uses_builder_block_hash() {
         .get_randao_mix(current_epoch)
         .expect("should get randao mix");
 
-    let bid_msg = ExecutionPayloadBid {
+    let bid_msg = ExecutionPayloadBidGloas {
         slot: ext_slot,
         builder_index: 0,
         value: 5000,
@@ -16662,7 +16736,6 @@ async fn gloas_external_builder_revealed_next_block_uses_builder_block_hash() {
         gas_limit: 30_000_000,
         execution_payment: 5000,
         blob_kzg_commitments: KzgCommitments::<E>::default(),
-        inclusion_list_bits: BitVector::default(),
     };
     let spec = E::default_spec();
     let epoch = ext_slot.epoch(E::slots_per_epoch());
@@ -16673,11 +16746,15 @@ async fn gloas_external_builder_revealed_next_block_uses_builder_block_hash() {
         state.genesis_validators_root(),
     );
     let signing_root = bid_msg.signing_root(domain);
-    let bid = SignedExecutionPayloadBid::<E> {
+    let bid = SignedExecutionPayloadBidGloas::<E> {
         message: bid_msg,
         signature: BUILDER_KEYPAIRS[0].sk.sign(signing_root),
     };
-    harness.chain.execution_bid_pool.lock().insert(bid.clone());
+    harness
+        .chain
+        .execution_bid_pool
+        .lock()
+        .insert(bid.clone().into());
 
     // Produce and import the external bid block (no envelope returned)
     harness.advance_slot();
@@ -16693,7 +16770,8 @@ async fn gloas_external_builder_revealed_next_block_uses_builder_block_hash() {
         .signed_execution_payload_bid()
         .expect("should have bid");
     assert_eq!(
-        block_bid.message.block_hash, external_block_hash,
+        *block_bid.message().block_hash(),
+        external_block_hash,
         "block should use external bid's block_hash"
     );
 
@@ -16887,7 +16965,8 @@ async fn gloas_external_builder_revealed_next_block_uses_builder_block_hash() {
         .signed_execution_payload_bid()
         .expect("continuation block should have bid");
     assert_eq!(
-        next_bid.message.parent_block_hash, external_block_hash,
+        *next_bid.message().parent_block_hash(),
+        external_block_hash,
         "continuation bid.parent_block_hash should be the external builder's block_hash \
          (FULL path: external builder's payload was revealed)"
     );
@@ -17115,7 +17194,8 @@ async fn gloas_block_production_after_reorg_filters_stale_attestations() {
         .expect("Gloas block should have signed bid");
     let fork_b_envelope_hash = fork_b_envelope.message.payload.block_hash;
     assert_eq!(
-        produced_bid.message.parent_block_hash, fork_b_envelope_hash,
+        *produced_bid.message().parent_block_hash(),
+        fork_b_envelope_hash,
         "produced block's bid should reference fork B's block_hash as parent"
     );
 }
@@ -17799,11 +17879,11 @@ async fn gloas_full_chain_block_hash_integrity() {
         // Invariant 1: bid.block_hash == envelope.payload.block_hash
         // The committed hash in the bid must match the delivered hash in the envelope.
         assert_eq!(
-            bid.message.block_hash,
+            *bid.message().block_hash(),
             envelope.message.payload.block_hash,
             "slot {}: bid.block_hash ({:?}) != envelope.payload.block_hash ({:?})",
             block.slot(),
-            bid.message.block_hash,
+            *bid.message().block_hash(),
             envelope.message.payload.block_hash
         );
 
@@ -17811,11 +17891,11 @@ async fn gloas_full_chain_block_hash_integrity() {
         // Each block's bid must reference the previous block's delivered EL hash.
         if let Some(prev_hash) = prev_envelope_block_hash {
             assert_eq!(
-                bid.message.parent_block_hash,
+                *bid.message().parent_block_hash(),
                 prev_hash,
                 "slot {}: bid.parent_block_hash ({:?}) != previous envelope block_hash ({:?})",
                 block.slot(),
-                bid.message.parent_block_hash,
+                *bid.message().parent_block_hash(),
                 prev_hash
             );
         }
@@ -17855,7 +17935,7 @@ async fn gloas_empty_path_clears_availability_bit() {
     let ext_slot = head_slot + 1;
     let state = harness.chain.head_beacon_state_cloned();
     let bid = make_external_bid(&state, head_root, ext_slot, 0, 5000);
-    harness.chain.execution_bid_pool.lock().insert(bid);
+    harness.chain.execution_bid_pool.lock().insert(bid.into());
 
     // Produce external bid block (no envelope)
     harness.advance_slot();
@@ -18290,14 +18370,14 @@ async fn gloas_range_sync_batch_chain_segment() {
 
     // Verify head state consistency
     let head = harness2.chain.head_snapshot();
-    let head_bid_hash = head
+    let head_bid_hash = *head
         .beacon_block
         .message()
         .body()
         .signed_execution_payload_bid()
         .expect("should be Gloas")
-        .message
-        .block_hash;
+        .message()
+        .block_hash();
     let head_latest_hash = *head
         .beacon_state
         .latest_block_hash()
@@ -18587,7 +18667,7 @@ async fn gloas_index_1_attestation_for_unrevealed_payload_rejected_at_fork_choic
     let ext_slot = head_slot + 1;
     let state = harness.chain.head_beacon_state_cloned();
     let bid = make_external_bid(&state, head_root, ext_slot, 0, 5000);
-    harness.chain.execution_bid_pool.lock().insert(bid);
+    harness.chain.execution_bid_pool.lock().insert(bid.into());
 
     // Produce + import external bid block (no envelope)
     harness.advance_slot();
@@ -18941,7 +19021,8 @@ async fn gloas_range_sync_mixed_full_empty_chain() {
         .signed_execution_payload_bid()
         .expect("should be Gloas block");
     assert_eq!(
-        head_latest_hash, last_block_bid.message.block_hash,
+        head_latest_hash,
+        *last_block_bid.message().block_hash(),
         "latest_block_hash should match the last block's bid hash"
     );
 
@@ -18998,7 +19079,7 @@ async fn gloas_consecutive_empty_blocks_chain_continues() {
     let empty1_slot = grandparent_slot + 1;
     let state1 = harness.chain.head_beacon_state_cloned();
     let bid1 = make_external_bid(&state1, grandparent_root, empty1_slot, 0, 5000);
-    harness.chain.execution_bid_pool.lock().insert(bid1);
+    harness.chain.execution_bid_pool.lock().insert(bid1.into());
 
     harness.advance_slot();
     let ((block1, blobs1), post_block1_state, env1) =
@@ -19039,7 +19120,7 @@ async fn gloas_consecutive_empty_blocks_chain_continues() {
     // ensure correct block_roots entries for bid pool parent_root matching.
     let empty2_slot = empty1_slot + 1;
     let bid2 = make_external_bid(&post_block1_state, empty1_root, empty2_slot, 0, 6000);
-    harness.chain.execution_bid_pool.lock().insert(bid2);
+    harness.chain.execution_bid_pool.lock().insert(bid2.into());
 
     harness.advance_slot();
     let ((block2, blobs2), post_block2_state, env2) = harness
@@ -19058,7 +19139,8 @@ async fn gloas_consecutive_empty_blocks_chain_continues() {
         .signed_execution_payload_bid()
         .expect("should have bid");
     assert_eq!(
-        bid2_msg.message.parent_block_hash, grandparent_hash,
+        *bid2_msg.message().parent_block_hash(),
+        grandparent_hash,
         "second withheld bid.parent_block_hash should be grandparent's EL hash \
          (first EMPTY block's payload was never revealed)"
     );
@@ -19104,7 +19186,8 @@ async fn gloas_consecutive_empty_blocks_chain_continues() {
         .signed_execution_payload_bid()
         .expect("should have bid");
     assert_eq!(
-        recovery_bid.message.parent_block_hash, grandparent_hash,
+        *recovery_bid.message().parent_block_hash(),
+        grandparent_hash,
         "recovery bid.parent_block_hash should be grandparent's EL hash \
          (two consecutive EMPTY slots mean latest_block_hash is two slots stale)"
     );
@@ -19184,7 +19267,8 @@ async fn gloas_consecutive_empty_blocks_chain_continues() {
         .signed_execution_payload_bid()
         .expect("should have bid");
     assert_eq!(
-        cont_bid.message.parent_block_hash, recovery_payload_hash,
+        *cont_bid.message().parent_block_hash(),
+        recovery_payload_hash,
         "continuation bid.parent_block_hash should be recovery's EL hash \
          (FULL path: recovery payload was revealed)"
     );
@@ -19265,7 +19349,7 @@ async fn gloas_stale_withdrawal_carryover_across_empty_parent() {
     // --- Withheld block (external bid, no envelope) ---
     let withheld_slot = head_slot + 1;
     let bid = make_external_bid(&head_state, head_root, withheld_slot, 0, 5000);
-    harness.chain.execution_bid_pool.lock().insert(bid);
+    harness.chain.execution_bid_pool.lock().insert(bid.into());
 
     harness.advance_slot();
     let ((withheld_block, withheld_blobs), post_withheld_state, withheld_env) = harness
@@ -19498,7 +19582,11 @@ async fn gloas_reorg_filters_stale_external_bids_in_block_production() {
         0, // builder 0
         fork_a_bid_value,
     );
-    harness.chain.execution_bid_pool.lock().insert(fork_a_bid);
+    harness
+        .chain
+        .execution_bid_pool
+        .lock()
+        .insert(fork_a_bid.into());
 
     // --- Fork B: block at same slot (from shared state) ---
     let (fork_b_contents, fork_b_state, fork_b_envelope) =
@@ -19543,7 +19631,11 @@ async fn gloas_reorg_filters_stale_external_bids_in_block_production() {
         1, // builder 1
         fork_b_bid_value,
     );
-    harness.chain.execution_bid_pool.lock().insert(fork_b_bid);
+    harness
+        .chain
+        .execution_bid_pool
+        .lock()
+        .insert(fork_b_bid.into());
 
     // --- Reorg: fork B wins (majority weight) ---
     harness.advance_slot();
@@ -19570,15 +19662,18 @@ async fn gloas_reorg_filters_stale_external_bids_in_block_production() {
     // The block should use builder 1's bid (parent_block_root matches fork B's root),
     // NOT builder 0's stale bid (parent_block_root matches fork A's root).
     assert_eq!(
-        block_bid.message.builder_index, 1,
+        *block_bid.message().builder_index(),
+        1,
         "block should use builder 1's bid (fork B), not builder 0's stale bid (fork A)"
     );
     assert_eq!(
-        block_bid.message.value, fork_b_bid_value,
+        *block_bid.message().value(),
+        fork_b_bid_value,
         "block should use fork B's bid value ({fork_b_bid_value}), not fork A's ({fork_a_bid_value})"
     );
     assert_eq!(
-        block_bid.message.parent_block_root, fork_b_root,
+        *block_bid.message().parent_block_root(),
+        fork_b_root,
         "block's bid should reference fork B's root as parent"
     );
 
@@ -20177,14 +20272,14 @@ async fn gloas_range_sync_across_fulu_to_gloas_fork_boundary() {
         "head should be a Gloas block after range sync"
     );
 
-    let head_bid_hash = head
+    let head_bid_hash = *head
         .beacon_block
         .message()
         .body()
         .signed_execution_payload_bid()
         .expect("Gloas head should have a bid")
-        .message
-        .block_hash;
+        .message()
+        .block_hash();
     let head_latest_hash = *head
         .beacon_state
         .latest_block_hash()
@@ -20666,7 +20761,7 @@ async fn gloas_multi_epoch_mixed_full_empty_chain_finalizes() {
         if is_empty {
             // External bid: inject bid, produce block, skip envelope
             let bid = make_external_bid(&current_state, current_head_root, slot, 0, 5000 + i);
-            harness.chain.execution_bid_pool.lock().insert(bid);
+            harness.chain.execution_bid_pool.lock().insert(bid.into());
 
             harness.advance_slot();
             let ((block, blobs), post_state, env) =
@@ -20784,14 +20879,16 @@ async fn gloas_multi_epoch_mixed_full_empty_chain_finalizes() {
     );
 
     // Verify latest_block_hash consistency at the head
-    let head_bid = final_head
+    let head_bid = match final_head
         .beacon_block
         .message()
         .body()
         .signed_execution_payload_bid()
         .expect("should be Gloas block")
-        .message
-        .clone();
+    {
+        SignedExecutionPayloadBidRef::Gloas(inner) => inner.message.clone(),
+        _ => panic!("expected Gloas bid"),
+    };
     let head_latest_hash = *final_head
         .beacon_state
         .latest_block_hash()
@@ -20849,13 +20946,13 @@ async fn gloas_load_parent_blinded_envelope_fallback_after_pruning() {
     let parent_slot = parent_state.slot();
 
     // Record parent's bid block_hash (the expected latest_block_hash after envelope).
-    let parent_bid_hash = parent_block
+    let parent_bid_hash = *parent_block
         .message()
         .body()
         .signed_execution_payload_bid()
         .expect("should be Gloas")
-        .message
-        .block_hash;
+        .message()
+        .block_hash();
 
     // Pre-condition: parent state has correct latest_block_hash.
     assert_eq!(
@@ -20875,14 +20972,14 @@ async fn gloas_load_parent_blinded_envelope_fallback_after_pruning() {
     let child_block_root = child_block_contents.0.canonical_root();
 
     // Verify child references parent as FULL (parent_block_hash == parent bid block_hash).
-    let child_parent_block_hash = child_block_contents
+    let child_parent_block_hash = *child_block_contents
         .0
         .message()
         .body()
         .signed_execution_payload_bid()
         .expect("should be Gloas")
-        .message
-        .parent_block_hash;
+        .message()
+        .parent_block_hash();
     assert_eq!(
         child_parent_block_hash, parent_bid_hash,
         "child should reference parent as FULL"
@@ -20959,7 +21056,7 @@ async fn gloas_load_parent_blinded_envelope_fallback_after_pruning() {
     // Verify head state has correct latest_block_hash from child's envelope.
     harness.chain.recompute_head_at_current_slot().await;
     let new_head_state = harness.chain.head_beacon_state_cloned();
-    let child_bid_hash = harness
+    let child_bid_hash = *harness
         .chain
         .head_snapshot()
         .beacon_block
@@ -20967,8 +21064,8 @@ async fn gloas_load_parent_blinded_envelope_fallback_after_pruning() {
         .body()
         .signed_execution_payload_bid()
         .expect("should be Gloas")
-        .message
-        .block_hash;
+        .message()
+        .block_hash();
     assert_eq!(
         *new_head_state
             .latest_block_hash()
@@ -21142,13 +21239,13 @@ async fn gloas_load_parent_advanced_state_patches_latest_block_hash() {
     let parent_state_root = parent_block.message().state_root();
 
     // Record parent's bid block_hash.
-    let parent_bid_hash = parent_block
+    let parent_bid_hash = *parent_block
         .message()
         .body()
         .signed_execution_payload_bid()
         .expect("should be Gloas")
-        .message
-        .block_hash;
+        .message()
+        .block_hash();
 
     // Pre-condition: parent state has correct latest_block_hash (post-envelope).
     assert_eq!(
@@ -21168,14 +21265,16 @@ async fn gloas_load_parent_advanced_state_patches_latest_block_hash() {
     let child_block_root = child_block_contents.0.canonical_root();
 
     // Verify child references parent as FULL.
-    let child_bid = child_block_contents
+    let child_bid = match child_block_contents
         .0
         .message()
         .body()
         .signed_execution_payload_bid()
         .expect("should be Gloas")
-        .message
-        .clone();
+    {
+        SignedExecutionPayloadBidRef::Gloas(inner) => inner.message.clone(),
+        _ => panic!("expected Gloas bid"),
+    };
     assert_eq!(
         child_bid.parent_block_hash, parent_bid_hash,
         "child should reference parent as FULL"
@@ -21286,13 +21385,13 @@ async fn gloas_load_parent_no_envelope_in_store_patches_latest_block_hash() {
     let parent_slot = parent_state.slot();
 
     // Record parent's bid block_hash.
-    let parent_bid_hash = parent_block
+    let parent_bid_hash = *parent_block
         .message()
         .body()
         .signed_execution_payload_bid()
         .expect("should be Gloas")
-        .message
-        .block_hash;
+        .message()
+        .block_hash();
 
     // Pre-condition: parent state has correct latest_block_hash.
     assert_eq!(
@@ -21312,14 +21411,14 @@ async fn gloas_load_parent_no_envelope_in_store_patches_latest_block_hash() {
     let child_block_root = child_block_contents.0.canonical_root();
 
     // Verify child references parent as FULL.
-    let child_parent_block_hash = child_block_contents
+    let child_parent_block_hash = *child_block_contents
         .0
         .message()
         .body()
         .signed_execution_payload_bid()
         .expect("should be Gloas")
-        .message
-        .parent_block_hash;
+        .message()
+        .parent_block_hash();
     assert_eq!(
         child_parent_block_hash, parent_bid_hash,
         "child should reference parent as FULL"
@@ -21398,7 +21497,7 @@ async fn gloas_load_parent_no_envelope_in_store_patches_latest_block_hash() {
 
     // Verify head state has correct latest_block_hash after child import + envelope.
     let head_state = harness.chain.head_beacon_state_cloned();
-    let child_bid_hash = harness
+    let child_bid_hash = *harness
         .chain
         .head_snapshot()
         .beacon_block
@@ -21406,8 +21505,8 @@ async fn gloas_load_parent_no_envelope_in_store_patches_latest_block_hash() {
         .body()
         .signed_execution_payload_bid()
         .expect("should be Gloas")
-        .message
-        .block_hash;
+        .message()
+        .block_hash();
     assert_eq!(
         *head_state
             .latest_block_hash()

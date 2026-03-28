@@ -5905,7 +5905,7 @@ async fn gloas_reconstruct_states_with_empty_path_block() {
     // This ensures the EMPTY-path state's expected withdrawals match those the mock EL
     // computed from the previous forkchoiceUpdated, avoiding WithdrawalsRootMismatch
     // when building the continuation block.
-    let bid = ExecutionPayloadBid {
+    let bid = ExecutionPayloadBidGloas {
         slot: empty_path_slot,
         builder_index: 0,
         value: 0,
@@ -5917,7 +5917,6 @@ async fn gloas_reconstruct_states_with_empty_path_block() {
         gas_limit: 30_000_000,
         execution_payment: 0,
         blob_kzg_commitments: VariableList::default(),
-        inclusion_list_bits: BitVector::default(),
     };
     let epoch = empty_path_slot.epoch(slots_per_epoch);
     let domain = spec.get_domain(
@@ -5928,7 +5927,7 @@ async fn gloas_reconstruct_states_with_empty_path_block() {
     );
     let signing_root = bid.signing_root(domain);
     let signature = builder_keypair.sk.sign(signing_root);
-    let signed_bid = SignedExecutionPayloadBid::<E> {
+    let signed_bid = SignedExecutionPayloadBidGloas::<E> {
         message: bid,
         signature,
     };
@@ -5936,7 +5935,7 @@ async fn gloas_reconstruct_states_with_empty_path_block() {
         .chain
         .execution_bid_pool
         .lock()
-        .insert(signed_bid.clone());
+        .insert(signed_bid.clone().into());
 
     // Produce block using the external bid (no self-build envelope).
     harness.set_current_slot(empty_path_slot);
@@ -5999,7 +5998,8 @@ async fn gloas_reconstruct_states_with_empty_path_block() {
         .signed_execution_payload_bid()
         .expect("continuation should have bid");
     assert_eq!(
-        cont_bid.message.parent_block_hash, grandparent_el_hash,
+        *cont_bid.message().parent_block_hash(),
+        grandparent_el_hash,
         "continuation bid parent_block_hash should be the grandparent EL hash (EMPTY path)"
     );
     // Verify parent_root points to the EMPTY block.

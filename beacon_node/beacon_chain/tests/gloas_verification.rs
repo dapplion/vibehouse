@@ -171,12 +171,12 @@ async fn gloas_harness_with_builders(
 async fn bid_slot_not_current_or_next_past() {
     let harness = gloas_harness(1).await;
 
-    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    let mut bid = SignedExecutionPayloadBidGloas::<E>::empty();
     bid.message.slot = Slot::new(0);
     bid.message.execution_payment = 1;
 
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid),
+        harness.chain.verify_execution_bid_for_gossip(bid.into()),
         "should reject past slot bid",
     );
     assert!(
@@ -190,12 +190,12 @@ async fn bid_slot_not_current_or_next_future() {
     let harness = gloas_harness(1).await;
     let current_slot = harness.chain.slot().unwrap();
 
-    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    let mut bid = SignedExecutionPayloadBidGloas::<E>::empty();
     bid.message.slot = current_slot + 10;
     bid.message.execution_payment = 1;
 
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid),
+        harness.chain.verify_execution_bid_for_gossip(bid.into()),
         "should reject future slot bid",
     );
     assert!(
@@ -209,12 +209,12 @@ async fn bid_zero_execution_payment() {
     let harness = gloas_harness(1).await;
     let current_slot = harness.chain.slot().unwrap();
 
-    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    let mut bid = SignedExecutionPayloadBidGloas::<E>::empty();
     bid.message.slot = current_slot;
     bid.message.execution_payment = 0;
 
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid),
+        harness.chain.verify_execution_bid_for_gossip(bid.into()),
         "should reject zero payment bid",
     );
     assert!(
@@ -228,13 +228,13 @@ async fn bid_unknown_builder_index_zero() {
     let harness = gloas_harness(1).await;
     let current_slot = harness.chain.slot().unwrap();
 
-    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    let mut bid = SignedExecutionPayloadBidGloas::<E>::empty();
     bid.message.slot = current_slot;
     bid.message.execution_payment = 1;
     bid.message.builder_index = 0;
 
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid),
+        harness.chain.verify_execution_bid_for_gossip(bid.into()),
         "should reject unknown builder",
     );
     assert!(
@@ -248,13 +248,13 @@ async fn bid_unknown_builder_high_index() {
     let harness = gloas_harness(1).await;
     let current_slot = harness.chain.slot().unwrap();
 
-    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    let mut bid = SignedExecutionPayloadBidGloas::<E>::empty();
     bid.message.slot = current_slot;
     bid.message.execution_payment = 1;
     bid.message.builder_index = 999;
 
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid),
+        harness.chain.verify_execution_bid_for_gossip(bid.into()),
         "should reject unknown builder",
     );
     assert!(
@@ -271,13 +271,13 @@ async fn bid_current_slot_passes_slot_check() {
     let harness = gloas_harness(1).await;
     let current_slot = harness.chain.slot().unwrap();
 
-    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    let mut bid = SignedExecutionPayloadBidGloas::<E>::empty();
     bid.message.slot = current_slot;
     bid.message.execution_payment = 1;
     bid.message.builder_index = 0;
 
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid),
+        harness.chain.verify_execution_bid_for_gossip(bid.into()),
         "should fail on builder check",
     );
     assert!(
@@ -291,13 +291,13 @@ async fn bid_next_slot_passes_slot_check() {
     let harness = gloas_harness(1).await;
     let current_slot = harness.chain.slot().unwrap();
 
-    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    let mut bid = SignedExecutionPayloadBidGloas::<E>::empty();
     bid.message.slot = current_slot + 1;
     bid.message.execution_payment = 1;
     bid.message.builder_index = 0;
 
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid),
+        harness.chain.verify_execution_bid_for_gossip(bid.into()),
         "should fail on builder check",
     );
     assert!(
@@ -311,13 +311,13 @@ async fn bid_slot_two_ahead_rejected() {
     let harness = gloas_harness(3).await;
     let current_slot = harness.chain.slot().unwrap();
 
-    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    let mut bid = SignedExecutionPayloadBidGloas::<E>::empty();
     bid.message.slot = current_slot + 2;
     bid.message.execution_payment = 1;
     bid.message.builder_index = 42;
 
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid),
+        harness.chain.verify_execution_bid_for_gossip(bid.into()),
         "should reject bid two slots ahead",
     );
     assert!(
@@ -331,13 +331,13 @@ async fn bid_slot_one_behind_rejected() {
     let harness = gloas_harness(3).await;
     let current_slot = harness.chain.slot().unwrap();
 
-    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    let mut bid = SignedExecutionPayloadBidGloas::<E>::empty();
     bid.message.slot = current_slot - 1;
     bid.message.execution_payment = 1;
     bid.message.builder_index = 42;
 
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid),
+        harness.chain.verify_execution_bid_for_gossip(bid.into()),
         "should reject bid one slot behind",
     );
     assert!(
@@ -357,13 +357,13 @@ async fn bid_inactive_builder() {
     let harness = gloas_harness_with_builders(1, &[(5, 2_000_000_000)]).await;
     let current_slot = harness.chain.slot().unwrap();
 
-    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    let mut bid = SignedExecutionPayloadBidGloas::<E>::empty();
     bid.message.slot = current_slot;
     bid.message.execution_payment = 1;
     bid.message.builder_index = 0; // first builder
 
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid),
+        harness.chain.verify_execution_bid_for_gossip(bid.into()),
         "should reject inactive builder",
     );
     assert!(
@@ -399,14 +399,14 @@ async fn bid_insufficient_builder_balance() {
 
     let current_slot = harness.chain.slot().unwrap();
 
-    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    let mut bid = SignedExecutionPayloadBidGloas::<E>::empty();
     bid.message.slot = current_slot;
     bid.message.execution_payment = 1;
     bid.message.builder_index = 0;
     bid.message.value = 100; // exceeds excess balance of 0
 
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid),
+        harness.chain.verify_execution_bid_for_gossip(bid.into()),
         "should reject insufficient balance",
     );
     assert!(
@@ -433,7 +433,7 @@ async fn bid_duplicate_via_gossip_path() {
     let head_root = head.beacon_block_root;
     let state = &head.beacon_state;
 
-    let bid_msg = ExecutionPayloadBid::<E> {
+    let bid_msg = ExecutionPayloadBidGloas::<E> {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -456,18 +456,20 @@ async fn bid_duplicate_via_gossip_path() {
         state.genesis_validators_root(),
     );
     let signature = BUILDER_KEYPAIRS[0].sk.sign(bid_msg.signing_root(domain));
-    let bid = SignedExecutionPayloadBid {
+    let bid = SignedExecutionPayloadBidGloas {
         message: bid_msg,
         signature,
     };
 
     // First submission: passes all checks, recorded as New.
-    let result = harness.chain.verify_execution_bid_for_gossip(bid.clone());
+    let result = harness
+        .chain
+        .verify_execution_bid_for_gossip(bid.clone().into());
     assert!(result.is_ok(), "first bid should pass: {:?}", result.err());
 
     // Second submission: same bid, same root → Duplicate.
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid),
+        harness.chain.verify_execution_bid_for_gossip(bid.into()),
         "should reject duplicate bid",
     );
     assert!(
@@ -495,7 +497,7 @@ async fn bid_equivocation_via_gossip_path() {
     );
 
     // First bid: value=100, properly signed.
-    let bid_msg_1 = ExecutionPayloadBid::<E> {
+    let bid_msg_1 = ExecutionPayloadBidGloas::<E> {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -512,17 +514,17 @@ async fn bid_equivocation_via_gossip_path() {
     );
 
     let signature_1 = BUILDER_KEYPAIRS[0].sk.sign(bid_msg_1.signing_root(domain));
-    let bid_1 = SignedExecutionPayloadBid {
+    let bid_1 = SignedExecutionPayloadBidGloas {
         message: bid_msg_1,
         signature: signature_1,
     };
 
     // Submit first bid — passes all checks, recorded as New.
-    let result = harness.chain.verify_execution_bid_for_gossip(bid_1);
+    let result = harness.chain.verify_execution_bid_for_gossip(bid_1.into());
     assert!(result.is_ok(), "first bid should pass: {:?}", result.err());
 
     // Second bid: different value → different tree_hash_root. Same builder/slot.
-    let bid_msg_2 = ExecutionPayloadBid::<E> {
+    let bid_msg_2 = ExecutionPayloadBidGloas::<E> {
         slot: current_slot,
         execution_payment: 2,
         builder_index: 0,
@@ -531,13 +533,13 @@ async fn bid_equivocation_via_gossip_path() {
         ..Default::default()
     };
     let signature_2 = BUILDER_KEYPAIRS[0].sk.sign(bid_msg_2.signing_root(domain));
-    let bid_2 = SignedExecutionPayloadBid {
+    let bid_2 = SignedExecutionPayloadBidGloas {
         message: bid_msg_2,
         signature: signature_2,
     };
 
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid_2),
+        harness.chain.verify_execution_bid_for_gossip(bid_2.into()),
         "should reject equivocating bid",
     );
     assert!(
@@ -558,7 +560,7 @@ async fn bid_invalid_parent_root() {
     let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
     let current_slot = harness.chain.slot().unwrap();
 
-    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    let mut bid = SignedExecutionPayloadBidGloas::<E>::empty();
     bid.message.slot = current_slot;
     bid.message.execution_payment = 1;
     bid.message.builder_index = 0;
@@ -566,7 +568,7 @@ async fn bid_invalid_parent_root() {
     bid.message.parent_block_root = Hash256::from_low_u64_be(0x0bad_beef);
 
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid),
+        harness.chain.verify_execution_bid_for_gossip(bid.into()),
         "should reject invalid parent root",
     );
     assert!(
@@ -584,7 +586,7 @@ async fn bid_unknown_parent_block_hash() {
     let head = harness.chain.head_snapshot();
     let head_root = head.beacon_block_root;
 
-    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    let mut bid = SignedExecutionPayloadBidGloas::<E>::empty();
     bid.message.slot = current_slot;
     bid.message.execution_payment = 1;
     bid.message.builder_index = 0;
@@ -595,7 +597,7 @@ async fn bid_unknown_parent_block_hash() {
         ExecutionBlockHash::from_root(Hash256::from_low_u64_be(0xbad_cafe));
 
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid),
+        harness.chain.verify_execution_bid_for_gossip(bid.into()),
         "should reject unknown parent block hash",
     );
     assert!(
@@ -613,7 +615,7 @@ async fn bid_invalid_signature() {
     let head = harness.chain.head_snapshot();
     let head_root = head.beacon_block_root;
 
-    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    let mut bid = SignedExecutionPayloadBidGloas::<E>::empty();
     bid.message.slot = current_slot;
     bid.message.execution_payment = 1;
     bid.message.builder_index = 0;
@@ -630,7 +632,7 @@ async fn bid_invalid_signature() {
     );
 
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid),
+        harness.chain.verify_execution_bid_for_gossip(bid.into()),
         "should reject invalid signature",
     );
     assert!(
@@ -650,7 +652,7 @@ async fn bid_valid_signature_passes() {
     let head_root = head.beacon_block_root;
     let state = &head.beacon_state;
 
-    let bid_msg = ExecutionPayloadBid::<E> {
+    let bid_msg = ExecutionPayloadBidGloas::<E> {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -677,12 +679,12 @@ async fn bid_valid_signature_passes() {
     let signing_root = bid_msg.signing_root(domain);
     let signature = BUILDER_KEYPAIRS[0].sk.sign(signing_root);
 
-    let bid = SignedExecutionPayloadBid {
+    let bid = SignedExecutionPayloadBidGloas {
         message: bid_msg,
         signature,
     };
 
-    let result = harness.chain.verify_execution_bid_for_gossip(bid);
+    let result = harness.chain.verify_execution_bid_for_gossip(bid.into());
     assert!(
         result.is_ok(),
         "valid bid should pass all checks, got {:?}",
@@ -953,7 +955,7 @@ async fn envelope_builder_index_mismatch() {
     let mut envelope = SignedExecutionPayloadEnvelope::<E>::empty();
     envelope.message.beacon_block_root = head_root;
     envelope.message.slot = head_slot;
-    envelope.message.builder_index = committed_bid.message.builder_index.wrapping_add(1);
+    envelope.message.builder_index = (*committed_bid.message().builder_index()).wrapping_add(1);
 
     let err = unwrap_err(
         harness
@@ -993,7 +995,7 @@ async fn envelope_block_hash_mismatch() {
     let mut envelope = SignedExecutionPayloadEnvelope::<E>::empty();
     envelope.message.beacon_block_root = head_root;
     envelope.message.slot = head_slot;
-    envelope.message.builder_index = committed_bid.message.builder_index;
+    envelope.message.builder_index = *committed_bid.message().builder_index();
     envelope.message.payload.block_hash =
         ExecutionBlockHash::from_root(Hash256::from_low_u64_be(0xbad));
 
@@ -1620,7 +1622,7 @@ async fn bid_balance_exactly_sufficient_passes() {
     let head_root = head.beacon_block_root;
     let state = &head.beacon_state;
 
-    let bid_msg = ExecutionPayloadBid::<E> {
+    let bid_msg = ExecutionPayloadBidGloas::<E> {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -1646,12 +1648,12 @@ async fn bid_balance_exactly_sufficient_passes() {
     let signing_root = bid_msg.signing_root(domain);
     let signature = BUILDER_KEYPAIRS[0].sk.sign(signing_root);
 
-    let bid = SignedExecutionPayloadBid {
+    let bid = SignedExecutionPayloadBidGloas {
         message: bid_msg,
         signature,
     };
 
-    let result = harness.chain.verify_execution_bid_for_gossip(bid);
+    let result = harness.chain.verify_execution_bid_for_gossip(bid.into());
     assert!(
         result.is_ok(),
         "bid with value == balance should pass, got {:?}",
@@ -1670,7 +1672,7 @@ async fn bid_balance_one_over_rejected() {
     let head = harness.chain.head_snapshot();
     let head_root = head.beacon_block_root;
 
-    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    let mut bid = SignedExecutionPayloadBidGloas::<E>::empty();
     bid.message.slot = current_slot;
     bid.message.execution_payment = 1;
     bid.message.builder_index = 0;
@@ -1678,7 +1680,7 @@ async fn bid_balance_one_over_rejected() {
     bid.message.parent_block_root = head_root;
 
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid),
+        harness.chain.verify_execution_bid_for_gossip(bid.into()),
         "should reject bid exceeding excess balance by 1",
     );
     assert!(
@@ -1727,11 +1729,11 @@ async fn envelope_external_builder_valid_signature_passes() {
     let mut envelope_msg = ExecutionPayloadEnvelope::<E>::empty();
     envelope_msg.beacon_block_root = head_root;
     envelope_msg.slot = head_slot;
-    envelope_msg.builder_index = committed_bid.message.builder_index;
-    envelope_msg.payload.block_hash = committed_bid.message.block_hash;
+    envelope_msg.builder_index = *committed_bid.message().builder_index();
+    envelope_msg.payload.block_hash = *committed_bid.message().block_hash();
 
     // Only sign if it's an external builder (non-self-build)
-    if committed_bid.message.builder_index != types::consts::gloas::BUILDER_INDEX_SELF_BUILD {
+    if *committed_bid.message().builder_index() != types::consts::gloas::BUILDER_INDEX_SELF_BUILD {
         let epoch = head_slot.epoch(E::slots_per_epoch());
         let domain = spec.get_domain(
             epoch,
@@ -1740,7 +1742,7 @@ async fn envelope_external_builder_valid_signature_passes() {
             state.genesis_validators_root(),
         );
         let signing_root = envelope_msg.signing_root(domain);
-        let bi = committed_bid.message.builder_index as usize;
+        let bi = *committed_bid.message().builder_index() as usize;
         let signature = BUILDER_KEYPAIRS[bi].sk.sign(signing_root);
 
         let signed_envelope = SignedExecutionPayloadEnvelope {
@@ -1789,10 +1791,10 @@ async fn envelope_external_builder_invalid_signature_rejected() {
     let mut envelope_msg = ExecutionPayloadEnvelope::<E>::empty();
     envelope_msg.beacon_block_root = head_root;
     envelope_msg.slot = head_slot;
-    envelope_msg.builder_index = committed_bid.message.builder_index;
-    envelope_msg.payload.block_hash = committed_bid.message.block_hash;
+    envelope_msg.builder_index = *committed_bid.message().builder_index();
+    envelope_msg.payload.block_hash = *committed_bid.message().block_hash();
 
-    if committed_bid.message.builder_index != types::consts::gloas::BUILDER_INDEX_SELF_BUILD {
+    if *committed_bid.message().builder_index() != types::consts::gloas::BUILDER_INDEX_SELF_BUILD {
         // Use an empty (invalid) signature
         let signed_envelope = SignedExecutionPayloadEnvelope {
             message: envelope_msg,
@@ -1987,7 +1989,7 @@ async fn envelope_self_build_verifies_proposer_signature() {
 
     // The test harness produces self-build blocks
     assert_eq!(
-        committed_bid.message.builder_index,
+        *committed_bid.message().builder_index(),
         types::consts::gloas::BUILDER_INDEX_SELF_BUILD,
         "harness should produce self-build blocks"
     );
@@ -1999,7 +2001,7 @@ async fn envelope_self_build_verifies_proposer_signature() {
     envelope_msg.beacon_block_root = head_root;
     envelope_msg.slot = head_slot;
     envelope_msg.builder_index = types::consts::gloas::BUILDER_INDEX_SELF_BUILD;
-    envelope_msg.payload.block_hash = committed_bid.message.block_hash;
+    envelope_msg.payload.block_hash = *committed_bid.message().block_hash();
 
     // Sign with the proposer's key
     let proposer_index = block.message().proposer_index() as usize;
@@ -2055,7 +2057,7 @@ async fn envelope_self_build_empty_signature_rejected() {
         .unwrap();
 
     assert_eq!(
-        committed_bid.message.builder_index,
+        *committed_bid.message().builder_index(),
         types::consts::gloas::BUILDER_INDEX_SELF_BUILD,
     );
 
@@ -2065,7 +2067,7 @@ async fn envelope_self_build_empty_signature_rejected() {
     envelope_msg.beacon_block_root = head_root;
     envelope_msg.slot = head_slot;
     envelope_msg.builder_index = types::consts::gloas::BUILDER_INDEX_SELF_BUILD;
-    envelope_msg.payload.block_hash = committed_bid.message.block_hash;
+    envelope_msg.payload.block_hash = *committed_bid.message().block_hash();
 
     let signed_envelope = SignedExecutionPayloadEnvelope {
         message: envelope_msg,
@@ -2154,7 +2156,7 @@ async fn bid_no_proposer_preferences_is_ignored() {
 
     // Build a bid with valid slot, builder index, and parent root
     // but do NOT insert any proposer preferences for this slot
-    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    let mut bid = SignedExecutionPayloadBidGloas::<E>::empty();
     bid.message.slot = current_slot;
     bid.message.execution_payment = 1;
     bid.message.builder_index = 0;
@@ -2163,7 +2165,7 @@ async fn bid_no_proposer_preferences_is_ignored() {
 
     // Without preferences, the bid should be ignored per spec.
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid),
+        harness.chain.verify_execution_bid_for_gossip(bid.into()),
         "should ignore bid without proposer preferences",
     );
     assert!(
@@ -2184,7 +2186,7 @@ async fn bid_fee_recipient_mismatch_rejected() {
     let head_root = head.beacon_block_root;
 
     // The bid uses a specific fee_recipient
-    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    let mut bid = SignedExecutionPayloadBidGloas::<E>::empty();
     bid.message.slot = current_slot;
     bid.message.execution_payment = 1;
     bid.message.builder_index = 0;
@@ -2205,7 +2207,7 @@ async fn bid_fee_recipient_mismatch_rejected() {
     harness.chain.insert_proposer_preferences(preferences);
 
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid),
+        harness.chain.verify_execution_bid_for_gossip(bid.into()),
         "should reject bid with wrong fee_recipient",
     );
     assert!(
@@ -2232,7 +2234,7 @@ async fn bid_gas_limit_mismatch_rejected() {
     let head_root = head.beacon_block_root;
 
     // Build a bid with gas_limit = 30_000_000
-    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    let mut bid = SignedExecutionPayloadBidGloas::<E>::empty();
     bid.message.slot = current_slot;
     bid.message.execution_payment = 1;
     bid.message.builder_index = 0;
@@ -2253,7 +2255,7 @@ async fn bid_gas_limit_mismatch_rejected() {
     harness.chain.insert_proposer_preferences(preferences);
 
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid),
+        harness.chain.verify_execution_bid_for_gossip(bid.into()),
         "should reject bid with wrong gas_limit",
     );
     assert!(
@@ -2287,7 +2289,7 @@ async fn bid_second_builder_valid_signature_passes() {
     let head_root = head.beacon_block_root;
     let state = &head.beacon_state;
 
-    let bid_msg = ExecutionPayloadBid::<E> {
+    let bid_msg = ExecutionPayloadBidGloas::<E> {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 1,
@@ -2313,12 +2315,12 @@ async fn bid_second_builder_valid_signature_passes() {
     let signing_root = bid_msg.signing_root(domain);
     let signature = BUILDER_KEYPAIRS[1].sk.sign(signing_root);
 
-    let bid = SignedExecutionPayloadBid {
+    let bid = SignedExecutionPayloadBidGloas {
         message: bid_msg,
         signature,
     };
 
-    let result = harness.chain.verify_execution_bid_for_gossip(bid);
+    let result = harness.chain.verify_execution_bid_for_gossip(bid.into());
     assert!(
         result.is_ok(),
         "valid bid from second builder should pass, got {:?}",
@@ -2467,7 +2469,7 @@ async fn bid_not_highest_value_rejected() {
     );
 
     // Builder 0 submits first bid with value=500
-    let bid_msg_1 = ExecutionPayloadBid::<E> {
+    let bid_msg_1 = ExecutionPayloadBidGloas::<E> {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -2482,11 +2484,11 @@ async fn bid_not_highest_value_rejected() {
         bid_msg_1.gas_limit,
     );
     let sig_1 = BUILDER_KEYPAIRS[0].sk.sign(bid_msg_1.signing_root(domain));
-    let bid_1 = SignedExecutionPayloadBid {
+    let bid_1 = SignedExecutionPayloadBidGloas {
         message: bid_msg_1,
         signature: sig_1,
     };
-    let result_1 = harness.chain.verify_execution_bid_for_gossip(bid_1);
+    let result_1 = harness.chain.verify_execution_bid_for_gossip(bid_1.into());
     assert!(
         result_1.is_ok(),
         "first bid (value=500) should pass, got {:?}",
@@ -2494,7 +2496,7 @@ async fn bid_not_highest_value_rejected() {
     );
 
     // Builder 1 submits second bid with lower value=100, same slot + parent_block_hash
-    let bid_msg_2 = ExecutionPayloadBid::<E> {
+    let bid_msg_2 = ExecutionPayloadBidGloas::<E> {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 1,
@@ -2503,12 +2505,12 @@ async fn bid_not_highest_value_rejected() {
         ..Default::default()
     };
     let sig_2 = BUILDER_KEYPAIRS[1].sk.sign(bid_msg_2.signing_root(domain));
-    let bid_2 = SignedExecutionPayloadBid {
+    let bid_2 = SignedExecutionPayloadBidGloas {
         message: bid_msg_2,
         signature: sig_2,
     };
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid_2),
+        harness.chain.verify_execution_bid_for_gossip(bid_2.into()),
         "lower-value bid should be rejected",
     );
     assert!(
@@ -2544,7 +2546,7 @@ async fn bid_higher_value_replaces_lower() {
     );
 
     // Builder 0 submits first bid with value=100
-    let bid_msg_1 = ExecutionPayloadBid::<E> {
+    let bid_msg_1 = ExecutionPayloadBidGloas::<E> {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -2559,11 +2561,11 @@ async fn bid_higher_value_replaces_lower() {
         bid_msg_1.gas_limit,
     );
     let sig_1 = BUILDER_KEYPAIRS[0].sk.sign(bid_msg_1.signing_root(domain));
-    let bid_1 = SignedExecutionPayloadBid {
+    let bid_1 = SignedExecutionPayloadBidGloas {
         message: bid_msg_1,
         signature: sig_1,
     };
-    let result_1 = harness.chain.verify_execution_bid_for_gossip(bid_1);
+    let result_1 = harness.chain.verify_execution_bid_for_gossip(bid_1.into());
     assert!(
         result_1.is_ok(),
         "first bid (value=100) should pass, got {:?}",
@@ -2571,7 +2573,7 @@ async fn bid_higher_value_replaces_lower() {
     );
 
     // Builder 1 submits second bid with higher value=500
-    let bid_msg_2 = ExecutionPayloadBid::<E> {
+    let bid_msg_2 = ExecutionPayloadBidGloas::<E> {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 1,
@@ -2580,11 +2582,11 @@ async fn bid_higher_value_replaces_lower() {
         ..Default::default()
     };
     let sig_2 = BUILDER_KEYPAIRS[1].sk.sign(bid_msg_2.signing_root(domain));
-    let bid_2 = SignedExecutionPayloadBid {
+    let bid_2 = SignedExecutionPayloadBidGloas {
         message: bid_msg_2,
         signature: sig_2,
     };
-    let result_2 = harness.chain.verify_execution_bid_for_gossip(bid_2);
+    let result_2 = harness.chain.verify_execution_bid_for_gossip(bid_2.into());
     assert!(
         result_2.is_ok(),
         "higher-value bid (value=500) should pass, got {:?}",
@@ -2621,7 +2623,7 @@ async fn bid_equal_value_rejected() {
     );
 
     // Builder 0 submits first bid with value=200
-    let bid_msg_1 = ExecutionPayloadBid::<E> {
+    let bid_msg_1 = ExecutionPayloadBidGloas::<E> {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -2636,11 +2638,11 @@ async fn bid_equal_value_rejected() {
         bid_msg_1.gas_limit,
     );
     let sig_1 = BUILDER_KEYPAIRS[0].sk.sign(bid_msg_1.signing_root(domain));
-    let bid_1 = SignedExecutionPayloadBid {
+    let bid_1 = SignedExecutionPayloadBidGloas {
         message: bid_msg_1,
         signature: sig_1,
     };
-    let result_1 = harness.chain.verify_execution_bid_for_gossip(bid_1);
+    let result_1 = harness.chain.verify_execution_bid_for_gossip(bid_1.into());
     assert!(
         result_1.is_ok(),
         "first bid (value=200) should pass, got {:?}",
@@ -2648,7 +2650,7 @@ async fn bid_equal_value_rejected() {
     );
 
     // Builder 1 submits bid with equal value=200 → rejected (must be strictly greater)
-    let bid_msg_2 = ExecutionPayloadBid::<E> {
+    let bid_msg_2 = ExecutionPayloadBidGloas::<E> {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 1,
@@ -2657,12 +2659,12 @@ async fn bid_equal_value_rejected() {
         ..Default::default()
     };
     let sig_2 = BUILDER_KEYPAIRS[1].sk.sign(bid_msg_2.signing_root(domain));
-    let bid_2 = SignedExecutionPayloadBid {
+    let bid_2 = SignedExecutionPayloadBidGloas {
         message: bid_msg_2,
         signature: sig_2,
     };
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid_2),
+        harness.chain.verify_execution_bid_for_gossip(bid_2.into()),
         "equal-value bid should be rejected",
     );
     assert!(
@@ -2707,8 +2709,8 @@ async fn bid_invalid_signature_does_not_poison_equivocation_tracker() {
     insert_preferences_for_bid(&harness.chain, current_slot, fee_recipient, gas_limit);
 
     // Step 1: Submit a bid with an invalid signature (Signature::empty()).
-    let bad_sig_bid = SignedExecutionPayloadBid {
-        message: ExecutionPayloadBid::<E> {
+    let bad_sig_bid = SignedExecutionPayloadBidGloas {
+        message: ExecutionPayloadBidGloas::<E> {
             slot: current_slot,
             execution_payment: 1,
             builder_index: 0,
@@ -2720,7 +2722,9 @@ async fn bid_invalid_signature_does_not_poison_equivocation_tracker() {
     };
 
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bad_sig_bid),
+        harness
+            .chain
+            .verify_execution_bid_for_gossip(bad_sig_bid.into()),
         "bad-sig bid should be rejected",
     );
     assert!(
@@ -2731,7 +2735,7 @@ async fn bid_invalid_signature_does_not_poison_equivocation_tracker() {
     // Step 2: Submit a valid bid from the SAME builder with a different message
     // (different value → different tree_hash_root). If the equivocation tracker
     // was poisoned by the bad-sig bid, this would return Equivocation or Duplicate.
-    let valid_bid_msg = ExecutionPayloadBid::<E> {
+    let valid_bid_msg = ExecutionPayloadBidGloas::<E> {
         slot: current_slot,
         execution_payment: 2,
         builder_index: 0,
@@ -2742,12 +2746,14 @@ async fn bid_invalid_signature_does_not_poison_equivocation_tracker() {
     let valid_sig = BUILDER_KEYPAIRS[0]
         .sk
         .sign(valid_bid_msg.signing_root(domain));
-    let valid_bid = SignedExecutionPayloadBid {
+    let valid_bid = SignedExecutionPayloadBidGloas {
         message: valid_bid_msg,
         signature: valid_sig,
     };
 
-    let result = harness.chain.verify_execution_bid_for_gossip(valid_bid);
+    let result = harness
+        .chain
+        .verify_execution_bid_for_gossip(valid_bid.into());
     assert!(
         result.is_ok(),
         "valid bid after bad-sig bid should pass (tracker not poisoned): {:?}",
@@ -2790,7 +2796,7 @@ async fn bid_equivocation_short_circuits_before_highest_value() {
     insert_preferences_for_bid(&harness.chain, current_slot, Address::zero(), 0);
 
     // Step 1: Builder 0 submits bid A (value=500) → accepted, highest_bid_values = 500
-    let bid_msg_a = ExecutionPayloadBid::<E> {
+    let bid_msg_a = ExecutionPayloadBidGloas::<E> {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -2799,11 +2805,11 @@ async fn bid_equivocation_short_circuits_before_highest_value() {
         ..Default::default()
     };
     let sig_a = BUILDER_KEYPAIRS[0].sk.sign(bid_msg_a.signing_root(domain));
-    let bid_a = SignedExecutionPayloadBid {
+    let bid_a = SignedExecutionPayloadBidGloas {
         message: bid_msg_a,
         signature: sig_a,
     };
-    let result_a = harness.chain.verify_execution_bid_for_gossip(bid_a);
+    let result_a = harness.chain.verify_execution_bid_for_gossip(bid_a.into());
     assert!(
         result_a.is_ok(),
         "first bid should pass: {:?}",
@@ -2812,7 +2818,7 @@ async fn bid_equivocation_short_circuits_before_highest_value() {
 
     // Step 2: Builder 0 submits bid B (value=100, different message) → equivocation.
     // This must return BuilderEquivocation, NOT NotHighestValue.
-    let bid_msg_b = ExecutionPayloadBid::<E> {
+    let bid_msg_b = ExecutionPayloadBidGloas::<E> {
         slot: current_slot,
         execution_payment: 2,
         builder_index: 0,
@@ -2821,12 +2827,12 @@ async fn bid_equivocation_short_circuits_before_highest_value() {
         ..Default::default()
     };
     let sig_b = BUILDER_KEYPAIRS[0].sk.sign(bid_msg_b.signing_root(domain));
-    let bid_b = SignedExecutionPayloadBid {
+    let bid_b = SignedExecutionPayloadBidGloas {
         message: bid_msg_b,
         signature: sig_b,
     };
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid_b),
+        harness.chain.verify_execution_bid_for_gossip(bid_b.into()),
         "equivocating bid should be rejected",
     );
     assert!(
@@ -2843,7 +2849,7 @@ async fn bid_equivocation_short_circuits_before_highest_value() {
     // Step 3: Builder 1 submits bid (value=600) → should be accepted because the
     // equivocating bid B (value=100) did NOT update highest_bid_values.
     // The tracker still shows 500 from bid A, and 600 > 500.
-    let bid_msg_c = ExecutionPayloadBid::<E> {
+    let bid_msg_c = ExecutionPayloadBidGloas::<E> {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 1,
@@ -2852,11 +2858,11 @@ async fn bid_equivocation_short_circuits_before_highest_value() {
         ..Default::default()
     };
     let sig_c = BUILDER_KEYPAIRS[1].sk.sign(bid_msg_c.signing_root(domain));
-    let bid_c = SignedExecutionPayloadBid {
+    let bid_c = SignedExecutionPayloadBidGloas {
         message: bid_msg_c,
         signature: sig_c,
     };
-    let result_c = harness.chain.verify_execution_bid_for_gossip(bid_c);
+    let result_c = harness.chain.verify_execution_bid_for_gossip(bid_c.into());
     assert!(
         result_c.is_ok(),
         "builder 1's higher bid should pass (equivocation didn't pollute tracker): {:?}",
