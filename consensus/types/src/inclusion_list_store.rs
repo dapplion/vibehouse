@@ -156,7 +156,7 @@ impl<E: EthSpec> InclusionListStore<E> {
         transactions
     }
 
-    /// Get a bitvector (as Vec<bool>) over inclusion list committee indices with bits set
+    /// Get a bitvector (as `Vec<bool>`) over inclusion list committee indices with bits set
     /// for valid, non-equivocating inclusion list submissions for the given slot.
     ///
     /// `committee` is the ordered list of validator indices in the IL committee.
