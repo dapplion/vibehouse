@@ -434,3 +434,15 @@ Added 6 network-level integration tests for the inclusion list gossip validation
 Created `heze_rig()`, `make_inclusion_list()`, and `sign_inclusion_list()` test helpers following the existing Gloas gossip test patterns. Added `tree_hash` dev-dependency to network crate for committee root computation.
 
 Tests: 211/211 network (heze), 60/60 Gloas gossip tests (gloas). Zero clippy warnings.
+
+### Fix IL satisfaction slot offset (run 3823+)
+
+Fixed spec compliance bug in `check_inclusion_list_satisfaction` and `compute_inclusion_list_bits_for_slot` — both were using `envelope.slot` / `slot` directly instead of `slot - 1`.
+
+Per the Heze fork-choice spec, `record_payload_inclusion_list_satisfaction` uses `Slot(state.slot - 1)` — inclusion lists broadcast at slot N-1 constrain the payload at slot N. Similarly, the validator spec requires `is_inclusion_list_bits_inclusive(store, state, slot - 1, bits)` for bid inclusion_list_bits.
+
+The existing `get_best_execution_bid` already correctly used `slot - 1` for the `is_inclusion_list_bits_inclusive` check, but the satisfaction check and self-build bits computation were off by one slot.
+
+Fix: both functions now compute `il_slot = slot - 1` and use it for committee computation and IL store lookups. Slot 0 gracefully returns true/default (no previous slot).
+
+Tests: 86/86 EF (real crypto) + 148/148 EF (fake crypto) + 209 proto_array + 33 inclusion_list_store — all pass.

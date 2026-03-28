@@ -305,7 +305,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     ///
     /// Pre-Heze: always returns true (no IL requirements).
     /// Heze: checks whether the payload's transactions include all IL transactions
-    /// from non-equivocating committee members.
+    /// from non-equivocating committee members at slot - 1.
+    ///
+    /// Spec: `record_payload_inclusion_list_satisfaction` uses `Slot(state.slot - 1)` —
+    /// inclusion lists broadcast at slot N-1 constrain the payload at slot N.
     ///
     /// This is a best-effort check using the local InclusionListStore. If the committee
     /// cannot be computed (e.g., during sync), returns true to avoid blocking.
@@ -318,10 +321,17 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             return true;
         }
 
+        // Spec: get_inclusion_list_transactions(store, state, Slot(state.slot - 1))
+        // ILs broadcast at slot N-1 constrain the payload at slot N.
+        let il_slot = match envelope.slot.as_u64().checked_sub(1) {
+            Some(s) => Slot::new(s),
+            None => return true, // slot 0 has no previous slot
+        };
+
         let head = self.canonical_head.cached_head();
         let state = &head.snapshot.beacon_state;
 
-        let Ok(committee) = get_inclusion_list_committee(state, envelope.slot, &self.spec) else {
+        let Ok(committee) = get_inclusion_list_committee(state, il_slot, &self.spec) else {
             return true; // Cannot compute committee (e.g., during sync)
         };
 
@@ -334,7 +344,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let committee_root = committee_fixed.tree_hash_root();
 
         let store = self.inclusion_list_store.lock();
-        let il_txs = store.get_inclusion_list_transactions(envelope.slot, committee_root);
+        let il_txs = store.get_inclusion_list_transactions(il_slot, committee_root);
 
         if il_txs.is_empty() {
             return true;
@@ -360,7 +370,13 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     /// Compute `inclusion_list_bits` for self-build block production (Heze).
     ///
     /// Returns a BitVector with bits set for IL committee members whose inclusion
-    /// lists have been observed. Pre-Heze: returns all-zeros default.
+    /// lists have been observed at slot - 1.
+    ///
+    /// Spec: `bid.inclusion_list_bits` must satisfy
+    /// `is_inclusion_list_bits_inclusive(store, state, slot - 1, bits)`.
+    /// ILs broadcast at slot N-1 constrain the bid/payload at slot N.
+    ///
+    /// Pre-Heze: returns all-zeros default.
     pub fn compute_inclusion_list_bits_for_slot(
         &self,
         slot: Slot,
@@ -370,10 +386,17 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             return types::BitVector::default();
         }
 
+        // Spec: is_inclusion_list_bits_inclusive(store, state, slot - 1, bits)
+        // ILs broadcast at slot N-1 constrain the bid at slot N.
+        let il_slot = match slot.as_u64().checked_sub(1) {
+            Some(s) => Slot::new(s),
+            None => return types::BitVector::default(),
+        };
+
         let head = self.canonical_head.cached_head();
         let state = &head.snapshot.beacon_state;
 
-        let Ok(committee) = get_inclusion_list_committee(state, slot, &self.spec) else {
+        let Ok(committee) = get_inclusion_list_committee(state, il_slot, &self.spec) else {
             return types::BitVector::default();
         };
 
@@ -387,7 +410,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let committee_root = committee_fixed.tree_hash_root();
 
         let store = self.inclusion_list_store.lock();
-        let bits = store.get_inclusion_list_bits(&committee, committee_root, slot);
+        let bits = store.get_inclusion_list_bits(&committee, committee_root, il_slot);
 
         let mut bitvector = types::BitVector::default();
         for (i, &bit) in bits.iter().enumerate() {
