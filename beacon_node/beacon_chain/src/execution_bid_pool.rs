@@ -99,7 +99,7 @@ mod tests {
     use super::*;
     use types::beacon_block_body::KzgCommitments;
     use types::{
-        Address, ExecutionBlockHash, ExecutionPayloadBid, FixedBytesExtended, Hash256,
+        Address, BitVector, ExecutionBlockHash, ExecutionPayloadBid, FixedBytesExtended, Hash256,
         MainnetEthSpec, Signature,
     };
 
@@ -119,7 +119,7 @@ mod tests {
                 gas_limit: 30_000_000,
                 execution_payment: value,
                 blob_kzg_commitments: KzgCommitments::<E>::default(),
-                inclusion_list_bits: Default::default(),
+                inclusion_list_bits: BitVector::default(),
             },
             signature: Signature::empty(),
         }
@@ -320,7 +320,7 @@ mod tests {
                 gas_limit: 30_000_000,
                 execution_payment: value,
                 blob_kzg_commitments: KzgCommitments::<E>::default(),
-                inclusion_list_bits: Default::default(),
+                inclusion_list_bits: BitVector::default(),
             },
             signature: Signature::empty(),
         }
@@ -346,7 +346,7 @@ mod tests {
                 gas_limit: 30_000_000,
                 execution_payment: value,
                 blob_kzg_commitments: KzgCommitments::<E>::default(),
-                inclusion_list_bits: Default::default(),
+                inclusion_list_bits: BitVector::default(),
             },
             signature: Signature::empty(),
         }

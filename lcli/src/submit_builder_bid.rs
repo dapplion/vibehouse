@@ -31,9 +31,9 @@ use eth2_network_config::Eth2NetworkConfig;
 use std::time::Duration;
 use tracing::info;
 use types::{
-    Address, ChainSpec, Domain, Epoch, EthSpec, ExecutionBlockHash, ExecutionPayloadBid, Hash256,
-    ProposerPreferences, SignedExecutionPayloadBid, SignedProposerPreferences, SignedRoot, Slot,
-    beacon_block_body::KzgCommitments, test_utils::generate_deterministic_keypairs,
+    Address, BitVector, ChainSpec, Domain, Epoch, EthSpec, ExecutionBlockHash, ExecutionPayloadBid,
+    Hash256, ProposerPreferences, SignedExecutionPayloadBid, SignedProposerPreferences, SignedRoot,
+    Slot, beacon_block_body::KzgCommitments, test_utils::generate_deterministic_keypairs,
 };
 
 const HTTP_TIMEOUT: Duration = Duration::from_secs(10);
@@ -270,7 +270,7 @@ async fn run_async<E: EthSpec>(
         gas_limit,
         execution_payment: bid_value,
         blob_kzg_commitments: KzgCommitments::<E>::default(),
-        inclusion_list_bits: Default::default(),
+        inclusion_list_bits: BitVector::default(),
     };
 
     let bid_epoch = target_slot.epoch(E::slots_per_epoch());

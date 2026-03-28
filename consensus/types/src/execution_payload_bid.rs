@@ -105,7 +105,7 @@ mod tests {
             value: 1_000_000_000,
             execution_payment: 500_000,
             blob_kzg_commitments: <_>::default(),
-            inclusion_list_bits: Default::default(),
+            inclusion_list_bits: BitVector::default(),
         };
         let bytes = bid.as_ssz_bytes();
         let decoded = ExecutionPayloadBid::<E>::from_ssz_bytes(&bytes).unwrap();

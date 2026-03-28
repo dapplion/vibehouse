@@ -7667,7 +7667,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                             value: 0,
                             execution_payment: 0,
                             blob_kzg_commitments: kzg_commitments.unwrap_or_default(),
-                            inclusion_list_bits: Default::default(),
+                            inclusion_list_bits: BitVector::default(),
                         };
 
                         let signed_bid = SignedExecutionPayloadBid {
@@ -7765,7 +7765,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                             value: 0,
                             execution_payment: 0,
                             blob_kzg_commitments: kzg_commitments.unwrap_or_default(),
-                            inclusion_list_bits: Default::default(),
+                            inclusion_list_bits: BitVector::default(),
                         };
 
                         let signed_bid = SignedExecutionPayloadBid {
