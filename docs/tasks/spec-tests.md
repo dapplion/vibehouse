@@ -6,9 +6,10 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 ## Status: DONE
 
 ### Current results
-- **80/80 ef_tests pass (real crypto, 0 skipped)** — both mainnet + minimal presets
-- **142/142 fake_crypto pass (0 skipped)** — both mainnet + minimal presets (includes Heze SSZ static types: InclusionList, SignedInclusionList, BLSToExecutionChange, SignedBLSToExecutionChange + all Heze superstruct variants)
+- **82/82 ef_tests pass (real crypto, 0 skipped)** — both mainnet + minimal presets
+- **144/144 fake_crypto pass (0 skipped)** — both mainnet + minimal presets (includes Heze SSZ static types, gossip validation tests)
 - **check_all_files_accessed passes** — all files accessed, intentionally excluded patterns maintained
+- Gossip validation tests: `gossip_proposer_slashing` and `gossip_attester_slashing` across all forks (phase0 through heze)
 - All 9 fork_choice test categories pass (get_head, on_block, ex_ante, reorg, withholding, get_proposer_head, deposit_with_reorg, should_override_forkchoice_update, on_execution_payload)
 - 40/40 gloas execution_payload envelope tests pass (process_execution_payload_envelope spec validation)
 - rewards/inactivity_scores tests running across all forks (was missing)
@@ -26,7 +27,7 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 - [x] Create automated check for new spec test releases
 
 ### Test categories
-bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, operations, random, rewards, sanity, ssz_static, transition
+bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, networking (gossip_attester_slashing, gossip_proposer_slashing, get_custody_groups, compute_columns_for_custody_group), operations, random, rewards, sanity, ssz_static, transition
 
 ## Progress log
 
