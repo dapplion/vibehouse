@@ -65,7 +65,7 @@ Heze adds inclusion lists — a mechanism for committees of 16 validators per sl
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1. Types & Constants | ForkName, ChainSpec, EthSpec, new types, superstruct variants | DONE |
-| 2. State Transitions | Fork upgrade, inclusion list committee computation | IN PROGRESS |
+| 2. State Transitions | Fork upgrade, inclusion list committee computation | DONE |
 | 3. Fork Choice | IL satisfaction tracking, should_extend_payload changes | NOT STARTED |
 | 4. P2P Networking | Gossip topic, req/resp protocol, validation | NOT STARTED |
 | 5. Beacon Chain Integration | IL store, builder bid validation | NOT STARTED |
@@ -114,7 +114,22 @@ Adding core FOCIL types and helpers from the Heze spec (EIP-7805).
 
 Tests: 1101/1101 types tests pass (+13 new), 1038/1038 state_processing tests pass (+5 new)
 
-**Remaining for Phase 2:**
-- Add `inclusion_list_bits: Bitvector[INCLUSION_LIST_COMMITTEE_SIZE]` to `ExecutionPayloadBid` for Heze (requires superstructing the bid type or splitting the BeaconState field)
-- Update `upgrade_to_heze` to initialize `inclusion_list_bits` as empty bitvector
-- These have wider blast radius and will be done in the next sub-task
+### Phase 2: State Transitions — Part 2 (run 3348)
+
+Adding `inclusion_list_bits` to ExecutionPayloadBid and InclusionListCommitteeSize to EthSpec.
+
+**Design decision:** Rather than splitting `ExecutionPayloadBid` into separate Gloas/Heze types (which would require updating ~140 getter call sites and ~100 construction sites), we added `inclusion_list_bits: BitVector<E::InclusionListCommitteeSize>` directly to the existing `ExecutionPayloadBid<E>`. Since Gloas is our custom fork, adding the field there (initialized to all-zeros) is clean and avoids massive downstream churn.
+
+**Completed:**
+
+1. **InclusionListCommitteeSize** (`consensus/types/src/eth_spec.rs`): Added to EthSpec trait, set to `U16` for all three specs (Mainnet, Minimal, Gnosis).
+
+2. **ExecutionPayloadBid** (`consensus/types/src/execution_payload_bid.rs`): Added `inclusion_list_bits: BitVector<E::InclusionListCommitteeSize>` field. Default is all-zeros. SSZ encoding changes for both Gloas and Heze bids.
+
+3. **Construction sites fixed**: beacon_chain.rs (2 self-build bid sites), lcli/submit_builder_bid.rs, execution_bid_pool.rs (3 test helpers), execution_payload_bid.rs (1 test).
+
+4. **upgrade_to_heze**: No changes needed — the bid is cloned as-is, preserving `inclusion_list_bits` at all-zeros from Gloas.
+
+Tests: 1101/1101 types tests pass, 1038/1038 state_processing tests pass. Clean clippy.
+
+**Phase 2 complete.** All FOCIL types, inclusion list committee computation, signature validation, and inclusion_list_bits in ExecutionPayloadBid are implemented.

@@ -181,6 +181,11 @@ pub trait EthSpec: 'static + Default + Sync + Send + Clone + Debug + PartialEq +
     type BuilderPendingWithdrawalsLimit: Unsigned + Clone + Sync + Send + Debug + PartialEq;
     /// Maximum builders processed per withdrawals sweep
     type MaxBuildersPerWithdrawalsSweep: Unsigned + Clone + Sync + Send + Debug + PartialEq;
+    /*
+     * New in Heze
+     */
+    /// Size of the inclusion list committee (INCLUSION_LIST_COMMITTEE_SIZE = 16)
+    type InclusionListCommitteeSize: Unsigned + Clone + Sync + Send + Debug + PartialEq;
 
     fn default_spec() -> ChainSpec;
 
@@ -518,6 +523,7 @@ impl EthSpec for MainnetEthSpec {
     type BuilderPendingPaymentsLimit = U64; // 2 * SLOTS_PER_EPOCH = 2 * 32 = 64
     type BuilderPendingWithdrawalsLimit = U1048576;
     type MaxBuildersPerWithdrawalsSweep = U16384;
+    type InclusionListCommitteeSize = U16;
 
     fn default_spec() -> ChainSpec {
         ChainSpec::mainnet()
@@ -564,6 +570,7 @@ impl EthSpec for MinimalEthSpec {
     type BuilderPendingPaymentsLimit = U16; // 2 * SLOTS_PER_EPOCH = 2 * 8 = 16
     type PtcSize = U2;
     type MaxBuildersPerWithdrawalsSweep = U16;
+    type InclusionListCommitteeSize = U16;
 
     params_from_eth_spec!(MainnetEthSpec {
         JustificationBitsLength,
@@ -673,6 +680,7 @@ impl EthSpec for GnosisEthSpec {
     type BuilderPendingPaymentsLimit = U32; // 2 * SLOTS_PER_EPOCH = 2 * 16 = 32
     type BuilderPendingWithdrawalsLimit = U1048576;
     type MaxBuildersPerWithdrawalsSweep = U16384;
+    type InclusionListCommitteeSize = U16;
 
     fn default_spec() -> ChainSpec {
         ChainSpec::gnosis()

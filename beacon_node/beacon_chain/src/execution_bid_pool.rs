@@ -119,6 +119,7 @@ mod tests {
                 gas_limit: 30_000_000,
                 execution_payment: value,
                 blob_kzg_commitments: KzgCommitments::<E>::default(),
+                inclusion_list_bits: Default::default(),
             },
             signature: Signature::empty(),
         }
@@ -319,6 +320,7 @@ mod tests {
                 gas_limit: 30_000_000,
                 execution_payment: value,
                 blob_kzg_commitments: KzgCommitments::<E>::default(),
+                inclusion_list_bits: Default::default(),
             },
             signature: Signature::empty(),
         }
@@ -344,6 +346,7 @@ mod tests {
                 gas_limit: 30_000_000,
                 execution_payment: value,
                 blob_kzg_commitments: KzgCommitments::<E>::default(),
+                inclusion_list_bits: Default::default(),
             },
             signature: Signature::empty(),
         }

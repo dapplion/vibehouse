@@ -270,6 +270,7 @@ async fn run_async<E: EthSpec>(
         gas_limit,
         execution_payment: bid_value,
         blob_kzg_commitments: KzgCommitments::<E>::default(),
+        inclusion_list_bits: Default::default(),
     };
 
     let bid_epoch = target_slot.epoch(E::slots_per_epoch());

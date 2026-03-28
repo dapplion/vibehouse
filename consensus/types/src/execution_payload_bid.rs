@@ -5,6 +5,7 @@ use context_deserialize::context_deserialize;
 use educe::Educe;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
+use ssz_types::BitVector;
 use test_random_derive::TestRandom;
 use tree_hash_derive::TreeHash;
 
@@ -54,6 +55,11 @@ pub struct ExecutionPayloadBid<E: EthSpec> {
     pub execution_payment: u64,
     /// KZG commitments for blobs included in this payload
     pub blob_kzg_commitments: KzgCommitments<E>,
+    /// Inclusion list committee participation bits [New in Heze:EIP-7805]
+    ///
+    /// Bitvector indicating which inclusion list committee members have been
+    /// satisfied. Initialized to all-zeros; meaningful only from the Heze fork.
+    pub inclusion_list_bits: BitVector<E::InclusionListCommitteeSize>,
 }
 
 impl<E: EthSpec> SignedRoot for ExecutionPayloadBid<E> {}
@@ -99,6 +105,7 @@ mod tests {
             value: 1_000_000_000,
             execution_payment: 500_000,
             blob_kzg_commitments: <_>::default(),
+            inclusion_list_bits: Default::default(),
         };
         let bytes = bid.as_ssz_bytes();
         let decoded = ExecutionPayloadBid::<E>::from_ssz_bytes(&bytes).unwrap();
