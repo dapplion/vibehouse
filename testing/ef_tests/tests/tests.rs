@@ -1234,6 +1234,12 @@ fn compute_columns_for_custody_group() {
 }
 
 #[test]
+fn gossip_beacon_block() {
+    GossipBeaconBlockHandler::<MinimalEthSpec>::default().run();
+    GossipBeaconBlockHandler::<MainnetEthSpec>::default().run();
+}
+
+#[test]
 fn gossip_proposer_slashing() {
     GossipProposerSlashingHandler::<MinimalEthSpec>::default().run();
     GossipProposerSlashingHandler::<MainnetEthSpec>::default().run();

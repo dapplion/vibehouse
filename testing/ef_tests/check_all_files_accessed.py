@@ -47,8 +47,7 @@ excluded_paths = [
     "bls12-381-tests/hash_to_G2",
     "tests/.*/eip7732",
     "tests/.*/eip7805",
-    # Gossip validation tests not yet implemented (beacon_block, attestation, aggregate)
-    "tests/.*/networking/gossip_beacon_block",
+    # Gossip validation tests not yet implemented (attestation, aggregate)
     "tests/.*/networking/gossip_beacon_attestation",
     "tests/.*/networking/gossip_beacon_aggregate_and_proof",
     # Ignore MatrixEntry SSZ tests for now.

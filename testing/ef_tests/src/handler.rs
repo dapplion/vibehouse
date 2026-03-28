@@ -979,6 +979,31 @@ impl<E: EthSpec + TypeName> Handler for ComputeColumnsForCustodyGroupHandler<E> 
 
 #[derive(Educe)]
 #[educe(Default(bound()))]
+pub struct GossipBeaconBlockHandler<E>(PhantomData<E>);
+
+impl<E: EthSpec + TypeName> Handler for GossipBeaconBlockHandler<E> {
+    type Case = cases::GossipBeaconBlock<E>;
+
+    fn config_name() -> &'static str {
+        E::name()
+    }
+
+    fn runner_name() -> &'static str {
+        "networking"
+    }
+
+    fn handler_name(&self) -> String {
+        "gossip_beacon_block".into()
+    }
+
+    fn use_rayon() -> bool {
+        // These tests mutate state clones, keep sequential to avoid issues.
+        false
+    }
+}
+
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct GossipProposerSlashingHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec + TypeName> Handler for GossipProposerSlashingHandler<E> {
