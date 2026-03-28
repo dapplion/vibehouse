@@ -67,7 +67,7 @@ Heze adds inclusion lists — a mechanism for committees of 16 validators per sl
 | 1. Types & Constants | ForkName, ChainSpec, EthSpec, new types, superstruct variants | DONE |
 | 2. State Transitions | Fork upgrade, inclusion list committee computation | DONE |
 | 3. Fork Choice | IL satisfaction tracking, should_extend_payload changes | DONE |
-| 4. P2P Networking | Gossip topic, req/resp protocol, validation | NOT STARTED |
+| 4. P2P Networking | Gossip topic, req/resp protocol, validation | IN PROGRESS |
 | 5. Beacon Chain Integration | IL store, builder bid validation | NOT STARTED |
 | 6. Validator Client | IL committee duties, IL construction, bid validation | NOT STARTED |
 | 7. REST API | IL endpoints | NOT STARTED |
@@ -157,3 +157,29 @@ Implementing Heze fork choice changes for FOCIL inclusion list satisfaction trac
 Tests: 1114/1114 types tests pass (+13 new), 206/206 proto_array tests pass, 90/90 fork_choice lib tests pass, 31/31 fork_choice integration tests pass. Full workspace lint clean.
 
 **Phase 3 complete.**
+
+### Phase 4: P2P Networking — Part 1 (run 3350)
+
+Adding gossip topic infrastructure for Heze FOCIL inclusion lists.
+
+**Completed:**
+
+1. **GossipKind::InclusionList** (`vibehouse_network/src/types/topics.rs`): New gossip topic variant with `inclusion_list` topic constant. Added to topic decode, display, subscription (Heze-gated), `is_fork_non_core_topic`.
+
+2. **PubsubMessage::InclusionList** (`vibehouse_network/src/types/pubsub.rs`): New variant carrying `Box<SignedInclusionList<E>>`. SSZ decode gated on `fork.heze_enabled()`. Encode, kind(), Display implemented.
+
+3. **Beacon Processor** (`beacon_processor/src/lib.rs`): `Work::GossipInclusionList(BlockingFn)` + `WorkType::GossipInclusionList`. Queue with 4096 capacity. Drains after execution proof queue. Spawned as blocking task.
+
+4. **Router dispatch** (`network/src/router.rs`): Routes `PubsubMessage::InclusionList` to `send_gossip_inclusion_list`.
+
+5. **Network beacon processor** (`network/src/network_beacon_processor/mod.rs`): `send_gossip_inclusion_list()` creates `Work::GossipInclusionList` work event.
+
+6. **Gossip validation stub** (`network/src/network_beacon_processor/gossip_methods.rs`): `process_gossip_inclusion_list()` logs and accepts — full validation deferred to Phase 5 (beacon chain integration).
+
+7. **Gossip scoring** (`vibehouse_network/src/service/gossipsub_scoring_parameters.rs`): `INCLUSION_LIST_WEIGHT=0.3`, expects 16 messages/slot (one per committee member).
+
+8. **Gossip cache** (`vibehouse_network/src/service/gossip_cache.rs`): No caching for inclusion lists (time-sensitive).
+
+Tests: 407/407 vibehouse_network pass, 8/8 beacon_processor pass. Full workspace lint clean.
+
+**Next:** Phase 4 Part 2 — `InclusionListByCommitteeIndices/1` RPC req/resp protocol.
