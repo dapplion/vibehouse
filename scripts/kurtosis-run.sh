@@ -4,7 +4,7 @@ set -euo pipefail
 # Bounded devnet lifecycle for vibehouse.
 # Build -> clean old enclave -> start -> poll beacon API -> teardown.
 #
-# Usage: scripts/kurtosis-run.sh [--no-build] [--no-teardown] [--stateless] [--multiclient] [--sync] [--churn] [--mainnet] [--long] [--partition] [--builder] [--withhold] [--slashings]
+# Usage: scripts/kurtosis-run.sh [--no-build] [--no-teardown] [--stateless] [--multiclient] [--sync] [--churn] [--mainnet] [--long] [--partition] [--builder] [--withhold] [--slashings] [--heze]
 #
 # Flags:
 #   --no-build      Skip Docker image build (use existing vibehouse:local)
@@ -27,6 +27,8 @@ set -euo pipefail
 #                   verify fork choice takes the EMPTY path and chain continues finalizing
 #   --slashings     Slashing detection test: inject double-proposal and double-vote slashings
 #                   via lcli, verify beacon node detects and includes them in blocks
+#   --heze          Heze fork test: Gloas at epoch 1, Heze (FOCIL) at epoch 3, verify
+#                   fork transition and sustained finalization through both forks
 #
 # Logs: each run writes to /tmp/kurtosis-runs/<RUN_ID>/ with separate files:
 #   build.log       — cargo build + docker build output
@@ -46,6 +48,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 ENCLAVE_NAME="vibehouse-devnet"
 KURTOSIS_CONFIG="$REPO_ROOT/kurtosis/vibehouse-epbs.yaml"
+ETHEREUM_PACKAGE="github.com/ethpandaops/ethereum-package@6.0.0"
 POLL_INTERVAL=12  # one slot = 6s, poll every 2 slots
 TIMEOUT=720       # 12 minutes (epoch 8 ≈ 480s + margin)
 
@@ -68,6 +71,7 @@ PARTITION_MODE=false
 BUILDER_MODE=false
 WITHHOLD_MODE=false
 SLASHINGS_MODE=false
+HEZE_MODE=false
 
 for arg in "$@"; do
   case "$arg" in
@@ -83,6 +87,7 @@ for arg in "$@"; do
     --builder)      BUILDER_MODE=true ;;
     --withhold)     WITHHOLD_MODE=true ;;
     --slashings)    SLASHINGS_MODE=true ;;
+    --heze)         HEZE_MODE=true ;;
     *) echo "Unknown flag: $arg"; exit 1 ;;
   esac
 done
@@ -137,6 +142,14 @@ elif [ "$SLASHINGS_MODE" = true ]; then
   TARGET_FINALIZED_EPOCH=3  # wait past Gloas fork so fork is active for correct slashing types
   TIMEOUT=900               # 15 minutes total (finalization + slashing injection + detection)
   echo "==> Slashings mode: using $KURTOSIS_CONFIG (4 validators, slashing injection test)"
+elif [ "$HEZE_MODE" = true ]; then
+  KURTOSIS_CONFIG="$REPO_ROOT/kurtosis/vibehouse-heze.yaml"
+  ETHEREUM_PACKAGE="github.com/ethpandaops/ethereum-package@173e3d5c32ca"  # main with heze support
+  HEZE_FORK_EPOCH=3
+  HEZE_FORK_SLOT=$((HEZE_FORK_EPOCH * SLOTS_PER_EPOCH))
+  TARGET_FINALIZED_EPOCH=8  # well past Heze fork at epoch 3
+  TIMEOUT=720               # 12 minutes
+  echo "==> Heze mode: using $KURTOSIS_CONFIG (4 nodes, Gloas@epoch1, Heze@epoch3)"
 fi
 
 # Detect if we need sudo for docker/kurtosis (docker socket not accessible)
@@ -182,7 +195,7 @@ $SUDO kurtosis clean -a 2>/dev/null || true
 
 # Step 3: Start devnet
 echo "==> Starting devnet (log: $RUN_DIR/kurtosis.log)..."
-if ! $SUDO kurtosis run github.com/ethpandaops/ethereum-package@6.0.0 --enclave "$ENCLAVE_NAME" --args-file "$KURTOSIS_CONFIG" > "$RUN_DIR/kurtosis.log" 2>&1; then
+if ! $SUDO kurtosis run "$ETHEREUM_PACKAGE" --enclave "$ENCLAVE_NAME" --args-file "$KURTOSIS_CONFIG" > "$RUN_DIR/kurtosis.log" 2>&1; then
   echo "==> FAIL: kurtosis run failed. See $RUN_DIR/kurtosis.log"
   echo "--- last 30 lines ---"
   tail -30 "$RUN_DIR/kurtosis.log"
@@ -274,7 +287,10 @@ while [ "$elapsed" -lt "$TIMEOUT" ]; do
   current_epoch=$((head_slot / SLOTS_PER_EPOCH))
   past_fork="no"
   if [ "$head_slot" -ge "$GLOAS_FORK_SLOT" ]; then
-    past_fork="yes"
+    past_fork="gloas"
+  fi
+  if [ -n "${HEZE_FORK_SLOT:-}" ] && [ "$head_slot" -ge "$HEZE_FORK_SLOT" ]; then
+    past_fork="heze"
   fi
 
   echo "    [${elapsed}s] slot=$head_slot epoch=$current_epoch finalized=$finalized_epoch justified=$justified_epoch syncing=$is_syncing fork=$past_fork"

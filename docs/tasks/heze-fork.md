@@ -369,3 +369,17 @@ Fixed 4 test failures in `network_beacon_processor/tests.rs` for Heze compatibil
 Created fork-aware helpers `bid_for_fork()` and `unsigned_bid()` to construct correct `ExecutionPayloadBid` variant (Gloas or Heze) based on FORK_NAME. Refactored `sign_bid()` to accept the superstruct enum. Changed assertion patterns from `.as_gloas().unwrap().message.field` to `.to_ref().message().field()` for fork-generic field access.
 
 Test results with FORK_NAME=heze: beacon_chain 999/999, http_api 345/345, network 205/205, op_pool 72/72. EF tests 142/142 + 80/80.
+
+### Devnet testing preparation (run 3500+)
+
+Added Heze devnet support to kurtosis infrastructure:
+
+1. **`kurtosis/vibehouse-heze.yaml`**: New config with `gloas_fork_epoch: 1` and `heze_fork_epoch: 3`. Tests both fork transitions on 4 nodes.
+
+2. **`scripts/kurtosis-run.sh --heze`**: New mode using ethereum-package `main` branch (commit 173e3d5c32ca which includes heze support). The v6.0.0 release only supports gloas; main has full heze genesis generation.
+
+3. **Health check**: Updated fork tracking to distinguish `gloas` vs `heze` based on `HEZE_FORK_SLOT`.
+
+4. **`ETHEREUM_PACKAGE`** variable: Script now uses a configurable package reference instead of hardcoded v6.0.0. Default remains v6.0.0 for all non-heze modes.
+
+**Note:** Heze is a CL-only change (FOCIL). The EL (geth epbs-devnet-0) doesn't need changes — inclusion list transactions are empty until the EL FOCIL spec is finalized. The devnet tests the fork transition, state upgrade, committee computation, and IL gossip/RPC plumbing.

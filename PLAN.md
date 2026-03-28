@@ -93,6 +93,7 @@ Current devnet only tests the happy path (4 homogeneous nodes, self-build, minim
 - **Network partitions** — DONE (script): `scripts/kurtosis-run.sh --partition` — stop 2/4 nodes (50% stake), verify finalization stalls, heal, verify recovery
 - **Stateless + ZK** — DONE: proof-generators + stateless node (from priority 4)
 - **Slashing scenarios** — DONE (script): `scripts/kurtosis-run.sh --slashings` — inject double-proposal and double-vote via lcli, verify slashed=true in state
+- **Heze fork transition** — READY (script): `scripts/kurtosis-run.sh --heze` — Gloas@epoch1, Heze@epoch3, uses ethereum-package main with heze support
 
 ### 6. Code review & quality improvement — DONE
 [docs/tasks/code-review-quality.md](docs/tasks/code-review-quality.md)

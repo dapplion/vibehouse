@@ -19,6 +19,7 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 | Network partitions | DONE (script) | `--partition` flag: stop 2/4 nodes (50% stake), verify stall, heal, verify finalization resumes |
 | Stateless + ZK | DONE | 3 proof-generators + 1 stateless node (from priority 4) |
 | Slashing scenarios | DONE (script) | `--slashings` flag: inject double-proposal and double-vote via lcli, verify slashed=true |
+| Heze fork transition | READY (script) | `--heze` flag: Gloas@epoch1, Heze@epoch3, verify fork transition and sustained finalization |
 
 ## Progress log
 

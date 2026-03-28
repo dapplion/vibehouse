@@ -1,0 +1,17 @@
+participants:
+  - el_type: geth
+    el_image: ethpandaops/geth:epbs-devnet-0
+    cl_type: lighthouse
+    cl_image: vibehouse:local
+    count: 4
+network_params:
+  gloas_fork_epoch: 1
+  heze_fork_epoch: 3
+  preset: minimal
+additional_services:
+  - dora
+  - spamoor
+snooper_enabled: true
+global_log_level: debug
+dora_params:
+  image: ethpandaops/dora:gloas-support

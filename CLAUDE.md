@@ -282,6 +282,9 @@ scripts/kurtosis-run.sh --long
 
 # Network partition test (stop 2/4 nodes, verify stall, heal, verify recovery)
 scripts/kurtosis-run.sh --partition
+
+# Heze fork test (Gloas@epoch1, Heze/FOCIL@epoch3, verify fork transition)
+scripts/kurtosis-run.sh --heze
 ```
 
 ### How the Devnet Works
