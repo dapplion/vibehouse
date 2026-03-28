@@ -1,4 +1,4 @@
-# CI tests the latest fork (gloas) on every push. This nightly workflow
+# CI tests the latest fork (heze) on every push. This nightly workflow
 # covers all prior forks to catch regressions introduced by fork-specific changes.
 name: nightly-tests
 
@@ -26,8 +26,8 @@ jobs:
       - name: Set matrix
         id: set-matrix
         run: |
-          # All forks except gloas (which is tested on every push via ci.yml).
-          echo 'forks=["phase0", "altair", "bellatrix", "capella", "deneb", "electra", "fulu"]' >> $GITHUB_OUTPUT
+          # All forks except heze (which is tested on every push via ci.yml).
+          echo 'forks=["phase0", "altair", "bellatrix", "capella", "deneb", "electra", "fulu", "gloas"]' >> $GITHUB_OUTPUT
 
   beacon-chain-tests:
     name: beacon-chain-tests (${{ matrix.fork }})
@@ -47,19 +47,16 @@ jobs:
         with:
           tool: cargo-nextest@0.9.132
       - name: Run beacon_chain tests for ${{ matrix.fork }}
-        # Gloas-specific integration tests (gloas::*, gloas_verification::*) are
-        # already tested on every push via ci.yml with FORK_NAME=gloas. Exclude
-        # them from nightly prior-fork runs to avoid timeout (they take ~25-30s
-        # each and there are 280+). Also exclude block_verification:: tests which
-        # build a 320-block chain via get_chain_segment() — under fulu with PeerDAS
-        # data columns, each test takes 20+ minutes causing job timeouts. These
-        # tests exercise fork-agnostic chain segment import logic already covered
-        # by the gloas CI run on every push.
+        # Gloas/Heze-specific integration tests are tested on every push via
+        # ci.yml with FORK_NAME=heze. Exclude them from all nightly prior-fork
+        # runs to avoid timeout. Also exclude block_verification:: tests which
+        # build a 320-block chain via get_chain_segment() — under fulu with
+        # PeerDAS data columns, each test takes 20+ minutes causing job timeouts.
         run: >
           env FORK_NAME=${{ matrix.fork }} cargo nextest run --release
           --features "fork_from_env,slasher/lmdb"
           -p beacon_chain
-          -E 'not test(/gloas::|gloas_verification::|block_verification::/)'
+          -E 'not test(/gloas::|gloas_verification::|heze::|heze_verification::|block_verification::/)'
         timeout-minutes: 90
 
   op-pool-tests:
@@ -111,8 +108,8 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     strategy:
       matrix:
-        # CI tests gloas on every push. Cover the other recent forks here.
-        fork: ["electra", "fulu"]
+        # CI tests heze on every push. Cover the other recent forks here.
+        fork: ["electra", "fulu", "gloas"]
       fail-fast: false
     steps:
       - uses: actions/checkout@v5

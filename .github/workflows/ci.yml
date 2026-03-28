@@ -81,7 +81,7 @@ jobs:
           --exclude web3signer_tests
 
   beacon-chain-tests:
-    name: beacon_chain tests (gloas)
+    name: beacon_chain tests (heze)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -91,10 +91,10 @@ jobs:
         with:
           tool: cargo-nextest@0.9.132
       - name: Run beacon_chain tests
-        run: env FORK_NAME=gloas cargo nextest run --release --features "fork_from_env,slasher/lmdb" -p beacon_chain
+        run: env FORK_NAME=heze cargo nextest run --release --features "fork_from_env,slasher/lmdb" -p beacon_chain
 
   http-api-tests:
-    name: http_api tests (gloas)
+    name: http_api tests (heze)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -104,10 +104,10 @@ jobs:
         with:
           tool: cargo-nextest@0.9.132
       - name: Run http_api tests
-        run: env FORK_NAME=gloas cargo nextest run --release --features "beacon_chain/fork_from_env" -p http_api
+        run: env FORK_NAME=heze cargo nextest run --release --features "beacon_chain/fork_from_env" -p http_api
 
   network-and-op-pool-tests:
-    name: network + op_pool tests (gloas)
+    name: network + op_pool tests (heze)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -117,9 +117,9 @@ jobs:
         with:
           tool: cargo-nextest@0.9.132
       - name: Run network tests
-        run: env FORK_NAME=gloas cargo nextest run --release --features "fork_from_env" -p network
+        run: env FORK_NAME=heze cargo nextest run --release --features "fork_from_env" -p network
       - name: Run operation_pool tests
-        run: env FORK_NAME=gloas cargo nextest run --release --features "beacon_chain/fork_from_env" -p operation_pool
+        run: env FORK_NAME=heze cargo nextest run --release --features "beacon_chain/fork_from_env" -p operation_pool
 
   ci-success:
     name: ci-success

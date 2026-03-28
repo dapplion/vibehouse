@@ -352,3 +352,20 @@ Added 7 tests for `process_signed_inclusion_list()` signed cache behavior in `in
 - `signed_equivocator_ignored_on_third_attempt`: third submission from equivocator is ignored
 
 Total: 20/20 inclusion_list_store tests pass (13 existing + 7 new).
+
+### CI: update FORK_NAME to heze (run 3501+)
+
+Updated CI to test Heze as the latest fork (was Gloas):
+- `ci.yml`: beacon_chain, http_api, network, op_pool tests now use `FORK_NAME=heze`
+- `nightly-tests.yml`: added `gloas` to nightly fork matrix (since it's no longer tested on push)
+- `Makefile`: added `heze` to `FORKS` and `RECENT_FORKS` lists
+
+Fixed 4 test failures in `network_beacon_processor/tests.rs` for Heze compatibility:
+1. `test_blobs_by_range_spans_fulu_fork`: added `heze_fork_epoch = Some(Epoch::new(3))`
+2. `test_gloas_gossip_bid_duplicate_ignored`: changed `as_gloas_mut()` → `builders_mut()` for state access
+3. `test_gloas_gossip_proposer_preferences_fork_boundary_*`: added `heze_fork_epoch = Some(Epoch::new(2))` in `pre_gloas_rig`
+4. `test_gloas_gossip_payload_envelope_invalid_signature_rejected`: changed `as_gloas()` → `latest_block_hash()` for state access
+
+Created fork-aware helpers `bid_for_fork()` and `unsigned_bid()` to construct correct `ExecutionPayloadBid` variant (Gloas or Heze) based on FORK_NAME. Refactored `sign_bid()` to accept the superstruct enum. Changed assertion patterns from `.as_gloas().unwrap().message.field` to `.to_ref().message().field()` for fork-generic field access.
+
+Test results with FORK_NAME=heze: beacon_chain 999/999, http_api 345/345, network 205/205, op_pool 72/72. EF tests 142/142 + 80/80.

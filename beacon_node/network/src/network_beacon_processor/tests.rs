@@ -38,10 +38,11 @@ use types::blob_sidecar::{BlobIdentifier, FixedBlobSidecarList};
 use types::{
     Address, AttesterSlashing, BlobSidecar, BlobSidecarList, Builder, ChainSpec,
     DataColumnSidecarList, DataColumnSubnetId, Domain, Epoch, EthSpec, ExecutionBlockHash,
-    ExecutionPayloadBidGloas, ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExecutionProof,
-    ExecutionProofSubnetId, Hash256, Keypair, MainnetEthSpec, PayloadAttestationData,
-    ProposerPreferences, ProposerSlashing, RuntimeVariableList, SignedAggregateAndProof,
-    SignedBeaconBlock, SignedExecutionPayloadBid, SignedExecutionPayloadBidGloas,
+    ExecutionPayloadBid, ExecutionPayloadBidGloas, ExecutionPayloadBidHeze,
+    ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExecutionProof, ExecutionProofSubnetId,
+    ForkName, Hash256, Keypair, MainnetEthSpec, PayloadAttestationData, ProposerPreferences,
+    ProposerSlashing, RuntimeVariableList, SignedAggregateAndProof, SignedBeaconBlock,
+    SignedExecutionPayloadBid, SignedExecutionPayloadBidGloas, SignedExecutionPayloadBidHeze,
     SignedExecutionPayloadEnvelope, SignedProposerPreferences, SignedRoot, SignedVoluntaryExit,
     SingleAttestation, Slot, SubnetId, VariableList,
 };
@@ -66,6 +67,47 @@ const SMALL_CHAIN: u64 = 2;
 const LONG_CHAIN: u64 = SLOTS_PER_EPOCH * 2;
 
 const SEQ_NUMBER: u64 = 0;
+
+/// Convert a Gloas bid to the correct fork variant for the current FORK_NAME.
+/// For Heze, copies all fields and adds default `inclusion_list_bits`.
+fn bid_for_fork(gloas_bid: ExecutionPayloadBidGloas<E>) -> ExecutionPayloadBid<E> {
+    let fork = fork_name_from_env();
+    match fork {
+        Some(ForkName::Heze) => ExecutionPayloadBid::Heze(ExecutionPayloadBidHeze {
+            slot: gloas_bid.slot,
+            builder_index: gloas_bid.builder_index,
+            value: gloas_bid.value,
+            parent_block_hash: gloas_bid.parent_block_hash,
+            parent_block_root: gloas_bid.parent_block_root,
+            prev_randao: gloas_bid.prev_randao,
+            block_hash: gloas_bid.block_hash,
+            fee_recipient: gloas_bid.fee_recipient,
+            gas_limit: gloas_bid.gas_limit,
+            execution_payment: gloas_bid.execution_payment,
+            blob_kzg_commitments: gloas_bid.blob_kzg_commitments,
+            inclusion_list_bits: <_>::default(),
+        }),
+        _ => ExecutionPayloadBid::Gloas(gloas_bid),
+    }
+}
+
+/// Create a `SignedExecutionPayloadBid` with an empty signature for any fork variant.
+fn unsigned_bid(bid: ExecutionPayloadBid<E>) -> SignedExecutionPayloadBid<E> {
+    match bid {
+        ExecutionPayloadBid::Gloas(msg) => {
+            SignedExecutionPayloadBid::Gloas(SignedExecutionPayloadBidGloas {
+                message: msg,
+                signature: bls::Signature::empty(),
+            })
+        }
+        ExecutionPayloadBid::Heze(msg) => {
+            SignedExecutionPayloadBid::Heze(SignedExecutionPayloadBidHeze {
+                message: msg,
+                signature: bls::Signature::empty(),
+            })
+        }
+    }
+}
 
 /// The default time to wait for `BeaconProcessor` events.
 const STANDARD_TIMEOUT: Duration = Duration::from_secs(10);
@@ -1921,6 +1963,7 @@ async fn test_blobs_by_range_spans_fulu_fork() {
     let mut spec = test_spec::<E>();
     spec.fulu_fork_epoch = Some(Epoch::new(1));
     spec.gloas_fork_epoch = Some(Epoch::new(2));
+    spec.heze_fork_epoch = Some(Epoch::new(3));
 
     let mut rig = TestRig::new_parametric(
         64,
@@ -2250,8 +2293,8 @@ async fn gloas_rig_with_builders(chain_length: u64, builders: &[(u64, u64)]) -> 
         )
         .expect("should generate interop state");
 
-    // Inject builders into the Gloas state
-    let gloas_state = state.as_gloas_mut().expect("should be gloas state");
+    // Inject builders into the state (Gloas or Heze)
+    let builders_list = state.builders_mut().expect("should be post-gloas state");
     for (i, &(deposit_epoch, balance)) in builders.iter().enumerate() {
         let builder = Builder {
             pubkey: BUILDER_KEYPAIRS[i].pk.clone().into(),
@@ -2261,10 +2304,7 @@ async fn gloas_rig_with_builders(chain_length: u64, builders: &[(u64, u64)]) -> 
             deposit_epoch: Epoch::new(deposit_epoch),
             withdrawable_epoch: spec.far_future_epoch,
         };
-        gloas_state
-            .builders
-            .push(builder)
-            .expect("should push builder");
+        builders_list.push(builder).expect("should push builder");
     }
 
     state.drop_all_caches().expect("should drop caches");
@@ -2368,22 +2408,19 @@ async fn test_gloas_gossip_bid_zero_payment_rejected() {
 
     // Construct a bid with zero execution_payment (like a self-build bid
     // but with a non-self-build builder_index, which triggers the check)
-    let bid = SignedExecutionPayloadBid::Gloas(SignedExecutionPayloadBidGloas {
-        message: ExecutionPayloadBidGloas {
-            slot: current_slot, // must be current or next to pass slot check
-            parent_block_root: head_root,
-            parent_block_hash: ExecutionBlockHash::zero(),
-            block_hash: ExecutionBlockHash::repeat_byte(0xaa),
-            prev_randao: Hash256::ZERO,
-            fee_recipient: Address::ZERO,
-            gas_limit: 30_000_000,
-            builder_index: 42, // not a self-build
-            value: 1000,
-            execution_payment: 0, // zero payment → reject
-            blob_kzg_commitments: <_>::default(),
-        },
-        signature: bls::Signature::empty(),
-    });
+    let bid = unsigned_bid(bid_for_fork(ExecutionPayloadBidGloas {
+        slot: current_slot, // must be current or next to pass slot check
+        parent_block_root: head_root,
+        parent_block_hash: ExecutionBlockHash::zero(),
+        block_hash: ExecutionBlockHash::repeat_byte(0xaa),
+        prev_randao: Hash256::ZERO,
+        fee_recipient: Address::ZERO,
+        gas_limit: 30_000_000,
+        builder_index: 42, // not a self-build
+        value: 1000,
+        execution_payment: 0, // zero payment → reject
+        blob_kzg_commitments: <_>::default(),
+    }));
 
     rig.network_beacon_processor.process_gossip_execution_bid(
         junk_message_id(),
@@ -2408,22 +2445,19 @@ async fn test_gloas_gossip_bid_wrong_slot_ignored() {
     let mut rig = gloas_rig(SMALL_CHAIN).await;
     let head = rig.chain.head_snapshot();
 
-    let bid = SignedExecutionPayloadBid::Gloas(SignedExecutionPayloadBidGloas {
-        message: ExecutionPayloadBidGloas {
-            slot: Slot::new(999), // far future
-            parent_block_root: head.beacon_block_root,
-            parent_block_hash: ExecutionBlockHash::zero(),
-            block_hash: ExecutionBlockHash::repeat_byte(0xbb),
-            prev_randao: Hash256::ZERO,
-            fee_recipient: Address::ZERO,
-            gas_limit: 30_000_000,
-            builder_index: 42,
-            value: 1000,
-            execution_payment: 500,
-            blob_kzg_commitments: <_>::default(),
-        },
-        signature: bls::Signature::empty(),
-    });
+    let bid = unsigned_bid(bid_for_fork(ExecutionPayloadBidGloas {
+        slot: Slot::new(999), // far future
+        parent_block_root: head.beacon_block_root,
+        parent_block_hash: ExecutionBlockHash::zero(),
+        block_hash: ExecutionBlockHash::repeat_byte(0xbb),
+        prev_randao: Hash256::ZERO,
+        fee_recipient: Address::ZERO,
+        gas_limit: 30_000_000,
+        builder_index: 42,
+        value: 1000,
+        execution_payment: 500,
+        blob_kzg_commitments: <_>::default(),
+    }));
 
     rig.network_beacon_processor.process_gossip_execution_bid(
         junk_message_id(),
@@ -2449,22 +2483,19 @@ async fn test_gloas_gossip_bid_unknown_builder_rejected() {
     let head = rig.chain.head_snapshot();
     let current_slot = rig.chain.slot().unwrap();
 
-    let bid = SignedExecutionPayloadBid::Gloas(SignedExecutionPayloadBidGloas {
-        message: ExecutionPayloadBidGloas {
-            slot: current_slot,
-            parent_block_root: head.beacon_block_root,
-            parent_block_hash: ExecutionBlockHash::zero(),
-            block_hash: ExecutionBlockHash::repeat_byte(0xcc),
-            prev_randao: Hash256::ZERO,
-            fee_recipient: Address::ZERO,
-            gas_limit: 30_000_000,
-            builder_index: 9999, // doesn't exist
-            value: 1000,
-            execution_payment: 500,
-            blob_kzg_commitments: <_>::default(),
-        },
-        signature: bls::Signature::empty(),
-    });
+    let bid = unsigned_bid(bid_for_fork(ExecutionPayloadBidGloas {
+        slot: current_slot,
+        parent_block_root: head.beacon_block_root,
+        parent_block_hash: ExecutionBlockHash::zero(),
+        block_hash: ExecutionBlockHash::repeat_byte(0xcc),
+        prev_randao: Hash256::ZERO,
+        fee_recipient: Address::ZERO,
+        gas_limit: 30_000_000,
+        builder_index: 9999, // doesn't exist
+        value: 1000,
+        execution_payment: 500,
+        blob_kzg_commitments: <_>::default(),
+    }));
 
     rig.network_beacon_processor.process_gossip_execution_bid(
         junk_message_id(),
@@ -3406,7 +3437,7 @@ async fn test_gloas_gossip_proposer_preferences_duplicate_ignored() {
 async fn pre_gloas_rig(chain_length: u64) -> TestRig {
     let mut spec = test_spec::<E>();
     spec.shard_committee_period = 2;
-    // All forks before Gloas at genesis, Gloas at epoch 1
+    // All forks before Gloas at genesis, Gloas at epoch 1, Heze at epoch 2
     spec.altair_fork_epoch = Some(Epoch::new(0));
     spec.bellatrix_fork_epoch = Some(Epoch::new(0));
     spec.capella_fork_epoch = Some(Epoch::new(0));
@@ -3414,6 +3445,7 @@ async fn pre_gloas_rig(chain_length: u64) -> TestRig {
     spec.electra_fork_epoch = Some(Epoch::new(0));
     spec.fulu_fork_epoch = Some(Epoch::new(0));
     spec.gloas_fork_epoch = Some(Epoch::new(1));
+    spec.heze_fork_epoch = Some(Epoch::new(2));
     TestRig::new_parametric(
         chain_length,
         BeaconProcessorConfig::default(),
@@ -4281,23 +4313,36 @@ async fn test_gloas_gossip_execution_proof_prior_to_finalization_ignored() {
 fn sign_bid(
     rig: &TestRig,
     builder_idx: usize,
-    bid_msg: ExecutionPayloadBidGloas<E>,
+    bid_msg: ExecutionPayloadBid<E>,
 ) -> SignedExecutionPayloadBid<E> {
     let spec = &rig.chain.spec;
     let head = rig.chain.head_snapshot();
     let state = &head.beacon_state;
+    let slot = bid_msg.slot();
     let domain = spec.get_domain(
-        bid_msg.slot.epoch(E::slots_per_epoch()),
+        slot.epoch(E::slots_per_epoch()),
         Domain::BeaconBuilder,
         &state.fork(),
         state.genesis_validators_root(),
     );
-    let signing_root = bid_msg.signing_root(domain);
-    let signature = BUILDER_KEYPAIRS[builder_idx].sk.sign(signing_root);
-    SignedExecutionPayloadBid::Gloas(SignedExecutionPayloadBidGloas {
-        message: bid_msg,
-        signature,
-    })
+    match bid_msg {
+        ExecutionPayloadBid::Gloas(msg) => {
+            let signing_root = msg.signing_root(domain);
+            let signature = BUILDER_KEYPAIRS[builder_idx].sk.sign(signing_root);
+            SignedExecutionPayloadBid::Gloas(SignedExecutionPayloadBidGloas {
+                message: msg,
+                signature,
+            })
+        }
+        ExecutionPayloadBid::Heze(msg) => {
+            let signing_root = msg.signing_root(domain);
+            let signature = BUILDER_KEYPAIRS[builder_idx].sk.sign(signing_root);
+            SignedExecutionPayloadBid::Heze(SignedExecutionPayloadBidHeze {
+                message: msg,
+                signature,
+            })
+        }
+    }
 }
 
 /// Gloas gossip: sending the same execution bid twice results in IGNORE (DuplicateBid).
@@ -4318,14 +4363,14 @@ async fn test_gloas_gossip_bid_duplicate_ignored() {
     // Insert matching proposer preferences (required for bid validation)
     insert_preferences_for_bid(&rig, current_slot, Address::ZERO, 0);
 
-    let bid_msg = ExecutionPayloadBidGloas {
+    let bid_msg = bid_for_fork(ExecutionPayloadBidGloas {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
         value: 100,
         parent_block_root: head.beacon_block_root,
         ..ExecutionPayloadBidGloas::default()
-    };
+    });
     let bid = sign_bid(&rig, 0, bid_msg);
 
     // First submission → Accept
@@ -4367,7 +4412,7 @@ async fn test_gloas_gossip_bid_equivocation_rejected() {
     insert_preferences_for_bid(&rig, current_slot, Address::ZERO, 0);
 
     // First bid with value=100
-    let bid_msg1 = ExecutionPayloadBidGloas {
+    let bid_msg1 = bid_for_fork(ExecutionPayloadBidGloas {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -4375,11 +4420,11 @@ async fn test_gloas_gossip_bid_equivocation_rejected() {
         parent_block_root: head.beacon_block_root,
         block_hash: ExecutionBlockHash::repeat_byte(0xaa),
         ..ExecutionPayloadBidGloas::default()
-    };
+    });
     let bid1 = sign_bid(&rig, 0, bid_msg1);
 
     // Second bid with different value (→ different tree hash root = equivocation)
-    let bid_msg2 = ExecutionPayloadBidGloas {
+    let bid_msg2 = bid_for_fork(ExecutionPayloadBidGloas {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -4387,7 +4432,7 @@ async fn test_gloas_gossip_bid_equivocation_rejected() {
         parent_block_root: head.beacon_block_root,
         block_hash: ExecutionBlockHash::repeat_byte(0xbb),
         ..ExecutionPayloadBidGloas::default()
-    };
+    });
     let bid2 = sign_bid(&rig, 0, bid_msg2);
 
     // First bid → Accept
@@ -4423,14 +4468,14 @@ async fn test_gloas_gossip_bid_invalid_parent_root_ignored() {
     let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
     let current_slot = rig.chain.slot().unwrap();
 
-    let bid_msg = ExecutionPayloadBidGloas {
+    let bid_msg = bid_for_fork(ExecutionPayloadBidGloas {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
         value: 100,
         parent_block_root: Hash256::repeat_byte(0xff), // wrong parent root
         ..ExecutionPayloadBidGloas::default()
-    };
+    });
     let bid = sign_bid(&rig, 0, bid_msg);
 
     rig.network_beacon_processor.process_gossip_execution_bid(
@@ -4458,7 +4503,7 @@ async fn test_gloas_gossip_bid_unknown_parent_block_hash_ignored() {
     let current_slot = rig.chain.slot().unwrap();
     let head = rig.chain.head_snapshot();
 
-    let bid_msg = ExecutionPayloadBidGloas {
+    let bid_msg = bid_for_fork(ExecutionPayloadBidGloas {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -4466,7 +4511,7 @@ async fn test_gloas_gossip_bid_unknown_parent_block_hash_ignored() {
         parent_block_root: head.beacon_block_root, // valid root
         parent_block_hash: ExecutionBlockHash::repeat_byte(0xba), // unknown hash
         ..ExecutionPayloadBidGloas::default()
-    };
+    });
     let bid = sign_bid(&rig, 0, bid_msg);
 
     rig.network_beacon_processor.process_gossip_execution_bid(
@@ -4495,14 +4540,14 @@ async fn test_gloas_gossip_bid_insufficient_balance_ignored() {
     let head = rig.chain.head_snapshot();
     let current_slot = rig.chain.slot().unwrap();
 
-    let bid_msg = ExecutionPayloadBidGloas {
+    let bid_msg = bid_for_fork(ExecutionPayloadBidGloas {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
         value: 1_000_000, // exceeds builder excess balance of 0
         parent_block_root: head.beacon_block_root,
         ..ExecutionPayloadBidGloas::default()
-    };
+    });
     let bid = sign_bid(&rig, 0, bid_msg);
 
     rig.network_beacon_processor.process_gossip_execution_bid(
@@ -4532,31 +4577,17 @@ async fn test_gloas_gossip_bid_invalid_signature_rejected() {
     // Insert matching proposer preferences (required for bid validation)
     insert_preferences_for_bid(&rig, current_slot, Address::ZERO, 0);
 
-    let bid_msg = ExecutionPayloadBidGloas {
+    let bid_msg = bid_for_fork(ExecutionPayloadBidGloas {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
         value: 100,
         parent_block_root: head.beacon_block_root,
         ..ExecutionPayloadBidGloas::default()
-    };
+    });
 
     // Sign with the WRONG builder's key (builder 1's key for builder 0's bid)
-    let bid = SignedExecutionPayloadBid::Gloas(SignedExecutionPayloadBidGloas {
-        message: bid_msg.clone(),
-        signature: {
-            let spec = &rig.chain.spec;
-            let state = &head.beacon_state;
-            let domain = spec.get_domain(
-                bid_msg.slot.epoch(E::slots_per_epoch()),
-                Domain::BeaconBuilder,
-                &state.fork(),
-                state.genesis_validators_root(),
-            );
-            let signing_root = bid_msg.signing_root(domain);
-            BUILDER_KEYPAIRS[1].sk.sign(signing_root) // wrong key!
-        },
-    });
+    let bid = sign_bid(&rig, 1, bid_msg);
 
     rig.network_beacon_processor.process_gossip_execution_bid(
         junk_message_id(),
@@ -4586,14 +4617,14 @@ async fn test_gloas_gossip_bid_valid_accepted() {
     // Insert matching proposer preferences (required for bid validation)
     insert_preferences_for_bid(&rig, current_slot, Address::ZERO, 0);
 
-    let bid_msg = ExecutionPayloadBidGloas {
+    let bid_msg = bid_for_fork(ExecutionPayloadBidGloas {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
         value: 100,
         parent_block_root: head.beacon_block_root,
         ..ExecutionPayloadBidGloas::default()
-    };
+    });
     let bid = sign_bid(&rig, 0, bid_msg);
 
     rig.network_beacon_processor.process_gossip_execution_bid(
@@ -4634,14 +4665,14 @@ async fn test_gloas_gossip_bid_valid_inserted_into_pool() {
     // Insert matching proposer preferences (required for bid validation)
     insert_preferences_for_bid(&rig, current_slot, Address::ZERO, 0);
 
-    let bid_msg = ExecutionPayloadBidGloas {
+    let bid_msg = bid_for_fork(ExecutionPayloadBidGloas {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
         value: 100,
         parent_block_root: head_root,
         ..ExecutionPayloadBidGloas::default()
-    };
+    });
     let bid = sign_bid(&rig, 0, bid_msg);
 
     rig.network_beacon_processor.process_gossip_execution_bid(
@@ -4658,13 +4689,11 @@ async fn test_gloas_gossip_bid_valid_inserted_into_pool() {
         .chain
         .get_best_execution_bid(current_slot, head_root)
         .expect("bid should be in pool after gossip acceptance");
-    assert_eq!(best_bid.as_gloas().unwrap().message.builder_index, 0);
-    assert_eq!(best_bid.as_gloas().unwrap().message.value, 100);
-    assert_eq!(best_bid.as_gloas().unwrap().message.slot, current_slot);
-    assert_eq!(
-        best_bid.as_gloas().unwrap().message.parent_block_root,
-        head_root
-    );
+    let msg = best_bid.to_ref().message();
+    assert_eq!(*msg.builder_index(), 0);
+    assert_eq!(*msg.value(), 100);
+    assert_eq!(*msg.slot(), current_slot);
+    assert_eq!(msg.parent_block_root(), &head_root);
 }
 
 /// Gloas gossip: multiple valid bids from different builders are all inserted into the
@@ -4692,14 +4721,14 @@ async fn test_gloas_gossip_multiple_bids_best_selected_from_pool() {
     insert_preferences_for_bid(&rig, current_slot, Address::ZERO, 0);
 
     // Submit bid from builder 0 with value 100
-    let bid_msg_0 = ExecutionPayloadBidGloas {
+    let bid_msg_0 = bid_for_fork(ExecutionPayloadBidGloas {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
         value: 100,
         parent_block_root: head_root,
         ..ExecutionPayloadBidGloas::default()
-    };
+    });
     let bid_0 = sign_bid(&rig, 0, bid_msg_0);
 
     rig.network_beacon_processor.process_gossip_execution_bid(
@@ -4711,14 +4740,14 @@ async fn test_gloas_gossip_multiple_bids_best_selected_from_pool() {
     assert_accept(result);
 
     // Submit bid from builder 1 with higher value 500
-    let bid_msg_1 = ExecutionPayloadBidGloas {
+    let bid_msg_1 = bid_for_fork(ExecutionPayloadBidGloas {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 1,
         value: 500,
         parent_block_root: head_root,
         ..ExecutionPayloadBidGloas::default()
-    };
+    });
     let bid_1 = sign_bid(&rig, 1, bid_msg_1);
 
     rig.network_beacon_processor.process_gossip_execution_bid(
@@ -4734,8 +4763,9 @@ async fn test_gloas_gossip_multiple_bids_best_selected_from_pool() {
         .chain
         .get_best_execution_bid(current_slot, head_root)
         .expect("should have bids in pool");
-    assert_eq!(best_bid.as_gloas().unwrap().message.builder_index, 1);
-    assert_eq!(best_bid.as_gloas().unwrap().message.value, 500);
+    let msg = best_bid.to_ref().message();
+    assert_eq!(*msg.builder_index(), 1);
+    assert_eq!(*msg.value(), 500);
 }
 
 /// Gloas gossip: execution bid without proposer preferences is ACCEPTED.
@@ -4754,14 +4784,14 @@ async fn test_gloas_gossip_bid_no_preferences_ignored() {
 
     // Do NOT insert preferences — bid should be ignored per spec
 
-    let bid_msg = ExecutionPayloadBidGloas {
+    let bid_msg = bid_for_fork(ExecutionPayloadBidGloas {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
         value: 100,
         parent_block_root: head.beacon_block_root,
         ..ExecutionPayloadBidGloas::default()
-    };
+    });
     let bid = sign_bid(&rig, 0, bid_msg);
 
     rig.network_beacon_processor.process_gossip_execution_bid(
@@ -4794,7 +4824,7 @@ async fn test_gloas_gossip_bid_fee_recipient_mismatch_rejected() {
     insert_preferences_for_bid(&rig, current_slot, expected_fee_recipient, 0);
 
     // Bid uses a different fee_recipient
-    let bid_msg = ExecutionPayloadBidGloas {
+    let bid_msg = bid_for_fork(ExecutionPayloadBidGloas {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -4802,7 +4832,7 @@ async fn test_gloas_gossip_bid_fee_recipient_mismatch_rejected() {
         parent_block_root: head.beacon_block_root,
         fee_recipient: Address::repeat_byte(0xbb), // mismatched
         ..ExecutionPayloadBidGloas::default()
-    };
+    });
     let bid = sign_bid(&rig, 0, bid_msg);
 
     rig.network_beacon_processor.process_gossip_execution_bid(
@@ -4835,7 +4865,7 @@ async fn test_gloas_gossip_bid_gas_limit_mismatch_rejected() {
     insert_preferences_for_bid(&rig, current_slot, Address::ZERO, expected_gas_limit);
 
     // Bid uses a different gas_limit
-    let bid_msg = ExecutionPayloadBidGloas {
+    let bid_msg = bid_for_fork(ExecutionPayloadBidGloas {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -4843,7 +4873,7 @@ async fn test_gloas_gossip_bid_gas_limit_mismatch_rejected() {
         parent_block_root: head.beacon_block_root,
         gas_limit: 15_000_000, // mismatched
         ..ExecutionPayloadBidGloas::default()
-    };
+    });
     let bid = sign_bid(&rig, 0, bid_msg);
 
     rig.network_beacon_processor.process_gossip_execution_bid(
@@ -4881,14 +4911,14 @@ async fn test_gloas_gossip_bid_not_highest_value_ignored() {
     insert_preferences_for_bid(&rig, current_slot, Address::ZERO, 0);
 
     // Builder 0 submits a high-value bid → Accept
-    let bid_msg_high = ExecutionPayloadBidGloas {
+    let bid_msg_high = bid_for_fork(ExecutionPayloadBidGloas {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
         value: 500,
         parent_block_root: head.beacon_block_root,
         ..ExecutionPayloadBidGloas::default()
-    };
+    });
     let bid_high = sign_bid(&rig, 0, bid_msg_high);
 
     rig.network_beacon_processor.process_gossip_execution_bid(
@@ -4900,14 +4930,14 @@ async fn test_gloas_gossip_bid_not_highest_value_ignored() {
     assert_accept(result);
 
     // Builder 1 submits a lower-value bid for same slot → Ignore (NotHighestValue)
-    let bid_msg_low = ExecutionPayloadBidGloas {
+    let bid_msg_low = bid_for_fork(ExecutionPayloadBidGloas {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 1,
         value: 100,
         parent_block_root: head.beacon_block_root,
         ..ExecutionPayloadBidGloas::default()
-    };
+    });
     let bid_low = sign_bid(&rig, 1, bid_msg_low);
 
     rig.network_beacon_processor.process_gossip_execution_bid(
@@ -4944,14 +4974,14 @@ async fn test_gloas_gossip_bid_inactive_builder_rejected() {
     insert_preferences_for_bid(&rig, current_slot, Address::ZERO, 0);
 
     // Builder 1 (inactive) submits a bid → Reject (InactiveBuilder)
-    let bid_msg = ExecutionPayloadBidGloas {
+    let bid_msg = bid_for_fork(ExecutionPayloadBidGloas {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 1,
         value: 100,
         parent_block_root: head.beacon_block_root,
         ..ExecutionPayloadBidGloas::default()
-    };
+    });
     let bid = sign_bid(&rig, 1, bid_msg);
 
     rig.network_beacon_processor.process_gossip_execution_bid(
@@ -5151,14 +5181,14 @@ async fn test_gloas_sse_event_execution_bid() {
     // Insert matching proposer preferences (required for bid validation)
     insert_preferences_for_bid(&rig, current_slot, Address::ZERO, 0);
 
-    let bid_msg = ExecutionPayloadBidGloas {
+    let bid_msg = bid_for_fork(ExecutionPayloadBidGloas {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
         value: 100,
         parent_block_root: head.beacon_block_root,
         ..ExecutionPayloadBidGloas::default()
-    };
+    });
     let bid = sign_bid(&rig, 0, bid_msg.clone());
 
     rig.network_beacon_processor.process_gossip_execution_bid(
@@ -5177,11 +5207,11 @@ async fn test_gloas_sse_event_execution_bid() {
         .expect("should receive execution bid SSE event");
     match event {
         EventKind::ExecutionBid(sse_bid) => {
-            assert_eq!(sse_bid.slot, bid_msg.slot);
-            assert_eq!(sse_bid.block, bid_msg.parent_block_root);
-            assert_eq!(sse_bid.builder_index, bid_msg.builder_index);
-            assert_eq!(sse_bid.block_hash, bid_msg.block_hash.into_root());
-            assert_eq!(sse_bid.value, bid_msg.value);
+            assert_eq!(sse_bid.slot, *bid_msg.slot());
+            assert_eq!(sse_bid.block, *bid_msg.parent_block_root());
+            assert_eq!(sse_bid.builder_index, *bid_msg.builder_index());
+            assert_eq!(sse_bid.block_hash, bid_msg.block_hash().into_root());
+            assert_eq!(sse_bid.value, *bid_msg.value());
         }
         other => panic!("expected ExecutionBid event, got {:?}", other.topic_name()),
     }
@@ -6115,17 +6145,19 @@ async fn test_gloas_gossip_payload_envelope_invalid_signature_rejected() {
 
     // Build an external bid for the next slot from builder 0.
     let state = &head.beacon_state;
-    let gloas_state = state.as_gloas().expect("should be gloas state");
+    let latest_block_hash = *state
+        .latest_block_hash()
+        .expect("should be post-gloas state");
     let current_epoch = state.current_epoch();
     let randao_mix = *state
         .get_randao_mix(current_epoch)
         .expect("should get randao mix");
 
-    let bid_msg = ExecutionPayloadBidGloas {
+    let bid_msg = bid_for_fork(ExecutionPayloadBidGloas {
         slot: next_slot,
         builder_index: 0,
         value: 5000,
-        parent_block_hash: gloas_state.latest_block_hash,
+        parent_block_hash: latest_block_hash,
         parent_block_root: head_root,
         prev_randao: randao_mix,
         block_hash: ExecutionBlockHash::zero(),
@@ -6133,7 +6165,7 @@ async fn test_gloas_gossip_payload_envelope_invalid_signature_rejected() {
         gas_limit: 30_000_000,
         execution_payment: 5000,
         blob_kzg_commitments: VariableList::default(),
-    };
+    });
     let bid = sign_bid(&rig, 0, bid_msg);
 
     // Insert bid into pool so block production selects it
