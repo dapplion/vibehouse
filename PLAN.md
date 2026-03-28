@@ -72,7 +72,7 @@ Reference:
 
 **Post-alpha.4 merges (2026-03-25):** #4979 PTC window cache (proactively implemented, verified exact match), #5040 fork choice test fix (test infra only), #4558 cell dissemination partial messages (blocked on rust-libp2p support), #5036 reverted. See [docs/tasks/spec-update-alpha4.md](docs/tasks/spec-update-alpha4.md) for full audit.
 
-Spec tests: [docs/tasks/spec-tests.md](docs/tasks/spec-tests.md) — DONE: 84/84 + 146/146 passing (v1.7.0-alpha.4 vectors, Heze SSZ static types, gossip validation tests for beacon blocks, proposer/attester slashings, and voluntary exits across all forks), automated release check workflow deployed
+Spec tests: [docs/tasks/spec-tests.md](docs/tasks/spec-tests.md) — DONE: 86/86 + 148/148 passing (v1.7.0-alpha.4 vectors, Heze SSZ static types, all gossip validation tests — beacon blocks, attestations, aggregates, proposer/attester slashings, voluntary exits), automated release check workflow deployed
 
 ### 4. ZK execution proofs (stateless validation) — DONE (stub proofs, SP1 infra ready)
 [docs/tasks/zk-execution-proofs.md](docs/tasks/zk-execution-proofs.md) | [GitHub #28](https://github.com/dapplion/vibehouse/issues/28)
