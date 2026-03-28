@@ -2663,6 +2663,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     ///
     /// Used during block production to select a builder bid instead of self-building.
     /// Filters by `parent_block_root` to avoid selecting stale bids after a re-org.
+    ///
+    /// For Heze bids, also validates that `bid.inclusion_list_bits` satisfies
+    /// `is_inclusion_list_bits_inclusive(store, state, slot - 1, bid.inclusion_list_bits)`.
+    /// This ensures the builder has observed at least all the inclusion lists the proposer
+    /// has locally seen. Bids failing this check are skipped.
     pub fn get_best_execution_bid(
         &self,
         slot: Slot,
@@ -2670,7 +2675,58 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     ) -> Option<SignedExecutionPayloadBid<T::EthSpec>> {
         let mut pool = self.execution_bid_pool.lock();
         pool.prune(slot);
-        pool.get_best_bid(slot, parent_block_root).cloned()
+        let bid = pool.get_best_bid(slot, parent_block_root).cloned()?;
+
+        // Heze: validate inclusion_list_bits per spec validator.md
+        // The proposer must check is_inclusion_list_bits_inclusive(store, state, slot - 1, bits)
+        if let SignedExecutionPayloadBid::Heze(ref heze_bid) = bid {
+            let il_slot_ok = slot
+                .as_u64()
+                .checked_sub(1)
+                .map(Slot::new)
+                .filter(|il_slot| {
+                    self.spec
+                        .fork_name_at_slot::<T::EthSpec>(*il_slot)
+                        .heze_enabled()
+                });
+
+            if let Some(il_slot) = il_slot_ok {
+                let head = self.canonical_head.cached_head();
+                let state = &head.snapshot.beacon_state;
+
+                if let Ok(committee) =
+                    get_inclusion_list_committee::<T::EthSpec>(state, il_slot, &self.spec)
+                {
+                    let committee_fixed: ssz_types::FixedVector<
+                        u64,
+                        <T::EthSpec as EthSpec>::InclusionListCommitteeSize,
+                    > = match ssz_types::FixedVector::new(committee.clone()) {
+                        Ok(v) => v,
+                        Err(_) => return Some(bid),
+                    };
+                    let committee_root = committee_fixed.tree_hash_root();
+
+                    let store = self.inclusion_list_store.lock();
+                    let bits: Vec<bool> = heze_bid.message.inclusion_list_bits.iter().collect();
+
+                    if !store.is_inclusion_list_bits_inclusive(
+                        &committee,
+                        committee_root,
+                        il_slot,
+                        &bits,
+                    ) {
+                        debug!(
+                            builder_index = heze_bid.message.builder_index,
+                            %slot,
+                            "Rejecting external bid: inclusion_list_bits not inclusive"
+                        );
+                        return None;
+                    }
+                }
+            }
+        }
+
+        Some(bid)
     }
 
     /// Applies a verified payload envelope to fork choice (gloas ePBS).

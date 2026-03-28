@@ -383,3 +383,14 @@ Added Heze devnet support to kurtosis infrastructure:
 4. **`ETHEREUM_PACKAGE`** variable: Script now uses a configurable package reference instead of hardcoded v6.0.0. Default remains v6.0.0 for all non-heze modes.
 
 **Note:** Heze is a CL-only change (FOCIL). The EL (geth epbs-devnet-0) doesn't need changes — inclusion list transactions are empty until the EL FOCIL spec is finalized. The devnet tests the fork transition, state upgrade, committee computation, and IL gossip/RPC plumbing.
+
+### Proposer-side bid IL bits validation (run 3502+)
+
+Added `is_inclusion_list_bits_inclusive` check in `get_best_execution_bid` per Heze validator.md spec requirement. When selecting a builder bid for block production:
+
+- For Heze bids, computes inclusion list committee for `slot - 1`
+- Checks `is_inclusion_list_bits_inclusive(store, committee, committee_root, slot-1, bid.inclusion_list_bits)`
+- Bids failing the check are rejected (falls back to self-build)
+- Only activates for Heze bids; Gloas bids unaffected
+
+This ensures the proposer only accepts bids from builders that have observed at least all the inclusion lists the proposer has locally seen. Tests: 999/999 beacon_chain (heze), 999/999 beacon_chain (gloas).
