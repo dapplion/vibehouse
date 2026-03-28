@@ -979,6 +979,46 @@ impl<E: EthSpec + TypeName> Handler for ComputeColumnsForCustodyGroupHandler<E> 
 
 #[derive(Educe)]
 #[educe(Default(bound()))]
+pub struct GossipProposerSlashingHandler<E>(PhantomData<E>);
+
+impl<E: EthSpec + TypeName> Handler for GossipProposerSlashingHandler<E> {
+    type Case = cases::GossipProposerSlashing<E>;
+
+    fn config_name() -> &'static str {
+        E::name()
+    }
+
+    fn runner_name() -> &'static str {
+        "networking"
+    }
+
+    fn handler_name(&self) -> String {
+        "gossip_proposer_slashing".into()
+    }
+}
+
+#[derive(Educe)]
+#[educe(Default(bound()))]
+pub struct GossipAttesterSlashingHandler<E>(PhantomData<E>);
+
+impl<E: EthSpec + TypeName> Handler for GossipAttesterSlashingHandler<E> {
+    type Case = cases::GossipAttesterSlashing<E>;
+
+    fn config_name() -> &'static str {
+        E::name()
+    }
+
+    fn runner_name() -> &'static str {
+        "networking"
+    }
+
+    fn handler_name(&self) -> String {
+        "gossip_attester_slashing".into()
+    }
+}
+
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct KZGComputeCellsHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec> Handler for KZGComputeCellsHandler<E> {

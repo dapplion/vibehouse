@@ -400,6 +400,8 @@ pub enum IndexedAttestationInvalid {
     ///
     /// The error occurred between the given `index` and `index + 1`
     BadValidatorIndicesOrdering(usize),
+    /// A validator index exceeds the number of validators in the state.
+    ValidatorIndexOutOfRange(u64),
     /// The indexed attestation aggregate signature was not valid.
     BadSignature,
 }

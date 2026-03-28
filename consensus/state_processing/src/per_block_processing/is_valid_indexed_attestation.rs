@@ -23,7 +23,9 @@ pub(crate) fn is_valid_indexed_attestation<E: EthSpec>(
         Invalid::IndicesEmpty
     );
 
-    // Check that indices are sorted and unique (using iterator, no Vec allocation)
+    let num_validators = state.validators().len() as u64;
+
+    // Check that indices are sorted, unique, and within the validator set range.
     indexed_attestation
         .attesting_indices_iter()
         .tuple_windows()
@@ -35,6 +37,14 @@ pub(crate) fn is_valid_indexed_attestation<E: EthSpec>(
                 Err(error(Invalid::BadValidatorIndicesOrdering(i)))
             }
         })?;
+
+    // Check all indices are within the validator set.
+    for &index in indexed_attestation.attesting_indices_iter() {
+        verify!(
+            index < num_validators,
+            Invalid::ValidatorIndexOutOfRange(index)
+        );
+    }
 
     if verify_signatures.is_true() {
         verify!(
