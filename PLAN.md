@@ -48,6 +48,17 @@ scripts/kurtosis-run.sh --no-build    # Skip Docker build
 Reference:
 - CL Specs: https://github.com/ethereum/consensus-specs/tree/master/specs/gloas
 - ePBS spec: https://eips.ethereum.org/EIPS/eip-7732
+
+### 2b. Heze fork (EIP-7805: FOCIL) — DONE
+
+[docs/tasks/heze-fork.md](docs/tasks/heze-fork.md)
+
+Fork-Choice Enforced Inclusion Lists. All 7 phases complete: types & constants, state transitions (committee computation, inclusion_list_bits), fork choice (IL satisfaction tracking), P2P networking (gossip + RPC), beacon chain integration (IL store, validation, satisfaction checking), validator client (duty discovery, signing, broadcast), REST API (pool GET/POST, duties endpoint).
+
+Reference:
+- CL Specs: https://github.com/ethereum/consensus-specs/tree/master/specs/heze
+- EIP: https://eips.ethereum.org/EIPS/eip-7805
+
 ### 3. Spec tracking — up to alpha.4 — DONE
 
 [docs/tasks/spec-update-post-alpha3.md](docs/tasks/spec-update-post-alpha3.md) — DONE
