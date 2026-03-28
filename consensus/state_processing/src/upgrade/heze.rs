@@ -1,6 +1,6 @@
 use std::mem;
 use types::{
-    BeaconState, BeaconStateError as Error, BeaconStateHeze, ChainSpec, EthSpec,
+    BeaconState, BeaconStateError as Error, BeaconStateHeze, BitVector, ChainSpec, EthSpec,
     ExecutionPayloadBidHeze, Fork,
 };
 
@@ -67,7 +67,7 @@ pub fn upgrade_to_heze<E: EthSpec>(
                 .latest_execution_payload_bid
                 .blob_kzg_commitments
                 .clone(),
-            inclusion_list_bits: Default::default(),
+            inclusion_list_bits: BitVector::default(),
         },
         // Capella
         next_withdrawal_index: pre.next_withdrawal_index,
