@@ -252,6 +252,7 @@ mod tests {
             proposer_index: 0,
             ptc_timely: false,
             envelope_received: false,
+            inclusion_list_satisfied: false,
         }
     }
 

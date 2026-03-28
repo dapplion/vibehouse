@@ -202,6 +202,8 @@ pub struct Block {
     /// Gloas ePBS: Has the execution payload envelope been received and processed?
     /// Only set by on_execution_payload, NOT by PTC quorum.
     pub envelope_received: bool,
+    /// Heze FOCIL: Has the execution payload satisfied the inclusion list constraints?
+    pub inclusion_list_satisfied: bool,
 }
 
 impl Block {
@@ -596,6 +598,7 @@ impl ProtoArrayForkChoice {
             proposer_index: 0,
             ptc_timely: false,
             envelope_received: false,
+            inclusion_list_satisfied: false,
         };
 
         proto_array
@@ -1107,6 +1110,7 @@ impl ProtoArrayForkChoice {
             proposer_index: block.proposer_index,
             ptc_timely: block.ptc_timely,
             envelope_received: block.envelope_received,
+            inclusion_list_satisfied: block.inclusion_list_satisfied,
         })
     }
 
@@ -1858,6 +1862,18 @@ impl ProtoArrayForkChoice {
     ) -> bool {
         let pa = &self.proto_array;
 
+        // [Heze:EIP7805] If payload doesn't satisfy inclusion list constraints, don't extend.
+        // Spec: is_payload_inclusion_list_satisfied(store, root)
+        // Requires: root in payload_inclusion_list_satisfaction AND root in payload_states
+        // AND payload_inclusion_list_satisfaction[root] == true.
+        // Maps to: envelope_received (payload_states) && inclusion_list_satisfied.
+        if let Some(n) = proto_node
+            && n.envelope_received
+            && !n.inclusion_list_satisfied
+        {
+            return false;
+        }
+
         // Check if payload is both timely and data-available.
         // Spec: has_payload_quorum(store, root) AND is_payload_data_available(store, root)
         // Both require `root in store.payload_states` (envelope actually received/processed)
@@ -2160,6 +2176,7 @@ mod test_compute_deltas {
                     proposer_index: 0,
                     ptc_timely: false,
                     envelope_received: false,
+                    inclusion_list_satisfied: false,
                 },
                 genesis_slot + 1,
             )
@@ -2193,6 +2210,7 @@ mod test_compute_deltas {
                     proposer_index: 0,
                     ptc_timely: false,
                     envelope_received: false,
+                    inclusion_list_satisfied: false,
                 },
                 genesis_slot + 1,
             )
@@ -2315,6 +2333,7 @@ mod test_compute_deltas {
                         proposer_index: 0,
                         ptc_timely: false,
                         envelope_received: false,
+                        inclusion_list_satisfied: false,
                     },
                     Slot::from(block.slot),
                 )
@@ -3035,6 +3054,7 @@ mod test_gloas_fork_choice {
                     ptc_timely: false,
                     // In these tests, payload_revealed implies the envelope was received
                     envelope_received: payload_revealed,
+                    inclusion_list_satisfied: payload_revealed,
                 },
                 Slot::new(slot),
             )
@@ -3881,6 +3901,7 @@ mod test_gloas_fork_choice {
                     proposer_index: 0,
                     ptc_timely: false,
                     envelope_received: false,
+                    inclusion_list_satisfied: false,
                 },
                 Slot::new(slot),
             )
@@ -4190,6 +4211,7 @@ mod test_gloas_fork_choice {
         // Set envelope received + PTC quorum (strictly above threshold)
         let node = get_node_mut(&mut fc, &block_root);
         node.envelope_received = true;
+        node.inclusion_list_satisfied = true;
         node.ptc_weight = MINIMAL_PTC_THRESHOLD + 1;
         node.ptc_blob_data_available_weight = MINIMAL_PTC_THRESHOLD + 1;
 
@@ -4214,6 +4236,7 @@ mod test_gloas_fork_choice {
 
         let node = get_node_mut(&mut fc, &block_root);
         node.envelope_received = true;
+        node.inclusion_list_satisfied = true;
         node.ptc_weight = MINIMAL_PTC_THRESHOLD + 1;
         node.ptc_blob_data_available_weight = 0; // not above threshold
 
@@ -4417,6 +4440,7 @@ mod test_gloas_fork_choice {
 
         let node = get_node_mut(&mut fc, &block_root);
         node.envelope_received = true;
+        node.inclusion_list_satisfied = true;
         node.ptc_weight = 0; // payload NOT timely
         node.ptc_blob_data_available_weight = MINIMAL_PTC_THRESHOLD + 1; // data IS available
 
@@ -4569,6 +4593,7 @@ mod test_gloas_fork_choice {
         // Make should_extend_payload return true: envelope received + PTC quorum above threshold
         let node = get_node_mut(&mut fc, &block_root);
         node.envelope_received = true;
+        node.inclusion_list_satisfied = true;
         node.ptc_weight = MINIMAL_PTC_THRESHOLD + 1;
         node.ptc_blob_data_available_weight = MINIMAL_PTC_THRESHOLD + 1;
 
@@ -4638,6 +4663,7 @@ mod test_gloas_fork_choice {
         // Make should_extend_payload return true: envelope received + PTC quorum above threshold
         let node = get_node_mut(&mut fc, &block_root);
         node.envelope_received = true;
+        node.inclusion_list_satisfied = true;
         node.ptc_weight = MINIMAL_PTC_THRESHOLD + 1;
         node.ptc_blob_data_available_weight = MINIMAL_PTC_THRESHOLD + 1;
 
@@ -5291,6 +5317,7 @@ mod test_gloas_fork_choice {
                     proposer_index: 5, // same proposer as parent
                     ptc_timely: true,  // PTC-timely
                     envelope_received: false,
+                    inclusion_list_satisfied: false,
                 },
                 Slot::new(1),
             )
@@ -6022,6 +6049,9 @@ mod test_gloas_fork_choice {
         ptc_timely: bool,
         envelope_received: bool,
     ) {
+        // Mirror production behavior: when envelope is received, IL is satisfied
+        // (on_execution_payload sets both). Tests can override via direct node mutation.
+        let inclusion_list_satisfied = envelope_received;
         fc.proto_array
             .on_block::<MinimalEthSpec>(
                 Block {
@@ -6047,6 +6077,7 @@ mod test_gloas_fork_choice {
                     proposer_index,
                     ptc_timely,
                     envelope_received,
+                    inclusion_list_satisfied,
                 },
                 Slot::new(slot),
             )
@@ -6411,6 +6442,7 @@ mod test_gloas_fork_choice {
         if let Some(&idx) = fc.proto_array.indices.get(&root(1)) {
             fc.proto_array.nodes[idx].payload_revealed = true;
             fc.proto_array.nodes[idx].envelope_received = true;
+            fc.proto_array.nodes[idx].inclusion_list_satisfied = true;
         }
 
         // Second call: payload revealed + FULL vote → FULL wins
@@ -7397,6 +7429,7 @@ mod test_gloas_fork_choice {
         // Envelope arrived but PTC quorum not reached (ptc_weight stays at 0)
         let node = get_node_mut(&mut fc, &block_root);
         node.envelope_received = true;
+        node.inclusion_list_satisfied = true;
 
         // Set a proposer boost root that IS a child of block_root building on EMPTY parent
         let child_root = root(2);
@@ -7647,6 +7680,7 @@ mod test_gloas_fork_choice {
                     proposer_index: 0,
                     ptc_timely: false,
                     envelope_received: false,
+                    inclusion_list_satisfied: false,
                 },
                 Slot::new(1),
             )
@@ -7717,6 +7751,7 @@ mod test_gloas_fork_choice {
 
         let node = get_node_mut(&mut fc, &block_root);
         node.envelope_received = true;
+        node.inclusion_list_satisfied = true;
         // Set ptc_weight exactly at threshold, not above
         node.ptc_weight = MINIMAL_PTC_THRESHOLD;
         node.ptc_blob_data_available_weight = MINIMAL_PTC_THRESHOLD + 1;
@@ -7748,6 +7783,7 @@ mod test_gloas_fork_choice {
 
         let node = get_node_mut(&mut fc, &block_root);
         node.envelope_received = true;
+        node.inclusion_list_satisfied = true;
         node.ptc_weight = MINIMAL_PTC_THRESHOLD + 1;
         // Set blob weight exactly at threshold
         node.ptc_blob_data_available_weight = MINIMAL_PTC_THRESHOLD;
@@ -7780,6 +7816,7 @@ mod test_gloas_fork_choice {
 
         let node = get_node_mut(&mut fc, &block_root);
         node.envelope_received = true;
+        node.inclusion_list_satisfied = true;
         node.ptc_weight = MINIMAL_PTC_THRESHOLD + 1;
         node.ptc_blob_data_available_weight = MINIMAL_PTC_THRESHOLD + 1;
 
@@ -8790,6 +8827,7 @@ mod test_gloas_fork_choice {
                     proposer_index: 0,
                     ptc_timely: false,
                     envelope_received: true,
+                    inclusion_list_satisfied: true,
                 },
                 Slot::new(slot),
             )
@@ -8905,6 +8943,7 @@ mod test_gloas_fork_choice {
                     proposer_index: 0,
                     ptc_timely: false,
                     envelope_received: false,
+                    inclusion_list_satisfied: false,
                 },
                 Slot::new(pre_gloas_slot),
             )

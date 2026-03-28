@@ -56,6 +56,7 @@ pub mod graffiti;
 pub mod historical_batch;
 pub mod historical_summary;
 pub mod inclusion_list;
+pub mod inclusion_list_store;
 pub mod indexed_attestation;
 pub mod indexed_payload_attestation;
 pub mod light_client_bootstrap;
@@ -212,6 +213,7 @@ pub use crate::fork_name::{ForkName, InconsistentFork};
 pub use crate::graffiti::{GRAFFITI_BYTES_LEN, Graffiti};
 pub use crate::historical_batch::HistoricalBatch;
 pub use crate::inclusion_list::{InclusionList, InclusionListTransaction};
+pub use crate::inclusion_list_store::InclusionListStore;
 pub use crate::indexed_attestation::{
     IndexedAttestation, IndexedAttestationBase, IndexedAttestationElectra, IndexedAttestationRef,
 };

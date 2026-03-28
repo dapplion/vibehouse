@@ -119,6 +119,7 @@ mod tests {
                     proposer_index: 77,
                     ptc_timely: true,
                     envelope_received: true,
+                    inclusion_list_satisfied: true,
                 },
                 Slot::new(1),
             )

@@ -133,6 +133,11 @@ pub struct ProtoNode {
     /// Maps to `root in store.payload_states` in the spec. Used in get_node_children
     /// to decide whether the FULL virtual child exists.
     pub envelope_received: bool,
+    /// Heze FOCIL: Has the execution payload satisfied the inclusion list constraints?
+    /// Set by on_execution_payload after calling the EL's is_inclusion_list_satisfied.
+    /// Maps to `store.payload_inclusion_list_satisfaction[root]` in the spec.
+    /// Default: false (not yet checked). Only meaningful after Heze fork.
+    pub inclusion_list_satisfied: bool,
 }
 
 #[derive(PartialEq, Eq, Debug, Encode, Decode, Serialize, Deserialize, Copy, Clone)]
@@ -367,6 +372,7 @@ impl ProtoArray {
             proposer_index: block.proposer_index,
             ptc_timely: block.ptc_timely,
             envelope_received: block.envelope_received,
+            inclusion_list_satisfied: block.inclusion_list_satisfied,
         };
 
         // If the parent has an invalid execution status, return an error before adding the block to
@@ -1202,6 +1208,7 @@ mod tests {
             proposer_index: 0,
             ptc_timely: false,
             envelope_received: false,
+            inclusion_list_satisfied: false,
         }
     }
 

@@ -216,6 +216,7 @@ impl ForkChoiceTestDefinition {
                         proposer_index: 0,
                         ptc_timely: false,
                         envelope_received: false,
+                        inclusion_list_satisfied: false,
                     };
                     fork_choice
                         .process_block::<MainnetEthSpec>(block, slot)

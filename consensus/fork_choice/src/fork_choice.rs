@@ -463,6 +463,7 @@ where
             anchor_node.bid_parent_block_hash = Some(bid.message.parent_block_hash);
             anchor_node.builder_index = Some(bid.message.builder_index);
             anchor_node.envelope_received = true;
+            anchor_node.inclusion_list_satisfied = true;
             anchor_node.payload_revealed = true;
             anchor_node.payload_data_available = true;
             anchor_node.ptc_timely = true;
@@ -1022,6 +1023,7 @@ where
                 ptc_timely: current_slot == block.slot()
                     && block_delay < Duration::from_millis(spec.get_payload_attestation_due_ms()),
                 envelope_received: false,
+                inclusion_list_satisfied: false,
             },
             current_slot,
         )?;
@@ -1543,11 +1545,17 @@ where
 
         node.payload_revealed = true;
         node.envelope_received = true;
+        node.inclusion_list_satisfied = true;
         // When the envelope is received locally, blob data is also available
         node.payload_data_available = true;
         // Set execution status so that head_hash is available for forkchoice_updated.
         // Starts as Optimistic until the EL confirms via newPayload.
         node.execution_status = ExecutionStatus::Optimistic(payload_block_hash);
+        // Heze FOCIL: Record inclusion list satisfaction.
+        // TODO(heze-phase5): Wire up actual EL is_inclusion_list_satisfied check.
+        // For now, always mark as satisfied. The real check will be added when
+        // beacon chain integration (Phase 5) wires the InclusionListStore + EL call.
+        node.inclusion_list_satisfied = true;
 
         debug!(
             ?beacon_block_root,
@@ -2225,6 +2233,7 @@ mod tests {
                         proposer_index: 0,
                         ptc_timely: false,
                         envelope_received: false,
+                        inclusion_list_satisfied: false,
                     },
                     Slot::new(slot),
                 )
@@ -3359,6 +3368,7 @@ mod tests {
                         ptc_timely: false,
                         // In these tests, payload_revealed implies envelope receipt
                         envelope_received: payload_revealed,
+                        inclusion_list_satisfied: payload_revealed,
                     },
                     Slot::new(slot),
                 )
@@ -3475,6 +3485,7 @@ mod tests {
                         proposer_index: 0,
                         ptc_timely: false,
                         envelope_received: false,
+                        inclusion_list_satisfied: false,
                     },
                     Slot::new(slot),
                 )
@@ -5377,6 +5388,7 @@ mod tests {
             // Simulate envelope received before bid: envelope_received=true,
             // payload_revealed=false (PTC hasn't reached quorum yet), some PTC weight
             fc.proto_array.core_proto_array_mut().nodes[idx].envelope_received = true;
+            fc.proto_array.core_proto_array_mut().nodes[idx].inclusion_list_satisfied = true;
             fc.proto_array.core_proto_array_mut().nodes[idx].payload_revealed = false;
             fc.proto_array.core_proto_array_mut().nodes[idx].ptc_weight = 1;
             fc.proto_array.core_proto_array_mut().nodes[idx].ptc_blob_data_available_weight = 1;
@@ -5420,6 +5432,7 @@ mod tests {
 
             // Both guards active
             fc.proto_array.core_proto_array_mut().nodes[idx].envelope_received = true;
+            fc.proto_array.core_proto_array_mut().nodes[idx].inclusion_list_satisfied = true;
             fc.proto_array.core_proto_array_mut().nodes[idx].payload_revealed = true;
             fc.proto_array.core_proto_array_mut().nodes[idx].ptc_weight = 100;
             fc.proto_array.core_proto_array_mut().nodes[idx].ptc_blob_data_available_weight = 50;
