@@ -147,8 +147,13 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Runs 3819-3820: Added `gossip_beacon_block` (12 phase0 tests), `gossip_beacon_attestation` (16 tests), `gossip_beacon_aggregate_and_proof` (20 tests). All gossip validation test types now implemented.
 - Final EF test counts: 86/86 (real crypto) + 148/148 (fake crypto). Zero clippy warnings.
 
-**Monitoring steady state (runs 3316-3822+, 2026-03-28):**
+**Heze IL slot-1 fix (run 3823, 2026-03-28):**
+- Fixed `check_inclusion_list_satisfaction` and `compute_inclusion_list_bits_for_slot` to use `slot - 1` per spec's `record_payload_inclusion_list_satisfaction`. ILs broadcast at slot N-1 constrain the payload at slot N.
+
+**Monitoring steady state (runs 3316-3823+, 2026-03-28/29):**
 - No new consensus-specs merges since #5053 (Mar 27). No new releases (still alpha.4).
+- Open non-Gloas PRs: #5054 (test workflow), #5055 (EIP-8025 refactor), #5050 (networking test yield fix) — none actionable.
+- All monitored Gloas PRs unchanged: #4843 (variable PTC deadline, approved not merged), #4747 (FCR, 148 reviews, conflicting), #4954/#4840/#4630 (stale).
 - All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting, stalled since Feb 16), #4954 (unreviewed), #4898/#4892 (stale), #4960/#4932 (test vectors), #4840/#4630 (stale).
 - Deep audits confirmed: all 7 Heze spec documents fully compliant, fork choice IL integration correct, production code unwrap() audit clean.
 - Deps fully current. Cargo audit: 1 rsa vuln (no fix). CI all green. Codebase stable.
