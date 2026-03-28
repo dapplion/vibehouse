@@ -144,7 +144,7 @@ elif [ "$SLASHINGS_MODE" = true ]; then
   echo "==> Slashings mode: using $KURTOSIS_CONFIG (4 validators, slashing injection test)"
 elif [ "$HEZE_MODE" = true ]; then
   KURTOSIS_CONFIG="$REPO_ROOT/kurtosis/vibehouse-heze.yaml"
-  ETHEREUM_PACKAGE="github.com/ethpandaops/ethereum-package@173e3d5c32ca"  # main with heze support
+  ETHEREUM_PACKAGE="github.com/ethpandaops/ethereum-package@main"  # main with heze support
   HEZE_FORK_EPOCH=3
   HEZE_FORK_SLOT=$((HEZE_FORK_EPOCH * SLOTS_PER_EPOCH))
   TARGET_FINALIZED_EPOCH=8  # well past Heze fork at epoch 3

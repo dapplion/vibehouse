@@ -394,3 +394,16 @@ Added `is_inclusion_list_bits_inclusive` check in `get_best_execution_bid` per H
 - Only activates for Heze bids; Gloas bids unaffected
 
 This ensures the proposer only accepts bids from builders that have observed at least all the inclusion lists the proposer has locally seen. Tests: 999/999 beacon_chain (heze), 999/999 beacon_chain (gloas).
+
+### Heze devnet verification (run 3503+)
+
+Successfully ran 4-node heze devnet (`scripts/kurtosis-run.sh --heze`). Results:
+
+- **Fork transitions**: genesis → Gloas (epoch 1, slot 8) → Heze (epoch 3, slot 24) — both clean
+- **Finalization**: reached finalized_epoch=8 (slot 80, epoch 10) in 468s
+- **Chain health**: continuous finalization from epoch 2 through epoch 8, no stalls
+- **All 4 nodes**: healthy, synced, not stalling
+
+Fixed two infrastructure issues:
+1. Kurtosis couldn't resolve pinned commit hash `173e3d5c32ca` — switched to `@main` branch reference
+2. Updated dora image from `gloas-support` to `heze-support` for correct fork display

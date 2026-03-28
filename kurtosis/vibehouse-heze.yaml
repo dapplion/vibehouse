@@ -14,4 +14,4 @@ additional_services:
 snooper_enabled: true
 global_log_level: debug
 dora_params:
-  image: ethpandaops/dora:gloas-support
+  image: ethpandaops/dora:heze-support
