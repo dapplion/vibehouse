@@ -809,6 +809,8 @@ pub struct InclusionListDutyData {
     /// Position of this validator within the inclusion list committee (0..INCLUSION_LIST_COMMITTEE_SIZE).
     #[serde(with = "serde_utils::quoted_u64")]
     pub il_committee_index: u64,
+    /// Hash tree root of the inclusion list committee for this slot.
+    pub inclusion_list_committee_root: Hash256,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -658,6 +658,11 @@ pub fn serve<T: BeaconChainTypes>(
             get(get_expected_withdrawals_handler::<T>),
         )
         .route("/eth/v1/builder/bids", post(post_builder_bids::<T>))
+        // Inclusion lists (Heze FOCIL)
+        .route(
+            "/eth/v1/beacon/pool/inclusion_lists",
+            post(post_beacon_pool_inclusion_lists::<T>),
+        )
         // Execution payload envelope
         .route(
             "/eth/v1/beacon/execution_payload_envelope/{block_id}",
@@ -2777,6 +2782,51 @@ async fn post_builder_bids<T: BeaconChainTypes>(
             publish_pubsub_message(
                 &network_tx,
                 PubsubMessage::ExecutionBid(Box::new(verified_bid.into_inner())),
+            )?;
+
+            Ok(())
+        })
+        .await
+}
+
+// -- Inclusion list pool routes --
+
+async fn post_beacon_pool_inclusion_lists<T: BeaconChainTypes>(
+    State(state): State<SharedState<T>>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Result<Response, ApiError> {
+    let chain = state.chain()?;
+    let network_tx = state.network_tx()?;
+    let signed_il: types::SignedInclusionList<T::EthSpec> = json_body(&headers, body).await?;
+    state
+        .task_spawner()
+        .blocking_json_task(Priority::P0, move || {
+            use beacon_chain::heze_verification::InclusionListError;
+
+            if !chain.spec.is_heze_scheduled() {
+                return Err(ApiError::bad_request("Heze is not scheduled"));
+            }
+
+            let verified_il = match chain.verify_inclusion_list_for_gossip(signed_il) {
+                Ok(verified) => verified,
+                Err(InclusionListError::Duplicate { .. }) => {
+                    debug!("Duplicate inclusion list submitted via HTTP");
+                    return Ok(());
+                }
+                Err(e) => {
+                    return Err(ApiError::bad_request(format!(
+                        "invalid inclusion list: {e:?}"
+                    )));
+                }
+            };
+
+            let signed_for_gossip = verified_il.signed_il.clone();
+            chain.import_inclusion_list(&verified_il);
+
+            publish_pubsub_message(
+                &network_tx,
+                PubsubMessage::InclusionList(Box::new(signed_for_gossip)),
             )?;
 
             Ok(())

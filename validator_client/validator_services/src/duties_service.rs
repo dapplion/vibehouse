@@ -2141,6 +2141,14 @@ mod broadcast_preferences_tests {
             })
         }
 
+        async fn sign_inclusion_list(
+            &self,
+            _: PublicKeyBytes,
+            _: &types::InclusionList<Self::E>,
+        ) -> Result<types::SignedInclusionList<Self::E>, ValidatorStoreError<Self::Error>> {
+            unimplemented!()
+        }
+
         async fn sign_attestation(
             &self,
             _: PublicKeyBytes,

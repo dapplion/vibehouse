@@ -19,13 +19,13 @@ use tracing::{error, info, warn};
 use types::{
     AbstractExecPayload, Address, AggregateAndProof, Attestation, BeaconBlock, BlindedPayload,
     ChainSpec, ContributionAndProof, Domain, Epoch, EthSpec, ExecutionPayloadEnvelope, Fork,
-    Graffiti, Hash256, PayloadAttestationData, PayloadAttestationMessage, ProposerPreferences,
-    PublicKeyBytes, SelectionProof, Signature, SignedAggregateAndProof, SignedBeaconBlock,
-    SignedContributionAndProof, SignedExecutionPayloadEnvelope, SignedProposerPreferences,
-    SignedRoot, SignedValidatorRegistrationData, SignedVoluntaryExit, Slot,
-    SyncAggregatorSelectionData, SyncCommitteeContribution, SyncCommitteeMessage,
-    SyncSelectionProof, SyncSubnetId, ValidatorRegistrationData, VoluntaryExit,
-    graffiti::GraffitiString,
+    Graffiti, Hash256, InclusionList, PayloadAttestationData, PayloadAttestationMessage,
+    ProposerPreferences, PublicKeyBytes, SelectionProof, Signature, SignedAggregateAndProof,
+    SignedBeaconBlock, SignedContributionAndProof, SignedExecutionPayloadEnvelope,
+    SignedInclusionList, SignedProposerPreferences, SignedRoot, SignedValidatorRegistrationData,
+    SignedVoluntaryExit, Slot, SyncAggregatorSelectionData, SyncCommitteeContribution,
+    SyncCommitteeMessage, SyncSelectionProof, SyncSubnetId, ValidatorRegistrationData,
+    VoluntaryExit, graffiti::GraffitiString,
 };
 use validator_store::{
     DoppelgangerStatus, Error as ValidatorStoreError, ProposalData, SignedBlock, UnsignedBlock,
@@ -834,6 +834,30 @@ impl<T: SlotClock + 'static, E: EthSpec> ValidatorStore for VibehouseValidatorSt
         })
     }
 
+    async fn sign_inclusion_list(
+        &self,
+        validator_pubkey: PublicKeyBytes,
+        inclusion_list: &InclusionList<E>,
+    ) -> Result<SignedInclusionList<E>, Error> {
+        let signing_epoch = inclusion_list.slot.epoch(E::slots_per_epoch());
+        let signing_context = self.signing_context(Domain::InclusionListCommittee, signing_epoch);
+        let signing_method = self.doppelganger_bypassed_signing_method(validator_pubkey)?;
+
+        let signature = signing_method
+            .get_signature::<E, BlindedPayload<E>>(
+                SignableMessage::InclusionList(inclusion_list),
+                signing_context,
+                &self.spec,
+                &self.task_executor,
+            )
+            .await?;
+
+        Ok(SignedInclusionList {
+            message: inclusion_list.clone(),
+            signature,
+        })
+    }
+
     async fn sign_attestation(
         &self,
         validator_pubkey: PublicKeyBytes,
@@ -1230,7 +1254,8 @@ mod tests {
     use task_executor::test_utils::TestRuntime;
     use tempfile::tempdir;
     use types::{
-        ExecutionPayloadEnvelope, ForkName, Hash256, MinimalEthSpec, PayloadAttestationData, Slot,
+        ExecutionPayloadEnvelope, ForkName, Hash256, InclusionList, MinimalEthSpec,
+        PayloadAttestationData, Slot,
     };
     use zeroize::Zeroizing;
 
@@ -1568,6 +1593,91 @@ mod tests {
 
         let result = store
             .sign_proposer_preferences(unknown_pubkey, &preferences)
+            .await;
+
+        assert!(result.is_err(), "unknown pubkey should return error");
+    }
+
+    #[tokio::test]
+    async fn sign_inclusion_list_uses_inclusion_list_committee_domain() {
+        let (store, keypair, pubkey_bytes) = store_with_validator().await;
+
+        let inclusion_list = InclusionList {
+            slot: Slot::new(5),
+            validator_index: 42,
+            inclusion_list_committee_root: Hash256::repeat_byte(0xbb),
+            transactions: <_>::default(),
+        };
+
+        let signed = store
+            .sign_inclusion_list(pubkey_bytes, &inclusion_list)
+            .await
+            .expect("should sign inclusion list");
+
+        // Independently compute the expected signing root.
+        let epoch = inclusion_list.slot.epoch(E::slots_per_epoch());
+        let fork = store.spec.fork_at_epoch(epoch);
+        let domain = store.spec.get_domain(
+            epoch,
+            Domain::InclusionListCommittee,
+            &fork,
+            Hash256::repeat_byte(42),
+        );
+        let expected_signing_root = inclusion_list.signing_root(domain);
+
+        assert!(
+            signed.signature.verify(&keypair.pk, expected_signing_root),
+            "signature should verify with Domain::InclusionListCommittee"
+        );
+        assert_eq!(signed.message, inclusion_list);
+    }
+
+    #[tokio::test]
+    async fn sign_inclusion_list_wrong_domain_fails_verify() {
+        let (store, keypair, pubkey_bytes) = store_with_validator().await;
+
+        let inclusion_list = InclusionList {
+            slot: Slot::new(3),
+            validator_index: 7,
+            inclusion_list_committee_root: Hash256::repeat_byte(0xcc),
+            transactions: <_>::default(),
+        };
+
+        let signed = store
+            .sign_inclusion_list(pubkey_bytes, &inclusion_list)
+            .await
+            .expect("should sign inclusion list");
+
+        let epoch = inclusion_list.slot.epoch(E::slots_per_epoch());
+        let fork = store.spec.fork_at_epoch(epoch);
+        let wrong_domain = store.spec.get_domain(
+            epoch,
+            Domain::BeaconAttester,
+            &fork,
+            Hash256::repeat_byte(42),
+        );
+        let wrong_signing_root = inclusion_list.signing_root(wrong_domain);
+
+        assert!(
+            !signed.signature.verify(&keypair.pk, wrong_signing_root),
+            "signature should NOT verify with wrong domain"
+        );
+    }
+
+    #[tokio::test]
+    async fn sign_inclusion_list_unknown_pubkey_returns_error() {
+        let (store, _, _) = store_with_validator().await;
+
+        let inclusion_list = InclusionList {
+            slot: Slot::new(0),
+            validator_index: 0,
+            inclusion_list_committee_root: Hash256::ZERO,
+            transactions: <_>::default(),
+        };
+        let unknown_pubkey = PublicKeyBytes::from(&Keypair::random().pk);
+
+        let result = store
+            .sign_inclusion_list(unknown_pubkey, &inclusion_list)
             .await;
 
         assert!(result.is_err(), "unknown pubkey should return error");

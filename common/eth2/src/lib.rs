@@ -43,7 +43,8 @@ use self::types::{
 use ::types::beacon_response::ExecutionOptimisticFinalizedBeaconResponse;
 use ::types::{
     ExecutionProof, PayloadAttestation, PayloadAttestationData, PayloadAttestationMessage,
-    SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope, SignedProposerPreferences,
+    SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope, SignedInclusionList,
+    SignedProposerPreferences,
 };
 use educe::Educe;
 use futures::Stream;
@@ -1053,6 +1054,26 @@ impl BeaconNodeHttpClient {
             .push("proposer_preferences");
 
         self.post(path, preferences).await?;
+
+        Ok(())
+    }
+
+    /// `POST beacon/pool/inclusion_lists`
+    ///
+    /// Submits a signed inclusion list to the beacon node for gossip propagation.
+    pub async fn post_beacon_pool_inclusion_lists<E: EthSpec>(
+        &self,
+        signed_il: &SignedInclusionList<E>,
+    ) -> Result<(), Error> {
+        let mut path = self.eth_path(V1)?;
+
+        path.path_segments_mut()
+            .map_err(|()| Error::InvalidUrl(self.server.clone()))?
+            .push("beacon")
+            .push("pool")
+            .push("inclusion_lists");
+
+        self.post(path, signed_il).await?;
 
         Ok(())
     }

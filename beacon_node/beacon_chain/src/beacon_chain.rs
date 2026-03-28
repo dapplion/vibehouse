@@ -1880,6 +1880,18 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             let il_committee = get_inclusion_list_committee::<T::EthSpec>(&state, slot, &self.spec)
                 .map_err(Error::BlockProcessingError)?;
 
+            // Compute committee root (hash_tree_root of FixedVector<u64, ILCS>).
+            let committee_fixed: ssz_types::FixedVector<
+                u64,
+                <T::EthSpec as types::EthSpec>::InclusionListCommitteeSize,
+            > = ssz_types::FixedVector::new(il_committee.clone()).map_err(|_| {
+                Error::DBInconsistent(format!(
+                    "IL committee size {} != InclusionListCommitteeSize",
+                    il_committee.len(),
+                ))
+            })?;
+            let committee_root = tree_hash::TreeHash::tree_hash_root(&committee_fixed);
+
             for (il_position, &validator_index) in il_committee.iter().enumerate() {
                 if requested.contains(&validator_index) {
                     let pubkey = self
@@ -1893,6 +1905,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         validator_index,
                         slot,
                         il_committee_index: il_position as u64,
+                        inclusion_list_committee_root: committee_root,
                     });
                 }
             }

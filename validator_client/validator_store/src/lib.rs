@@ -5,11 +5,12 @@ use std::future::Future;
 use std::sync::Arc;
 use types::{
     Address, Attestation, AttestationError, BlindedBeaconBlock, Epoch, EthSpec,
-    ExecutionPayloadEnvelope, Graffiti, Hash256, PayloadAttestationData, PayloadAttestationMessage,
-    ProposerPreferences, PublicKeyBytes, SelectionProof, Signature, SignedAggregateAndProof,
-    SignedBlindedBeaconBlock, SignedContributionAndProof, SignedExecutionPayloadEnvelope,
-    SignedProposerPreferences, SignedValidatorRegistrationData, Slot, SyncCommitteeContribution,
-    SyncCommitteeMessage, SyncSelectionProof, SyncSubnetId, ValidatorRegistrationData,
+    ExecutionPayloadEnvelope, Graffiti, Hash256, InclusionList, PayloadAttestationData,
+    PayloadAttestationMessage, ProposerPreferences, PublicKeyBytes, SelectionProof, Signature,
+    SignedAggregateAndProof, SignedBlindedBeaconBlock, SignedContributionAndProof,
+    SignedExecutionPayloadEnvelope, SignedInclusionList, SignedProposerPreferences,
+    SignedValidatorRegistrationData, Slot, SyncCommitteeContribution, SyncCommitteeMessage,
+    SyncSelectionProof, SyncSubnetId, ValidatorRegistrationData,
 };
 
 #[derive(Debug, PartialEq, Clone)]
@@ -125,6 +126,13 @@ pub trait ValidatorStore: Send + Sync {
         validator_pubkey: PublicKeyBytes,
         preferences: &ProposerPreferences,
     ) -> impl Future<Output = Result<SignedProposerPreferences, Error<Self::Error>>> + Send;
+
+    /// Sign an inclusion list with DOMAIN_INCLUSION_LIST_COMMITTEE (heze FOCIL).
+    fn sign_inclusion_list(
+        &self,
+        validator_pubkey: PublicKeyBytes,
+        inclusion_list: &InclusionList<Self::E>,
+    ) -> impl Future<Output = Result<SignedInclusionList<Self::E>, Error<Self::Error>>> + Send;
 
     fn sign_attestation(
         &self,

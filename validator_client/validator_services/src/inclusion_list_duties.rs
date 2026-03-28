@@ -185,6 +185,7 @@ async fn poll_inclusion_list_duties_for_epoch<S: ValidatorStore, T: SlotClock + 
 mod tests {
     use super::*;
     use std::collections::HashSet;
+    use types::Hash256;
 
     const SLOTS_PER_EPOCH: u64 = 8;
 
@@ -196,6 +197,7 @@ mod tests {
             validator_index,
             slot: Slot::new(slot),
             il_committee_index: 0,
+            inclusion_list_committee_root: Hash256::ZERO,
         }
     }
 

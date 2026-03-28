@@ -13,8 +13,9 @@ use task_executor::TaskExecutor;
 use types::{
     AbstractExecPayload, AggregateAndProofRef, AttestationData, BeaconBlock, ChainSpec,
     ContributionAndProof, Domain, Epoch, EthSpec, ExecutionPayloadEnvelope, Fork, FullPayload,
-    Hash256, Keypair, PayloadAttestationData, ProposerPreferences, PublicKey, Signature,
-    SignedRoot, Slot, SyncAggregatorSelectionData, ValidatorRegistrationData, VoluntaryExit,
+    Hash256, InclusionList, Keypair, PayloadAttestationData, ProposerPreferences, PublicKey,
+    Signature, SignedRoot, Slot, SyncAggregatorSelectionData, ValidatorRegistrationData,
+    VoluntaryExit,
 };
 use url::Url;
 use web3signer::{ForkInfo, MessageType, SigningRequest, SigningResponse};
@@ -58,6 +59,8 @@ pub enum SignableMessage<'a, E: EthSpec, Payload: AbstractExecPayload<E> = FullP
     PayloadAttestationData(&'a PayloadAttestationData),
     /// Gloas ePBS: sign proposer preferences with DOMAIN_PROPOSER_PREFERENCES.
     ProposerPreferences(&'a ProposerPreferences),
+    /// Heze FOCIL: sign inclusion list with DOMAIN_INCLUSION_LIST_COMMITTEE.
+    InclusionList(&'a InclusionList<E>),
 }
 
 impl<E: EthSpec, Payload: AbstractExecPayload<E>> SignableMessage<'_, E, Payload> {
@@ -82,6 +85,7 @@ impl<E: EthSpec, Payload: AbstractExecPayload<E>> SignableMessage<'_, E, Payload
             SignableMessage::ExecutionPayloadEnvelope(e) => e.signing_root(domain),
             SignableMessage::PayloadAttestationData(d) => d.signing_root(domain),
             SignableMessage::ProposerPreferences(p) => p.signing_root(domain),
+            SignableMessage::InclusionList(il) => il.signing_root(domain),
         }
     }
 }
@@ -258,6 +262,11 @@ impl SigningMethod {
                     SignableMessage::ProposerPreferences(_) => {
                         return Err(Error::Web3SignerRequestFailed(
                             "Web3Signer does not support ProposerPreferences signing".to_string(),
+                        ));
+                    }
+                    SignableMessage::InclusionList(_) => {
+                        return Err(Error::Web3SignerRequestFailed(
+                            "Web3Signer does not support InclusionList signing".to_string(),
                         ));
                     }
                 };
