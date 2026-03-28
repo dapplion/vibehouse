@@ -121,8 +121,7 @@ impl<E: EthSpec> DataColumnSidecar<E> {
     pub fn block_parent_root(&self) -> Option<Hash256> {
         match self {
             DataColumnSidecar::Fulu(inner) => Some(inner.signed_block_header.message.parent_root),
-            DataColumnSidecar::Gloas(_) => None,
-            DataColumnSidecar::Heze(_) => None,
+            DataColumnSidecar::Gloas(_) | DataColumnSidecar::Heze(_) => None,
         }
     }
 
@@ -135,8 +134,7 @@ impl<E: EthSpec> DataColumnSidecar<E> {
             DataColumnSidecar::Fulu(inner) => {
                 Some(inner.signed_block_header.message.proposer_index)
             }
-            DataColumnSidecar::Gloas(_) => None,
-            DataColumnSidecar::Heze(_) => None,
+            DataColumnSidecar::Gloas(_) | DataColumnSidecar::Heze(_) => None,
         }
     }
 
@@ -154,11 +152,7 @@ impl<E: EthSpec> DataColumnSidecar<E> {
                     inner.signed_block_header.message.body_root,
                 )
             }
-            DataColumnSidecar::Gloas(_) => {
-                // Gloas doesn't have inclusion proofs — validated via ePBS bid commitments
-                true
-            }
-            DataColumnSidecar::Heze(_) => {
+            DataColumnSidecar::Gloas(_) | DataColumnSidecar::Heze(_) => {
                 // Gloas doesn't have inclusion proofs — validated via ePBS bid commitments
                 true
             }

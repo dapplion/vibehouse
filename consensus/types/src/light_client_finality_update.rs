@@ -266,8 +266,9 @@ impl<E: EthSpec> LightClientFinalityUpdate<E> {
             ForkName::Deneb => <LightClientFinalityUpdateDeneb<E> as Encode>::ssz_fixed_len(),
             ForkName::Electra => <LightClientFinalityUpdateElectra<E> as Encode>::ssz_fixed_len(),
             ForkName::Fulu => <LightClientFinalityUpdateFulu<E> as Encode>::ssz_fixed_len(),
-            ForkName::Gloas => <LightClientFinalityUpdateGloas<E> as Encode>::ssz_fixed_len(),
-            ForkName::Heze => <LightClientFinalityUpdateGloas<E> as Encode>::ssz_fixed_len(),
+            ForkName::Gloas | ForkName::Heze => {
+                <LightClientFinalityUpdateGloas<E> as Encode>::ssz_fixed_len()
+            }
         };
         // `2 *` because there are two headers in the update
         fixed_size + 2 * LightClientHeader::<E>::ssz_max_var_len_for_fork(fork_name)

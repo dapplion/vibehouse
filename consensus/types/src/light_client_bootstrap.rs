@@ -132,8 +132,9 @@ impl<E: EthSpec> LightClientBootstrap<E> {
             ForkName::Deneb => <LightClientBootstrapDeneb<E> as Encode>::ssz_fixed_len(),
             ForkName::Electra => <LightClientBootstrapElectra<E> as Encode>::ssz_fixed_len(),
             ForkName::Fulu => <LightClientBootstrapFulu<E> as Encode>::ssz_fixed_len(),
-            ForkName::Gloas => <LightClientBootstrapGloas<E> as Encode>::ssz_fixed_len(),
-            ForkName::Heze => <LightClientBootstrapGloas<E> as Encode>::ssz_fixed_len(),
+            ForkName::Gloas | ForkName::Heze => {
+                <LightClientBootstrapGloas<E> as Encode>::ssz_fixed_len()
+            }
         };
         fixed_len + LightClientHeader::<E>::ssz_max_var_len_for_fork(fork_name)
     }

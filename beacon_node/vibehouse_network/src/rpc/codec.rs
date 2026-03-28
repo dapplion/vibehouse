@@ -940,6 +940,7 @@ mod tests {
         chain_spec.electra_fork_epoch = Some(Epoch::new(5));
         chain_spec.fulu_fork_epoch = Some(Epoch::new(6));
         chain_spec.gloas_fork_epoch = Some(Epoch::new(7));
+        chain_spec.heze_fork_epoch = Some(Epoch::new(8));
 
         // check that we have all forks covered
         assert!(chain_spec.fork_epoch(ForkName::latest()).is_some());
@@ -956,6 +957,7 @@ mod tests {
             ForkName::Electra => spec.electra_fork_epoch,
             ForkName::Fulu => spec.fulu_fork_epoch,
             ForkName::Gloas => spec.gloas_fork_epoch,
+            ForkName::Heze => spec.heze_fork_epoch,
         };
         let current_slot = current_epoch.unwrap().start_slot(Spec::slots_per_epoch());
         ForkContext::new::<Spec>(current_slot, Hash256::zero(), spec)
