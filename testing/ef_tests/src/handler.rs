@@ -1064,6 +1064,54 @@ impl<E: EthSpec + TypeName> Handler for GossipVoluntaryExitHandler<E> {
 
 #[derive(Educe)]
 #[educe(Default(bound()))]
+pub struct GossipBeaconAttestationHandler<E>(PhantomData<E>);
+
+impl<E: EthSpec + TypeName> Handler for GossipBeaconAttestationHandler<E> {
+    type Case = cases::GossipBeaconAttestation<E>;
+
+    fn config_name() -> &'static str {
+        E::name()
+    }
+
+    fn runner_name() -> &'static str {
+        "networking"
+    }
+
+    fn handler_name(&self) -> String {
+        "gossip_beacon_attestation".into()
+    }
+
+    fn use_rayon() -> bool {
+        false
+    }
+}
+
+#[derive(Educe)]
+#[educe(Default(bound()))]
+pub struct GossipBeaconAggregateAndProofHandler<E>(PhantomData<E>);
+
+impl<E: EthSpec + TypeName> Handler for GossipBeaconAggregateAndProofHandler<E> {
+    type Case = cases::GossipBeaconAggregateAndProof<E>;
+
+    fn config_name() -> &'static str {
+        E::name()
+    }
+
+    fn runner_name() -> &'static str {
+        "networking"
+    }
+
+    fn handler_name(&self) -> String {
+        "gossip_beacon_aggregate_and_proof".into()
+    }
+
+    fn use_rayon() -> bool {
+        false
+    }
+}
+
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct KZGComputeCellsHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec> Handler for KZGComputeCellsHandler<E> {

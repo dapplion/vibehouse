@@ -6,10 +6,10 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 ## Status: DONE
 
 ### Current results
-- **84/84 ef_tests pass (real crypto, 0 skipped)** — both mainnet + minimal presets
-- **146/146 fake_crypto pass (0 skipped)** — both mainnet + minimal presets (includes Heze SSZ static types, gossip validation tests)
+- **86/86 ef_tests pass (real crypto, 0 skipped)** — both mainnet + minimal presets
+- **148/148 fake_crypto pass (0 skipped)** — both mainnet + minimal presets (includes Heze SSZ static types, gossip validation tests)
 - **check_all_files_accessed passes** — all files accessed, intentionally excluded patterns maintained
-- Gossip validation tests: `gossip_beacon_block` (12 phase0 test cases), `gossip_proposer_slashing`, `gossip_attester_slashing`, and `gossip_voluntary_exit` across all forks (phase0 through heze)
+- Gossip validation tests: `gossip_beacon_block` (12 phase0 test cases), `gossip_beacon_attestation` (16 phase0 test cases), `gossip_beacon_aggregate_and_proof` (20 phase0 test cases), `gossip_proposer_slashing`, `gossip_attester_slashing`, and `gossip_voluntary_exit` across all forks (phase0 through heze)
 - All 9 fork_choice test categories pass (get_head, on_block, ex_ante, reorg, withholding, get_proposer_head, deposit_with_reorg, should_override_forkchoice_update, on_execution_payload)
 - 40/40 gloas execution_payload envelope tests pass (process_execution_payload_envelope spec validation)
 - rewards/inactivity_scores tests running across all forks (was missing)
@@ -30,6 +30,19 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, networking (gossip_attester_slashing, gossip_proposer_slashing, gossip_voluntary_exit, get_custody_groups, compute_columns_for_custody_group), operations, random, rewards, sanity, ssz_static, transition
 
 ## Progress log
+
+### run 3820 (Mar 28) — add gossip_beacon_attestation and gossip_beacon_aggregate_and_proof EF tests
+
+- Implemented `GossipBeaconAttestation` handler — validates slot range, committee index, aggregation bits length, unaggregated check, block known/valid, already-seen attester, correct subnet, target ancestry, finalized ancestry, and signature verification
+- Implemented `GossipBeaconAggregateAndProof` handler — validates slot range, epoch match, committee index, aggregation bits, participant count, block known/valid, aggregator in committee, already-seen aggregator, already-seen aggregate bits superset, target ancestry, finalized ancestry, and three signature checks (selection proof, aggregator signature, aggregate attestation signature)
+- Key implementation detail: slot range check uses time-based comparison (matching spec's `is_within_slot_range`), not slot-based — `end_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < current_time_ms` preserves ms-level precision at boundaries
+- Fork-dependent SSZ decoding for attestations (Base vs Electra) and aggregates (Base vs Electra)
+- Committee cache built after state advancement (`build_all_committee_caches`)
+- 16 phase0 attestation test cases pass (valid, valid_within_clock_disparity, valid_within_clock_disparity_old, ignore_already_seen, ignore_block_not_seen, ignore_finalized_not_ancestor, ignore_slot_not_in_range, ignore_slot_too_old, reject_aggregation_bits_size_mismatch, reject_block_failed_validation, reject_committee_index_out_of_range, reject_epoch_mismatch, reject_invalid_signature, reject_not_unaggregated, reject_target_not_ancestor, reject_wrong_subnet)
+- 20 phase0 aggregate test cases pass (valid, valid_two_aggregators_same_data, valid_within_clock_disparity, ignore_already_seen_aggregate, ignore_already_seen_aggregator, ignore_block_not_seen, ignore_finalized_not_ancestor, ignore_same_data_root_without_superset, ignore_slot_not_within_range, reject_aggregation_bits_size_mismatch, reject_aggregator_index_out_of_range, reject_aggregator_not_in_committee, reject_block_failed_validation, reject_committee_index_out_of_range, reject_epoch_mismatch, reject_invalid_aggregate_signature, reject_invalid_aggregator_signature, reject_invalid_selection_proof, reject_no_participants, reject_target_not_ancestor)
+- Removed both from check_all_files_accessed.py exclusion list
+- All gossip validation test types now implemented — no remaining exclusions in networking category
+- Both real crypto (86/86) and fake crypto (148/148) pass
 
 ### run 3819 (Mar 28) — add gossip_beacon_block EF tests
 

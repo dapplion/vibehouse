@@ -1256,3 +1256,15 @@ fn gossip_voluntary_exit() {
     GossipVoluntaryExitHandler::<MinimalEthSpec>::default().run();
     GossipVoluntaryExitHandler::<MainnetEthSpec>::default().run();
 }
+
+#[test]
+fn gossip_beacon_attestation() {
+    GossipBeaconAttestationHandler::<MinimalEthSpec>::default().run();
+    GossipBeaconAttestationHandler::<MainnetEthSpec>::default().run();
+}
+
+#[test]
+fn gossip_beacon_aggregate_and_proof() {
+    GossipBeaconAggregateAndProofHandler::<MinimalEthSpec>::default().run();
+    GossipBeaconAggregateAndProofHandler::<MainnetEthSpec>::default().run();
+}
