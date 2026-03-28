@@ -137,3 +137,4 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Devnet verified multiple times: 4-node finalized_epoch=8, clean Gloas fork transition
 - Full test verification (run 3285): 80/80 EF (real crypto) + 140/140 EF (fake crypto) + 2445 core tests + 4998 workspace tests
 - Run 3314: Updated transitive deps (wasm-bindgen 0.2.115, js-sys 0.3.92, web-sys 0.3.92). 4998 workspace tests pass. Only outdated dep: rand_xorshift 0.4→0.5 (blocked by rand_core version conflicts)
+- Run 3316: Full audit — no new consensus-specs merges, no new Gloas PRs, all 8 open PRs unchanged, deps fully current (0 compatible updates), Rust 1.94.1 + nightly 1.96.0 up to date, cargo audit unchanged (1 rsa transitive). FCR #4747 had test vector update (Mar 27) but still conflicting with 144 reviews. Still on v1.7.0-alpha.4.
