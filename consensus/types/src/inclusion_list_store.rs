@@ -474,4 +474,148 @@ mod tests {
         let key = (Slot::new(5), cr);
         assert!(store.inclusion_lists.contains_key(&key));
     }
+
+    fn make_signed_il(
+        slot: u64,
+        validator_index: u64,
+        committee_root: Hash256,
+    ) -> SignedInclusionList<E> {
+        SignedInclusionList {
+            message: make_il(slot, validator_index, committee_root),
+            signature: crate::Signature::empty(),
+        }
+    }
+
+    fn make_signed_il_with_txs(
+        slot: u64,
+        validator_index: u64,
+        committee_root: Hash256,
+        txs: Vec<Vec<u8>>,
+    ) -> SignedInclusionList<E> {
+        SignedInclusionList {
+            message: make_il_with_txs(slot, validator_index, committee_root, txs),
+            signature: crate::Signature::empty(),
+        }
+    }
+
+    #[test]
+    fn signed_process_caches_accepted_il() {
+        let mut store = InclusionListStore::<E>::new();
+        let cr = test_committee_root(&[0, 1, 2, 3]);
+        let signed = make_signed_il(1, 0, cr);
+
+        store.process_signed_inclusion_list(signed.clone(), true);
+
+        let key = (Slot::new(1), cr);
+        // Should be in both inclusion_lists and signed_cache
+        assert_eq!(store.inclusion_lists.get(&key).unwrap().len(), 1);
+        assert!(store.signed_cache.get(&key).unwrap().contains_key(&0));
+        assert_eq!(store.signed_cache.get(&key).unwrap()[&0], signed);
+    }
+
+    #[test]
+    fn signed_process_not_cached_after_cutoff() {
+        let mut store = InclusionListStore::<E>::new();
+        let cr = test_committee_root(&[0, 1, 2, 3]);
+        let signed = make_signed_il(1, 0, cr);
+
+        store.process_signed_inclusion_list(signed, false);
+
+        let key = (Slot::new(1), cr);
+        // Not stored, not cached
+        assert!(!store.inclusion_lists.contains_key(&key));
+        assert!(!store.signed_cache.contains_key(&key));
+    }
+
+    #[test]
+    fn signed_process_equivocation_removes_from_cache() {
+        let mut store = InclusionListStore::<E>::new();
+        let cr = test_committee_root(&[0, 1, 2, 3]);
+        let signed1 = make_signed_il(1, 0, cr);
+        let signed2 = make_signed_il_with_txs(1, 0, cr, vec![vec![1, 2, 3]]);
+
+        store.process_signed_inclusion_list(signed1, true);
+        let key = (Slot::new(1), cr);
+        assert!(store.signed_cache.get(&key).unwrap().contains_key(&0));
+
+        // Equivocation: different IL from same validator
+        store.process_signed_inclusion_list(signed2, true);
+
+        // Validator is equivocator — removed from both stores
+        assert!(store.equivocators.get(&key).unwrap().contains(&0));
+        assert!(store.inclusion_lists.get(&key).unwrap().is_empty());
+        // Signed cache should also be cleaned up
+        let cache = store.signed_cache.get(&key);
+        assert!(cache.is_none() || !cache.unwrap().contains_key(&0));
+    }
+
+    #[test]
+    fn signed_process_duplicate_idempotent() {
+        let mut store = InclusionListStore::<E>::new();
+        let cr = test_committee_root(&[0, 1, 2, 3]);
+        let signed = make_signed_il(1, 0, cr);
+
+        store.process_signed_inclusion_list(signed.clone(), true);
+        store.process_signed_inclusion_list(signed, true);
+
+        let key = (Slot::new(1), cr);
+        // Still exactly one entry in both stores
+        assert_eq!(store.inclusion_lists.get(&key).unwrap().len(), 1);
+        assert_eq!(store.signed_cache.get(&key).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn signed_process_multiple_validators() {
+        let mut store = InclusionListStore::<E>::new();
+        let cr = test_committee_root(&[0, 1, 2, 3]);
+        let signed0 = make_signed_il(1, 0, cr);
+        let signed1 = make_signed_il(1, 1, cr);
+        let signed2 = make_signed_il(1, 2, cr);
+
+        store.process_signed_inclusion_list(signed0, true);
+        store.process_signed_inclusion_list(signed1, true);
+        store.process_signed_inclusion_list(signed2, true);
+
+        let key = (Slot::new(1), cr);
+        assert_eq!(store.inclusion_lists.get(&key).unwrap().len(), 3);
+        assert_eq!(store.signed_cache.get(&key).unwrap().len(), 3);
+    }
+
+    #[test]
+    fn prune_removes_signed_cache() {
+        let mut store = InclusionListStore::<E>::new();
+        let cr = test_committee_root(&[0, 1, 2, 3]);
+        let signed1 = make_signed_il(1, 0, cr);
+        let signed5 = make_signed_il(5, 1, cr);
+
+        store.process_signed_inclusion_list(signed1, true);
+        store.process_signed_inclusion_list(signed5, true);
+
+        store.prune(Slot::new(3));
+
+        // Slot 1 pruned from all three maps, slot 5 remains
+        assert_eq!(store.inclusion_lists.len(), 1);
+        assert_eq!(store.signed_cache.len(), 1);
+        assert!(store.signed_cache.contains_key(&(Slot::new(5), cr)));
+    }
+
+    #[test]
+    fn signed_equivocator_ignored_on_third_attempt() {
+        let mut store = InclusionListStore::<E>::new();
+        let cr = test_committee_root(&[0, 1, 2, 3]);
+        let signed1 = make_signed_il(1, 0, cr);
+        let signed2 = make_signed_il_with_txs(1, 0, cr, vec![vec![1]]);
+        let signed3 = make_signed_il_with_txs(1, 0, cr, vec![vec![2]]);
+
+        store.process_signed_inclusion_list(signed1, true);
+        store.process_signed_inclusion_list(signed2, true); // equivocation
+        store.process_signed_inclusion_list(signed3, true); // ignored
+
+        let key = (Slot::new(1), cr);
+        assert!(store.equivocators.get(&key).unwrap().contains(&0));
+        assert!(store.inclusion_lists.get(&key).unwrap().is_empty());
+        // Signed cache should not contain the equivocator
+        let cache = store.signed_cache.get(&key);
+        assert!(cache.is_none() || !cache.unwrap().contains_key(&0));
+    }
 }
