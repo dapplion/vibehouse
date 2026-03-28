@@ -3628,11 +3628,11 @@ async fn test_gloas_gossip_payload_envelope_slot_mismatch_rejected() {
     let envelope = SignedExecutionPayloadEnvelope {
         message: ExecutionPayloadEnvelope {
             payload: ExecutionPayloadGloas {
-                block_hash: bid.message.block_hash,
+                block_hash: *bid.message().block_hash(),
                 ..ExecutionPayloadGloas::default()
             },
             execution_requests: <_>::default(),
-            builder_index: bid.message.builder_index,
+            builder_index: *bid.message().builder_index(),
             beacon_block_root: head_root,
             slot: head_slot.saturating_add(1u64), // wrong slot
             state_root: Hash256::ZERO,
@@ -3676,7 +3676,7 @@ async fn test_gloas_gossip_payload_envelope_builder_index_mismatch_rejected() {
     let envelope = SignedExecutionPayloadEnvelope {
         message: ExecutionPayloadEnvelope {
             payload: ExecutionPayloadGloas {
-                block_hash: bid.message.block_hash,
+                block_hash: *bid.message().block_hash(),
                 ..ExecutionPayloadGloas::default()
             },
             execution_requests: <_>::default(),
@@ -3728,7 +3728,7 @@ async fn test_gloas_gossip_payload_envelope_block_hash_mismatch_rejected() {
                 ..ExecutionPayloadGloas::default()
             },
             execution_requests: <_>::default(),
-            builder_index: bid.message.builder_index, // correct builder
+            builder_index: *bid.message().builder_index(), // correct builder
             beacon_block_root: head_root,
             slot: head_slot,
             state_root: Hash256::ZERO,
@@ -3774,11 +3774,11 @@ async fn test_gloas_gossip_payload_envelope_self_build_accepted() {
 
     let envelope_msg = ExecutionPayloadEnvelope {
         payload: ExecutionPayloadGloas {
-            block_hash: bid.message.block_hash,
+            block_hash: *bid.message().block_hash(),
             ..ExecutionPayloadGloas::default()
         },
         execution_requests: <_>::default(),
-        builder_index: bid.message.builder_index, // BUILDER_INDEX_SELF_BUILD
+        builder_index: *bid.message().builder_index(), // BUILDER_INDEX_SELF_BUILD
         beacon_block_root: head_root,
         slot: head_slot,
         state_root: Hash256::ZERO,
@@ -3849,11 +3849,11 @@ async fn test_gloas_gossip_payload_envelope_duplicate_ignored() {
     let make_envelope = || {
         let message = ExecutionPayloadEnvelope {
             payload: ExecutionPayloadGloas {
-                block_hash: bid.message.block_hash,
+                block_hash: *bid.message().block_hash(),
                 ..ExecutionPayloadGloas::default()
             },
             execution_requests: <_>::default(),
-            builder_index: bid.message.builder_index,
+            builder_index: *bid.message().builder_index(),
             beacon_block_root: head_root,
             slot: head_slot,
             state_root: Hash256::ZERO,
@@ -6179,7 +6179,7 @@ async fn test_gloas_gossip_payload_envelope_invalid_signature_rejected() {
     let envelope = SignedExecutionPayloadEnvelope {
         message: ExecutionPayloadEnvelope {
             payload: ExecutionPayloadGloas {
-                block_hash: bid.message.block_hash, // zero — matches committed bid
+                block_hash: *bid.to_ref().message().block_hash(), // zero — matches committed bid
                 ..ExecutionPayloadGloas::default()
             },
             execution_requests: <_>::default(),
@@ -6201,7 +6201,7 @@ async fn test_gloas_gossip_payload_envelope_invalid_signature_rejected() {
             );
             let msg = ExecutionPayloadEnvelope::<E> {
                 payload: ExecutionPayloadGloas {
-                    block_hash: bid.message.block_hash,
+                    block_hash: *bid.to_ref().message().block_hash(),
                     ..ExecutionPayloadGloas::default()
                 },
                 execution_requests: <_>::default(),

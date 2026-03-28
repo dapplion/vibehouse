@@ -774,10 +774,11 @@ async fn bid_submission_rejected_before_gloas() {
     let client = &tester.client;
 
     // Create a minimal bid (will be rejected at the fork guard, not content validation)
-    let bid = types::SignedExecutionPayloadBid::<E> {
-        message: types::ExecutionPayloadBid::default(),
+    let bid: types::SignedExecutionPayloadBid<E> = types::SignedExecutionPayloadBidGloas {
+        message: types::ExecutionPayloadBidGloas::default(),
         signature: Signature::empty(),
-    };
+    }
+    .into();
 
     let result = client.post_builder_bids(&bid).await;
     assert!(
@@ -1456,8 +1457,9 @@ async fn post_execution_payload_envelope_block_hash_mismatch() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn post_execution_payload_envelope_invalid_signature() {
     use types::{
-        ExecutionPayloadBid, ExecutionPayloadEnvelope, ProposerPreferences,
-        SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope, SignedProposerPreferences,
+        ExecutionPayloadBidGloas, ExecutionPayloadEnvelope, ProposerPreferences,
+        SignedExecutionPayloadBid, SignedExecutionPayloadBidGloas, SignedExecutionPayloadEnvelope,
+        SignedProposerPreferences,
     };
 
     let validator_count = 32;
@@ -1509,7 +1511,7 @@ async fn post_execution_payload_envelope_invalid_signature() {
         .get_randao_mix(state.current_epoch())
         .expect("should get randao mix");
 
-    let bid_msg: ExecutionPayloadBid<E> = ExecutionPayloadBid {
+    let bid_msg = ExecutionPayloadBidGloas {
         slot: next_slot,
         builder_index: 0,
         value: 100,
@@ -1530,10 +1532,11 @@ async fn post_execution_payload_envelope_invalid_signature() {
     );
     let bid_signing_root = bid_msg.signing_root(bid_domain);
     let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
-    let signed_bid = SignedExecutionPayloadBid {
+    let signed_bid: SignedExecutionPayloadBid<E> = SignedExecutionPayloadBidGloas {
         message: bid_msg.clone(),
         signature: bid_signature,
-    };
+    }
+    .into();
     harness
         .chain
         .execution_bid_pool
@@ -1555,7 +1558,8 @@ async fn post_execution_payload_envelope_invalid_signature() {
         .signed_execution_payload_bid()
         .expect("block should have bid");
     assert_eq!(
-        block_bid.message.builder_index, 0,
+        *block_bid.message().builder_index(),
+        0,
         "block should use external builder (index 0), not self-build"
     );
 
@@ -2868,8 +2872,8 @@ async fn gloas_tester_with_builders(
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn bid_submission_accepted_valid_builder() {
     use types::{
-        Domain, ExecutionPayloadBid, ProposerPreferences, SignedExecutionPayloadBid,
-        SignedProposerPreferences, SignedRoot,
+        Domain, ExecutionPayloadBidGloas, ProposerPreferences, SignedExecutionPayloadBid,
+        SignedExecutionPayloadBidGloas, SignedProposerPreferences, SignedRoot,
     };
 
     let validator_count = 32;
@@ -2931,7 +2935,7 @@ async fn bid_submission_accepted_valid_builder() {
         .expect("should accept proposer preferences");
 
     // Create and sign a valid builder bid
-    let bid_msg: ExecutionPayloadBid<E> = ExecutionPayloadBid {
+    let bid_msg = ExecutionPayloadBidGloas {
         slot: next_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -2951,10 +2955,11 @@ async fn bid_submission_accepted_valid_builder() {
     let bid_signing_root = bid_msg.signing_root(bid_domain);
     let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
 
-    let signed_bid = SignedExecutionPayloadBid {
+    let signed_bid: SignedExecutionPayloadBid<E> = SignedExecutionPayloadBidGloas {
         message: bid_msg,
         signature: bid_signature,
-    };
+    }
+    .into();
 
     let result = client.post_builder_bids(&signed_bid).await;
     assert!(
@@ -2968,8 +2973,8 @@ async fn bid_submission_accepted_valid_builder() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn bid_submission_duplicate_returns_ok() {
     use types::{
-        Domain, ExecutionPayloadBid, ProposerPreferences, SignedExecutionPayloadBid,
-        SignedProposerPreferences, SignedRoot,
+        Domain, ExecutionPayloadBidGloas, ProposerPreferences, SignedExecutionPayloadBid,
+        SignedExecutionPayloadBidGloas, SignedProposerPreferences, SignedRoot,
     };
 
     let validator_count = 32;
@@ -3014,7 +3019,7 @@ async fn bid_submission_duplicate_returns_ok() {
         .await
         .expect("should accept proposer preferences");
 
-    let bid_msg: ExecutionPayloadBid<E> = ExecutionPayloadBid {
+    let bid_msg = ExecutionPayloadBidGloas {
         slot: next_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -3032,10 +3037,11 @@ async fn bid_submission_duplicate_returns_ok() {
     );
     let bid_signing_root = bid_msg.signing_root(bid_domain);
     let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
-    let signed_bid = SignedExecutionPayloadBid {
+    let signed_bid: SignedExecutionPayloadBid<E> = SignedExecutionPayloadBidGloas {
         message: bid_msg,
         signature: bid_signature,
-    };
+    }
+    .into();
 
     // First submission
     client
@@ -3061,15 +3067,16 @@ async fn bid_submission_rejected_unknown_builder() {
     let client = &tester.client;
 
     // Create a bid with a non-existent builder index (no builders in genesis state)
-    let bid = types::SignedExecutionPayloadBid::<E> {
-        message: types::ExecutionPayloadBid {
+    let bid: types::SignedExecutionPayloadBid<E> = types::SignedExecutionPayloadBidGloas {
+        message: types::ExecutionPayloadBidGloas {
             builder_index: 999,
             execution_payment: 1,
             slot: Slot::new(1),
             ..Default::default()
         },
         signature: Signature::empty(),
-    };
+    }
+    .into();
 
     let result = client.post_builder_bids(&bid).await;
     assert!(
@@ -3094,14 +3101,15 @@ async fn bid_submission_rejected_zero_payment() {
     let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
     let client = &tester.client;
 
-    let bid = types::SignedExecutionPayloadBid::<E> {
-        message: types::ExecutionPayloadBid {
+    let bid: types::SignedExecutionPayloadBid<E> = types::SignedExecutionPayloadBidGloas {
+        message: types::ExecutionPayloadBidGloas {
             execution_payment: 0,
             slot: Slot::new(1),
             ..Default::default()
         },
         signature: Signature::empty(),
-    };
+    }
+    .into();
 
     let result = client.post_builder_bids(&bid).await;
     assert!(result.is_err(), "bid with zero payment should be rejected");
@@ -3519,10 +3527,10 @@ async fn gloas_block_production_via_http_api_v3() {
             let signed_bid = body
                 .signed_execution_payload_bid()
                 .expect("Gloas block body should have a signed_execution_payload_bid");
-            let bid = &signed_bid.message;
+            let bid = signed_bid.message();
             // Self-build bid has builder_index = BUILDER_INDEX_SELF_BUILD (u64::MAX)
             assert_eq!(
-                bid.builder_index,
+                *bid.builder_index(),
                 types::consts::gloas::BUILDER_INDEX_SELF_BUILD,
                 "self-build bid should have BUILDER_INDEX_SELF_BUILD"
             );
@@ -3749,8 +3757,8 @@ async fn post_execution_proof_empty_data_rejected() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn bid_submission_rejected_invalid_signature() {
     use types::{
-        Domain, ExecutionPayloadBid, ProposerPreferences, SignedExecutionPayloadBid,
-        SignedProposerPreferences, SignedRoot,
+        Domain, ExecutionPayloadBidGloas, ProposerPreferences, SignedExecutionPayloadBid,
+        SignedExecutionPayloadBidGloas, SignedProposerPreferences, SignedRoot,
     };
 
     let validator_count = 32;
@@ -3800,7 +3808,7 @@ async fn bid_submission_rejected_invalid_signature() {
         .expect("should accept proposer preferences");
 
     // Create the bid message — all fields valid
-    let bid_msg: ExecutionPayloadBid<E> = ExecutionPayloadBid {
+    let bid_msg = ExecutionPayloadBidGloas {
         slot: next_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -3822,10 +3830,11 @@ async fn bid_submission_rejected_invalid_signature() {
     let wrong_keypair = generate_deterministic_keypair(0); // validator key, not builder key
     let bad_signature = wrong_keypair.sk.sign(bid_signing_root);
 
-    let signed_bid = SignedExecutionPayloadBid {
+    let signed_bid: SignedExecutionPayloadBid<E> = SignedExecutionPayloadBidGloas {
         message: bid_msg,
         signature: bad_signature,
-    };
+    }
+    .into();
 
     let result = client.post_builder_bids(&signed_bid).await;
     assert!(
@@ -3872,7 +3881,7 @@ async fn bid_submission_rejected_inactive_builder() {
     let current_slot = harness.chain.slot().unwrap();
     let spec = &harness.chain.spec;
 
-    let bid_msg = types::ExecutionPayloadBid::<E> {
+    let bid_msg = types::ExecutionPayloadBidGloas::<E> {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -3890,10 +3899,11 @@ async fn bid_submission_rejected_inactive_builder() {
     let bid_signing_root = bid_msg.signing_root(bid_domain);
     let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
 
-    let signed_bid = types::SignedExecutionPayloadBid {
+    let signed_bid: types::SignedExecutionPayloadBid<E> = types::SignedExecutionPayloadBidGloas {
         message: bid_msg,
         signature: bid_signature,
-    };
+    }
+    .into();
 
     let result = client.post_builder_bids(&signed_bid).await;
     assert!(
@@ -3916,8 +3926,8 @@ async fn bid_submission_rejected_inactive_builder() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn bid_submission_rejected_insufficient_balance() {
     use types::{
-        Domain, ExecutionPayloadBid, ProposerPreferences, SignedExecutionPayloadBid,
-        SignedProposerPreferences, SignedRoot,
+        Domain, ExecutionPayloadBidGloas, ProposerPreferences, SignedExecutionPayloadBid,
+        SignedExecutionPayloadBidGloas, SignedProposerPreferences, SignedRoot,
     };
 
     let validator_count = 32;
@@ -3964,7 +3974,7 @@ async fn bid_submission_rejected_insufficient_balance() {
         .expect("should accept proposer preferences");
 
     // Bid with value that exceeds builder's available balance
-    let bid_msg: ExecutionPayloadBid<E> = ExecutionPayloadBid {
+    let bid_msg = ExecutionPayloadBidGloas {
         slot: next_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -3984,10 +3994,11 @@ async fn bid_submission_rejected_insufficient_balance() {
     let bid_signing_root = bid_msg.signing_root(bid_domain);
     let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
 
-    let signed_bid = SignedExecutionPayloadBid {
+    let signed_bid: SignedExecutionPayloadBid<E> = SignedExecutionPayloadBidGloas {
         message: bid_msg,
         signature: bid_signature,
-    };
+    }
+    .into();
 
     let result = client.post_builder_bids(&signed_bid).await;
     assert!(
@@ -4010,8 +4021,8 @@ async fn bid_submission_rejected_insufficient_balance() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn bid_submission_rejected_fee_recipient_mismatch() {
     use types::{
-        Domain, ExecutionPayloadBid, ProposerPreferences, SignedExecutionPayloadBid,
-        SignedProposerPreferences, SignedRoot,
+        Domain, ExecutionPayloadBidGloas, ProposerPreferences, SignedExecutionPayloadBid,
+        SignedExecutionPayloadBidGloas, SignedProposerPreferences, SignedRoot,
     };
 
     let validator_count = 32;
@@ -4059,7 +4070,7 @@ async fn bid_submission_rejected_fee_recipient_mismatch() {
 
     // Create bid with DIFFERENT fee_recipient
     let wrong_fee_recipient = Address::repeat_byte(0x99);
-    let bid_msg: ExecutionPayloadBid<E> = ExecutionPayloadBid {
+    let bid_msg = ExecutionPayloadBidGloas {
         slot: next_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -4079,10 +4090,11 @@ async fn bid_submission_rejected_fee_recipient_mismatch() {
     let bid_signing_root = bid_msg.signing_root(bid_domain);
     let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
 
-    let signed_bid = SignedExecutionPayloadBid {
+    let signed_bid: SignedExecutionPayloadBid<E> = SignedExecutionPayloadBidGloas {
         message: bid_msg,
         signature: bid_signature,
-    };
+    }
+    .into();
 
     let result = client.post_builder_bids(&signed_bid).await;
     assert!(
@@ -4105,8 +4117,8 @@ async fn bid_submission_rejected_fee_recipient_mismatch() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn bid_submission_rejected_gas_limit_mismatch() {
     use types::{
-        Domain, ExecutionPayloadBid, ProposerPreferences, SignedExecutionPayloadBid,
-        SignedProposerPreferences, SignedRoot,
+        Domain, ExecutionPayloadBidGloas, ProposerPreferences, SignedExecutionPayloadBid,
+        SignedExecutionPayloadBidGloas, SignedProposerPreferences, SignedRoot,
     };
 
     let validator_count = 32;
@@ -4154,7 +4166,7 @@ async fn bid_submission_rejected_gas_limit_mismatch() {
 
     // Create bid with DIFFERENT gas_limit
     let wrong_gas_limit = 50_000_000u64;
-    let bid_msg: ExecutionPayloadBid<E> = ExecutionPayloadBid {
+    let bid_msg = ExecutionPayloadBidGloas {
         slot: next_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -4174,10 +4186,11 @@ async fn bid_submission_rejected_gas_limit_mismatch() {
     let bid_signing_root = bid_msg.signing_root(bid_domain);
     let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
 
-    let signed_bid = SignedExecutionPayloadBid {
+    let signed_bid: SignedExecutionPayloadBid<E> = SignedExecutionPayloadBidGloas {
         message: bid_msg,
         signature: bid_signature,
-    };
+    }
+    .into();
 
     let result = client.post_builder_bids(&signed_bid).await;
     assert!(
@@ -4200,8 +4213,8 @@ async fn bid_submission_rejected_gas_limit_mismatch() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn bid_submission_rejected_not_highest_value() {
     use types::{
-        Domain, ExecutionPayloadBid, ProposerPreferences, SignedExecutionPayloadBid,
-        SignedProposerPreferences, SignedRoot,
+        Domain, ExecutionPayloadBidGloas, ProposerPreferences, SignedExecutionPayloadBid,
+        SignedExecutionPayloadBidGloas, SignedProposerPreferences, SignedRoot,
     };
 
     let validator_count = 32;
@@ -4250,7 +4263,7 @@ async fn bid_submission_rejected_not_highest_value() {
         .expect("should accept proposer preferences");
 
     // Submit first bid with HIGH value from builder 0
-    let bid_msg_high: ExecutionPayloadBid<E> = ExecutionPayloadBid {
+    let bid_msg_high = ExecutionPayloadBidGloas {
         slot: next_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -4270,17 +4283,18 @@ async fn bid_submission_rejected_not_highest_value() {
     let bid_signing_root = bid_msg_high.signing_root(bid_domain);
     let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
 
-    let signed_bid_high = SignedExecutionPayloadBid {
+    let signed_bid_high: SignedExecutionPayloadBid<E> = SignedExecutionPayloadBidGloas {
         message: bid_msg_high,
         signature: bid_signature,
-    };
+    }
+    .into();
     client
         .post_builder_bids(&signed_bid_high)
         .await
         .expect("first (high value) bid should be accepted");
 
     // Submit second bid with LOWER value from builder 1
-    let bid_msg_low: ExecutionPayloadBid<E> = ExecutionPayloadBid {
+    let bid_msg_low = ExecutionPayloadBidGloas {
         slot: next_slot,
         execution_payment: 1,
         builder_index: 1,
@@ -4294,10 +4308,11 @@ async fn bid_submission_rejected_not_highest_value() {
     let bid_signing_root = bid_msg_low.signing_root(bid_domain);
     let bid_signature = builder_keypairs[1].sk.sign(bid_signing_root);
 
-    let signed_bid_low = SignedExecutionPayloadBid {
+    let signed_bid_low: SignedExecutionPayloadBid<E> = SignedExecutionPayloadBidGloas {
         message: bid_msg_low,
         signature: bid_signature,
-    };
+    }
+    .into();
 
     let result = client.post_builder_bids(&signed_bid_low).await;
     assert!(
@@ -4339,7 +4354,7 @@ async fn bid_submission_rejected_slot_not_current_or_next() {
         "stale slot should not be current or next"
     );
 
-    let bid_msg = types::ExecutionPayloadBid::<E> {
+    let bid_msg = types::ExecutionPayloadBidGloas::<E> {
         slot: stale_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -4357,10 +4372,11 @@ async fn bid_submission_rejected_slot_not_current_or_next() {
     let bid_signing_root = bid_msg.signing_root(bid_domain);
     let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
 
-    let signed_bid = types::SignedExecutionPayloadBid {
+    let signed_bid: types::SignedExecutionPayloadBid<E> = types::SignedExecutionPayloadBidGloas {
         message: bid_msg,
         signature: bid_signature,
-    };
+    }
+    .into();
 
     let result = client.post_builder_bids(&signed_bid).await;
     assert!(result.is_err(), "bid with stale slot should be rejected");
@@ -4395,7 +4411,7 @@ async fn bid_submission_rejected_invalid_parent_root() {
     // Use a random parent_block_root that is NOT in fork choice
     let unknown_root = Hash256::repeat_byte(0xde);
 
-    let bid_msg = types::ExecutionPayloadBid::<E> {
+    let bid_msg = types::ExecutionPayloadBidGloas::<E> {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -4413,10 +4429,11 @@ async fn bid_submission_rejected_invalid_parent_root() {
     let bid_signing_root = bid_msg.signing_root(bid_domain);
     let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
 
-    let signed_bid = types::SignedExecutionPayloadBid {
+    let signed_bid: types::SignedExecutionPayloadBid<E> = types::SignedExecutionPayloadBidGloas {
         message: bid_msg,
         signature: bid_signature,
-    };
+    }
+    .into();
 
     let result = client.post_builder_bids(&signed_bid).await;
     assert!(
@@ -4454,7 +4471,7 @@ async fn bid_submission_rejected_unknown_parent_block_hash() {
     // Valid parent_block_root (in fork choice) but unknown parent_block_hash
     let unknown_block_hash = types::ExecutionBlockHash::from_root(Hash256::repeat_byte(0xab));
 
-    let bid_msg = types::ExecutionPayloadBid::<E> {
+    let bid_msg = types::ExecutionPayloadBidGloas::<E> {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -4473,10 +4490,11 @@ async fn bid_submission_rejected_unknown_parent_block_hash() {
     let bid_signing_root = bid_msg.signing_root(bid_domain);
     let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
 
-    let signed_bid = types::SignedExecutionPayloadBid {
+    let signed_bid: types::SignedExecutionPayloadBid<E> = types::SignedExecutionPayloadBidGloas {
         message: bid_msg,
         signature: bid_signature,
-    };
+    }
+    .into();
 
     let result = client.post_builder_bids(&signed_bid).await;
     assert!(
@@ -4499,8 +4517,8 @@ async fn bid_submission_rejected_unknown_parent_block_hash() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn bid_submission_rejected_builder_equivocation() {
     use types::{
-        Domain, ExecutionPayloadBid, ProposerPreferences, SignedExecutionPayloadBid,
-        SignedProposerPreferences, SignedRoot,
+        Domain, ExecutionPayloadBidGloas, ProposerPreferences, SignedExecutionPayloadBid,
+        SignedExecutionPayloadBidGloas, SignedProposerPreferences, SignedRoot,
     };
 
     let validator_count = 32;
@@ -4554,7 +4572,7 @@ async fn bid_submission_rejected_builder_equivocation() {
     );
 
     // Submit first valid bid
-    let bid_msg_1: ExecutionPayloadBid<E> = ExecutionPayloadBid {
+    let bid_msg_1 = ExecutionPayloadBidGloas {
         slot: next_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -4566,10 +4584,11 @@ async fn bid_submission_rejected_builder_equivocation() {
     };
     let bid_signing_root_1 = bid_msg_1.signing_root(bid_domain);
     let bid_signature_1 = builder_keypairs[0].sk.sign(bid_signing_root_1);
-    let signed_bid_1 = SignedExecutionPayloadBid {
+    let signed_bid_1: SignedExecutionPayloadBid<E> = SignedExecutionPayloadBidGloas {
         message: bid_msg_1,
         signature: bid_signature_1,
-    };
+    }
+    .into();
     client
         .post_builder_bids(&signed_bid_1)
         .await
@@ -4577,7 +4596,7 @@ async fn bid_submission_rejected_builder_equivocation() {
 
     // Submit second bid from SAME builder, same slot, but different block_hash
     // This produces a different tree hash root → equivocation
-    let bid_msg_2: ExecutionPayloadBid<E> = ExecutionPayloadBid {
+    let bid_msg_2 = ExecutionPayloadBidGloas {
         slot: next_slot,
         execution_payment: 1,
         builder_index: 0,
@@ -4589,10 +4608,11 @@ async fn bid_submission_rejected_builder_equivocation() {
     };
     let bid_signing_root_2 = bid_msg_2.signing_root(bid_domain);
     let bid_signature_2 = builder_keypairs[0].sk.sign(bid_signing_root_2);
-    let signed_bid_2 = SignedExecutionPayloadBid {
+    let signed_bid_2: SignedExecutionPayloadBid<E> = SignedExecutionPayloadBidGloas {
         message: bid_msg_2,
         signature: bid_signature_2,
-    };
+    }
+    .into();
 
     let result = client.post_builder_bids(&signed_bid_2).await;
     assert!(

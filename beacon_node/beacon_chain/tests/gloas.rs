@@ -5188,7 +5188,7 @@ fn extract_self_build_bid<E: EthSpec>(
         .expect("Gloas block should have a bid");
     match bid_ref {
         SignedExecutionPayloadBidRef::Gloas(inner) => inner.clone(),
-        _ => panic!("expected Gloas bid variant"),
+        SignedExecutionPayloadBidRef::Heze(_) => panic!("expected Gloas bid variant"),
     }
 }
 
@@ -15386,7 +15386,7 @@ async fn gloas_multi_epoch_latest_block_hash_consistency() {
         .expect("should be Gloas")
     {
         SignedExecutionPayloadBidRef::Gloas(inner) => inner.message.clone(),
-        _ => panic!("expected Gloas bid"),
+        SignedExecutionPayloadBidRef::Heze(_) => panic!("expected Gloas bid"),
     };
     let head_latest_hash = *head
         .beacon_state
@@ -20887,7 +20887,7 @@ async fn gloas_multi_epoch_mixed_full_empty_chain_finalizes() {
         .expect("should be Gloas block")
     {
         SignedExecutionPayloadBidRef::Gloas(inner) => inner.message.clone(),
-        _ => panic!("expected Gloas bid"),
+        SignedExecutionPayloadBidRef::Heze(_) => panic!("expected Gloas bid"),
     };
     let head_latest_hash = *final_head
         .beacon_state
@@ -21273,7 +21273,7 @@ async fn gloas_load_parent_advanced_state_patches_latest_block_hash() {
         .expect("should be Gloas")
     {
         SignedExecutionPayloadBidRef::Gloas(inner) => inner.message.clone(),
-        _ => panic!("expected Gloas bid"),
+        SignedExecutionPayloadBidRef::Heze(_) => panic!("expected Gloas bid"),
     };
     assert_eq!(
         child_bid.parent_block_hash, parent_bid_hash,
