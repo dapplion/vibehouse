@@ -407,3 +407,15 @@ Successfully ran 4-node heze devnet (`scripts/kurtosis-run.sh --heze`). Results:
 Fixed two infrastructure issues:
 1. Kurtosis couldn't resolve pinned commit hash `173e3d5c32ca` — switched to `@main` branch reference
 2. Updated dora image from `gloas-support` to `heze-support` for correct fork display
+
+### Gossip validation spec compliance fix (run 3600+)
+
+Fixed 3 spec compliance gaps in `inclusion_list` gossip validation (p2p-interface.md):
+
+1. **Accept previous-slot ILs** (spec conditions 2+3): Was only accepting `il_slot == current_slot`. Now accepts previous slot with timing check: previous slot ILs are accepted only before `get_attestation_due_ms(epoch)` into the current slot.
+
+2. **`MAX_BYTES_PER_INCLUSION_LIST` check** (spec condition 1): Added `[REJECT]` for inclusion lists where total transaction bytes exceed 8192.
+
+3. **Committee root mismatch → IGNORE** (spec condition 4): Was incorrectly `[REJECT]` with peer penalty. Changed to `[IGNORE]` since committee root depends on the peer's chain view (different head → different committee), not malice.
+
+Tests: 205/205 network (heze), 20/20 inclusion_list_store, 17/17 EF operations+SSZ, 5/5 heze state_processing. Zero clippy warnings.
