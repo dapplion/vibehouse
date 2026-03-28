@@ -17,7 +17,8 @@ use types::{
     AbstractExecPayload, AttestationShufflingId, AttesterSlashingRef, BeaconBlockRef, BeaconState,
     BeaconStateError, ChainSpec, Checkpoint, Epoch, EthSpec, ExecPayload, ExecutionBlockHash,
     FixedBytesExtended, Hash256, IndexedAttestationRef, IndexedPayloadAttestation,
-    PayloadAttestation, RelativeEpoch, SignedBeaconBlock, SignedExecutionPayloadBid, Slot,
+    PayloadAttestation, RelativeEpoch, SignedBeaconBlock, SignedExecutionPayloadBid,
+    SignedExecutionPayloadBidGloas, Slot,
 };
 
 #[derive(Debug)]
@@ -458,10 +459,10 @@ where
             let block_hash = anchor_state
                 .latest_block_hash()
                 .copied()
-                .unwrap_or(bid.message.block_hash);
+                .unwrap_or(*bid.message().block_hash());
             anchor_node.bid_block_hash = Some(block_hash);
-            anchor_node.bid_parent_block_hash = Some(bid.message.parent_block_hash);
-            anchor_node.builder_index = Some(bid.message.builder_index);
+            anchor_node.bid_parent_block_hash = Some(*bid.message().parent_block_hash());
+            anchor_node.builder_index = Some(*bid.message().builder_index());
             anchor_node.envelope_received = true;
             anchor_node.inclusion_list_satisfied = true;
             anchor_node.payload_revealed = true;
@@ -972,7 +973,7 @@ where
             // Gloas ePBS: block contains a bid, not a payload. Use the bid's block_hash
             // so head_hash is available for forkchoice_updated (especially for self-build
             // blocks which are immediately viable for head).
-            let block_hash = bid.message.block_hash;
+            let block_hash = *bid.message().block_hash();
             if block_hash == ExecutionBlockHash::zero() {
                 ExecutionStatus::irrelevant()
             } else {
@@ -1009,13 +1010,13 @@ where
                 execution_status,
                 unrealized_justified_checkpoint: Some(unrealized_justified_checkpoint),
                 unrealized_finalized_checkpoint: Some(unrealized_finalized_checkpoint),
-                builder_index: bid_opt.map(|bid| bid.message.builder_index),
+                builder_index: bid_opt.map(|bid| *bid.message().builder_index()),
                 payload_revealed: false,
                 ptc_weight: 0,
                 ptc_blob_data_available_weight: 0,
                 payload_data_available: false,
-                bid_block_hash: bid_opt.map(|bid| bid.message.block_hash),
-                bid_parent_block_hash: bid_opt.map(|bid| bid.message.parent_block_hash),
+                bid_block_hash: bid_opt.map(|bid| *bid.message().block_hash()),
+                bid_parent_block_hash: bid_opt.map(|bid| *bid.message().parent_block_hash()),
                 proposer_index: block.proposer_index(),
                 // Spec: record_block_timeliness — block_timeliness[PTC_TIMELINESS_INDEX]
                 // is true when the block arrives in its own slot AND before the PTC
@@ -1340,9 +1341,9 @@ where
             .ok_or(Error::MissingProtoArrayBlock(beacon_block_root))?;
 
         // Verify bid slot matches block slot
-        if bid.message.slot != node.slot {
+        if *bid.to_ref().message().slot() != node.slot {
             return Err(InvalidExecutionBid::SlotMismatch {
-                bid_slot: bid.message.slot,
+                bid_slot: *bid.to_ref().message().slot(),
                 block_slot: node.slot,
             }
             .into());
@@ -1359,7 +1360,7 @@ where
             .ok_or(Error::MissingProtoArrayBlock(beacon_block_root))?;
 
         // Record which builder won this slot's bid
-        node.builder_index = Some(bid.message.builder_index);
+        node.builder_index = Some(*bid.to_ref().message().builder_index());
 
         // Only reset payload state if neither the envelope has been received
         // nor PTC quorum has already established payload_revealed. A late gossip
@@ -1373,8 +1374,8 @@ where
 
         debug!(
             ?beacon_block_root,
-            builder_index = bid.message.builder_index,
-            bid_value = bid.message.value,
+            builder_index = *bid.to_ref().message().builder_index(),
+            bid_value = *bid.to_ref().message().value(),
             slot = %node_slot,
             "Processed execution bid"
         );
@@ -2243,10 +2244,10 @@ mod tests {
         }
 
         fn make_bid(slot: u64, builder_index: u64) -> SignedExecutionPayloadBid<E> {
-            let mut bid = SignedExecutionPayloadBid::<E>::empty();
+            let mut bid = SignedExecutionPayloadBidGloas::<E>::empty();
             bid.message.slot = Slot::new(slot);
             bid.message.builder_index = builder_index;
-            bid
+            SignedExecutionPayloadBid::Gloas(bid)
         }
 
         fn make_payload_attestation(

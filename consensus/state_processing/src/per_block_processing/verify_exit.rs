@@ -181,8 +181,8 @@ mod tests {
     use types::{
         Address, BeaconBlockHeader, BeaconStateGloas, BitVector, Builder, BuilderPendingPayment,
         BuilderPendingWithdrawal, Checkpoint, Epoch, EpochCache, Eth1Data, EthSpec,
-        ExecutionBlockHash, ExecutionPayloadBid, ExitCache, FixedBytesExtended, FixedVector, Fork,
-        ForkName, Hash256, List, MinimalEthSpec, PendingPartialWithdrawal,
+        ExecutionBlockHash, ExecutionPayloadBidGloas, ExitCache, FixedBytesExtended, FixedVector,
+        Fork, ForkName, Hash256, List, MinimalEthSpec, PendingPartialWithdrawal,
         ProgressiveBalancesCache, PubkeyCache, Signature, SlashingsCache, SyncCommittee, Unsigned,
         Validator, Vector, VoluntaryExit, beacon_state::BuilderPubkeyCache,
     };
@@ -287,7 +287,7 @@ mod tests {
             inactivity_scores: List::default(),
             current_sync_committee: sync_committee.clone(),
             next_sync_committee: sync_committee,
-            latest_execution_payload_bid: ExecutionPayloadBid::default(),
+            latest_execution_payload_bid: ExecutionPayloadBidGloas::default(),
             next_withdrawal_index: 0,
             next_withdrawal_validator_index: 0,
             historical_summaries: List::default(),

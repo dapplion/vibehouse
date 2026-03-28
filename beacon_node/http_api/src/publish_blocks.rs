@@ -386,7 +386,7 @@ fn spawn_build_data_sidecar_task<T: BeaconChainTypes>(
                 let _guard = debug_span!(parent: current_span, "build_data_sidecars").entered();
 
                 let peer_das_enabled = chain.spec.is_peer_das_enabled_for_epoch(block.epoch());
-                let gloas_enabled = block.message().body().fork_name() == ForkName::Gloas;
+                let gloas_enabled = block.message().body().fork_name().gloas_enabled();
                 if gloas_enabled {
                     // Gloas ePBS: blob data is carried in the execution payload envelope,
                     // not in blob sidecars or data columns. No sidecar publication needed.

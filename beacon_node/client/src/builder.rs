@@ -972,8 +972,8 @@ fn inject_genesis_builders<E: EthSpec>(
     let all_keypairs = generate_deterministic_keypairs(validator_count + count);
     let builder_keypairs = &all_keypairs[validator_count..];
 
-    let Ok(gloas_state) = state.as_gloas_mut() else {
-        warn!("--genesis-builders has no effect: genesis state is not a Gloas state");
+    let Ok(builders) = state.builders_mut() else {
+        warn!("--genesis-builders has no effect: genesis state is not ePBS-enabled");
         return Ok(());
     };
 
@@ -987,8 +987,7 @@ fn inject_genesis_builders<E: EthSpec>(
             deposit_epoch: Epoch::new(0),
             withdrawable_epoch: spec.far_future_epoch,
         };
-        gloas_state
-            .builders
+        builders
             .push(builder)
             .map_err(|e| format!("Failed to inject genesis builder {i}: {e:?}"))?;
     }
@@ -1000,7 +999,7 @@ fn inject_genesis_builders<E: EthSpec>(
     info!(
         count = count,
         first_keypair_index = validator_count,
-        "Injected genesis builders into Gloas state"
+        "Injected genesis builders into ePBS state"
     );
 
     Ok(())

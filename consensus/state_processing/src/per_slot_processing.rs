@@ -140,9 +140,8 @@ fn cache_state<E: EthSpec>(
             .slot()
             .as_usize()
             .safe_rem(E::SlotsPerHistoricalRoot::to_usize())?;
-        if let Ok(gloas_state) = state.as_gloas_mut() {
-            gloas_state
-                .execution_payload_availability
+        if let Ok(availability) = state.execution_payload_availability_mut() {
+            availability
                 .set(next_slot_index, false)
                 .map_err(|_| BeaconStateError::SlotOutOfBounds)?;
         }
@@ -173,9 +172,10 @@ mod gloas_per_slot_tests {
     use std::sync::Arc;
     use types::{
         BeaconBlockHeader, BeaconStateGloas, BuilderPendingPayment, BuilderPubkeyCache,
-        CACHED_EPOCHS, Checkpoint, CommitteeCache, Epoch, ExecutionBlockHash, ExecutionPayloadBid,
-        ExitCache, FixedVector, Fork, Hash256, List, MinimalEthSpec, ProgressiveBalancesCache,
-        PubkeyCache, PublicKeyBytes, SlashingsCache, Slot, SyncCommittee, Unsigned, Vector,
+        CACHED_EPOCHS, Checkpoint, CommitteeCache, Epoch, ExecutionBlockHash,
+        ExecutionPayloadBidGloas, ExitCache, FixedVector, Fork, Hash256, List, MinimalEthSpec,
+        ProgressiveBalancesCache, PubkeyCache, PublicKeyBytes, SlashingsCache, Slot, SyncCommittee,
+        Unsigned, Vector,
     };
 
     type E = MinimalEthSpec;
@@ -248,7 +248,7 @@ mod gloas_per_slot_tests {
             inactivity_scores: List::default(),
             current_sync_committee: sync_committee.clone(),
             next_sync_committee: sync_committee,
-            latest_execution_payload_bid: ExecutionPayloadBid::default(),
+            latest_execution_payload_bid: ExecutionPayloadBidGloas::default(),
             next_withdrawal_index: 0,
             next_withdrawal_validator_index: 0,
             historical_summaries: List::default(),

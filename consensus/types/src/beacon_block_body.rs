@@ -11,8 +11,9 @@ use crate::{
     ExecutionRequests, FixedVector, ForkName, FullPayload, FullPayloadBellatrix,
     FullPayloadCapella, FullPayloadDeneb, FullPayloadElectra, FullPayloadFulu, Graffiti, Hash256,
     KzgCommitment, PayloadAttestation, ProposerSlashing, Signature, SignedBlsToExecutionChange,
-    SignedExecutionPayloadBid, SignedVoluntaryExit, SyncAggregate, VariableList,
-    context_deserialize, light_client_update, map_fork_name, map_fork_name_with,
+    SignedExecutionPayloadBidGloas, SignedExecutionPayloadBidHeze, SignedExecutionPayloadBidRef,
+    SignedVoluntaryExit, SyncAggregate, VariableList, context_deserialize, light_client_update,
+    map_fork_name, map_fork_name_with,
 };
 use educe::Educe;
 use merkle_proof::{MerkleTree, MerkleTreeError};
@@ -150,8 +151,16 @@ pub struct BeaconBlockBody<E: EthSpec, Payload: AbstractExecPayload<E> = FullPay
     #[superstruct(only(Electra, Fulu))]
     pub execution_requests: ExecutionRequests<E>,
     // Gloas ePBS: replaces execution_payload with bid + attestations
-    #[superstruct(only(Gloas, Heze))]
-    pub signed_execution_payload_bid: SignedExecutionPayloadBid<E>,
+    #[superstruct(
+        only(Gloas),
+        partial_getter(rename = "signed_execution_payload_bid_gloas")
+    )]
+    pub signed_execution_payload_bid: SignedExecutionPayloadBidGloas<E>,
+    #[superstruct(
+        only(Heze),
+        partial_getter(rename = "signed_execution_payload_bid_heze")
+    )]
+    pub signed_execution_payload_bid: SignedExecutionPayloadBidHeze<E>,
     #[superstruct(only(Gloas, Heze))]
     pub payload_attestations: VariableList<PayloadAttestation<E>, E::MaxPayloadAttestations>,
     #[superstruct(only(Base, Altair, Gloas, Heze))]
@@ -168,6 +177,12 @@ impl<E: EthSpec, Payload: AbstractExecPayload<E>> BeaconBlockBody<E, Payload> {
         self.to_ref().execution_payload()
     }
 
+    pub fn signed_execution_payload_bid(
+        &self,
+    ) -> Result<SignedExecutionPayloadBidRef<'_, E>, Error> {
+        self.to_ref().signed_execution_payload_bid()
+    }
+
     /// Returns the name of the fork pertaining to `self`.
     pub fn fork_name(&self) -> ForkName {
         self.to_ref().fork_name()
@@ -175,6 +190,20 @@ impl<E: EthSpec, Payload: AbstractExecPayload<E>> BeaconBlockBody<E, Payload> {
 }
 
 impl<'a, E: EthSpec, Payload: AbstractExecPayload<E>> BeaconBlockBodyRef<'a, E, Payload> {
+    pub fn signed_execution_payload_bid(
+        &self,
+    ) -> Result<SignedExecutionPayloadBidRef<'a, E>, Error> {
+        match self {
+            Self::Gloas(body) => Ok(SignedExecutionPayloadBidRef::Gloas(
+                &body.signed_execution_payload_bid,
+            )),
+            Self::Heze(body) => Ok(SignedExecutionPayloadBidRef::Heze(
+                &body.signed_execution_payload_bid,
+            )),
+            _ => Err(Error::IncorrectStateVariant),
+        }
+    }
+
     pub fn execution_payload(&self) -> Result<Payload::Ref<'a>, Error> {
         match self {
             Self::Bellatrix(body) => Ok(Payload::Ref::from(&body.execution_payload)),
@@ -1360,7 +1389,10 @@ mod tests {
         fn signed_execution_payload_bid_accessible() {
             let body = make_gloas_body();
             let enum_body = BeaconBlockBody::<E>::Gloas(body.clone());
-            let bid = enum_body.to_ref().signed_execution_payload_bid().unwrap();
+            let bid = enum_body
+                .to_ref()
+                .signed_execution_payload_bid_gloas()
+                .unwrap();
             assert_eq!(*bid, body.signed_execution_payload_bid);
         }
 
@@ -1579,7 +1611,7 @@ mod tests {
             let body = make_gloas_body();
             assert_eq!(
                 body.signed_execution_payload_bid,
-                SignedExecutionPayloadBid::empty()
+                SignedExecutionPayloadBidGloas::empty()
             );
         }
 

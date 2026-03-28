@@ -262,16 +262,16 @@ pub fn process_execution_payload_envelope<E: EthSpec>(
     // Verify consistency with the committed bid
     let committed_bid = state.latest_execution_payload_bid()?;
     envelope_verify!(
-        envelope.builder_index == committed_bid.builder_index,
+        envelope.builder_index == *committed_bid.builder_index(),
         EnvelopeProcessingError::BuilderIndexMismatch {
-            committed_bid: committed_bid.builder_index,
+            committed_bid: *committed_bid.builder_index(),
             envelope: envelope.builder_index,
         }
     );
     envelope_verify!(
-        committed_bid.prev_randao == payload.prev_randao,
+        *committed_bid.prev_randao() == payload.prev_randao,
         EnvelopeProcessingError::PrevRandaoMismatch {
-            committed_bid: committed_bid.prev_randao,
+            committed_bid: *committed_bid.prev_randao(),
             envelope: payload.prev_randao,
         }
     );
@@ -289,18 +289,18 @@ pub fn process_execution_payload_envelope<E: EthSpec>(
 
     // Verify the gas limit
     envelope_verify!(
-        committed_bid.gas_limit == payload.gas_limit,
+        *committed_bid.gas_limit() == payload.gas_limit,
         EnvelopeProcessingError::GasLimitMismatch {
-            committed_bid: committed_bid.gas_limit,
+            committed_bid: *committed_bid.gas_limit(),
             envelope: payload.gas_limit,
         }
     );
 
     // Verify the block hash
     envelope_verify!(
-        committed_bid.block_hash == payload.block_hash,
+        *committed_bid.block_hash() == payload.block_hash,
         EnvelopeProcessingError::BlockHashMismatch {
-            committed_bid: committed_bid.block_hash,
+            committed_bid: *committed_bid.block_hash(),
             envelope: payload.block_hash,
         }
     );
@@ -393,7 +393,7 @@ mod tests {
     use types::{
         Address, BeaconBlockHeader, BeaconStateGloas, Builder, BuilderPendingWithdrawal,
         BuilderPubkeyCache, CACHED_EPOCHS, Checkpoint, CommitteeCache, ConsolidationRequest,
-        DepositRequest, Domain, Epoch, ExecutionBlockHash, ExecutionPayloadBid,
+        DepositRequest, Domain, Epoch, ExecutionBlockHash, ExecutionPayloadBidGloas,
         ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExecutionRequests, ExitCache, FixedVector,
         Fork, MinimalEthSpec, ProgressiveBalancesCache, PubkeyCache, PublicKeyBytes, Signature,
         SignatureBytes, SignedRoot, SlashingsCache, SyncCommittee, Unsigned, Vector,
@@ -500,7 +500,7 @@ mod tests {
             inactivity_scores: List::default(),
             current_sync_committee: sync_committee.clone(),
             next_sync_committee: sync_committee,
-            latest_execution_payload_bid: ExecutionPayloadBid {
+            latest_execution_payload_bid: ExecutionPayloadBidGloas {
                 parent_block_hash,
                 parent_block_root: parent_root,
                 block_hash: ExecutionBlockHash::repeat_byte(0x04),
@@ -574,9 +574,9 @@ mod tests {
 
         let payload = ExecutionPayloadGloas {
             parent_hash: latest_block_hash,
-            block_hash: bid.block_hash,
-            prev_randao: bid.prev_randao,
-            gas_limit: bid.gas_limit,
+            block_hash: *bid.block_hash(),
+            prev_randao: *bid.prev_randao(),
+            gas_limit: *bid.gas_limit(),
             timestamp,
             withdrawals: VariableList::default(), // matches empty payload_expected_withdrawals
             ..ExecutionPayloadGloas::default()
@@ -586,7 +586,7 @@ mod tests {
             message: ExecutionPayloadEnvelope {
                 payload,
                 execution_requests: ExecutionRequests::default(),
-                builder_index: bid.builder_index,
+                builder_index: *bid.builder_index(),
                 beacon_block_root,
                 slot: state.slot(),
                 state_root: Hash256::zero(), // will be fixed by fix_envelope_state_root
@@ -646,10 +646,10 @@ mod tests {
         let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
 
         // Set the committed bid to self-build
-        state
+        *state
             .latest_execution_payload_bid_mut()
             .unwrap()
-            .builder_index = BUILDER_INDEX_SELF_BUILD;
+            .builder_index_mut() = BUILDER_INDEX_SELF_BUILD;
 
         let mut envelope = make_valid_envelope(&state);
         assert_eq!(
@@ -1291,9 +1291,9 @@ mod tests {
 
         let payload = ExecutionPayloadGloas {
             parent_hash: latest_block_hash,
-            block_hash: bid.block_hash,
-            prev_randao: bid.prev_randao,
-            gas_limit: bid.gas_limit,
+            block_hash: *bid.block_hash(),
+            prev_randao: *bid.prev_randao(),
+            gas_limit: *bid.gas_limit(),
             timestamp,
             withdrawals: VariableList::default(),
             ..ExecutionPayloadGloas::default()
@@ -1303,7 +1303,7 @@ mod tests {
             message: ExecutionPayloadEnvelope {
                 payload,
                 execution_requests: ExecutionRequests::default(),
-                builder_index: bid.builder_index,
+                builder_index: *bid.builder_index(),
                 beacon_block_root,
                 slot: state.slot(),
                 state_root: Hash256::zero(),
@@ -1435,7 +1435,7 @@ mod tests {
             inactivity_scores: List::default(),
             current_sync_committee: sync_committee.clone(),
             next_sync_committee: sync_committee,
-            latest_execution_payload_bid: ExecutionPayloadBid {
+            latest_execution_payload_bid: ExecutionPayloadBidGloas {
                 parent_block_hash,
                 parent_block_root: parent_root,
                 block_hash: ExecutionBlockHash::repeat_byte(0x04),
@@ -1945,7 +1945,7 @@ mod tests {
             inactivity_scores: List::default(),
             current_sync_committee: sync_committee.clone(),
             next_sync_committee: sync_committee,
-            latest_execution_payload_bid: ExecutionPayloadBid {
+            latest_execution_payload_bid: ExecutionPayloadBidGloas {
                 parent_block_hash,
                 parent_block_root: Hash256::repeat_byte(0x01),
                 block_hash: ExecutionBlockHash::repeat_byte(0x04),
@@ -2373,9 +2373,9 @@ mod tests {
 
         let payload = ExecutionPayloadGloas {
             parent_hash: latest_block_hash,
-            block_hash: bid.block_hash,
-            prev_randao: bid.prev_randao,
-            gas_limit: bid.gas_limit,
+            block_hash: *bid.block_hash(),
+            prev_randao: *bid.prev_randao(),
+            gas_limit: *bid.gas_limit(),
             timestamp,
             withdrawals: VariableList::default(),
             ..Default::default()
@@ -2385,7 +2385,7 @@ mod tests {
             message: ExecutionPayloadEnvelope {
                 payload,
                 execution_requests,
-                builder_index: bid.builder_index,
+                builder_index: *bid.builder_index(),
                 beacon_block_root,
                 slot: state.slot(),
                 state_root: Hash256::zero(),

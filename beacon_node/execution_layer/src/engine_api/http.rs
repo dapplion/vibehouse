@@ -567,7 +567,7 @@ impl HttpJsonRpc {
                     .try_into()
                     .map_err(Error::BadResponse)
             }
-            ForkName::Gloas => {
+            ForkName::Gloas | ForkName::Heze => {
                 let response: JsonGetPayloadResponseGloas<E> = self
                     .rpc_request(
                         ENGINE_GET_PAYLOAD_V5,

@@ -665,19 +665,20 @@ where
 pub fn execution_payload_bid_signature_set<'a, E, F>(
     state: &'a BeaconState<E>,
     get_builder_pubkey: F,
-    signed_bid: &'a types::SignedExecutionPayloadBid<E>,
+    signed_bid: types::SignedExecutionPayloadBidRef<'a, E>,
     spec: &'a ChainSpec,
 ) -> Result<SignatureSet<'a>>
 where
     E: EthSpec,
     F: Fn(u64) -> Option<Cow<'a, PublicKey>>,
 {
-    let builder_index = signed_bid.message.builder_index;
+    let bid = signed_bid.message();
+    let builder_index = *bid.builder_index();
 
     let builder_pubkey =
         get_builder_pubkey(builder_index).ok_or(Error::ValidatorUnknown(builder_index))?;
 
-    let epoch = signed_bid.message.slot.epoch(E::slots_per_epoch());
+    let epoch = bid.slot().epoch(E::slots_per_epoch());
     let domain = spec.get_domain(
         epoch,
         Domain::BeaconBuilder,
@@ -685,10 +686,18 @@ where
         state.genesis_validators_root(),
     );
 
-    let message = signed_bid.message.signing_root(domain);
+    let object_root = match bid {
+        types::ExecutionPayloadBidRef::Gloas(b) => b.tree_hash_root(),
+        types::ExecutionPayloadBidRef::Heze(b) => b.tree_hash_root(),
+    };
+    let message = types::SigningData {
+        object_root,
+        domain,
+    }
+    .tree_hash_root();
 
     Ok(SignatureSet::single_pubkey(
-        &signed_bid.signature,
+        signed_bid.signature(),
         builder_pubkey,
         message,
     ))
@@ -798,11 +807,11 @@ mod tests {
     use std::sync::Arc;
     use types::{
         BeaconBlockHeader, BeaconStateGloas, BuilderPendingPayment, BuilderPubkeyCache,
-        CACHED_EPOCHS, Checkpoint, CommitteeCache, Epoch, ExecutionBlockHash, ExecutionPayloadBid,
-        ExecutionPayloadEnvelope, ExitCache, FixedVector, Fork, List, MinimalEthSpec,
-        PayloadAttestation, PayloadAttestationData, ProgressiveBalancesCache, PubkeyCache,
-        PublicKeyBytes, SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope, SlashingsCache,
-        SyncCommittee, Unsigned, Vector,
+        CACHED_EPOCHS, Checkpoint, CommitteeCache, Epoch, ExecutionBlockHash,
+        ExecutionPayloadBidGloas, ExecutionPayloadEnvelope, ExitCache, FixedVector, Fork, List,
+        MinimalEthSpec, PayloadAttestation, PayloadAttestationData, ProgressiveBalancesCache,
+        PubkeyCache, PublicKeyBytes, SignedExecutionPayloadBidGloas, SignedExecutionPayloadBidRef,
+        SignedExecutionPayloadEnvelope, SlashingsCache, SyncCommittee, Unsigned, Vector,
     };
 
     type E = MinimalEthSpec;
@@ -883,7 +892,7 @@ mod tests {
             inactivity_scores: List::default(),
             current_sync_committee: sync_committee.clone(),
             next_sync_committee: sync_committee,
-            latest_execution_payload_bid: ExecutionPayloadBid::default(),
+            latest_execution_payload_bid: ExecutionPayloadBidGloas::default(),
             next_withdrawal_index: 0,
             next_withdrawal_validator_index: 0,
             historical_summaries: List::default(),
@@ -931,12 +940,12 @@ mod tests {
     #[test]
     fn bid_signature_set_unknown_builder_returns_error() {
         let (state, spec, _keypairs) = make_gloas_state();
-        let signed_bid = SignedExecutionPayloadBid::<E>::empty();
+        let signed_bid = SignedExecutionPayloadBidGloas::<E>::empty();
 
         let err = extract_err(execution_payload_bid_signature_set(
             &state,
             |_| None,
-            &signed_bid,
+            SignedExecutionPayloadBidRef::Gloas(&signed_bid),
             &spec,
         ));
         assert_eq!(err, Error::ValidatorUnknown(0));
@@ -945,13 +954,13 @@ mod tests {
     #[test]
     fn bid_signature_set_unknown_high_index_returns_error() {
         let (state, spec, _keypairs) = make_gloas_state();
-        let mut signed_bid = SignedExecutionPayloadBid::<E>::empty();
+        let mut signed_bid = SignedExecutionPayloadBidGloas::<E>::empty();
         signed_bid.message.builder_index = 99999;
 
         let err = extract_err(execution_payload_bid_signature_set(
             &state,
             |_| None,
-            &signed_bid,
+            SignedExecutionPayloadBidRef::Gloas(&signed_bid),
             &spec,
         ));
         assert_eq!(err, Error::ValidatorUnknown(99999));
@@ -961,7 +970,7 @@ mod tests {
     fn bid_signature_set_valid_signature_verifies() {
         let (state, spec, keypairs) = make_gloas_state();
 
-        let bid = ExecutionPayloadBid::<E> {
+        let bid = ExecutionPayloadBidGloas::<E> {
             builder_index: 0,
             slot: Slot::new(8),
             value: 100,
@@ -978,7 +987,7 @@ mod tests {
         let signing_root = bid.signing_root(domain);
         let signature = keypairs[0].sk.sign(signing_root);
 
-        let signed_bid = SignedExecutionPayloadBid {
+        let signed_bid = SignedExecutionPayloadBidGloas {
             message: bid,
             signature,
         };
@@ -993,7 +1002,7 @@ mod tests {
                     None
                 }
             },
-            &signed_bid,
+            SignedExecutionPayloadBidRef::Gloas(&signed_bid),
             &spec,
         )
         .expect("should succeed");
@@ -1005,7 +1014,7 @@ mod tests {
     fn bid_signature_set_wrong_key_fails_verification() {
         let (state, spec, keypairs) = make_gloas_state();
 
-        let bid = ExecutionPayloadBid::<E> {
+        let bid = ExecutionPayloadBidGloas::<E> {
             builder_index: 0,
             slot: Slot::new(8),
             ..Default::default()
@@ -1022,7 +1031,7 @@ mod tests {
 
         // Sign with key 0 but verify with key 1
         let signature = keypairs[0].sk.sign(signing_root);
-        let signed_bid = SignedExecutionPayloadBid {
+        let signed_bid = SignedExecutionPayloadBidGloas {
             message: bid,
             signature,
         };
@@ -1037,7 +1046,7 @@ mod tests {
                     None
                 }
             },
-            &signed_bid,
+            SignedExecutionPayloadBidRef::Gloas(&signed_bid),
             &spec,
         )
         .expect("should succeed constructing set");
@@ -1049,7 +1058,7 @@ mod tests {
     fn bid_signature_set_uses_beacon_builder_domain() {
         let (state, spec, keypairs) = make_gloas_state();
 
-        let bid = ExecutionPayloadBid::<E> {
+        let bid = ExecutionPayloadBidGloas::<E> {
             builder_index: 0,
             slot: Slot::new(8),
             ..Default::default()
@@ -1064,7 +1073,7 @@ mod tests {
             state.genesis_validators_root(),
         );
         let signature = keypairs[0].sk.sign(bid.signing_root(wrong_domain));
-        let signed_bid = SignedExecutionPayloadBid {
+        let signed_bid = SignedExecutionPayloadBidGloas {
             message: bid,
             signature,
         };
@@ -1079,7 +1088,7 @@ mod tests {
                     None
                 }
             },
-            &signed_bid,
+            SignedExecutionPayloadBidRef::Gloas(&signed_bid),
             &spec,
         )
         .expect("should succeed constructing set");
@@ -1498,7 +1507,7 @@ mod tests {
         // bid to a different slot/epoch invalidates its signature.
         let (state, spec, keypairs) = make_gloas_state();
 
-        let bid_epoch1 = ExecutionPayloadBid::<E> {
+        let bid_epoch1 = ExecutionPayloadBidGloas::<E> {
             builder_index: 0,
             slot: Slot::new(8), // epoch 1
             value: 42,
@@ -1516,13 +1525,13 @@ mod tests {
         let signature = keypairs[0].sk.sign(bid_epoch1.signing_root(domain1));
 
         // Now create a bid at epoch 2 with the same signature
-        let bid_epoch2 = ExecutionPayloadBid::<E> {
+        let bid_epoch2 = ExecutionPayloadBidGloas::<E> {
             builder_index: 0,
             slot: Slot::new(16), // epoch 2
             value: 42,
             ..Default::default()
         };
-        let signed_bid = SignedExecutionPayloadBid {
+        let signed_bid = SignedExecutionPayloadBidGloas {
             message: bid_epoch2,
             signature,
         };
@@ -1537,7 +1546,7 @@ mod tests {
                     None
                 }
             },
-            &signed_bid,
+            SignedExecutionPayloadBidRef::Gloas(&signed_bid),
             &spec,
         )
         .expect("should succeed constructing set");
@@ -1555,7 +1564,7 @@ mod tests {
         // covers all bid fields — a modified `value` changes the root.
         let (state, spec, keypairs) = make_gloas_state();
 
-        let mut bid = ExecutionPayloadBid::<E> {
+        let mut bid = ExecutionPayloadBidGloas::<E> {
             builder_index: 0,
             slot: Slot::new(8),
             value: 100,
@@ -1574,7 +1583,7 @@ mod tests {
         // Tamper with the bid value after signing
         bid.value = 999;
 
-        let signed_bid = SignedExecutionPayloadBid {
+        let signed_bid = SignedExecutionPayloadBidGloas {
             message: bid,
             signature,
         };
@@ -1589,7 +1598,7 @@ mod tests {
                     None
                 }
             },
-            &signed_bid,
+            SignedExecutionPayloadBidRef::Gloas(&signed_bid),
             &spec,
         )
         .expect("should succeed constructing set");
@@ -1608,7 +1617,7 @@ mod tests {
         // cross-type signature non-transferability.
         let (state, spec, keypairs) = make_gloas_state();
 
-        let bid = ExecutionPayloadBid::<E> {
+        let bid = ExecutionPayloadBidGloas::<E> {
             builder_index: 0,
             slot: Slot::new(8),
             value: 50,

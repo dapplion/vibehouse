@@ -3384,7 +3384,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     ) {
         use beacon_chain::gloas_verification::ExecutionBidError;
 
-        let builder_index = bid.message.builder_index;
+        let builder_index = *bid.to_ref().message().builder_index();
 
         let verified_bid = match self.chain.verify_execution_bid_for_gossip(bid) {
             Ok(verified) => verified,
@@ -3606,12 +3606,13 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             && event_handler.has_execution_bid_subscribers()
         {
             let bid = verified_bid.bid();
+            let msg = bid.to_ref().message();
             event_handler.register(EventKind::ExecutionBid(SseExecutionBid {
-                slot: bid.message.slot,
-                block: bid.message.parent_block_root,
-                builder_index: bid.message.builder_index,
-                block_hash: bid.message.block_hash.into_root(),
-                value: bid.message.value,
+                slot: *msg.slot(),
+                block: *msg.parent_block_root(),
+                builder_index: *msg.builder_index(),
+                block_hash: msg.block_hash().into_root(),
+                value: *msg.value(),
             }));
         }
     }

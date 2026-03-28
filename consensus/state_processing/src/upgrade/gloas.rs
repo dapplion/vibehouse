@@ -6,7 +6,7 @@ use std::mem;
 use types::{
     Address, BeaconState, BeaconStateError as Error, BeaconStateGloas, Builder,
     BuilderPendingPayment, BuilderPubkeyCache, ChainSpec, DepositData, EthSpec,
-    ExecutionPayloadBid, Fork, List, PublicKeyBytes, Vector,
+    ExecutionPayloadBidGloas, Fork, List, PublicKeyBytes, Vector,
 };
 
 /// Transform a `Fulu` state into a `Gloas` state.
@@ -87,7 +87,7 @@ pub(crate) fn upgrade_state_to_gloas<E: EthSpec>(
         current_sync_committee: pre.current_sync_committee.clone(),
         next_sync_committee: pre.next_sync_committee.clone(),
         // Execution Bid (replaces latest_execution_payload_header)
-        latest_execution_payload_bid: ExecutionPayloadBid {
+        latest_execution_payload_bid: ExecutionPayloadBidGloas {
             block_hash: pre.latest_execution_payload_header.block_hash,
             ..Default::default()
         },
@@ -216,11 +216,9 @@ fn apply_builder_deposit<E: EthSpec>(
 
     if let Some(index) = builder_index {
         // Top-up existing builder
-        let state_gloas = state
-            .as_gloas_mut()
-            .map_err(|_| Error::IncorrectStateVariant)?;
-        let builder = state_gloas
-            .builders
+        let builder = state
+            .builders_mut()
+            .map_err(|_| Error::IncorrectStateVariant)?
             .get_mut(index)
             .ok_or(Error::UnknownValidator(index))?;
         builder.balance = builder.balance.saturating_add(amount);
@@ -234,17 +232,15 @@ fn apply_builder_deposit<E: EthSpec>(
         };
 
         if is_valid_deposit_signature(&deposit_data, spec).is_ok() {
-            let state_gloas = state
-                .as_gloas_mut()
-                .map_err(|_| Error::IncorrectStateVariant)?;
-            let current_epoch = state_gloas.slot.epoch(E::slots_per_epoch());
+            let current_epoch = state.current_epoch();
 
             // Find reusable index or append
-            let new_index = state_gloas
-                .builders
+            let builders = state.builders().map_err(|_| Error::IncorrectStateVariant)?;
+            let new_index = builders
                 .iter()
                 .position(|b| b.withdrawable_epoch <= current_epoch && b.balance == 0)
-                .unwrap_or(state_gloas.builders.len());
+                .unwrap_or(builders.len());
+            let builders_len = builders.len();
 
             let cred_slice = withdrawal_credentials.as_slice();
             let version = cred_slice
@@ -262,24 +258,33 @@ fn apply_builder_deposit<E: EthSpec>(
                 withdrawable_epoch: spec.far_future_epoch,
             };
 
-            if new_index < state_gloas.builders.len() {
+            if new_index < builders_len {
                 // Reusing exited builder slot — update cache
-                let old_pubkey = state_gloas.builders.get(new_index).map(|b| b.pubkey);
-                *state_gloas
-                    .builders
+                let old_pubkey = state
+                    .builders()
+                    .map_err(|_| Error::IncorrectStateVariant)?
+                    .get(new_index)
+                    .map(|b| b.pubkey);
+                *state
+                    .builders_mut()
+                    .map_err(|_| Error::IncorrectStateVariant)?
                     .get_mut(new_index)
                     .ok_or(Error::UnknownValidator(new_index))? = builder;
                 if let Some(old_pk) = old_pubkey {
-                    state_gloas.builder_pubkey_cache.remove(&old_pk);
+                    state.builder_pubkey_cache_mut().remove(&old_pk);
                 }
-                state_gloas.builder_pubkey_cache.insert(pubkey, new_index);
+                state.builder_pubkey_cache_mut().insert(pubkey, new_index);
             } else {
-                let new_idx = state_gloas.builders.len();
-                state_gloas
-                    .builders
+                let new_idx = state
+                    .builders()
+                    .map_err(|_| Error::IncorrectStateVariant)?
+                    .len();
+                state
+                    .builders_mut()
+                    .map_err(|_| Error::IncorrectStateVariant)?
                     .push(builder)
                     .map_err(Error::MilhouseError)?;
-                state_gloas.builder_pubkey_cache.insert(pubkey, new_idx);
+                state.builder_pubkey_cache_mut().insert(pubkey, new_idx);
             }
         }
     }

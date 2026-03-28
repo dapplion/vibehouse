@@ -614,7 +614,7 @@ fn validate_data_column_sidecar_for_gossip_gloas<T: BeaconChainTypes, O: Observa
         .message()
         .body()
         .signed_execution_payload_bid()
-        .map(|signed_bid| signed_bid.message.blob_kzg_commitments.clone())
+        .map(|signed_bid| signed_bid.message().blob_kzg_commitments().clone())
         .map_err(|_| {
             GossipDataColumnError::BeaconChainError(Box::new(BeaconChainError::DBInconsistent(
                 format!("Gloas block {block_root:?} has no execution payload bid"),

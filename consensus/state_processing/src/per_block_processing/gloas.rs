@@ -9,7 +9,7 @@ use types::consts::gloas::BUILDER_INDEX_FLAG;
 use types::{
     BeaconState, BeaconStateError, BuilderPendingPayment, BuilderPendingWithdrawal, ChainSpec,
     CommitteeCache, Domain, EthSpec, Hash256, IndexedPayloadAttestation, List, PayloadAttestation,
-    PublicKey, SignedExecutionPayloadBid, SigningData, Slot, Unsigned, Withdrawal,
+    PublicKey, SignedExecutionPayloadBidRef, SigningData, Slot, Unsigned, Withdrawal,
 };
 
 /// Processes an execution payload bid in Gloas ePBS.
@@ -20,22 +20,21 @@ use types::{
 /// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#new-process_execution_payload_bid>
 pub fn process_execution_payload_bid<E: EthSpec>(
     state: &mut BeaconState<E>,
-    signed_bid: &SignedExecutionPayloadBid<E>,
+    signed_bid: SignedExecutionPayloadBidRef<'_, E>,
     block_slot: Slot,
     block_parent_root: Hash256,
     verify_signatures: VerifySignatures,
     spec: &ChainSpec,
 ) -> Result<(), BlockProcessingError> {
-    let bid = &signed_bid.message;
-    let builder_index = bid.builder_index;
-    let amount = bid.value;
+    let bid = signed_bid.message();
+    let builder_index = *bid.builder_index();
+    let amount = *bid.value();
 
-    // Extract Gloas state once (shared by latest_block_hash extraction and builder validation)
-    let gloas_err = |_| BlockProcessingError::PayloadBidInvalid {
-        reason: "state is not Gloas".into(),
+    // Extract latest_block_hash (available on Gloas and Heze states)
+    let epbs_err = |_| BlockProcessingError::PayloadBidInvalid {
+        reason: "state is not ePBS-enabled".into(),
     };
-    let state_gloas = state.as_gloas().map_err(gloas_err)?;
-    let latest_block_hash = state_gloas.latest_block_hash;
+    let latest_block_hash = *state.latest_block_hash().map_err(epbs_err)?;
 
     // Self-build validation
     if builder_index == spec.builder_index_self_build {
@@ -44,7 +43,7 @@ pub fn process_execution_payload_bid<E: EthSpec>(
                 reason: "self-build bid must have value = 0".into(),
             });
         }
-        if !signed_bid.signature.is_infinity() {
+        if !signed_bid.signature().is_infinity() {
             return Err(BlockProcessingError::PayloadBidInvalid {
                 reason: "self-build bid signature must be G2_POINT_AT_INFINITY".into(),
             });
@@ -55,8 +54,9 @@ pub fn process_execution_payload_bid<E: EthSpec>(
         let fork = state.fork();
         let genesis_validators_root = state.genesis_validators_root();
 
-        let builder = state_gloas
-            .builders
+        let builder = state
+            .builders()
+            .map_err(epbs_err)?
             .get(builder_index as usize)
             .ok_or_else(|| BlockProcessingError::PayloadBidInvalid {
                 reason: format!("builder index {builder_index} does not exist"),
@@ -86,14 +86,18 @@ pub fn process_execution_payload_bid<E: EthSpec>(
         // Verify signature if requested
         if verify_signatures.is_true() {
             let domain = spec.get_domain(
-                bid.slot.epoch(E::slots_per_epoch()),
+                bid.slot().epoch(E::slots_per_epoch()),
                 Domain::BeaconBuilder,
                 &fork,
                 genesis_validators_root,
             );
 
+            let object_root = match bid {
+                types::ExecutionPayloadBidRef::Gloas(b) => b.tree_hash_root(),
+                types::ExecutionPayloadBidRef::Heze(b) => b.tree_hash_root(),
+            };
             let signing_root = SigningData {
-                object_root: bid.tree_hash_root(),
+                object_root,
                 domain,
             }
             .tree_hash_root();
@@ -104,7 +108,7 @@ pub fn process_execution_payload_bid<E: EthSpec>(
                 }
             })?;
 
-            if !signed_bid.signature.verify(&pubkey, signing_root) {
+            if !signed_bid.signature().verify(&pubkey, signing_root) {
                 return Err(BlockProcessingError::PayloadBidInvalid {
                     reason: format!("invalid builder {builder_index} signature"),
                 });
@@ -114,34 +118,35 @@ pub fn process_execution_payload_bid<E: EthSpec>(
 
     // Verify commitments are under limit
     let max_blobs = spec.max_blobs_per_block(state.current_epoch());
-    if bid.blob_kzg_commitments.len() > max_blobs as usize {
+    if bid.blob_kzg_commitments().len() > max_blobs as usize {
         return Err(BlockProcessingError::PayloadBidInvalid {
             reason: format!(
                 "blob_kzg_commitments length {} exceeds max {}",
-                bid.blob_kzg_commitments.len(),
+                bid.blob_kzg_commitments().len(),
                 max_blobs
             ),
         });
     }
 
     // Verify that the bid is for the current slot
-    if bid.slot != block_slot {
+    if *bid.slot() != block_slot {
         return Err(BlockProcessingError::PayloadBidInvalid {
             reason: format!(
                 "bid slot {} does not match block slot {}",
-                bid.slot, block_slot
+                bid.slot(),
+                block_slot
             ),
         });
     }
 
     // Verify that the bid is for the right parent block
-    if bid.parent_block_hash != latest_block_hash {
+    if *bid.parent_block_hash() != latest_block_hash {
         return Err(BlockProcessingError::PayloadBidInvalid {
             reason: "bid parent_block_hash does not match state latest_block_hash".into(),
         });
     }
 
-    if bid.parent_block_root != block_parent_root {
+    if *bid.parent_block_root() != block_parent_root {
         return Err(BlockProcessingError::PayloadBidInvalid {
             reason: "bid parent_block_root does not match block parent_root".into(),
         });
@@ -154,38 +159,33 @@ pub fn process_execution_payload_bid<E: EthSpec>(
             reason: "failed to get randao mix".into(),
         }
     })?;
-    if bid.prev_randao != randao_mix {
+    if *bid.prev_randao() != randao_mix {
         return Err(BlockProcessingError::PayloadBidInvalid {
             reason: "bid prev_randao does not match state randao mix".into(),
         });
     }
 
     // Mutate state: record pending payment + cache the bid
-    let state_gloas =
-        state
-            .as_gloas_mut()
-            .map_err(|_| BlockProcessingError::PayloadBidInvalid {
-                reason: "state is not Gloas".into(),
-            })?;
 
     // Record the pending payment if there is some payment
     if amount > 0 {
         // Spec: state.builder_pending_payments[SLOTS_PER_EPOCH + bid.slot % SLOTS_PER_EPOCH]
         let slots_per_epoch = E::slots_per_epoch();
         let slot_index =
-            slots_per_epoch.safe_add(bid.slot.as_u64().safe_rem(slots_per_epoch)?)? as usize;
+            slots_per_epoch.safe_add(bid.slot().as_u64().safe_rem(slots_per_epoch)?)? as usize;
 
         let pending_payment = BuilderPendingPayment {
             weight: 0,
             withdrawal: BuilderPendingWithdrawal {
-                fee_recipient: bid.fee_recipient,
+                fee_recipient: *bid.fee_recipient(),
                 amount,
                 builder_index,
             },
         };
 
-        *state_gloas
-            .builder_pending_payments
+        *state
+            .builder_pending_payments_mut()
+            .map_err(epbs_err)?
             .get_mut(slot_index)
             .ok_or_else(|| BlockProcessingError::PayloadBidInvalid {
                 reason: format!(
@@ -194,8 +194,10 @@ pub fn process_execution_payload_bid<E: EthSpec>(
             })? = pending_payment;
     }
 
-    // Cache the signed execution payload bid
-    state_gloas.latest_execution_payload_bid = bid.clone();
+    // Cache the execution payload bid
+    state
+        .set_latest_execution_payload_bid(bid)
+        .map_err(epbs_err)?;
 
     Ok(())
 }
@@ -382,7 +384,7 @@ pub fn get_ptc_committee<E: EthSpec>(
     let epoch = slot.epoch(slots_per_epoch);
     let state_epoch = state.current_epoch();
 
-    if let Ok(state_gloas) = state.as_gloas() {
+    if let Ok(ptc_window) = state.ptc_window() {
         let index = if epoch < state_epoch {
             // Previous epoch lookup
             if epoch.safe_add(1)? != state_epoch {
@@ -405,13 +407,11 @@ pub fn get_ptc_committee<E: EthSpec>(
             offset.safe_add(slot_in_epoch)?
         };
 
-        let entry =
-            state_gloas
-                .ptc_window
-                .get(index)
-                .ok_or(BlockProcessingError::BeaconStateError(
-                    BeaconStateError::EpochOutOfBounds,
-                ))?;
+        let entry = ptc_window
+            .get(index)
+            .ok_or(BlockProcessingError::BeaconStateError(
+                BeaconStateError::EpochOutOfBounds,
+            ))?;
         return Ok(entry.to_vec());
     }
 
@@ -565,10 +565,13 @@ fn compute_ptc_inner<E: EthSpec>(
 pub fn is_parent_block_full<E: EthSpec>(
     state: &BeaconState<E>,
 ) -> Result<bool, BlockProcessingError> {
-    let state_gloas = state
-        .as_gloas()
+    let bid = state
+        .latest_execution_payload_bid()
         .map_err(BlockProcessingError::BeaconStateError)?;
-    Ok(state_gloas.latest_execution_payload_bid.block_hash == state_gloas.latest_block_hash)
+    let latest_hash = state
+        .latest_block_hash()
+        .map_err(BlockProcessingError::BeaconStateError)?;
+    Ok(*bid.block_hash() == *latest_hash)
 }
 
 /// Result of computing Gloas withdrawals. Contains the withdrawal list and metadata
@@ -600,11 +603,14 @@ fn compute_withdrawals_gloas<E: EthSpec>(
     // 1. Builder pending withdrawals (limit: MAX_WITHDRAWALS_PER_PAYLOAD - 1)
     let mut processed_builder_withdrawals_count: usize = 0;
     {
-        let state_gloas = state
-            .as_gloas()
+        let builders_count = state
+            .builders()
+            .map_err(BlockProcessingError::BeaconStateError)?
+            .len() as u64;
+        let builder_pending_withdrawals = state
+            .builder_pending_withdrawals()
             .map_err(BlockProcessingError::BeaconStateError)?;
-        let builders_count = state_gloas.builders.len() as u64;
-        for withdrawal in &state_gloas.builder_pending_withdrawals {
+        for withdrawal in builder_pending_withdrawals {
             if withdrawals.len() >= reserved_limit {
                 break;
             }
@@ -685,16 +691,18 @@ fn compute_withdrawals_gloas<E: EthSpec>(
     // 3. Builder sweep (exiting builders with balance, limit: MAX_WITHDRAWALS - 1)
     let mut processed_builders_sweep_count: usize = 0;
     {
-        let state_gloas = state
-            .as_gloas()
+        let builders = state
+            .builders()
             .map_err(BlockProcessingError::BeaconStateError)?;
-        let builders_count = state_gloas.builders.len();
+        let builders_count = builders.len();
         if builders_count > 0 {
             let builders_limit = std::cmp::min(
                 builders_count,
                 spec.max_builders_per_withdrawals_sweep as usize,
             );
-            let mut builder_index = state_gloas.next_withdrawal_builder_index;
+            let mut builder_index = state
+                .next_withdrawal_builder_index()
+                .map_err(BlockProcessingError::BeaconStateError)?;
             // Spec: state.builders[builder_index] — panics if OOB
             if builder_index >= builders_count as u64 {
                 return Err(BlockProcessingError::WithdrawalBuilderIndexInvalid {
@@ -707,7 +715,7 @@ fn compute_withdrawals_gloas<E: EthSpec>(
                     break;
                 }
 
-                if let Some(builder) = state_gloas.builders.get(builder_index as usize)
+                if let Some(builder) = builders.get(builder_index as usize)
                     && builder.withdrawable_epoch <= epoch
                     && builder.balance > 0
                 {
@@ -802,10 +810,11 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
         if (withdrawal.validator_index & BUILDER_INDEX_FLAG) != 0 {
             // Builder withdrawal
             let builder_index = (withdrawal.validator_index & !BUILDER_INDEX_FLAG) as usize;
-            let state_gloas = state
-                .as_gloas_mut()
-                .map_err(BlockProcessingError::BeaconStateError)?;
-            if let Some(builder) = state_gloas.builders.get_mut(builder_index) {
+            if let Some(builder) = state
+                .builders_mut()
+                .map_err(BlockProcessingError::BeaconStateError)?
+                .get_mut(builder_index)
+            {
                 builder.balance = builder.balance.saturating_sub(withdrawal.amount);
             }
         } else {
@@ -829,19 +838,17 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
 
     // Store payload_expected_withdrawals (consume withdrawals by value, no clone)
     {
-        let state_gloas = state
-            .as_gloas_mut()
-            .map_err(BlockProcessingError::BeaconStateError)?;
-        state_gloas.payload_expected_withdrawals =
+        *state
+            .payload_expected_withdrawals_mut()
+            .map_err(BlockProcessingError::BeaconStateError)? =
             List::new(result.withdrawals).map_err(BlockProcessingError::MilhouseError)?;
     }
 
     // Update builder_pending_withdrawals (remove processed via in-place pop_front)
     if result.processed_builder_withdrawals_count > 0 {
         state
-            .as_gloas_mut()
+            .builder_pending_withdrawals_mut()
             .map_err(BlockProcessingError::BeaconStateError)?
-            .builder_pending_withdrawals
             .pop_front(result.processed_builder_withdrawals_count)?;
     }
 
@@ -854,15 +861,19 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
 
     // Update next_withdrawal_builder_index
     {
-        let state_gloas = state
-            .as_gloas_mut()
-            .map_err(BlockProcessingError::BeaconStateError)?;
-        let builders_count = state_gloas.builders.len();
+        let builders_count = state
+            .builders()
+            .map_err(BlockProcessingError::BeaconStateError)?
+            .len();
         if builders_count > 0 {
-            let next_index = state_gloas
-                .next_withdrawal_builder_index
-                .saturating_add(result.processed_builders_sweep_count as u64);
-            state_gloas.next_withdrawal_builder_index =
+            let current_builder_index = state
+                .next_withdrawal_builder_index()
+                .map_err(BlockProcessingError::BeaconStateError)?;
+            let next_index =
+                current_builder_index.saturating_add(result.processed_builders_sweep_count as u64);
+            *state
+                .next_withdrawal_builder_index_mut()
+                .map_err(BlockProcessingError::BeaconStateError)? =
                 next_index.safe_rem(builders_count as u64)?;
         }
     }
@@ -919,14 +930,13 @@ pub(crate) fn get_pending_balance_to_withdraw_for_builder<E: EthSpec>(
     state: &BeaconState<E>,
     builder_index: u64,
 ) -> Result<u64, BeaconStateError> {
-    let state_gloas = state.as_gloas()?;
     let mut total = 0u64;
-    for withdrawal in &state_gloas.builder_pending_withdrawals {
+    for withdrawal in state.builder_pending_withdrawals()? {
         if withdrawal.builder_index == builder_index {
             total = total.saturating_add(withdrawal.amount);
         }
     }
-    for payment in &state_gloas.builder_pending_payments {
+    for payment in state.builder_pending_payments()? {
         if payment.withdrawal.builder_index == builder_index {
             total = total.saturating_add(payment.withdrawal.amount);
         }
@@ -946,9 +956,8 @@ pub(crate) fn initiate_builder_exit<E: EthSpec>(
     spec: &ChainSpec,
 ) -> Result<(), BeaconStateError> {
     let current_epoch = state.current_epoch();
-    let state_gloas = state.as_gloas_mut()?;
-    let builder = state_gloas
-        .builders
+    let builder = state
+        .builders_mut()?
         .get_mut(builder_index as usize)
         .ok_or(BeaconStateError::UnknownBuilder(builder_index))?;
     // Return if builder already initiated exit
@@ -968,9 +977,9 @@ pub(crate) mod tests {
     use types::{
         Address, BeaconBlockHeader, BeaconStateGloas, Builder, BuilderPendingWithdrawal,
         BuilderPubkeyCache, CACHED_EPOCHS, Checkpoint, CommitteeCache, Epoch, ExecutionBlockHash,
-        ExecutionPayloadBid, ExitCache, FixedVector, Fork, MinimalEthSpec,
-        ProgressiveBalancesCache, PubkeyCache, Signature, SignedExecutionPayloadBid,
-        SlashingsCache, SyncCommittee, Vector,
+        ExecutionPayloadBidGloas, ExitCache, FixedVector, Fork, MinimalEthSpec,
+        ProgressiveBalancesCache, PubkeyCache, Signature, SignedExecutionPayloadBidGloas,
+        SignedExecutionPayloadBidRef, SlashingsCache, SyncCommittee, Vector,
     };
 
     pub(crate) type E = MinimalEthSpec;
@@ -1078,7 +1087,7 @@ pub(crate) mod tests {
             inactivity_scores: List::default(),
             current_sync_committee: sync_committee.clone(),
             next_sync_committee: sync_committee,
-            latest_execution_payload_bid: ExecutionPayloadBid {
+            latest_execution_payload_bid: ExecutionPayloadBidGloas {
                 parent_block_hash,
                 parent_block_root: parent_root,
                 block_hash: ExecutionBlockHash::repeat_byte(0x04),
@@ -1135,13 +1144,13 @@ pub(crate) mod tests {
     fn make_self_build_bid(
         state: &BeaconState<E>,
         spec: &ChainSpec,
-    ) -> SignedExecutionPayloadBid<E> {
+    ) -> SignedExecutionPayloadBidGloas<E> {
         let state_gloas = state.as_gloas().unwrap();
         let parent_root = state.latest_block_header().parent_root;
         let randao_mix = *state.get_randao_mix(state.current_epoch()).unwrap();
 
-        SignedExecutionPayloadBid {
-            message: ExecutionPayloadBid {
+        SignedExecutionPayloadBidGloas {
+            message: ExecutionPayloadBidGloas {
                 builder_index: spec.builder_index_self_build,
                 value: 0,
                 parent_block_hash: state_gloas.latest_block_hash,
@@ -1160,13 +1169,13 @@ pub(crate) mod tests {
         state: &BeaconState<E>,
         _spec: &ChainSpec,
         value: u64,
-    ) -> SignedExecutionPayloadBid<E> {
+    ) -> SignedExecutionPayloadBidGloas<E> {
         let state_gloas = state.as_gloas().unwrap();
         let parent_root = state.latest_block_header().parent_root;
         let randao_mix = *state.get_randao_mix(state.current_epoch()).unwrap();
 
-        SignedExecutionPayloadBid {
-            message: ExecutionPayloadBid {
+        SignedExecutionPayloadBidGloas {
+            message: ExecutionPayloadBidGloas {
                 builder_index: 0,
                 value,
                 parent_block_hash: state_gloas.latest_block_hash,
@@ -1192,7 +1201,7 @@ pub(crate) mod tests {
 
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -1216,7 +1225,7 @@ pub(crate) mod tests {
 
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -1239,7 +1248,7 @@ pub(crate) mod tests {
 
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -1263,7 +1272,7 @@ pub(crate) mod tests {
 
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -1295,7 +1304,7 @@ pub(crate) mod tests {
 
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -1323,7 +1332,7 @@ pub(crate) mod tests {
 
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -1353,7 +1362,7 @@ pub(crate) mod tests {
 
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -1377,7 +1386,7 @@ pub(crate) mod tests {
 
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -1415,7 +1424,7 @@ pub(crate) mod tests {
 
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -1431,7 +1440,7 @@ pub(crate) mod tests {
         let bid = make_builder_bid(&state, &spec, 400);
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -1472,7 +1481,7 @@ pub(crate) mod tests {
 
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -1496,7 +1505,7 @@ pub(crate) mod tests {
 
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             wrong_slot,
             parent_root,
             VerifySignatures::False,
@@ -1519,7 +1528,7 @@ pub(crate) mod tests {
 
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -1542,7 +1551,7 @@ pub(crate) mod tests {
 
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -1565,7 +1574,7 @@ pub(crate) mod tests {
 
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -1598,7 +1607,7 @@ pub(crate) mod tests {
 
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -1640,7 +1649,7 @@ pub(crate) mod tests {
 
         process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -1670,7 +1679,7 @@ pub(crate) mod tests {
 
         process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -1709,7 +1718,7 @@ pub(crate) mod tests {
 
         process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             Slot::new(15),
             parent_root,
             VerifySignatures::False,
@@ -1751,7 +1760,7 @@ pub(crate) mod tests {
 
         process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -1796,7 +1805,7 @@ pub(crate) mod tests {
 
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -3874,7 +3883,7 @@ pub(crate) mod tests {
         let bid = make_builder_bid(&state, &spec, 301);
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -3890,7 +3899,7 @@ pub(crate) mod tests {
         let bid = make_builder_bid(&state, &spec, 300);
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -3915,7 +3924,7 @@ pub(crate) mod tests {
         let bid = make_builder_bid(&state, &spec, bid_value);
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -3932,7 +3941,7 @@ pub(crate) mod tests {
         let bid = make_builder_bid(&state2, &spec2, bid_value + 1);
         let result = process_execution_payload_bid(
             &mut state2,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -3956,7 +3965,7 @@ pub(crate) mod tests {
         let bid1 = make_builder_bid(&state, &spec, 100);
         process_execution_payload_bid(
             &mut state,
-            &bid1,
+            SignedExecutionPayloadBidRef::Gloas(&bid1),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -3972,7 +3981,7 @@ pub(crate) mod tests {
         let bid2 = make_self_build_bid(&state, &spec);
         process_execution_payload_bid(
             &mut state,
-            &bid2,
+            SignedExecutionPayloadBidRef::Gloas(&bid2),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -4005,7 +4014,7 @@ pub(crate) mod tests {
         // block_slot != bid.slot → should be rejected
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             wrong_slot,
             parent_root,
             VerifySignatures::False,
@@ -4029,7 +4038,7 @@ pub(crate) mod tests {
         let bid = make_builder_bid(&state, &spec, bid_value);
         process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -4566,7 +4575,7 @@ pub(crate) mod tests {
 
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::True,
@@ -5979,7 +5988,7 @@ pub(crate) mod tests {
         let parent_root = state.latest_block_header().parent_root;
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -6001,7 +6010,7 @@ pub(crate) mod tests {
         let bid2 = make_builder_bid(&state, &spec, 500_000_000);
         let result2 = process_execution_payload_bid(
             &mut state,
-            &bid2,
+            SignedExecutionPayloadBidRef::Gloas(&bid2),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -6665,7 +6674,7 @@ pub(crate) mod tests {
 
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -6693,7 +6702,7 @@ pub(crate) mod tests {
 
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -7021,7 +7030,7 @@ pub(crate) mod tests {
 
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -7144,7 +7153,7 @@ pub(crate) mod tests {
 
         process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -7208,7 +7217,7 @@ pub(crate) mod tests {
 
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -7245,7 +7254,7 @@ pub(crate) mod tests {
 
         process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             Slot::new(15),
             parent_root,
             VerifySignatures::False,
@@ -7415,7 +7424,7 @@ pub(crate) mod tests {
 
         process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -7475,7 +7484,7 @@ pub(crate) mod tests {
 
         process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -7518,7 +7527,7 @@ pub(crate) mod tests {
         let self_bid = make_self_build_bid(&state, &spec);
         process_execution_payload_bid(
             &mut state,
-            &self_bid,
+            SignedExecutionPayloadBidRef::Gloas(&self_bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -7539,7 +7548,7 @@ pub(crate) mod tests {
         let builder_bid = make_builder_bid(&state, &spec, 1_000_000_000);
         process_execution_payload_bid(
             &mut state,
-            &builder_bid,
+            SignedExecutionPayloadBidRef::Gloas(&builder_bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -7981,7 +7990,7 @@ pub(crate) mod tests {
         let bid1 = make_builder_bid(&state, &spec, 2_000_000_000);
         process_execution_payload_bid(
             &mut state,
-            &bid1,
+            SignedExecutionPayloadBidRef::Gloas(&bid1),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -8005,7 +8014,7 @@ pub(crate) mod tests {
         bid2.message.fee_recipient = Address::repeat_byte(0xDD);
         process_execution_payload_bid(
             &mut state,
-            &bid2,
+            SignedExecutionPayloadBidRef::Gloas(&bid2),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -8059,7 +8068,7 @@ pub(crate) mod tests {
         assert_eq!(bid0.message.builder_index, 0);
         process_execution_payload_bid(
             &mut state,
-            &bid0,
+            SignedExecutionPayloadBidRef::Gloas(&bid0),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -8082,7 +8091,7 @@ pub(crate) mod tests {
         bid1.message.fee_recipient = Address::repeat_byte(0xEE);
         process_execution_payload_bid(
             &mut state,
-            &bid1,
+            SignedExecutionPayloadBidRef::Gloas(&bid1),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -8127,7 +8136,7 @@ pub(crate) mod tests {
         let self_bid = make_self_build_bid(&state, &spec);
         process_execution_payload_bid(
             &mut state,
-            &self_bid,
+            SignedExecutionPayloadBidRef::Gloas(&self_bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -8151,7 +8160,7 @@ pub(crate) mod tests {
         let ext_bid = make_builder_bid(&state, &spec, 5_000_000_000);
         process_execution_payload_bid(
             &mut state,
-            &ext_bid,
+            SignedExecutionPayloadBidRef::Gloas(&ext_bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -8192,7 +8201,7 @@ pub(crate) mod tests {
 
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -8230,7 +8239,7 @@ pub(crate) mod tests {
 
         let result = process_execution_payload_bid(
             &mut state,
-            &bid,
+            SignedExecutionPayloadBidRef::Gloas(&bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -8262,7 +8271,7 @@ pub(crate) mod tests {
         let ext_bid = make_builder_bid(&state, &spec, 4_000_000_000);
         process_execution_payload_bid(
             &mut state,
-            &ext_bid,
+            SignedExecutionPayloadBidRef::Gloas(&ext_bid),
             slot,
             parent_root,
             VerifySignatures::False,
@@ -8282,7 +8291,7 @@ pub(crate) mod tests {
         let self_bid = make_self_build_bid(&state, &spec);
         process_execution_payload_bid(
             &mut state,
-            &self_bid,
+            SignedExecutionPayloadBidRef::Gloas(&self_bid),
             slot,
             parent_root,
             VerifySignatures::False,

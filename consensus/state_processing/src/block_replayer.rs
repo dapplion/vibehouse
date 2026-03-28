@@ -465,11 +465,12 @@ mod tests {
     use types::{
         Address, BeaconBlock, BeaconBlockBodyGloas, BeaconBlockGloas, BeaconBlockHeader,
         BeaconStateGloas, Builder, BuilderPendingPayment, BuilderPubkeyCache, CACHED_EPOCHS,
-        Checkpoint, CommitteeCache, DepositRequest, Epoch, ExecutionBlockHash, ExecutionPayloadBid,
-        ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExecutionRequests, ExitCache, FixedVector,
-        Fork, MinimalEthSpec, ProgressiveBalancesCache, PubkeyCache, SignatureBytes,
-        SignedBlindedExecutionPayloadEnvelope, SignedExecutionPayloadBid, SlashingsCache,
-        SyncAggregate, SyncCommittee, Unsigned, Vector, Withdrawal,
+        Checkpoint, CommitteeCache, DepositRequest, Epoch, ExecutionBlockHash,
+        ExecutionPayloadBidGloas, ExecutionPayloadEnvelope, ExecutionPayloadGloas,
+        ExecutionRequests, ExitCache, FixedVector, Fork, MinimalEthSpec, ProgressiveBalancesCache,
+        PubkeyCache, SignatureBytes, SignedBlindedExecutionPayloadEnvelope,
+        SignedExecutionPayloadBidGloas, SlashingsCache, SyncAggregate, SyncCommittee, Unsigned,
+        Vector, Withdrawal,
     };
 
     type E = MinimalEthSpec;
@@ -571,7 +572,7 @@ mod tests {
             inactivity_scores: List::default(),
             current_sync_committee: sync_committee.clone(),
             next_sync_committee: sync_committee,
-            latest_execution_payload_bid: ExecutionPayloadBid {
+            latest_execution_payload_bid: ExecutionPayloadBidGloas {
                 parent_block_hash,
                 parent_block_root: parent_root,
                 block_hash: ExecutionBlockHash::repeat_byte(0x04),
@@ -629,7 +630,7 @@ mod tests {
         slot: Slot,
         parent_root: Hash256,
         state_root: Hash256,
-        bid: ExecutionPayloadBid<E>,
+        bid: ExecutionPayloadBidGloas<E>,
     ) -> SignedBeaconBlock<E, BlindedPayload<E>> {
         let block = BeaconBlock::Gloas(BeaconBlockGloas {
             slot,
@@ -647,7 +648,7 @@ mod tests {
                 voluntary_exits: VariableList::empty(),
                 sync_aggregate: SyncAggregate::empty(),
                 bls_to_execution_changes: VariableList::empty(),
-                signed_execution_payload_bid: SignedExecutionPayloadBid {
+                signed_execution_payload_bid: SignedExecutionPayloadBidGloas {
                     message: bid,
                     signature: BlsSignature::empty(),
                 },
@@ -660,7 +661,7 @@ mod tests {
 
     /// Build a valid envelope matching the given state and bid.
     fn make_valid_envelope(state: &BeaconState<E>) -> SignedExecutionPayloadEnvelope<E> {
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid_gloas().unwrap().clone();
         let latest_block_hash = *state.latest_block_hash().unwrap();
 
         let mut header = *state.latest_block_header();
@@ -726,7 +727,7 @@ mod tests {
     #[test]
     fn anchor_block_with_envelope_updates_latest_block_hash() {
         let (state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid_gloas().unwrap().clone();
         let bid_block_hash = bid.block_hash;
 
         let mut envelope = make_valid_envelope(&state);
@@ -763,7 +764,7 @@ mod tests {
         // No envelope supplied means the EMPTY path was taken.
         // latest_block_hash should be left unchanged (not overwritten with bid.block_hash).
         let (state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid_gloas().unwrap().clone();
 
         let original_hash = ExecutionBlockHash::repeat_byte(0xFF);
         let mut state = state;
@@ -800,7 +801,7 @@ mod tests {
         let original_hash = *state.latest_block_hash().unwrap();
 
         // Create a bid with a zero block_hash (genesis-like)
-        let bid = ExecutionPayloadBid {
+        let bid = ExecutionPayloadBidGloas {
             block_hash: ExecutionBlockHash::zero(),
             ..Default::default()
         };
@@ -831,7 +832,7 @@ mod tests {
     #[test]
     fn anchor_block_fixes_stale_state_root_in_header() {
         let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid_gloas().unwrap().clone();
 
         let correct_state_root = Hash256::repeat_byte(0xCC);
         let wrong_state_root = Hash256::repeat_byte(0xDD);
@@ -863,7 +864,7 @@ mod tests {
     #[test]
     fn anchor_block_preserves_correct_state_root() {
         let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid_gloas().unwrap().clone();
 
         let correct_state_root = Hash256::repeat_byte(0xCC);
 
@@ -889,7 +890,7 @@ mod tests {
     #[test]
     fn anchor_block_zero_state_root_not_overwritten() {
         let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid_gloas().unwrap().clone();
 
         // Header has zero state_root (normal for states that haven't been finalized)
         state.latest_block_header_mut().state_root = Hash256::zero();
@@ -921,7 +922,7 @@ mod tests {
     fn anchor_block_envelope_updates_latest_block_hash_correctly() {
         // When an envelope IS supplied, it should update latest_block_hash.
         let (state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid_gloas().unwrap().clone();
         let bid_block_hash = bid.block_hash;
 
         let mut envelope = make_valid_envelope(&state);
@@ -960,7 +961,7 @@ mod tests {
         // it behaves as if no envelope was provided (EMPTY path).
         // latest_block_hash should be left unchanged.
         let (state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid_gloas().unwrap().clone();
 
         let mut envelope = make_valid_envelope(&state);
         fix_envelope_state_root(&state, &mut envelope, &spec);
@@ -1000,7 +1001,7 @@ mod tests {
     #[test]
     fn anchor_block_removes_envelope_from_map() {
         let (state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid_gloas().unwrap().clone();
 
         let mut envelope = make_valid_envelope(&state);
         fix_envelope_state_root(&state, &mut envelope, &spec);
@@ -1074,7 +1075,7 @@ mod tests {
     #[test]
     fn anchor_block_envelope_error_is_silently_dropped() {
         let (state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid_gloas().unwrap().clone();
 
         // Create an envelope with wrong beacon_block_root to cause processing error
         let mut bad_envelope = make_valid_envelope(&state);
@@ -1149,7 +1150,7 @@ mod tests {
     #[test]
     fn anchor_block_with_blinded_envelope_updates_latest_block_hash() {
         let (state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid_gloas().unwrap().clone();
         let bid_block_hash = bid.block_hash;
 
         let mut envelope = make_valid_envelope(&state);
@@ -1186,7 +1187,7 @@ mod tests {
     #[test]
     fn anchor_block_blinded_envelope_removes_from_map() {
         let (state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid_gloas().unwrap().clone();
 
         let mut envelope = make_valid_envelope(&state);
         fix_envelope_state_root(&state, &mut envelope, &spec);
@@ -1230,7 +1231,7 @@ mod tests {
     #[test]
     fn anchor_block_full_envelope_preferred_over_blinded() {
         let (state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid_gloas().unwrap().clone();
         let bid_block_hash = bid.block_hash;
 
         let mut envelope = make_valid_envelope(&state);
@@ -1279,7 +1280,7 @@ mod tests {
     #[test]
     fn anchor_block_blinded_envelope_error_is_silently_dropped() {
         let (state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid_gloas().unwrap().clone();
 
         // Create a blinded envelope with wrong beacon_block_root to cause processing error
         let mut envelope = make_valid_envelope(&state);
@@ -1313,7 +1314,7 @@ mod tests {
     #[test]
     fn anchor_block_blinded_envelope_sets_availability_bit() {
         let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid_gloas().unwrap().clone();
 
         // Clear the availability bit for the current slot
         let slot_index =
@@ -1362,7 +1363,7 @@ mod tests {
     #[test]
     fn anchor_block_envelope_sets_availability_bit() {
         let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid_gloas().unwrap().clone();
 
         // Clear the availability bit for the current slot
         let slot_index =
@@ -1420,7 +1421,7 @@ mod tests {
         // When the blinded envelope map doesn't have the correct block root,
         // the EMPTY path is taken and latest_block_hash stays unchanged.
         let (state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid_gloas().unwrap().clone();
 
         let original_hash = ExecutionBlockHash::repeat_byte(0xEE);
         let mut state = state;
@@ -1464,7 +1465,7 @@ mod tests {
         // the blinded envelope reconstruction should pass them through
         // to the reconstructed envelope's payload.withdrawals field.
         let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid_gloas().unwrap().clone();
         let bid_block_hash = bid.block_hash;
 
         // Set non-empty expected withdrawals in state
@@ -1547,7 +1548,7 @@ mod tests {
         // When envelope processing fails (e.g. wrong beacon_block_root),
         // the availability bit should NOT be set.
         let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid_gloas().unwrap().clone();
 
         // Clear the availability bit
         let slot_index =
@@ -1598,7 +1599,7 @@ mod tests {
         // When blinded envelope reconstruction/processing fails,
         // the availability bit should NOT be set.
         let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid_gloas().unwrap().clone();
 
         // Clear the availability bit
         let slot_index =
@@ -1648,7 +1649,7 @@ mod tests {
         // When no envelope is provided (EMPTY path), the availability bit
         // should remain cleared — the payload was never delivered.
         let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
-        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid = state.latest_execution_payload_bid_gloas().unwrap().clone();
 
         // Clear the availability bit
         let slot_index =
@@ -1741,7 +1742,7 @@ mod tests {
         gloas.current_sync_committee = sync_committee.clone();
         gloas.next_sync_committee = sync_committee;
 
-        let anchor_bid = state.latest_execution_payload_bid().unwrap().clone();
+        let anchor_bid = state.latest_execution_payload_bid_gloas().unwrap().clone();
 
         // Build anchor block at state.slot() (slot 8). It just provides a state_root
         // and gets `continue`d.
@@ -1767,7 +1768,7 @@ mod tests {
         let expected_parent_root = advanced_state.latest_block_header().tree_hash_root();
 
         // Use a self-build bid (builder_index=u64::MAX) to avoid builder balance checks.
-        let non_anchor_bid = ExecutionPayloadBid {
+        let non_anchor_bid = ExecutionPayloadBidGloas {
             parent_block_hash: *advanced_state.latest_block_hash().unwrap(),
             parent_block_root: expected_parent_root,
             block_hash: ExecutionBlockHash::repeat_byte(0xAA),
@@ -1798,7 +1799,7 @@ mod tests {
                 voluntary_exits: VariableList::empty(),
                 sync_aggregate: SyncAggregate::empty(),
                 bls_to_execution_changes: VariableList::empty(),
-                signed_execution_payload_bid: SignedExecutionPayloadBid {
+                signed_execution_payload_bid: SignedExecutionPayloadBidGloas {
                     message: non_anchor_bid,
                     signature: BlsSignature::infinity().unwrap(),
                 },
@@ -1831,7 +1832,7 @@ mod tests {
         let post_block_state = replayer.into_state();
 
         let bid = post_block_state
-            .latest_execution_payload_bid()
+            .latest_execution_payload_bid_gloas()
             .unwrap()
             .clone();
         let latest_block_hash = *post_block_state.latest_block_hash().unwrap();
@@ -2034,7 +2035,7 @@ mod tests {
         let post_block_state = replayer.into_state();
 
         let bid = post_block_state
-            .latest_execution_payload_bid()
+            .latest_execution_payload_bid_gloas()
             .unwrap()
             .clone();
         let latest_block_hash = *post_block_state.latest_block_hash().unwrap();

@@ -397,7 +397,7 @@ pub fn get_execution_payload<T: BeaconChainTypes>(
             // cached in the state_cache, so `get_advanced_hot_state` returns it.
             (
                 *state.latest_block_hash()?,
-                state.latest_execution_payload_bid()?.gas_limit,
+                *state.latest_execution_payload_bid()?.gas_limit(),
             )
         } else {
             let header = state.latest_execution_payload_header()?;

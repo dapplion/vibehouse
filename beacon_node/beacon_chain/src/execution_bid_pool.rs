@@ -41,8 +41,8 @@ impl<E: EthSpec> ExecutionBidPool<E> {
     /// at the gossip validation layer). Prunes old slots on every insert to
     /// prevent accumulation when block production is delayed.
     pub fn insert(&mut self, bid: SignedExecutionPayloadBid<E>) {
-        let slot = bid.message.slot;
-        let builder_index = bid.message.builder_index;
+        let slot = *bid.to_ref().message().slot();
+        let builder_index = *bid.to_ref().message().builder_index();
 
         self.prune(slot);
         self.bids
@@ -65,8 +65,8 @@ impl<E: EthSpec> ExecutionBidPool<E> {
         self.bids.get(&slot).and_then(|slot_bids| {
             slot_bids
                 .values()
-                .filter(|bid| bid.message.parent_block_root == parent_block_root)
-                .max_by_key(|bid| bid.message.value)
+                .filter(|bid| *bid.to_ref().message().parent_block_root() == parent_block_root)
+                .max_by_key(|bid| *bid.to_ref().message().value())
         })
     }
 
@@ -99,15 +99,15 @@ mod tests {
     use super::*;
     use types::beacon_block_body::KzgCommitments;
     use types::{
-        Address, BitVector, ExecutionBlockHash, ExecutionPayloadBid, FixedBytesExtended, Hash256,
-        MainnetEthSpec, Signature,
+        Address, ExecutionBlockHash, ExecutionPayloadBidGloas, FixedBytesExtended, Hash256,
+        MainnetEthSpec, Signature, SignedExecutionPayloadBidGloas,
     };
 
     type E = MainnetEthSpec;
 
     fn make_bid(slot: u64, builder_index: u64, value: u64) -> SignedExecutionPayloadBid<E> {
-        SignedExecutionPayloadBid {
-            message: ExecutionPayloadBid {
+        SignedExecutionPayloadBid::Gloas(SignedExecutionPayloadBidGloas {
+            message: ExecutionPayloadBidGloas {
                 slot: Slot::new(slot),
                 builder_index,
                 value,
@@ -119,10 +119,9 @@ mod tests {
                 gas_limit: 30_000_000,
                 execution_payment: value,
                 blob_kzg_commitments: KzgCommitments::<E>::default(),
-                inclusion_list_bits: BitVector::default(),
             },
             signature: Signature::empty(),
-        }
+        })
     }
 
     #[test]

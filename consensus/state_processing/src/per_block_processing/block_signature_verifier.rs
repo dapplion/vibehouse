@@ -390,7 +390,7 @@ where
         if let Ok(signed_bid) = block.message().body().signed_execution_payload_bid() {
             // Self-build bids use G2_POINT_AT_INFINITY and are validated unconditionally
             // in process_execution_payload_bid; skip them here.
-            if signed_bid.message.builder_index != self.spec.builder_index_self_build {
+            if *signed_bid.message().builder_index() != self.spec.builder_index_self_build {
                 let set = execution_payload_bid_signature_set(
                     self.state,
                     |builder_index: u64| {

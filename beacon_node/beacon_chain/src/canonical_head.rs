@@ -176,7 +176,7 @@ impl<E: EthSpec> CachedHead<E> {
         let block = self.snapshot.beacon_block.message();
         // Gloas blocks have bids instead of execution payloads.
         if let Ok(bid) = block.body().signed_execution_payload_bid() {
-            return Ok(bid.message.prev_randao);
+            return Ok(*bid.message().prev_randao());
         }
         block
             .execution_payload()

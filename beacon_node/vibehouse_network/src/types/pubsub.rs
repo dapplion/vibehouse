@@ -16,8 +16,9 @@ use types::{
     SignedBeaconBlockCapella, SignedBeaconBlockDeneb, SignedBeaconBlockElectra,
     SignedBeaconBlockFulu, SignedBeaconBlockGloas, SignedBeaconBlockHeze,
     SignedBlsToExecutionChange, SignedContributionAndProof, SignedExecutionPayloadBid,
-    SignedExecutionPayloadEnvelope, SignedInclusionList, SignedProposerPreferences,
-    SignedVoluntaryExit, SingleAttestation, SubnetId, SyncCommitteeMessage, SyncSubnetId,
+    SignedExecutionPayloadBidGloas, SignedExecutionPayloadBidHeze, SignedExecutionPayloadEnvelope,
+    SignedInclusionList, SignedProposerPreferences, SignedVoluntaryExit, SingleAttestation,
+    SubnetId, SyncCommitteeMessage, SyncSubnetId,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -413,9 +414,18 @@ impl<E: EthSpec> PubsubMessage<E> {
                     }
                     GossipKind::ExecutionBid => {
                         match fork_context.get_fork_from_context_bytes(gossip_topic.fork_digest) {
-                            Some(fork) if fork.gloas_enabled() => {
-                                let execution_bid = SignedExecutionPayloadBid::from_ssz_bytes(data)
-                                    .map_err(|e| format!("{e:?}"))?;
+                            Some(&fork) if fork.heze_enabled() => {
+                                let execution_bid = SignedExecutionPayloadBid::Heze(
+                                    SignedExecutionPayloadBidHeze::from_ssz_bytes(data)
+                                        .map_err(|e| format!("{e:?}"))?,
+                                );
+                                Ok(PubsubMessage::ExecutionBid(Box::new(execution_bid)))
+                            }
+                            Some(&fork) if fork.gloas_enabled() => {
+                                let execution_bid = SignedExecutionPayloadBid::Gloas(
+                                    SignedExecutionPayloadBidGloas::from_ssz_bytes(data)
+                                        .map_err(|e| format!("{e:?}"))?,
+                                );
                                 Ok(PubsubMessage::ExecutionBid(Box::new(execution_bid)))
                             }
                             Some(_) | None => Err(format!(
@@ -518,7 +528,10 @@ impl<E: EthSpec> PubsubMessage<E> {
             PubsubMessage::BlsToExecutionChange(data) => data.as_ssz_bytes(),
             PubsubMessage::LightClientFinalityUpdate(data) => data.as_ssz_bytes(),
             PubsubMessage::LightClientOptimisticUpdate(data) => data.as_ssz_bytes(),
-            PubsubMessage::ExecutionBid(data) => data.as_ssz_bytes(),
+            PubsubMessage::ExecutionBid(data) => match data.as_ref() {
+                SignedExecutionPayloadBid::Gloas(inner) => inner.as_ssz_bytes(),
+                SignedExecutionPayloadBid::Heze(inner) => inner.as_ssz_bytes(),
+            },
             PubsubMessage::ExecutionPayload(data) => data.as_ssz_bytes(),
             PubsubMessage::PayloadAttestation(data) => data.as_ssz_bytes(),
             PubsubMessage::ProposerPreferences(data) => data.as_ssz_bytes(),
@@ -583,11 +596,16 @@ impl<E: EthSpec> std::fmt::Display for PubsubMessage<E> {
             PubsubMessage::LightClientOptimisticUpdate(_data) => {
                 write!(f, "Light CLient Optimistic Update")
             }
-            PubsubMessage::ExecutionBid(data) => write!(
-                f,
-                "Execution Bid: slot: {}, builder_index: {}, value: {}",
-                data.message.slot, data.message.builder_index, data.message.value
-            ),
+            PubsubMessage::ExecutionBid(data) => {
+                let msg = data.to_ref().message();
+                write!(
+                    f,
+                    "Execution Bid: slot: {}, builder_index: {}, value: {}",
+                    msg.slot(),
+                    msg.builder_index(),
+                    msg.value()
+                )
+            }
             PubsubMessage::ExecutionPayload(data) => write!(
                 f,
                 "Execution Payload: slot: {}, builder_index: {}",
@@ -673,7 +691,9 @@ mod tests {
     fn encode_decode_execution_bid() {
         let fork_context = gloas_fork_context();
         let mut rng = rand::rng();
-        let bid = SignedExecutionPayloadBid::<E>::random_for_test(&mut rng);
+        let bid = SignedExecutionPayloadBid::Gloas(
+            SignedExecutionPayloadBidGloas::<E>::random_for_test(&mut rng),
+        );
         let msg = PubsubMessage::<E>::ExecutionBid(Box::new(bid));
 
         let encoded = msg.encode(GossipEncoding::SSZSnappy);
@@ -687,7 +707,9 @@ mod tests {
     #[test]
     fn execution_bid_kind() {
         let mut rng = rand::rng();
-        let bid = SignedExecutionPayloadBid::<E>::random_for_test(&mut rng);
+        let bid = SignedExecutionPayloadBid::Gloas(
+            SignedExecutionPayloadBidGloas::<E>::random_for_test(&mut rng),
+        );
         let msg = PubsubMessage::<E>::ExecutionBid(Box::new(bid));
         assert_eq!(msg.kind(), GossipKind::ExecutionBid);
     }
@@ -696,7 +718,9 @@ mod tests {
     fn execution_bid_rejected_pre_gloas() {
         let fork_context = pre_gloas_fork_context();
         let mut rng = rand::rng();
-        let bid = SignedExecutionPayloadBid::<E>::random_for_test(&mut rng);
+        let bid = SignedExecutionPayloadBid::Gloas(
+            SignedExecutionPayloadBidGloas::<E>::random_for_test(&mut rng),
+        );
         let msg = PubsubMessage::<E>::ExecutionBid(Box::new(bid));
         let encoded = msg.encode(GossipEncoding::SSZSnappy);
         let topic = gloas_topic(&fork_context, GossipKind::ExecutionBid);

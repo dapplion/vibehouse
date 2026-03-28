@@ -4367,6 +4367,7 @@ mod test {
             ExecutionPayload::Gloas(ExecutionPayloadGloas::<MainnetEthSpec>::random_for_test(
                 rng,
             )),
+            ExecutionPayload::Heze(ExecutionPayloadHeze::<MainnetEthSpec>::random_for_test(rng)),
         ];
         let merged_forks = &ForkName::list_all()[2..];
         assert_eq!(
@@ -4425,6 +4426,17 @@ mod test {
                 let execution_payload =
                     ExecutionPayload::Gloas(
                         ExecutionPayloadGloas::<MainnetEthSpec>::random_for_test(rng),
+                    );
+                let blobs_bundle = BlobsBundle::random_for_test(rng);
+                ExecutionPayloadAndBlobs {
+                    execution_payload,
+                    blobs_bundle,
+                }
+            },
+            {
+                let execution_payload =
+                    ExecutionPayload::Heze(
+                        ExecutionPayloadHeze::<MainnetEthSpec>::random_for_test(rng),
                     );
                 let blobs_bundle = BlobsBundle::random_for_test(rng);
                 ExecutionPayloadAndBlobs {

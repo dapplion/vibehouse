@@ -340,7 +340,7 @@ pub(super) async fn handle_rpc<E: EthSpec>(
                 .execution_block_generator
                 .read()
                 .get_fork_at_timestamp(response.timestamp())
-                == ForkName::Gloas
+                .gloas_enabled()
                 && (method == ENGINE_GET_PAYLOAD_V1
                     || method == ENGINE_GET_PAYLOAD_V2
                     || method == ENGINE_GET_PAYLOAD_V3

@@ -100,7 +100,7 @@ use rand::RngCore;
 use safe_arith::SafeArith;
 use slasher::Slasher;
 use slot_clock::SlotClock;
-use ssz::Encode;
+use ssz::{Decode, Encode};
 use state_processing::{
     BlockSignatureStrategy, ConsensusContext, SigVerifiedOp, VerifyBlockRoot, VerifyOperation,
     common::get_attesting_indices_from_state,
@@ -145,17 +145,19 @@ use types::{
     BlobSidecarList, BlobsList, BlockImportSource, ChainSpec, Checkpoint, CommitteeCache,
     CommitteeIndex, DataColumnSidecar, DataColumnSidecarList, DataColumnSubnetId, Deposit,
     EmptyMetadata, EnrForkId, Epoch, Eth1Data, EthSpec, ExecPayload, ExecutionBlockHash,
-    ExecutionPayloadBid, ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExecutionPayloadHeader,
-    ExecutionRequests, FixedBytesExtended, ForkName, ForkVersionedResponse, FullPayload, Graffiti,
-    Hash256, InclusionListStore, InconsistentFork, KzgProofs, LightClientBootstrap,
-    LightClientFinalityUpdate, LightClientOptimisticUpdate, LightClientUpdate, PayloadAttestation,
-    PayloadAttestationData, PayloadAttestationMessage, ProposerSlashing, PublicKey, PublicKeyBytes,
-    RelativeEpoch, Signature, SignedAggregateAndProof, SignedBeaconBlock, SignedBeaconBlockHash,
-    SignedBlindedBeaconBlock, SignedBlindedExecutionPayloadEnvelope, SignedBlsToExecutionChange,
-    SignedContributionAndProof, SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope,
-    SignedInclusionList, SignedProposerPreferences, SignedVoluntaryExit, SingleAttestation, Slot,
-    SubnetId, SyncAggregate, SyncCommittee, SyncCommitteeContribution, SyncCommitteeMessage,
-    SyncContributionData, SyncDuty, SyncSubnetId, Uint256, VariableList, Withdrawals,
+    ExecutionPayloadBidGloas, ExecutionPayloadBidHeze, ExecutionPayloadEnvelope,
+    ExecutionPayloadGloas, ExecutionPayloadHeader, ExecutionRequests, FixedBytesExtended, ForkName,
+    ForkVersionedResponse, FullPayload, Graffiti, Hash256, InclusionListStore, InconsistentFork,
+    KzgProofs, LightClientBootstrap, LightClientFinalityUpdate, LightClientOptimisticUpdate,
+    LightClientUpdate, PayloadAttestation, PayloadAttestationData, PayloadAttestationMessage,
+    ProposerSlashing, PublicKey, PublicKeyBytes, RelativeEpoch, Signature, SignedAggregateAndProof,
+    SignedBeaconBlock, SignedBeaconBlockHash, SignedBlindedBeaconBlock,
+    SignedBlindedExecutionPayloadEnvelope, SignedBlsToExecutionChange, SignedContributionAndProof,
+    SignedExecutionPayloadBid, SignedExecutionPayloadBidGloas, SignedExecutionPayloadBidHeze,
+    SignedExecutionPayloadEnvelope, SignedInclusionList, SignedProposerPreferences,
+    SignedVoluntaryExit, SingleAttestation, Slot, SubnetId, SyncAggregate, SyncCommittee,
+    SyncCommitteeContribution, SyncCommitteeMessage, SyncContributionData, SyncDuty, SyncSubnetId,
+    Uint256, VariableList, Withdrawals,
 };
 
 pub type ForkChoiceError = fork_choice::Error<crate::ForkChoiceStoreError>;
@@ -2800,8 +2802,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 })?;
 
             let versioned_hashes = bid
-                .message
-                .blob_kzg_commitments
+                .message()
+                .blob_kzg_commitments()
                 .iter()
                 .map(kzg_commitment_to_versioned_hash)
                 .collect();
@@ -3012,18 +3014,20 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             })?;
 
         // Validate: builder_index matches committed bid.
-        if envelope.builder_index != execution_bid.message.builder_index {
+        if envelope.builder_index != *execution_bid.message().builder_index() {
             return Err(Error::EnvelopeError(format!(
                 "Builder index mismatch: bid={}, envelope={}",
-                execution_bid.message.builder_index, envelope.builder_index
+                execution_bid.message().builder_index(),
+                envelope.builder_index
             )));
         }
 
         // Validate: payload block_hash matches committed bid.
-        if envelope.payload.block_hash != execution_bid.message.block_hash {
+        if envelope.payload.block_hash != *execution_bid.message().block_hash() {
             return Err(Error::EnvelopeError(format!(
                 "Block hash mismatch: bid={:?}, envelope={:?}",
-                execution_bid.message.block_hash, envelope.payload.block_hash
+                execution_bid.message().block_hash(),
+                envelope.payload.block_hash
             )));
         }
 
@@ -3085,8 +3089,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             use state_processing::per_block_processing::deneb::kzg_commitment_to_versioned_hash;
 
             let versioned_hashes = execution_bid
-                .message
-                .blob_kzg_commitments
+                .message()
+                .blob_kzg_commitments()
                 .iter()
                 .map(kzg_commitment_to_versioned_hash)
                 .collect();
@@ -3419,8 +3423,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 })?;
 
             let versioned_hashes = bid
-                .message
-                .blob_kzg_commitments
+                .message()
+                .blob_kzg_commitments()
                 .iter()
                 .map(kzg_commitment_to_versioned_hash)
                 .collect();
@@ -3614,7 +3618,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         &self,
         block: &BeaconBlock<T::EthSpec, Payload>,
         post_block_state: &BeaconState<T::EthSpec>,
-        gloas_payload: ExecutionPayloadGloas<T::EthSpec>,
+        epbs_payload: ExecutionPayloadGloas<T::EthSpec>,
         execution_requests: ExecutionRequests<T::EthSpec>,
     ) -> Result<SignedExecutionPayloadEnvelope<T::EthSpec>, BlockProductionError> {
         let beacon_block_root = block.tree_hash_root();
@@ -3628,7 +3632,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // post-envelope state root from the mutated state.
         let mut envelope = SignedExecutionPayloadEnvelope {
             message: ExecutionPayloadEnvelope {
-                payload: gloas_payload,
+                payload: epbs_payload,
                 execution_requests,
                 builder_index,
                 beacon_block_root,
@@ -7000,32 +7004,45 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         if let Some(block_contents_type) = block_contents_type_option {
             match block_contents_type {
                 BlockProposalContentsType::Full(block_contents) => {
-                    // Gloas self-build: extract the execution payload and requests
+                    // ePBS (Gloas+) self-build: extract the execution payload and requests
                     // from block_contents before it's consumed by complete_partial_beacon_block.
                     // These are needed to construct the execution payload envelope.
-                    let gloas_envelope_data =
-                        if partial_beacon_block.state.fork_name_unchecked() == ForkName::Gloas {
-                            let payload = block_contents
-                                .payload()
-                                .execution_payload_gloas()
-                                .cloned()
-                                .map_err(|_| {
-                                    BlockProductionError::EnvelopeConstructionFailed(
-                                        "EL returned non-Gloas payload for Gloas slot".to_string(),
-                                    )
-                                })?;
-                            let requests = match &block_contents {
-                                BlockProposalContents::PayloadAndBlobs { requests, .. } => requests
-                                    .clone()
-                                    .ok_or(BlockProductionError::MissingExecutionRequests)?,
-                                BlockProposalContents::Payload { .. } => {
-                                    return Err(BlockProductionError::MissingExecutionRequests);
-                                }
-                            };
-                            Some((payload, requests))
+                    let epbs_envelope_data = if partial_beacon_block
+                        .state
+                        .fork_name_unchecked()
+                        .gloas_enabled()
+                    {
+                        // Extract the payload as ExecutionPayloadGloas for the envelope.
+                        // Heze payloads are structurally identical to Gloas payloads,
+                        // so we convert via SSZ round-trip when needed.
+                        let payload = if let Ok(p) =
+                            block_contents.payload().execution_payload_gloas()
+                        {
+                            p.clone()
+                        } else if let Ok(p) = block_contents.payload().execution_payload_heze() {
+                            let bytes = ssz::Encode::as_ssz_bytes(p);
+                            ExecutionPayloadGloas::from_ssz_bytes(&bytes).map_err(|_| {
+                                BlockProductionError::EnvelopeConstructionFailed(
+                                    "failed to convert Heze payload to Gloas format".to_string(),
+                                )
+                            })?
                         } else {
-                            None
+                            return Err(BlockProductionError::EnvelopeConstructionFailed(
+                                "EL returned non-ePBS payload for ePBS slot".to_string(),
+                            ));
                         };
+                        let requests = match &block_contents {
+                            BlockProposalContents::PayloadAndBlobs { requests, .. } => requests
+                                .clone()
+                                .ok_or(BlockProductionError::MissingExecutionRequests)?,
+                            BlockProposalContents::Payload { .. } => {
+                                return Err(BlockProductionError::MissingExecutionRequests);
+                            }
+                        };
+                        Some((payload, requests))
+                    } else {
+                        None
+                    };
 
                     let chain = self.clone();
                     let span = Span::current();
@@ -7048,16 +7065,16 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         .await
                         .map_err(BlockProductionError::TokioJoin)??;
 
-                    // Gloas self-build: construct the execution payload envelope now that
+                    // ePBS self-build: construct the execution payload envelope now that
                     // the block is complete (with state_root and block root finalized).
                     // The envelope is returned to the VC for signing, then sent back
                     // in the publish request with a valid signature.
-                    if let Some((gloas_payload, execution_requests)) = gloas_envelope_data {
+                    if let Some((epbs_payload, execution_requests)) = epbs_envelope_data {
                         beacon_block_response.execution_payload_envelope =
                             Some(self.build_self_build_envelope(
                                 &beacon_block_response.block,
                                 &beacon_block_response.state,
-                                gloas_payload,
+                                epbs_payload,
                                 execution_requests,
                             )?);
                     }
@@ -7169,11 +7186,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 .map_err(|e| BlockProductionError::BeaconChain(Box::new(e)))?,
         };
 
-        // Gloas ePBS: check for external builder bids before starting EL payload fetch.
+        // ePBS (Gloas+): check for external builder bids before starting EL payload fetch.
         // If a valid external bid is available, we skip the EL fetch entirely since the
         // builder will provide the execution payload via a separate envelope.
         // Filter by parent_root to avoid selecting stale bids after a re-org.
-        let selected_external_bid = if state.fork_name_unchecked() == ForkName::Gloas {
+        let selected_external_bid = if state.fork_name_unchecked().gloas_enabled() {
             self.get_best_execution_bid(produce_at_slot, parent_root)
         } else {
             None
@@ -7749,6 +7766,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     if let Some(external_bid) = selected_external_bid {
                         // External builder bid selected — the builder will reveal the
                         // payload via a separate envelope after our block is published.
+                        let SignedExecutionPayloadBid::Gloas(external_bid) = external_bid else {
+                            return Err(BlockProductionError::InvalidBlockVariant(
+                                "Expected Gloas execution payload bid".to_string(),
+                            ));
+                        };
                         let bid_value = Uint256::from(external_bid.message.value);
                         debug!(
                             builder_index = external_bid.message.builder_index,
@@ -7774,7 +7796,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                             .ok_or(BlockProductionError::MissingExecutionPayload)?
                             .deconstruct();
 
-                        let execution_payload_bid = ExecutionPayloadBid {
+                        let execution_payload_bid = ExecutionPayloadBidGloas {
                             parent_block_hash: payload.parent_hash(),
                             parent_block_root: parent_root,
                             block_hash: payload.block_hash(),
@@ -7786,10 +7808,9 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                             value: 0,
                             execution_payment: 0,
                             blob_kzg_commitments: kzg_commitments.unwrap_or_default(),
-                            inclusion_list_bits: BitVector::default(),
                         };
 
-                        let signed_bid = SignedExecutionPayloadBid {
+                        let signed_bid = SignedExecutionPayloadBidGloas {
                             message: execution_payload_bid,
                             signature: Signature::infinity().map_err(|e| {
                                 BlockProductionError::InvalidBlockVariant(format!(
@@ -7848,6 +7869,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
                 let (signed_bid, maybe_blobs_and_proofs, execution_payload_value) =
                     if let Some(external_bid) = selected_external_bid {
+                        let SignedExecutionPayloadBid::Heze(external_bid) = external_bid else {
+                            return Err(BlockProductionError::InvalidBlockVariant(
+                                "Expected Heze execution payload bid".to_string(),
+                            ));
+                        };
                         let bid_value = Uint256::from(external_bid.message.value);
                         debug!(
                             builder_index = external_bid.message.builder_index,
@@ -7872,7 +7898,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                             .ok_or(BlockProductionError::MissingExecutionPayload)?
                             .deconstruct();
 
-                        let execution_payload_bid = ExecutionPayloadBid {
+                        let execution_payload_bid = ExecutionPayloadBidHeze {
                             parent_block_hash: payload.parent_hash(),
                             parent_block_root: parent_root,
                             block_hash: payload.block_hash(),
@@ -7887,7 +7913,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                             inclusion_list_bits: self.compute_inclusion_list_bits_for_slot(slot),
                         };
 
-                        let signed_bid = SignedExecutionPayloadBid {
+                        let signed_bid = SignedExecutionPayloadBidHeze {
                             message: execution_payload_bid,
                             signature: Signature::infinity().map_err(|e| {
                                 BlockProductionError::InvalidBlockVariant(format!(
@@ -7998,7 +8024,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         block
                             .body()
                             .signed_execution_payload_bid()
-                            .map(|bid| bid.message.blob_kzg_commitments.len())
+                            .map(|bid| bid.message().blob_kzg_commitments().len())
                     })
                     .map_err(|_| {
                         BlockProductionError::InvalidBlockVariant(

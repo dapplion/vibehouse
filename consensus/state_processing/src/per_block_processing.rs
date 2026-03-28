@@ -739,7 +739,7 @@ mod gloas_per_block_tests {
     use types::{
         Address, BeaconBlockHeader, BeaconStateGloas, Builder, BuilderPendingPayment,
         BuilderPubkeyCache, CACHED_EPOCHS, Checkpoint, CommitteeCache, Epoch, ExecutionBlockHash,
-        ExecutionPayloadBid, ExitCache, FixedVector, Fork, Hash256, List, MinimalEthSpec,
+        ExecutionPayloadBidGloas, ExitCache, FixedVector, Fork, Hash256, List, MinimalEthSpec,
         ProgressiveBalancesCache, PubkeyCache, SlashingsCache, SyncCommittee, Unsigned, Vector,
     };
 
@@ -799,7 +799,7 @@ mod gloas_per_block_tests {
             inactivity_scores: List::default(),
             current_sync_committee: sync_committee.clone(),
             next_sync_committee: sync_committee,
-            latest_execution_payload_bid: ExecutionPayloadBid::default(),
+            latest_execution_payload_bid: ExecutionPayloadBidGloas::default(),
             next_withdrawal_index: 0,
             next_withdrawal_validator_index: 0,
             historical_summaries: List::default(),
@@ -959,7 +959,7 @@ mod gloas_per_block_tests {
             voluntary_exits: types::VariableList::empty(),
             sync_aggregate: types::SyncAggregate::empty(),
             bls_to_execution_changes: types::VariableList::empty(),
-            signed_execution_payload_bid: types::SignedExecutionPayloadBid::empty(),
+            signed_execution_payload_bid: types::SignedExecutionPayloadBidGloas::empty(),
             payload_attestations: types::VariableList::empty(),
             _phantom: std::marker::PhantomData,
         }
@@ -1095,8 +1095,8 @@ mod gloas_per_block_tests {
         });
         let bid = block.body().signed_execution_payload_bid().unwrap();
         // The empty bid has builder_index 0 and value 0
-        assert_eq!(bid.message.builder_index, 0);
-        assert_eq!(bid.message.value, 0);
+        assert_eq!(*bid.message().builder_index(), 0);
+        assert_eq!(*bid.message().value(), 0);
     }
 
     #[test]

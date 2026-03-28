@@ -5,7 +5,8 @@ use crate::{
     AggregatePublicKey, AttestationDuty, BeaconBlock, BeaconBlockHeader, BeaconCommittee,
     BeaconStateError, BitVector, Builder, BuilderIndex, BuilderPendingPayment,
     BuilderPendingWithdrawal, ChainSpec, Checkpoint, CommitteeIndex, ContextDeserialize, Domain,
-    Epoch, EpochCache, EpochCacheError, Eth1Data, ExecutionBlockHash, ExecutionPayloadBid,
+    Epoch, EpochCache, EpochCacheError, Eth1Data, ExecutionBlockHash, ExecutionPayloadBidGloas,
+    ExecutionPayloadBidHeze, ExecutionPayloadBidRef, ExecutionPayloadBidRefMut,
     ExecutionPayloadHeaderBellatrix, ExecutionPayloadHeaderCapella, ExecutionPayloadHeaderDeneb,
     ExecutionPayloadHeaderElectra, ExecutionPayloadHeaderFulu, ExecutionPayloadHeaderRef,
     ExecutionPayloadHeaderRefMut, FixedBytesExtended, FixedVector, Fork, ForkName,
@@ -562,9 +563,18 @@ where
     #[metastruct(exclude_from(tree_lists))]
     pub latest_execution_payload_header: ExecutionPayloadHeaderFulu<E>,
     // In Gloas, latest_execution_payload_header is replaced by latest_execution_payload_bid
-    #[superstruct(only(Gloas, Heze))]
+    #[superstruct(
+        only(Gloas),
+        partial_getter(rename = "latest_execution_payload_bid_gloas")
+    )]
     #[metastruct(exclude_from(tree_lists))]
-    pub latest_execution_payload_bid: ExecutionPayloadBid<E>,
+    pub latest_execution_payload_bid: ExecutionPayloadBidGloas<E>,
+    #[superstruct(
+        only(Heze),
+        partial_getter(rename = "latest_execution_payload_bid_heze")
+    )]
+    #[metastruct(exclude_from(tree_lists))]
+    pub latest_execution_payload_bid: ExecutionPayloadBidHeze<E>,
 
     // Capella
     #[superstruct(only(Capella, Deneb, Electra, Fulu, Gloas, Heze), partial_getter(copy))]
@@ -1266,6 +1276,51 @@ impl<E: EthSpec> BeaconState<E> {
             | BeaconState::Altair(_)
             | BeaconState::Gloas(_)
             | BeaconState::Heze(_) => Err(Error::IncorrectStateVariant),
+        }
+    }
+
+    /// Convenience accessor for the `execution_payload_bid` as an `ExecutionPayloadBidRef`.
+    pub fn latest_execution_payload_bid(&self) -> Result<ExecutionPayloadBidRef<'_, E>, Error> {
+        match self {
+            BeaconState::Gloas(state) => Ok(ExecutionPayloadBidRef::Gloas(
+                &state.latest_execution_payload_bid,
+            )),
+            BeaconState::Heze(state) => Ok(ExecutionPayloadBidRef::Heze(
+                &state.latest_execution_payload_bid,
+            )),
+            _ => Err(Error::IncorrectStateVariant),
+        }
+    }
+
+    pub fn latest_execution_payload_bid_mut(
+        &mut self,
+    ) -> Result<ExecutionPayloadBidRefMut<'_, E>, Error> {
+        match self {
+            BeaconState::Gloas(state) => Ok(ExecutionPayloadBidRefMut::Gloas(
+                &mut state.latest_execution_payload_bid,
+            )),
+            BeaconState::Heze(state) => Ok(ExecutionPayloadBidRefMut::Heze(
+                &mut state.latest_execution_payload_bid,
+            )),
+            _ => Err(Error::IncorrectStateVariant),
+        }
+    }
+
+    /// Set the `latest_execution_payload_bid` from a ref enum (clones into the right variant).
+    pub fn set_latest_execution_payload_bid(
+        &mut self,
+        bid: ExecutionPayloadBidRef<'_, E>,
+    ) -> Result<(), Error> {
+        match (self, bid) {
+            (BeaconState::Gloas(state), ExecutionPayloadBidRef::Gloas(b)) => {
+                state.latest_execution_payload_bid = b.clone();
+                Ok(())
+            }
+            (BeaconState::Heze(state), ExecutionPayloadBidRef::Heze(b)) => {
+                state.latest_execution_payload_bid = b.clone();
+                Ok(())
+            }
+            _ => Err(Error::IncorrectStateVariant),
         }
     }
 
@@ -3162,6 +3217,7 @@ impl<E: EthSpec> CompareFields for BeaconState<E> {
             (BeaconState::Electra(x), BeaconState::Electra(y)) => x.compare_fields(y),
             (BeaconState::Fulu(x), BeaconState::Fulu(y)) => x.compare_fields(y),
             (BeaconState::Gloas(x), BeaconState::Gloas(y)) => x.compare_fields(y),
+            (BeaconState::Heze(x), BeaconState::Heze(y)) => x.compare_fields(y),
             _ => panic!("compare_fields: mismatched state variants"),
         }
     }

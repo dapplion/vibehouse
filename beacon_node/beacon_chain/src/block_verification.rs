@@ -899,10 +899,10 @@ impl<T: BeaconChainTypes> GossipVerifiedBlock<T> {
                 .spec
                 .max_blobs_per_block(block.slot().epoch(T::EthSpec::slots_per_epoch()))
                 as usize;
-            if bid.message.blob_kzg_commitments.len() > max_blobs_at_epoch {
+            if bid.message().blob_kzg_commitments().len() > max_blobs_at_epoch {
                 return Err(BlockError::InvalidBlobCount {
                     max_blobs_at_epoch,
-                    block: bid.message.blob_kzg_commitments.len(),
+                    block: bid.message().blob_kzg_commitments().len(),
                 });
             }
         } else if let Ok(commitments) = block.message().body().blob_kzg_commitments() {
@@ -953,10 +953,10 @@ impl<T: BeaconChainTypes> GossipVerifiedBlock<T> {
 
         // GLOAS: Verify bid.parent_block_root matches block.parent_root.
         if let Ok(bid) = block.message().body().signed_execution_payload_bid()
-            && bid.message.parent_block_root != block.message().parent_root()
+            && *bid.message().parent_block_root() != block.message().parent_root()
         {
             return Err(BlockError::BidParentRootMismatch {
-                bid_parent_root: bid.message.parent_block_root,
+                bid_parent_root: *bid.message().parent_block_root(),
                 block_parent_root: block.message().parent_root(),
             });
         }
@@ -972,7 +972,7 @@ impl<T: BeaconChainTypes> GossipVerifiedBlock<T> {
             && !parent_block.payload_revealed
         {
             return Err(BlockError::GloasParentPayloadUnknown {
-                parent_block_hash: bid.message.parent_block_hash,
+                parent_block_hash: *bid.message().parent_block_hash(),
             });
         }
 
@@ -1998,8 +1998,8 @@ fn load_parent<T: BeaconChainTypes, B: AsBlock<T::EthSpec>>(
             && let Ok(child_bid) = block.message().body().signed_execution_payload_bid()
             && let Ok(parent_bid) = parent_block.message().body().signed_execution_payload_bid()
         {
-            let parent_bid_block_hash = parent_bid.message.block_hash;
-            let is_full_parent = child_bid.message.parent_block_hash == parent_bid_block_hash
+            let parent_bid_block_hash = *parent_bid.message().block_hash();
+            let is_full_parent = *child_bid.message().parent_block_hash() == parent_bid_block_hash
                 && parent_bid_block_hash != ExecutionBlockHash::zero();
             if is_full_parent {
                 // Parent is FULL: the state must be post-envelope (payload_states

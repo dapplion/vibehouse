@@ -195,7 +195,10 @@ pub use crate::execution_payload::{
     ExecutionPayloadElectra, ExecutionPayloadFulu, ExecutionPayloadGloas, ExecutionPayloadHeze,
     ExecutionPayloadRef, Transaction, Transactions, Withdrawals,
 };
-pub use crate::execution_payload_bid::ExecutionPayloadBid;
+pub use crate::execution_payload_bid::{
+    ExecutionPayloadBid, ExecutionPayloadBidGloas, ExecutionPayloadBidHeze, ExecutionPayloadBidRef,
+    ExecutionPayloadBidRefMut,
+};
 pub use crate::execution_payload_envelope::ExecutionPayloadEnvelope;
 pub use crate::execution_payload_header::{
     ExecutionPayloadHeader, ExecutionPayloadHeaderBellatrix, ExecutionPayloadHeaderCapella,
@@ -282,7 +285,10 @@ pub use crate::signed_beacon_block::{
 pub use crate::signed_beacon_block_header::SignedBeaconBlockHeader;
 pub use crate::signed_bls_to_execution_change::SignedBlsToExecutionChange;
 pub use crate::signed_contribution_and_proof::SignedContributionAndProof;
-pub use crate::signed_execution_payload_bid::SignedExecutionPayloadBid;
+pub use crate::signed_execution_payload_bid::{
+    SignedExecutionPayloadBid, SignedExecutionPayloadBidGloas, SignedExecutionPayloadBidHeze,
+    SignedExecutionPayloadBidRef,
+};
 pub use crate::signed_execution_payload_envelope::SignedExecutionPayloadEnvelope;
 pub use crate::signed_inclusion_list::SignedInclusionList;
 pub use crate::signed_proposer_preferences::SignedProposerPreferences;

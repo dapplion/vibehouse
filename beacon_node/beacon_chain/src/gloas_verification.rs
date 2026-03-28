@@ -405,8 +405,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         bid: SignedExecutionPayloadBid<T::EthSpec>,
     ) -> Result<VerifiedExecutionBid<T>, ExecutionBidError> {
         let _timer = metrics::start_timer(&metrics::EXECUTION_BID_GOSSIP_VERIFICATION_TIMES);
-        let bid_slot = bid.message.slot;
-        let builder_index = bid.message.builder_index;
+        let bid_slot = *bid.to_ref().message().slot();
+        let builder_index = *bid.to_ref().message().builder_index();
 
         // Check 1: Slot validation
         // Spec: [IGNORE] bid.slot is the current slot or the next slot.
@@ -424,7 +424,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         }
 
         // Check 1b: Spec: [REJECT] bid.execution_payment is zero.
-        if bid.message.execution_payment == 0 {
+        if *bid.to_ref().message().execution_payment() == 0 {
             return Err(ExecutionBidError::ZeroExecutionPayment);
         }
 
@@ -448,7 +448,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         if !state_processing::per_block_processing::gloas::can_builder_cover_bid(
             state,
             builder_index,
-            bid.message.value,
+            *bid.to_ref().message().value(),
             &self.spec,
         )
         .map_err(BeaconChainError::BeaconStateError)?
@@ -456,7 +456,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             return Err(ExecutionBidError::InsufficientBuilderBalance {
                 builder_index,
                 balance: builder.balance,
-                bid_value: bid.message.value,
+                bid_value: *bid.to_ref().message().value(),
             });
         }
 
@@ -465,18 +465,18 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // block in fork choice.
         {
             let fc = self.canonical_head.fork_choice_read_lock();
-            if !fc.contains_block(&bid.message.parent_block_root) {
+            if !fc.contains_block(bid.to_ref().message().parent_block_root()) {
                 return Err(ExecutionBidError::InvalidParentRoot {
-                    received: bid.message.parent_block_root,
+                    received: *bid.to_ref().message().parent_block_root(),
                 });
             }
 
             // Check 4a: Parent execution block hash validation
             // Spec: [IGNORE] bid.parent_block_hash is the block hash of a known
             // execution payload in fork choice.
-            if !fc.contains_execution_block_hash(&bid.message.parent_block_hash) {
+            if !fc.contains_execution_block_hash(bid.to_ref().message().parent_block_hash()) {
                 return Err(ExecutionBidError::UnknownParentBlockHash {
-                    parent_block_hash: bid.message.parent_block_hash,
+                    parent_block_hash: *bid.to_ref().message().parent_block_hash(),
                 });
             }
         }
@@ -489,17 +489,17 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .get_proposer_preferences(bid_slot)
             .ok_or(ExecutionBidError::ProposerPreferencesNotSeen { slot: bid_slot })?;
 
-        if bid.message.fee_recipient != preferences.message.fee_recipient {
+        if *bid.to_ref().message().fee_recipient() != preferences.message.fee_recipient {
             return Err(ExecutionBidError::FeeRecipientMismatch {
                 expected: preferences.message.fee_recipient,
-                received: bid.message.fee_recipient,
+                received: *bid.to_ref().message().fee_recipient(),
             });
         }
 
-        if bid.message.gas_limit != preferences.message.gas_limit {
+        if *bid.to_ref().message().gas_limit() != preferences.message.gas_limit {
             return Err(ExecutionBidError::GasLimitMismatch {
                 expected: preferences.message.gas_limit,
-                received: bid.message.gas_limit,
+                received: *bid.to_ref().message().gas_limit(),
             });
         }
 
@@ -520,12 +520,16 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             }
         };
 
-        let signature_set =
-            execution_payload_bid_signature_set(state, get_builder_pubkey, &bid, &self.spec)
-                .map_err(|e| {
-                    debug!(error = ?e, "bid signature set construction failed");
-                    ExecutionBidError::InvalidSignature
-                })?;
+        let signature_set = execution_payload_bid_signature_set(
+            state,
+            get_builder_pubkey,
+            bid.to_ref(),
+            &self.spec,
+        )
+        .map_err(|e| {
+            debug!(error = ?e, "bid signature set construction failed");
+            ExecutionBidError::InvalidSignature
+        })?;
 
         if !signature_set.verify() {
             return Err(ExecutionBidError::InvalidSignature);
@@ -535,7 +539,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // invalid-signature bids don't block later valid bids from the same builder).
         // Spec: [IGNORE] this is the first signed bid seen with a valid signature
         // from the given builder for this slot.
-        let bid_root = bid.tree_hash_root();
+        let bid_root = match &bid {
+            SignedExecutionPayloadBid::Gloas(inner) => inner.tree_hash_root(),
+            SignedExecutionPayloadBid::Heze(inner) => inner.tree_hash_root(),
+        };
 
         let observation_outcome =
             self.observed_execution_bids
@@ -568,14 +575,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // (bid.slot, bid.parent_block_hash, bid.parent_block_root).
         if !self.observed_execution_bids.lock().is_highest_value_bid(
             bid_slot,
-            bid.message.parent_block_hash,
-            bid.message.parent_block_root,
-            bid.message.value,
+            *bid.to_ref().message().parent_block_hash(),
+            *bid.to_ref().message().parent_block_root(),
+            *bid.to_ref().message().value(),
         ) {
             return Err(ExecutionBidError::NotHighestValue {
                 slot: bid_slot,
-                parent_block_hash: bid.message.parent_block_hash,
-                bid_value: bid.message.value,
+                parent_block_hash: *bid.to_ref().message().parent_block_hash(),
+                bid_value: *bid.to_ref().message().value(),
             });
         }
 
@@ -858,17 +865,17 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             })?;
 
         // Check 4: Builder index matches the committed bid
-        if envelope.builder_index != execution_bid.message.builder_index {
+        if envelope.builder_index != *execution_bid.message().builder_index() {
             return Err(PayloadEnvelopeError::BuilderIndexMismatch {
-                committed_bid: execution_bid.message.builder_index,
+                committed_bid: *execution_bid.message().builder_index(),
                 envelope: envelope.builder_index,
             });
         }
 
         // Check 5: Payload block_hash matches the committed bid's block_hash
-        if envelope.payload.block_hash != execution_bid.message.block_hash {
+        if envelope.payload.block_hash != *execution_bid.message().block_hash() {
             return Err(PayloadEnvelopeError::BlockHashMismatch {
-                committed_bid: execution_bid.message.block_hash,
+                committed_bid: *execution_bid.message().block_hash(),
                 envelope: envelope.payload.block_hash,
             });
         }

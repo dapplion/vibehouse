@@ -1322,7 +1322,7 @@ mod tests {
     use types::{
         Address, BeaconBlockHeader, BeaconStateFulu, BeaconStateGloas, Builder,
         BuilderPendingPayment, BuilderPendingWithdrawal, BuilderPubkeyCache, CACHED_EPOCHS,
-        CommitteeCache, ExecutionBlockHash, ExecutionPayloadBid, ExecutionPayloadHeaderFulu,
+        CommitteeCache, ExecutionBlockHash, ExecutionPayloadBidGloas, ExecutionPayloadHeaderFulu,
         FixedBytesExtended, FixedVector, Fork, Hash256, MinimalEthSpec, PubkeyCache,
         PublicKeyBytes, SlashingsCache, Slot, SyncCommittee, Vector,
     };
@@ -1772,7 +1772,7 @@ mod tests {
             inactivity_scores,
             current_sync_committee: sync_committee.clone(),
             next_sync_committee: sync_committee,
-            latest_execution_payload_bid: ExecutionPayloadBid {
+            latest_execution_payload_bid: ExecutionPayloadBidGloas {
                 block_hash: ExecutionBlockHash::repeat_byte(0x04),
                 ..Default::default()
             },

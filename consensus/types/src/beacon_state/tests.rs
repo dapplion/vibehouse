@@ -3,8 +3,8 @@ use crate::test_utils::*;
 use beacon_chain::test_utils::{BeaconChainHarness, EphemeralHarnessType};
 use beacon_chain::types::{
     BeaconState, BeaconStateAltair, BeaconStateBase, BeaconStateError, ChainSpec, Domain, Epoch,
-    EthSpec, FixedBytesExtended, Hash256, Keypair, MainnetEthSpec, MinimalEthSpec, RelativeEpoch,
-    Slot, Vector, test_utils::TestRandom,
+    EthSpec, ExecutionPayloadBidGloas, FixedBytesExtended, Hash256, Keypair, MainnetEthSpec,
+    MinimalEthSpec, RelativeEpoch, Slot, Vector, test_utils::TestRandom,
 };
 use ssz::Encode;
 use std::ops::Mul;
@@ -369,7 +369,7 @@ mod gloas {
             inactivity_scores: List::default(),
             current_sync_committee: sync_committee.clone(),
             next_sync_committee: sync_committee,
-            latest_execution_payload_bid: ExecutionPayloadBid::default(),
+            latest_execution_payload_bid: ExecutionPayloadBidGloas::default(),
             next_withdrawal_index: 0,
             next_withdrawal_validator_index: 0,
             historical_summaries: List::default(),
@@ -434,17 +434,20 @@ mod gloas {
     #[test]
     fn latest_execution_payload_bid_accessible() {
         let state = make_gloas_state();
-        let bid = state.latest_execution_payload_bid().unwrap();
-        assert_eq!(*bid, ExecutionPayloadBid::default());
+        let bid = state.latest_execution_payload_bid_gloas().unwrap();
+        assert_eq!(*bid, ExecutionPayloadBidGloas::default());
     }
 
     #[test]
     fn latest_execution_payload_bid_mut_accessible() {
         let mut state = make_gloas_state();
-        let bid = state.latest_execution_payload_bid_mut().unwrap();
+        let bid = state.latest_execution_payload_bid_gloas_mut().unwrap();
         bid.builder_index = 42;
         assert_eq!(
-            state.latest_execution_payload_bid().unwrap().builder_index,
+            state
+                .latest_execution_payload_bid_gloas()
+                .unwrap()
+                .builder_index,
             42
         );
     }
@@ -666,7 +669,10 @@ mod gloas {
         let mut state1 = make_gloas_state();
         let mut state2 = make_gloas_state();
 
-        state1.latest_execution_payload_bid_mut().unwrap().value = 1000;
+        state1
+            .latest_execution_payload_bid_gloas_mut()
+            .unwrap()
+            .value = 1000;
         assert_ne!(
             state1.canonical_root().unwrap(),
             state2.canonical_root().unwrap()

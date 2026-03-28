@@ -12,7 +12,7 @@ use std::time::Duration;
 use task_executor::TaskExecutor;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, trace, warn};
-use types::{BlockType, ChainSpec, EthSpec, ForkName, Graffiti, PublicKeyBytes, Slot};
+use types::{BlockType, ChainSpec, EthSpec, Graffiti, PublicKeyBytes, Slot};
 use validator_store::{Error as ValidatorStoreError, SignedBlock, UnsignedBlock, ValidatorStore};
 
 #[derive(Debug)]
@@ -583,12 +583,12 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> BlockService<S, T> {
                 let has_envelope = block.execution_payload_envelope().is_some();
                 let fork = block.block().to_ref().fork_name_unchecked();
 
-                if fork == ForkName::Gloas && !has_envelope {
+                if fork.gloas_enabled() && !has_envelope {
                     info!(
                         slot = slot.as_u64(),
                         "Received unsigned block (external builder bid, no self-build envelope)"
                     );
-                } else if fork == ForkName::Gloas {
+                } else if fork.gloas_enabled() {
                     info!(
                         slot = slot.as_u64(),
                         "Received unsigned block (self-build with envelope)"
@@ -633,7 +633,7 @@ impl<E: EthSpec> From<&SignedBlock<E>> for BlockMetadata {
                 // In Gloas, a block without an envelope means an external builder bid was used.
                 // The builder will reveal the execution payload via a separate envelope.
                 let external_builder =
-                    fork_name == ForkName::Gloas && block.signed_envelope().is_none();
+                    fork_name.gloas_enabled() && block.signed_envelope().is_none();
 
                 BlockMetadata {
                     block_type: BlockType::Full,

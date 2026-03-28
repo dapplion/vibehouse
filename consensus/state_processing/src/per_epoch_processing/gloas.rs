@@ -26,44 +26,52 @@ pub fn process_builder_pending_payments<E: EthSpec>(
         .safe_mul(spec.builder_payment_threshold_numerator)?
         .safe_div(spec.builder_payment_threshold_denominator)?;
 
-    let state_gloas = state.as_gloas_mut()?;
+    // Check first SLOTS_PER_EPOCH entries against quorum, collect qualifying withdrawals
+    let qualifying: Vec<_> = state
+        .builder_pending_payments()
+        .map_err(EpochProcessingError::BeaconStateError)?
+        .iter()
+        .take(slots_per_epoch)
+        .filter(|p| p.weight >= quorum)
+        .map(|p| p.withdrawal)
+        .collect();
 
-    // Check first SLOTS_PER_EPOCH entries against quorum, append qualifying withdrawals
-    for i in 0..slots_per_epoch {
-        if let Some(payment) = state_gloas.builder_pending_payments.get(i)
-            && payment.weight >= quorum
-        {
-            state_gloas
-                .builder_pending_withdrawals
-                .push(payment.withdrawal)?;
-        }
+    // Append qualifying withdrawals
+    for withdrawal in qualifying {
+        state
+            .builder_pending_withdrawals_mut()
+            .map_err(EpochProcessingError::BeaconStateError)?
+            .push(withdrawal)?;
     }
 
     // Rotate: move second half to first half, clear second half
     // old_payments = state.builder_pending_payments[SLOTS_PER_EPOCH:]
     // new_payments = [BuilderPendingPayment() for _ in range(SLOTS_PER_EPOCH)]
     // state.builder_pending_payments = old_payments + new_payments
-    let total_len = state_gloas.builder_pending_payments.len();
-    for i in 0..slots_per_epoch {
-        let src_idx = i.saturating_add(slots_per_epoch);
-        let new_value = if src_idx < total_len {
-            state_gloas
-                .builder_pending_payments
-                .get(src_idx)
-                .copied()
-                .unwrap_or_default()
-        } else {
-            BuilderPendingPayment::default()
-        };
-        if let Some(slot) = state_gloas.builder_pending_payments.get_mut(i) {
-            *slot = new_value;
-        }
-    }
-
-    // Clear second half (set to default)
-    for i in slots_per_epoch..total_len {
-        if let Some(slot) = state_gloas.builder_pending_payments.get_mut(i) {
-            *slot = BuilderPendingPayment::default();
+    let payments = state
+        .builder_pending_payments()
+        .map_err(EpochProcessingError::BeaconStateError)?;
+    let total_len = payments.len();
+    let rotated: Vec<BuilderPendingPayment> = (0..total_len)
+        .map(|i| {
+            if i < slots_per_epoch {
+                let src_idx = i.saturating_add(slots_per_epoch);
+                if src_idx < total_len {
+                    payments.get(src_idx).copied().unwrap_or_default()
+                } else {
+                    BuilderPendingPayment::default()
+                }
+            } else {
+                BuilderPendingPayment::default()
+            }
+        })
+        .collect();
+    let payments_mut = state
+        .builder_pending_payments_mut()
+        .map_err(EpochProcessingError::BeaconStateError)?;
+    for (i, val) in rotated.into_iter().enumerate() {
+        if let Some(slot) = payments_mut.get_mut(i) {
+            *slot = val;
         }
     }
 
@@ -127,12 +135,12 @@ pub fn process_ptc_window<E: EthSpec>(
     let window_len = E::ptc_window_slots();
 
     // Read entries that will be shifted left (everything after the first epoch)
+    let ptc_window = state
+        .ptc_window()
+        .map_err(EpochProcessingError::BeaconStateError)?;
     let shifted: Vec<FixedVector<u64, E::PtcSize>> = (slots_per_epoch..window_len)
         .map(|i| {
-            state
-                .as_gloas()
-                .map_err(EpochProcessingError::BeaconStateError)?
-                .ptc_window
+            ptc_window
                 .get(i)
                 .cloned()
                 .ok_or(EpochProcessingError::PtcWindowOutOfBounds(i))
@@ -174,10 +182,9 @@ pub fn process_ptc_window<E: EthSpec>(
         .collect::<Result<_, EpochProcessingError>>()?;
 
     // Write shifted values into the first positions
-    let ptc_window = &mut state
-        .as_gloas_mut()
-        .map_err(EpochProcessingError::BeaconStateError)?
-        .ptc_window;
+    let ptc_window = state
+        .ptc_window_mut()
+        .map_err(EpochProcessingError::BeaconStateError)?;
     for (dst, val) in shifted.into_iter().enumerate() {
         if let Some(entry) = ptc_window.get_mut(dst) {
             *entry = val;
@@ -206,7 +213,7 @@ mod tests {
     use types::{
         Address, BeaconBlockHeader, BeaconStateGloas, Builder, BuilderPendingWithdrawal,
         BuilderPubkeyCache, CACHED_EPOCHS, Checkpoint, CommitteeCache, Epoch, ExecutionBlockHash,
-        ExecutionPayloadBid, ExitCache, FixedVector, Fork, Hash256, List, MinimalEthSpec,
+        ExecutionPayloadBidGloas, ExitCache, FixedVector, Fork, Hash256, List, MinimalEthSpec,
         ProgressiveBalancesCache, PubkeyCache, RelativeEpoch, SlashingsCache, Slot, SyncCommittee,
         Unsigned, Vector,
     };
@@ -327,7 +334,7 @@ mod tests {
             inactivity_scores: List::default(),
             current_sync_committee: sync_committee.clone(),
             next_sync_committee: sync_committee,
-            latest_execution_payload_bid: ExecutionPayloadBid {
+            latest_execution_payload_bid: ExecutionPayloadBidGloas {
                 parent_block_hash,
                 parent_block_root: parent_root,
                 block_hash: ExecutionBlockHash::repeat_byte(0x04),

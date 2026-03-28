@@ -31,9 +31,10 @@ use eth2_network_config::Eth2NetworkConfig;
 use std::time::Duration;
 use tracing::info;
 use types::{
-    Address, BitVector, ChainSpec, Domain, Epoch, EthSpec, ExecutionBlockHash, ExecutionPayloadBid,
-    Hash256, ProposerPreferences, SignedExecutionPayloadBid, SignedProposerPreferences, SignedRoot,
-    Slot, beacon_block_body::KzgCommitments, test_utils::generate_deterministic_keypairs,
+    Address, ChainSpec, Domain, Epoch, EthSpec, ExecutionBlockHash, ExecutionPayloadBidGloas,
+    Hash256, ProposerPreferences, SignedExecutionPayloadBid, SignedExecutionPayloadBidGloas,
+    SignedProposerPreferences, SignedRoot, Slot, beacon_block_body::KzgCommitments,
+    test_utils::generate_deterministic_keypairs,
 };
 
 const HTTP_TIMEOUT: Duration = Duration::from_secs(10);
@@ -256,7 +257,7 @@ async fn run_async<E: EthSpec>(
     info!("Proposer preferences submitted successfully.");
 
     // Step 4: Construct and sign the bid.
-    let bid_message = ExecutionPayloadBid::<E> {
+    let bid_message = ExecutionPayloadBidGloas::<E> {
         slot: target_slot,
         builder_index,
         value: bid_value,
@@ -270,7 +271,6 @@ async fn run_async<E: EthSpec>(
         gas_limit,
         execution_payment: bid_value,
         blob_kzg_commitments: KzgCommitments::<E>::default(),
-        inclusion_list_bits: BitVector::default(),
     };
 
     let bid_epoch = target_slot.epoch(E::slots_per_epoch());
@@ -283,10 +283,10 @@ async fn run_async<E: EthSpec>(
     let bid_signing_root = bid_message.signing_root(bid_domain);
     let bid_signature = builder_keypair.sk.sign(bid_signing_root);
 
-    let signed_bid = SignedExecutionPayloadBid::<E> {
+    let signed_bid = SignedExecutionPayloadBid::Gloas(SignedExecutionPayloadBidGloas::<E> {
         message: bid_message,
         signature: bid_signature,
-    };
+    });
 
     // Step 5: Submit the bid.
     info!("Submitting builder bid to beacon node...");

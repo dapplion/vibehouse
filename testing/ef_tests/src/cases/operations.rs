@@ -30,8 +30,8 @@ use types::{
     BeaconBlockBodyCapella, BeaconBlockBodyDeneb, BeaconBlockBodyElectra, BeaconBlockBodyFulu,
     BeaconState, BlindedPayload, ConsolidationRequest, Deposit, DepositRequest, ExecutionPayload,
     ForkVersionDecode, FullPayload, Hash256, PayloadAttestation, ProposerSlashing,
-    SignedBlsToExecutionChange, SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope,
-    SignedVoluntaryExit, Slot, SyncAggregate, WithdrawalRequest,
+    SignedBlsToExecutionChange, SignedExecutionPayloadBid, SignedExecutionPayloadBidRef,
+    SignedExecutionPayloadEnvelope, SignedVoluntaryExit, Slot, SyncAggregate, WithdrawalRequest,
 };
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -674,13 +674,17 @@ impl<E: EthSpec> Operation<E> for ExecutionPayloadBidWithBlock<E> {
     fn decode(path: &Path, _fork_name: ForkName, spec: &ChainSpec) -> Result<Self, Error> {
         let block: BeaconBlock<E> =
             ssz_decode_file_with(path, |bytes| BeaconBlock::from_ssz_bytes(bytes, spec))?;
-        let signed_bid = block
-            .body()
-            .signed_execution_payload_bid()
-            .map_err(|e| {
-                Error::FailedToParseTest(format!("No signed_execution_payload_bid: {e:?}"))
-            })?
-            .clone();
+        let signed_bid_ref = block.body().signed_execution_payload_bid().map_err(|e| {
+            Error::FailedToParseTest(format!("No signed_execution_payload_bid: {e:?}"))
+        })?;
+        let signed_bid = match signed_bid_ref {
+            SignedExecutionPayloadBidRef::Gloas(inner) => {
+                SignedExecutionPayloadBid::Gloas(inner.clone())
+            }
+            SignedExecutionPayloadBidRef::Heze(inner) => {
+                SignedExecutionPayloadBid::Heze(inner.clone())
+            }
+        };
         Ok(ExecutionPayloadBidWithBlock {
             signed_bid,
             block_slot: block.slot(),
@@ -700,7 +704,7 @@ impl<E: EthSpec> Operation<E> for ExecutionPayloadBidWithBlock<E> {
     ) -> Result<(), BlockProcessingError> {
         process_execution_payload_bid(
             state,
-            &self.signed_bid,
+            self.signed_bid.to_ref(),
             self.block_slot,
             self.block_parent_root,
             VerifySignatures::True,

@@ -68,13 +68,8 @@ pub fn get_attestation_participation_flag_indices<E: EthSpec>(
                 .as_usize()
                 .safe_rem(E::slots_per_historical_root())?;
             let availability = state
-                .as_gloas()
-                .map(|s| {
-                    s.execution_payload_availability
-                        .get(slot_index)
-                        .map(u64::from)
-                        .unwrap_or(0)
-                })
+                .execution_payload_availability()
+                .map(|epa| epa.get(slot_index).map(u64::from).unwrap_or(0))
                 .unwrap_or(0);
             data.index == availability
         };
@@ -114,10 +109,10 @@ mod tests {
     use std::sync::Arc;
     use types::{
         BeaconBlockHeader, BeaconStateGloas, BuilderPendingPayment, BuilderPubkeyCache,
-        CACHED_EPOCHS, Checkpoint, CommitteeCache, Epoch, ExecutionBlockHash, ExecutionPayloadBid,
-        ExitCache, FixedBytesExtended, FixedVector, Fork, Hash256, List, MinimalEthSpec,
-        ProgressiveBalancesCache, PubkeyCache, PublicKeyBytes, SlashingsCache, SyncCommittee,
-        Unsigned, Vector,
+        CACHED_EPOCHS, Checkpoint, CommitteeCache, Epoch, ExecutionBlockHash,
+        ExecutionPayloadBidGloas, ExitCache, FixedBytesExtended, FixedVector, Fork, Hash256, List,
+        MinimalEthSpec, ProgressiveBalancesCache, PubkeyCache, PublicKeyBytes, SlashingsCache,
+        SyncCommittee, Unsigned, Vector,
     };
 
     type E = MinimalEthSpec;
@@ -196,7 +191,7 @@ mod tests {
             inactivity_scores: List::default(),
             current_sync_committee: sync_committee.clone(),
             next_sync_committee: sync_committee,
-            latest_execution_payload_bid: ExecutionPayloadBid::default(),
+            latest_execution_payload_bid: ExecutionPayloadBidGloas::default(),
             next_withdrawal_index: 0,
             next_withdrawal_validator_index: 0,
             historical_summaries: List::default(),

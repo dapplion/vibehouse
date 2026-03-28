@@ -55,9 +55,9 @@ mod tests {
     use std::sync::Arc;
     use types::{
         BeaconState, BeaconStateGloas, BitVector, BuilderPendingPayment, Checkpoint, EpochCache,
-        Eth1Data, ExecutionBlockHash, ExecutionPayloadBid, ExitCache, ForkName, MinimalEthSpec,
-        ProgressiveBalancesCache, PubkeyCache, SlashingsCache, SyncCommittee, Validator,
-        beacon_state::BuilderPubkeyCache,
+        Eth1Data, ExecutionBlockHash, ExecutionPayloadBidGloas, ExitCache, ForkName,
+        MinimalEthSpec, ProgressiveBalancesCache, PubkeyCache, SlashingsCache, SyncCommittee,
+        Validator, beacon_state::BuilderPubkeyCache,
     };
 
     type E = MinimalEthSpec;
@@ -139,7 +139,7 @@ mod tests {
             inactivity_scores: List::default(),
             current_sync_committee: sync_committee.clone(),
             next_sync_committee: sync_committee,
-            latest_execution_payload_bid: ExecutionPayloadBid::default(),
+            latest_execution_payload_bid: ExecutionPayloadBidGloas::default(),
             next_withdrawal_index: 0,
             next_withdrawal_validator_index: 0,
             historical_summaries: List::default(),

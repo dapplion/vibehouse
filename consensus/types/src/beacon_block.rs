@@ -12,8 +12,8 @@ use crate::{
     Eth1Data, ExecutionPayload, ExecutionRequests, FixedBytesExtended, FixedVector, Fork, ForkName,
     FullPayload, Graffiti, Hash256, InconsistentFork, ProposerSlashing, PublicKeyBytes, SecretKey,
     Signature, SignatureBytes, SignedBeaconBlock, SignedBeaconBlockHeader,
-    SignedExecutionPayloadBid, SignedRoot, SignedVoluntaryExit, Slot, SyncAggregate, Unsigned,
-    VariableList, VoluntaryExit, map_fork_name, map_fork_name_with,
+    SignedExecutionPayloadBidGloas, SignedExecutionPayloadBidHeze, SignedRoot, SignedVoluntaryExit,
+    Slot, SyncAggregate, Unsigned, VariableList, VoluntaryExit, map_fork_name, map_fork_name_with,
 };
 use educe::Educe;
 use serde::{Deserialize, Deserializer, Serialize};
@@ -689,7 +689,7 @@ impl<E: EthSpec, Payload: AbstractExecPayload<E>> EmptyBlock for BeaconBlockGloa
                 voluntary_exits: VariableList::empty(),
                 sync_aggregate: SyncAggregate::empty(),
                 bls_to_execution_changes: VariableList::empty(),
-                signed_execution_payload_bid: SignedExecutionPayloadBid::empty(),
+                signed_execution_payload_bid: SignedExecutionPayloadBidGloas::empty(),
                 payload_attestations: VariableList::empty(),
                 _phantom: PhantomData,
             },
@@ -720,7 +720,7 @@ impl<E: EthSpec, Payload: AbstractExecPayload<E>> EmptyBlock for BeaconBlockHeze
                 voluntary_exits: VariableList::empty(),
                 sync_aggregate: SyncAggregate::empty(),
                 bls_to_execution_changes: VariableList::empty(),
-                signed_execution_payload_bid: SignedExecutionPayloadBid::empty(),
+                signed_execution_payload_bid: SignedExecutionPayloadBidHeze::empty(),
                 payload_attestations: VariableList::empty(),
                 _phantom: PhantomData,
             },

@@ -1080,7 +1080,7 @@ where
                 BlockProductionVersion::FullV2,
             )
             .await
-            .unwrap()
+            .unwrap_or_else(|e| panic!("produce_block_on_state failed at slot {slot}: {e:?}"))
         else {
             panic!("Should always be a full payload response");
         };

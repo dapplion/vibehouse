@@ -2762,7 +2762,7 @@ async fn post_builder_bids<T: BeaconChainTypes>(
                 return Err(ApiError::bad_request("Gloas is not scheduled"));
             }
 
-            let builder_index = bid.message.builder_index;
+            let builder_index = *bid.to_ref().message().builder_index();
 
             let verified_bid = match chain.verify_execution_bid_for_gossip(bid) {
                 Ok(verified) => verified,
