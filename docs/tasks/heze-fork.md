@@ -69,7 +69,7 @@ Heze adds inclusion lists — a mechanism for committees of 16 validators per sl
 | 3. Fork Choice | IL satisfaction tracking, should_extend_payload changes | DONE |
 | 4. P2P Networking | Gossip topic, req/resp protocol, validation | DONE |
 | 5. Beacon Chain Integration | IL store, builder bid validation | DONE |
-| 6. Validator Client | IL committee duties, IL construction, bid validation | IN PROGRESS |
+| 6. Validator Client | IL committee duties, IL construction, bid validation | DONE |
 | 7. REST API | IL endpoints | NOT STARTED |
 
 ## Progress Log
@@ -276,3 +276,37 @@ Adding inclusion list committee duty discovery pipeline for FOCIL.
 Tests: 1175/1175 types+validator_services pass, 1038/1038 state_processing pass. Full workspace lint clean.
 
 **Next:** Phase 6 Part 2 — `sign_inclusion_list` in ValidatorStore, InclusionListService (IL construction, signing, broadcast), pool submission endpoint.
+
+### Phase 6: Validator Client — Part 2 (run 3354)
+
+Adding inclusion list signing, pool submission, and the InclusionListService for FOCIL.
+
+**Completed:**
+
+1. **SignableMessage::InclusionList** (`validator_client/signing_method/src/lib.rs`): New variant wrapping `&InclusionList<E>` with signing root and Web3Signer unsupported error.
+
+2. **sign_inclusion_list** (`validator_store/src/lib.rs` + `vibehouse_validator_store/src/lib.rs`): Trait method + implementation using `DOMAIN_INCLUSION_LIST_COMMITTEE`, doppelganger bypassed (non-slashable). Returns `SignedInclusionList`.
+
+3. **BN pool endpoint** (`beacon_node/http_api/src/lib.rs`): `POST /eth/v1/beacon/pool/inclusion_lists` — Heze-gated, verifies via `verify_inclusion_list_for_gossip()`, imports to InclusionListStore, publishes to gossip network.
+
+4. **eth2 client method** (`common/eth2/src/lib.rs`): `post_beacon_pool_inclusion_lists(signed_il)`.
+
+5. **InclusionListDutyData.inclusion_list_committee_root** (`common/eth2/src/types.rs`): Added `Hash256` field for the committee root, computed in `validator_inclusion_list_duties` via `FixedVector::tree_hash_root`.
+
+6. **InclusionListService** (`validator_client/validator_services/src/inclusion_list_service.rs`): New service (builder pattern mirroring PayloadAttestationService):
+   - Wakes at 6667 BPS (66.67% of slot, before 75% view freeze cutoff)
+   - Reads IL committee duties from DutiesService
+   - Constructs `InclusionList` with committee root from duties (transactions empty — EL integration deferred)
+   - Signs with `sign_inclusion_list`
+   - Submits to BN via `post_beacon_pool_inclusion_lists`
+   - Wired into VC main loop (`validator_client/src/lib.rs`)
+
+7. **ValidatorStore trait stubs**: Added `sign_inclusion_list` unimplemented stubs to all 4 mock ValidatorStore impls (payload_attestation_service, duties_service, ptc test modules).
+
+Tests: 12/12 vibehouse_validator_store pass (3 new: correct domain, wrong domain, unknown pubkey), 61/61 validator_services pass, 1115/1115 types+validator_client pass. Full workspace lint clean.
+
+**Phase 6 complete.** All VC tasks done: duty discovery (Part 1) + signing, broadcast, pool endpoint (Part 2).
+
+**Design note:** Transactions in inclusion lists are currently empty. The EL integration (`engine_getInclusionList` or equivalent) to populate them will be added when the execution layer FOCIL spec is finalized.
+
+**Next:** Phase 7 — REST API (inclusion list endpoints).
