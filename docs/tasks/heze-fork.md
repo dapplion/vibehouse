@@ -339,3 +339,16 @@ Added 3 tests for Heze inclusion list satisfaction blocking in `should_extend_pa
 - `should_extend_payload_inclusion_list_satisfied_allows_ptc_path`: IL satisfied → PTC path proceeds normally
 
 This was the only untested branch in should_extend_payload's Heze logic. 209/209 proto_array + 121/121 fork_choice tests pass.
+
+### Test coverage improvement (run 3500+)
+
+Added 7 tests for `process_signed_inclusion_list()` signed cache behavior in `inclusion_list_store.rs`:
+- `signed_process_caches_accepted_il`: accepted IL appears in both inclusion_lists and signed_cache
+- `signed_process_not_cached_after_cutoff`: after view freeze cutoff, not stored or cached
+- `signed_process_equivocation_removes_from_cache`: equivocation cleans up signed_cache
+- `signed_process_duplicate_idempotent`: duplicate submission stays at one entry
+- `signed_process_multiple_validators`: multiple validators each get their own cache entry
+- `prune_removes_signed_cache`: prune cleans signed_cache along with inclusion_lists and equivocators
+- `signed_equivocator_ignored_on_third_attempt`: third submission from equivocator is ignored
+
+Total: 20/20 inclusion_list_store tests pass (13 existing + 7 new).
