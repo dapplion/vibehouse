@@ -994,6 +994,7 @@ fn make_external_bid(
         gas_limit: 30_000_000,
         execution_payment: value,
         blob_kzg_commitments: KzgCommitments::<E>::default(),
+        inclusion_list_bits: BitVector::default(),
     };
 
     let spec = E::default_spec();
@@ -16659,6 +16660,7 @@ async fn gloas_external_builder_revealed_next_block_uses_builder_block_hash() {
         gas_limit: 30_000_000,
         execution_payment: 5000,
         blob_kzg_commitments: KzgCommitments::<E>::default(),
+        inclusion_list_bits: BitVector::default(),
     };
     let spec = E::default_spec();
     let epoch = ext_slot.epoch(E::slots_per_epoch());

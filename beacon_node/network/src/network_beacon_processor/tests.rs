@@ -36,7 +36,7 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 use types::blob_sidecar::{BlobIdentifier, FixedBlobSidecarList};
 use types::{
-    Address, AttesterSlashing, BlobSidecar, BlobSidecarList, Builder, ChainSpec,
+    Address, AttesterSlashing, BitVector, BlobSidecar, BlobSidecarList, Builder, ChainSpec,
     DataColumnSidecarList, DataColumnSubnetId, Domain, Epoch, EthSpec, ExecutionBlockHash,
     ExecutionPayloadBid, ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExecutionProof,
     ExecutionProofSubnetId, Hash256, Keypair, MainnetEthSpec, PayloadAttestationData,
@@ -2381,6 +2381,7 @@ async fn test_gloas_gossip_bid_zero_payment_rejected() {
             value: 1000,
             execution_payment: 0, // zero payment → reject
             blob_kzg_commitments: <_>::default(),
+            inclusion_list_bits: BitVector::default(),
         },
         signature: bls::Signature::empty(),
     };
@@ -2421,6 +2422,7 @@ async fn test_gloas_gossip_bid_wrong_slot_ignored() {
             value: 1000,
             execution_payment: 500,
             blob_kzg_commitments: <_>::default(),
+            inclusion_list_bits: BitVector::default(),
         },
         signature: bls::Signature::empty(),
     };
@@ -2462,6 +2464,7 @@ async fn test_gloas_gossip_bid_unknown_builder_rejected() {
             value: 1000,
             execution_payment: 500,
             blob_kzg_commitments: <_>::default(),
+            inclusion_list_bits: BitVector::default(),
         },
         signature: bls::Signature::empty(),
     };
@@ -6130,6 +6133,7 @@ async fn test_gloas_gossip_payload_envelope_invalid_signature_rejected() {
         gas_limit: 30_000_000,
         execution_payment: 5000,
         blob_kzg_commitments: VariableList::default(),
+        inclusion_list_bits: BitVector::default(),
     };
     let bid = sign_bid(&rig, 0, bid_msg);
 

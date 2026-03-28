@@ -5917,6 +5917,7 @@ async fn gloas_reconstruct_states_with_empty_path_block() {
         gas_limit: 30_000_000,
         execution_payment: 0,
         blob_kzg_commitments: VariableList::default(),
+        inclusion_list_bits: BitVector::default(),
     };
     let epoch = empty_path_slot.epoch(slots_per_epoch);
     let domain = spec.get_domain(
