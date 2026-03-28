@@ -68,7 +68,7 @@ Heze adds inclusion lists — a mechanism for committees of 16 validators per sl
 | 2. State Transitions | Fork upgrade, inclusion list committee computation | DONE |
 | 3. Fork Choice | IL satisfaction tracking, should_extend_payload changes | DONE |
 | 4. P2P Networking | Gossip topic, req/resp protocol, validation | DONE |
-| 5. Beacon Chain Integration | IL store, builder bid validation | NOT STARTED |
+| 5. Beacon Chain Integration | IL store, builder bid validation | DONE |
 | 6. Validator Client | IL committee duties, IL construction, bid validation | NOT STARTED |
 | 7. REST API | IL endpoints | NOT STARTED |
 
@@ -214,4 +214,39 @@ Tests: 407/407 vibehouse_network pass, 8/8 beacon_processor pass, 47/47 types ch
 
 **Phase 4 complete.** Both gossip topic (Part 1) and RPC req/resp protocol (Part 2) are implemented.
 
-**Next:** Phase 5 — Beacon Chain Integration (InclusionListStore integration, builder bid validation, on_inclusion_list handler).
+**Phase 4 complete.** Next: Phase 5.
+
+### Phase 5: Beacon Chain Integration (run 3352)
+
+Integrating InclusionListStore into the beacon chain, completing the server-side FOCIL pipeline.
+
+**Completed:**
+
+1. **InclusionListStore in BeaconChain** (`beacon_chain.rs`, `builder.rs`): Added `inclusion_list_store: Mutex<InclusionListStore<T::EthSpec>>` field (same pattern as `execution_bid_pool`). Initialized via `Default` in builder.
+
+2. **heze_verification module** (`beacon_chain/src/heze_verification.rs`): New module with:
+   - `InclusionListError` enum with 8 variants mapping to gossip Accept/Reject/Ignore
+   - `VerifiedInclusionList<T>` struct (signed IL + view freeze cutoff flag)
+   - `verify_inclusion_list_for_gossip()`: 6 spec checks (slot, fork, committee membership, committee root, signature, duplicate/equivocation)
+   - `import_inclusion_list()`: stores via `process_signed_inclusion_list()`
+   - `get_inclusion_lists_by_committee_indices()`: serves ILs for RPC by committee position
+   - `check_inclusion_list_satisfaction()`: checks payload txs include all IL txs
+   - `compute_inclusion_list_bits_for_slot()`: returns BitVector for self-build bid
+
+3. **Gossip validation** (`gossip_methods.rs`): Replaced stub with full validation — calls `verify_inclusion_list_for_gossip()`, maps errors to `MessageAcceptance` (Ignore/Reject) with peer penalties, imports on Accept.
+
+4. **RPC serving** (`rpc_methods.rs`): Replaced stub with full handler — gets current slot, calls `get_inclusion_lists_by_committee_indices()`, streams responses, terminates.
+
+5. **InclusionListStore signed_cache** (`inclusion_list_store.rs`): Added `signed_cache: HashMap<InclusionListKey, HashMap<u64, SignedInclusionList<E>>>` to support RPC serving. `process_signed_inclusion_list()` wraps `process_inclusion_list()` and caches the signed version. Pruned with existing `prune()`.
+
+6. **Fork choice IL satisfaction** (`fork_choice.rs`): Parameterized `on_execution_payload` to accept `inclusion_list_satisfied: bool` (was hardcoded `true`). All ~26 call sites updated.
+
+7. **Beacon chain wiring** (`beacon_chain.rs`): `apply_payload_envelope_to_fork_choice` and `process_envelope_for_sync` now compute IL satisfaction via `check_inclusion_list_satisfaction()` before fork choice updates. Self-build path passes `true`.
+
+8. **Self-build bid IL bits** (`beacon_chain.rs`): Heze self-build bid uses `compute_inclusion_list_bits_for_slot(slot)` instead of `BitVector::default()`.
+
+Tests: 1114/1114 types pass, 1038/1038 state_processing pass, 206/206 proto_array pass, 121/121 fork_choice pass. Full workspace lint clean.
+
+**Phase 5 complete.**
+
+**Next:** Phase 6 — Validator Client (IL committee duties, IL construction, bid validation).
