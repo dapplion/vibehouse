@@ -4505,13 +4505,46 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
 
         let verified = match self.chain.verify_inclusion_list_for_gossip(signed_il) {
             Ok(verified) => verified,
-            // [IGNORE] Slot not current
-            Err(InclusionListError::SlotNotCurrent { .. }) => {
+            // [REJECT] Transactions exceed MAX_BYTES_PER_INCLUSION_LIST
+            Err(InclusionListError::TransactionsTooLarge { total_bytes }) => {
+                warn!(
+                    validator_index,
+                    slot = %il_slot,
+                    total_bytes,
+                    %peer_id,
+                    "Rejecting inclusion list: transactions too large"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::LowToleranceError,
+                    "inclusion_list_tx_too_large",
+                );
+                return;
+            }
+            // [REJECT] Slot not current or previous
+            Err(InclusionListError::SlotNotCurrentOrPrevious { .. }) => {
+                warn!(
+                    validator_index,
+                    slot = %il_slot,
+                    %peer_id,
+                    "Rejecting inclusion list: slot not current or previous"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::LowToleranceError,
+                    "inclusion_list_slot_out_of_range",
+                );
+                return;
+            }
+            // [IGNORE] Previous slot but past attestation due deadline
+            Err(InclusionListError::PreviousSlotTooLate { .. }) => {
                 debug!(
                     validator_index,
                     slot = %il_slot,
                     %peer_id,
-                    "Ignoring inclusion list for non-current slot"
+                    "Ignoring inclusion list: previous slot past attestation due"
                 );
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
                 return;
@@ -4548,20 +4581,15 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 );
                 return;
             }
-            // [REJECT] Committee root mismatch
+            // [IGNORE] Committee root mismatch (depends on peer's chain view)
             Err(InclusionListError::CommitteeRootMismatch { .. }) => {
-                warn!(
+                debug!(
                     validator_index,
                     slot = %il_slot,
                     %peer_id,
-                    "Rejecting inclusion list: committee root mismatch"
+                    "Ignoring inclusion list: committee root mismatch"
                 );
-                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
-                self.gossip_penalize_peer(
-                    peer_id,
-                    PeerAction::LowToleranceError,
-                    "inclusion_list_committee_root_mismatch",
-                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
                 return;
             }
             // [REJECT] Invalid signature

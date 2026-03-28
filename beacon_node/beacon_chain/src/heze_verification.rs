@@ -15,13 +15,29 @@ use strum::AsRefStr;
 use tree_hash::TreeHash;
 use types::{EthSpec, Hash256, SignedInclusionList, Slot, Unsigned};
 
+/// Maximum total transaction bytes per inclusion list.
+/// Spec: `MAX_BYTES_PER_INCLUSION_LIST = 8192`
+const MAX_BYTES_PER_INCLUSION_LIST: usize = 8192;
+
 /// Returned when an inclusion list was not successfully verified.
 #[derive(Debug, AsRefStr)]
 pub enum InclusionListError {
-    /// The inclusion list slot is not the current slot.
+    /// The inclusion list slot is not the current or previous slot.
     ///
-    /// Spec: `[IGNORE] inclusion_list.slot is the current slot.`
-    SlotNotCurrent { il_slot: Slot, current_slot: Slot },
+    /// Spec: `[REJECT] message.slot is equal to the previous or current slot.`
+    SlotNotCurrentOrPrevious { il_slot: Slot, current_slot: Slot },
+    /// The inclusion list is from the previous slot but the current time has passed
+    /// the attestation due deadline.
+    ///
+    /// Spec: `[IGNORE] message.slot is equal to the current slot, or it is equal to
+    /// the previous slot and the current time is less than get_attestation_due_ms(epoch)
+    /// milliseconds into the slot.`
+    PreviousSlotTooLate { il_slot: Slot, current_slot: Slot },
+    /// The total transaction bytes exceed MAX_BYTES_PER_INCLUSION_LIST.
+    ///
+    /// Spec: `[REJECT] The size of message.transactions is within upperbound
+    /// MAX_BYTES_PER_INCLUSION_LIST.`
+    TransactionsTooLarge { total_bytes: usize },
     /// The fork is not Heze or later.
     ///
     /// Spec: `[REJECT] The inclusion_list is from a Heze (or later) fork.`
@@ -32,7 +48,8 @@ pub enum InclusionListError {
     NotInCommittee { validator_index: u64, slot: Slot },
     /// The inclusion_list_committee_root does not match the computed committee root.
     ///
-    /// Spec: `[REJECT] inclusion_list.inclusion_list_committee_root matches.`
+    /// Spec: `[IGNORE] The inclusion_list_committee for slot message.slot on the current
+    /// branch corresponds to message.inclusion_list_committee_root.`
     CommitteeRootMismatch {
         expected: Hash256,
         received: Hash256,
@@ -43,9 +60,10 @@ pub enum InclusionListError {
     InvalidSignature,
     /// This is a duplicate inclusion list (same content from same validator).
     ///
-    /// Spec: `[IGNORE] This is the first valid inclusion list from this validator for this slot.`
+    /// Spec: `[IGNORE] The message is either the first or second valid message received
+    /// from the validator.`
     Duplicate { validator_index: u64, slot: Slot },
-    /// This validator has already been marked as an equivocator.
+    /// This validator has already been marked as an equivocator (third+ message).
     ///
     /// The InclusionListStore handles equivocation detection internally.
     Equivocator { validator_index: u64, slot: Slot },
@@ -69,13 +87,14 @@ pub struct VerifiedInclusionList<T: BeaconChainTypes> {
 impl<T: BeaconChainTypes> BeaconChain<T> {
     /// Verify a signed inclusion list received via gossip.
     ///
-    /// Checks:
-    /// 1. Slot is the current slot
-    /// 2. Fork is Heze or later
-    /// 3. Validator is in the inclusion list committee
-    /// 4. Committee root matches
-    /// 5. Signature is valid
-    /// 6. Not a duplicate (checked via InclusionListStore)
+    /// Checks (per spec p2p-interface.md):
+    /// 1. Transaction size within MAX_BYTES_PER_INCLUSION_LIST
+    /// 2. Slot is current or previous
+    /// 3. Timing: current slot always ok, previous slot only before attestation_due
+    /// 4. Committee root matches (IGNORE on mismatch — depends on chain view)
+    /// 5. Validator is in the inclusion list committee
+    /// 6. Not a duplicate/equivocator
+    /// 7. Signature is valid
     #[allow(clippy::result_large_err)]
     pub fn verify_inclusion_list_for_gossip(
         &self,
@@ -85,20 +104,51 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let il_slot = il.slot;
         let validator_index = il.validator_index;
 
-        // Check 1: Slot is the current slot
+        // Check 1: Transaction size within MAX_BYTES_PER_INCLUSION_LIST
+        let total_tx_bytes: usize = il
+            .transactions
+            .iter()
+            .map(ssz_types::VariableList::len)
+            .sum();
+        if total_tx_bytes > MAX_BYTES_PER_INCLUSION_LIST {
+            return Err(InclusionListError::TransactionsTooLarge {
+                total_bytes: total_tx_bytes,
+            });
+        }
+
+        // Check 2: Slot is current or previous
         let current_slot = self
             .slot_clock
             .now()
             .ok_or(BeaconChainError::UnableToReadSlot)?;
 
-        if il_slot != current_slot {
-            return Err(InclusionListError::SlotNotCurrent {
+        let previous_slot = current_slot.saturating_sub(1u64);
+        if il_slot != current_slot && il_slot != previous_slot {
+            return Err(InclusionListError::SlotNotCurrentOrPrevious {
                 il_slot,
                 current_slot,
             });
         }
 
-        // Check 2: Fork is Heze or later
+        // Check 3: If previous slot, must be before attestation_due into the current slot
+        if il_slot == previous_slot && il_slot != current_slot {
+            let current_epoch = current_slot.epoch(<T::EthSpec as EthSpec>::slots_per_epoch());
+            let attestation_due_ms = self.spec.get_attestation_due_ms(current_epoch);
+
+            let ms_into_slot = self
+                .slot_clock
+                .millis_from_current_slot_start()
+                .map_or(u64::MAX, |d| d.as_millis() as u64);
+
+            if ms_into_slot >= attestation_due_ms {
+                return Err(InclusionListError::PreviousSlotTooLate {
+                    il_slot,
+                    current_slot,
+                });
+            }
+        }
+
+        // Check: Fork is Heze or later
         let fork_name = self.spec.fork_name_at_slot::<T::EthSpec>(il_slot);
         if !fork_name.heze_enabled() {
             return Err(InclusionListError::PreHezeFork { il_slot });
