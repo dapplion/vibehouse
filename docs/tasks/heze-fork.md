@@ -69,7 +69,7 @@ Heze adds inclusion lists — a mechanism for committees of 16 validators per sl
 | 3. Fork Choice | IL satisfaction tracking, should_extend_payload changes | DONE |
 | 4. P2P Networking | Gossip topic, req/resp protocol, validation | DONE |
 | 5. Beacon Chain Integration | IL store, builder bid validation | DONE |
-| 6. Validator Client | IL committee duties, IL construction, bid validation | NOT STARTED |
+| 6. Validator Client | IL committee duties, IL construction, bid validation | IN PROGRESS |
 | 7. REST API | IL endpoints | NOT STARTED |
 
 ## Progress Log
@@ -250,3 +250,29 @@ Tests: 1114/1114 types pass, 1038/1038 state_processing pass, 206/206 proto_arra
 **Phase 5 complete.**
 
 **Next:** Phase 6 — Validator Client (IL committee duties, IL construction, bid validation).
+
+### Phase 6: Validator Client — Part 1 (run 3353)
+
+Adding inclusion list committee duty discovery pipeline for FOCIL.
+
+**Completed:**
+
+1. **InclusionListDutyData** (`common/eth2/src/types.rs`): New duty data type with `pubkey`, `validator_index`, `slot`, `il_committee_index`. Mirrors `PtcDutyData` pattern.
+
+2. **validator_inclusion_list_duties** (`beacon_chain/src/beacon_chain.rs`): New method computing IL committee duties for an epoch. Advances state, builds committee caches, iterates slots calling `get_inclusion_list_committee()`, matches against requested validator indices. Returns duties + dependent root.
+
+3. **BN HTTP endpoint** (`beacon_node/http_api/src/inclusion_list_duties.rs`): `POST /eth/v1/validator/duties/inclusion_list/{epoch}` — Heze-gated, validates epoch range, delegates to `validator_inclusion_list_duties()`.
+
+4. **eth2 client method** (`common/eth2/src/lib.rs`): `post_validator_duties_inclusion_list(epoch, indices)` — sends POST request matching BN endpoint.
+
+5. **InclusionListDutiesMap** (`validator_client/validator_services/src/inclusion_list_duties.rs`): Duty cache mirroring `PtcDutiesMap` — `duties_for_slot()`, `duty_count()`, `set_duties()`, `prune()`. 14 unit tests.
+
+6. **poll_inclusion_list_duties** (same file): Async polling function — checks Heze fork activation, fetches current+next epoch duties from BN, caches in map, prunes old epochs.
+
+7. **DutiesService integration** (`duties_service.rs`): Added `inclusion_list_duties` field, polling loop (`duties_service_inclusion_list` task), `il_committee_count()` method.
+
+8. **MockBeaconNode** (`testing/validator_test_rig/src/mock_beacon_node.rs`): `mock_post_validator_duties_inclusion_list()` for test infrastructure.
+
+Tests: 1175/1175 types+validator_services pass, 1038/1038 state_processing pass. Full workspace lint clean.
+
+**Next:** Phase 6 Part 2 — `sign_inclusion_list` in ValidatorStore, InclusionListService (IL construction, signing, broadcast), pool submission endpoint.
