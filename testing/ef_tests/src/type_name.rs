@@ -185,6 +185,8 @@ type_name!(PayloadAttestationMessage);
 type_name_generic!(IndexedPayloadAttestation);
 type_name!(ProposerPreferences);
 type_name!(SignedProposerPreferences);
+type_name_generic!(InclusionList);
+type_name_generic!(SignedInclusionList);
 type_name_generic!(BeaconBlockBodyGloas, "BeaconBlockBody");
 type_name_generic!(ExecutionPayloadGloas, "ExecutionPayload");
 type_name_generic!(ExecutionPayloadHeaderGloas, "ExecutionPayloadHeader");
@@ -196,3 +198,17 @@ type_name_generic!(
     "LightClientOptimisticUpdate"
 );
 type_name_generic!(LightClientUpdateGloas, "LightClientUpdate");
+
+// Heze variants
+type_name_generic!(BeaconBlockBodyHeze, "BeaconBlockBody");
+type_name_generic!(DataColumnSidecarHeze, "DataColumnSidecar");
+type_name_generic!(ExecutionPayloadHeze, "ExecutionPayload");
+type_name_generic!(ExecutionPayloadHeaderHeze, "ExecutionPayloadHeader");
+type_name_generic!(LightClientBootstrapHeze, "LightClientBootstrap");
+type_name_generic!(LightClientFinalityUpdateHeze, "LightClientFinalityUpdate");
+type_name_generic!(LightClientHeaderHeze, "LightClientHeader");
+type_name_generic!(
+    LightClientOptimisticUpdateHeze,
+    "LightClientOptimisticUpdate"
+);
+type_name_generic!(LightClientUpdateHeze, "LightClientUpdate");
