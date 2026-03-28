@@ -17,8 +17,7 @@ use types::{
     AbstractExecPayload, AttestationShufflingId, AttesterSlashingRef, BeaconBlockRef, BeaconState,
     BeaconStateError, ChainSpec, Checkpoint, Epoch, EthSpec, ExecPayload, ExecutionBlockHash,
     FixedBytesExtended, Hash256, IndexedAttestationRef, IndexedPayloadAttestation,
-    PayloadAttestation, RelativeEpoch, SignedBeaconBlock, SignedExecutionPayloadBid,
-    SignedExecutionPayloadBidGloas, Slot,
+    PayloadAttestation, RelativeEpoch, SignedBeaconBlock, SignedExecutionPayloadBid, Slot,
 };
 
 #[derive(Debug)]
@@ -459,7 +458,7 @@ where
             let block_hash = anchor_state
                 .latest_block_hash()
                 .copied()
-                .unwrap_or(*bid.message().block_hash());
+                .unwrap_or_else(|_| *bid.message().block_hash());
             anchor_node.bid_block_hash = Some(block_hash);
             anchor_node.bid_parent_block_hash = Some(*bid.message().parent_block_hash());
             anchor_node.builder_index = Some(*bid.message().builder_index());
@@ -2062,7 +2061,8 @@ mod tests {
         use std::collections::BTreeSet;
         use types::{
             AggregateSignature, AttestationData, BitVector, IndexedAttestation,
-            IndexedAttestationElectra, MinimalEthSpec, PayloadAttestationData, VariableList,
+            IndexedAttestationElectra, MinimalEthSpec, PayloadAttestationData,
+            SignedExecutionPayloadBidGloas, VariableList,
         };
 
         type E = MinimalEthSpec;
