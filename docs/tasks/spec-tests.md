@@ -7,7 +7,7 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 
 ### Current results
 - **80/80 ef_tests pass (real crypto, 0 skipped)** — both mainnet + minimal presets
-- **140/140 fake_crypto pass (0 skipped)** — both mainnet + minimal presets (Fulu + Gloas DataColumnSidecar variants both pass, includes new Gloas fork choice tests from alpha.3)
+- **142/142 fake_crypto pass (0 skipped)** — both mainnet + minimal presets (includes Heze SSZ static types: InclusionList, SignedInclusionList, BLSToExecutionChange, SignedBLSToExecutionChange + all Heze superstruct variants)
 - **check_all_files_accessed passes** — all files accessed, intentionally excluded patterns maintained
 - All 9 fork_choice test categories pass (get_head, on_block, ex_ante, reorg, withholding, get_proposer_head, deposit_with_reorg, should_override_forkchoice_update, on_execution_payload)
 - 40/40 gloas execution_payload envelope tests pass (process_execution_payload_envelope spec validation)
@@ -29,6 +29,17 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, operations, random, rewards, sanity, ssz_static, transition
 
 ## Progress log
+
+### run 3499 (Mar 28) — add missing Heze SSZ static tests
+
+- Added 15 missing SSZ static EF test handlers for Heze types:
+  - `InclusionList`, `SignedInclusionList` (new Heze-only types)
+  - `BlsToExecutionChange`, `SignedBlsToExecutionChange` (existed since Capella, never had SSZ static handlers)
+  - 11 Heze superstruct variants: `BeaconBlockBodyHeze`, `DataColumnSidecarHeze`, `ExecutionPayloadHeze`, `ExecutionPayloadHeaderHeze`, `LightClientBootstrapHeze`, `LightClientFinalityUpdateHeze`, `LightClientHeaderHeze`, `LightClientOptimisticUpdateHeze`, `LightClientUpdateHeze`
+- Fixed `InclusionList.transactions` serde: added `#[serde(with = "ssz_types::serde_utils::list_of_hex_var_list")]` to match `ExecutionPayload.transactions` serialization format (hex-encoded byte strings instead of byte sequences)
+- Added TypeName registrations for all new types
+- Results: 142/142 fake_crypto pass, 80/80 real crypto pass (total 222)
+- Remaining unregistered SSZ types (`PowBlock`, `ForkChoiceNode`, `MatrixEntry`, `PartialDataColumn*`, `Eth1Block`) don't exist in vibehouse types crate — spec-internal types not needed for client implementation
 
 ### run 3063 (Mar 27) — nightly investigation, test counts updated
 
