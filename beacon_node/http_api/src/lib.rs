@@ -21,6 +21,7 @@ mod builder_states;
 mod custody;
 mod database;
 mod extractors;
+mod inclusion_list_duties;
 mod light_client;
 mod metrics;
 mod peer;
@@ -754,6 +755,10 @@ pub fn serve<T: BeaconChainTypes>(
         .route(
             "/eth/v1/validator/duties/ptc/{epoch}",
             post(post_validator_duties_ptc::<T>),
+        )
+        .route(
+            "/eth/v1/validator/duties/inclusion_list/{epoch}",
+            post(post_validator_duties_inclusion_list::<T>),
         )
         .route(
             "/eth/v1/validator/duties/sync/{epoch}",
@@ -3680,6 +3685,23 @@ async fn post_validator_duties_ptc<T: BeaconChainTypes>(
         .task_spawner()
         .blocking_json_task(Priority::P0, move || {
             ptc_duties::ptc_duties(epoch, &indices.0, &chain)
+        })
+        .await
+}
+
+async fn post_validator_duties_inclusion_list<T: BeaconChainTypes>(
+    State(state): State<SharedState<T>>,
+    Path(epoch): Path<Epoch>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Result<Response, ApiError> {
+    state.check_not_syncing()?;
+    let chain = state.chain()?;
+    let indices: api_types::ValidatorIndexData = json_body(&headers, body).await?;
+    state
+        .task_spawner()
+        .blocking_json_task(Priority::P0, move || {
+            inclusion_list_duties::inclusion_list_duties(epoch, &indices.0, &chain)
         })
         .await
 }

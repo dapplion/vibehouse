@@ -109,6 +109,7 @@ use state_processing::{
     per_block_processing::{
         VerifySignatures, get_expected_withdrawals,
         gloas::{get_indexed_payload_attestation, get_ptc_committee},
+        heze::get_inclusion_list_committee,
         verify_attestation_for_block_inclusion,
     },
     per_slot_processing,
@@ -1830,6 +1831,73 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         }
 
         // Dependent root: the block root that determines the shuffling for this epoch
+        let dependent_root = state
+            .attester_shuffling_decision_root(self.genesis_block_root, RelativeEpoch::Current)
+            .map_err(Error::from)?;
+
+        Ok((duties, dependent_root))
+    }
+
+    /// Returns inclusion list committee duties for the given epoch.
+    ///
+    /// For each slot in the epoch, computes the inclusion list committee (16 validators)
+    /// and returns duties for any validators in the `validator_indices` set.
+    pub fn validator_inclusion_list_duties(
+        &self,
+        validator_indices: &[u64],
+        epoch: Epoch,
+    ) -> Result<(Vec<eth2::types::InclusionListDutyData>, Hash256), Error> {
+        let head = self.canonical_head.cached_head();
+        let mut state = head.snapshot.beacon_state.clone();
+
+        // Advance state to cover the requested epoch if needed
+        if state.current_epoch() < epoch {
+            let target_slot = epoch.start_slot(T::EthSpec::slots_per_epoch());
+            let state_root = state.update_tree_hash_cache().map_err(Error::from)?;
+            partial_state_advance(&mut state, Some(state_root), target_slot, &self.spec)
+                .map_err(Error::from)?;
+        }
+
+        // Build committee caches needed by get_beacon_committees_at_slot
+        state
+            .build_committee_cache(RelativeEpoch::Current, &self.spec)
+            .map_err(Error::from)?;
+        if state.current_epoch().safe_add(1u64).ok() == Some(epoch) {
+            state
+                .build_committee_cache(RelativeEpoch::Next, &self.spec)
+                .map_err(Error::from)?;
+        }
+
+        let requested: HashSet<u64> = validator_indices.iter().copied().collect();
+        let mut duties = Vec::new();
+
+        let slots_per_epoch = T::EthSpec::slots_per_epoch();
+        let start_slot = epoch.start_slot(slots_per_epoch);
+        let end_slot = start_slot.safe_add(slots_per_epoch).map_err(Error::from)?;
+
+        for slot_num in start_slot.as_u64()..end_slot.as_u64() {
+            let slot = Slot::new(slot_num);
+            let il_committee = get_inclusion_list_committee::<T::EthSpec>(&state, slot, &self.spec)
+                .map_err(Error::BlockProcessingError)?;
+
+            for (il_position, &validator_index) in il_committee.iter().enumerate() {
+                if requested.contains(&validator_index) {
+                    let pubkey = self
+                        .validator_pubkey_bytes(validator_index as usize)?
+                        .ok_or(Error::ValidatorPubkeyCacheIncomplete(
+                            validator_index as usize,
+                        ))?;
+
+                    duties.push(eth2::types::InclusionListDutyData {
+                        pubkey,
+                        validator_index,
+                        slot,
+                        il_committee_index: il_position as u64,
+                    });
+                }
+            }
+        }
+
         let dependent_root = state
             .attester_shuffling_decision_root(self.genesis_block_root, RelativeEpoch::Current)
             .map_err(Error::from)?;

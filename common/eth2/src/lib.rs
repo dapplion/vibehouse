@@ -23,15 +23,16 @@ use self::types::{
     DutiesResponse, EndpointVersion, Epoch, Error as ResponseError, ErrorMessage, EthSpec,
     EventKind, EventTopic, ExecutionOptimisticFinalizedResponse, ExecutionProofStatus,
     FinalityCheckpointsData, Fork, ForkChoice, ForkName, ForkVersionedResponse, FullBlockContents,
-    GenericResponse, GenesisData, Graffiti, Hash256, IdentityData, IndexedErrorMessage,
-    JsonProduceBlockV3Response, LightClientBootstrap, LightClientFinalityUpdate,
-    LightClientOptimisticUpdate, LightClientUpdate, LivenessRequestData, LivenessResponseData,
-    PeerCount, PeerData, PeerDirection, PeerState, PeersData, PendingConsolidation, PendingDeposit,
-    PendingPartialWithdrawal, ProduceBlockV3Metadata, ProduceBlockV3Response, ProposerData,
-    ProposerPreparationData, ProposerSlashing, PtcDutyData, PublishBlockRequest, RandaoMix,
-    RootData, SignatureBytes, SignedAggregateAndProof, SignedBeaconBlock, SignedBlindedBeaconBlock,
-    SignedBlsToExecutionChange, SignedContributionAndProof, SignedValidatorRegistrationData,
-    SignedVoluntaryExit, SingleAttestation, SkipRandaoVerification, Slot, StandardBlockReward,
+    GenericResponse, GenesisData, Graffiti, Hash256, IdentityData, InclusionListDutyData,
+    IndexedErrorMessage, JsonProduceBlockV3Response, LightClientBootstrap,
+    LightClientFinalityUpdate, LightClientOptimisticUpdate, LightClientUpdate, LivenessRequestData,
+    LivenessResponseData, PeerCount, PeerData, PeerDirection, PeerState, PeersData,
+    PendingConsolidation, PendingDeposit, PendingPartialWithdrawal, ProduceBlockV3Metadata,
+    ProduceBlockV3Response, ProposerData, ProposerPreparationData, ProposerSlashing, PtcDutyData,
+    PublishBlockRequest, RandaoMix, RootData, SignatureBytes, SignedAggregateAndProof,
+    SignedBeaconBlock, SignedBlindedBeaconBlock, SignedBlsToExecutionChange,
+    SignedContributionAndProof, SignedValidatorRegistrationData, SignedVoluntaryExit,
+    SingleAttestation, SkipRandaoVerification, Slot, StandardBlockReward,
     StandardLivenessResponseData, StateId, SyncCommitteeByValidatorIndices,
     SyncCommitteeContribution, SyncCommitteeMessage, SyncCommitteeSelection,
     SyncCommitteeSubscription, SyncContributionData, SyncDuty, SyncingData, ValidatorBalanceData,
@@ -2676,6 +2677,29 @@ impl BeaconNodeHttpClient {
             .push("validator")
             .push("duties")
             .push("ptc")
+            .push(&epoch.to_string());
+
+        self.post_with_timeout_and_response(
+            path,
+            &ValidatorIndexDataRef(indices),
+            self.timeouts.attester_duties,
+        )
+        .await
+    }
+
+    /// `POST v1/validator/duties/inclusion_list/{epoch}`
+    pub async fn post_validator_duties_inclusion_list(
+        &self,
+        epoch: Epoch,
+        indices: &[u64],
+    ) -> Result<DutiesResponse<Vec<InclusionListDutyData>>, Error> {
+        let mut path = self.eth_path(V1)?;
+
+        path.path_segments_mut()
+            .map_err(|()| Error::InvalidUrl(self.server.clone()))?
+            .push("validator")
+            .push("duties")
+            .push("inclusion_list")
             .push(&epoch.to_string());
 
         self.post_with_timeout_and_response(

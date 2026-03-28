@@ -7,6 +7,8 @@
 //! block production.
 
 use crate::block_service::BlockServiceNotification;
+use crate::inclusion_list_duties::InclusionListDutiesMap;
+use crate::inclusion_list_duties::poll_inclusion_list_duties;
 use crate::ptc::PtcDutiesMap;
 use crate::ptc::poll_ptc_duties;
 use crate::sync::SyncDutiesMap;
@@ -379,6 +381,7 @@ impl<S, T> DutiesServiceBuilder<S, T> {
             proposers: RwLock::default(),
             sync_duties: SyncDutiesMap::new(self.sync_selection_proof_config),
             ptc_duties: PtcDutiesMap::new(),
+            inclusion_list_duties: InclusionListDutiesMap::new(),
             validator_store: self
                 .validator_store
                 .ok_or("Cannot build DutiesService without validator_store")?,
@@ -412,6 +415,8 @@ pub struct DutiesService<S, T> {
     pub(crate) sync_duties: SyncDutiesMap,
     /// PTC (Payload Timeliness Committee) duties for Gloas.
     pub(crate) ptc_duties: PtcDutiesMap,
+    /// Inclusion list committee duties for Heze (FOCIL).
+    pub(crate) inclusion_list_duties: InclusionListDutiesMap,
     /// Provides the canonical list of locally-managed validators.
     pub(crate) validator_store: Arc<S>,
     /// Maps unknown validator pubkeys to the next slot time when a poll should be conducted again.
@@ -479,6 +484,17 @@ impl<S: ValidatorStore, T: SlotClock + 'static> DutiesService<S, T> {
             .validator_store
             .voting_pubkeys(DoppelgangerStatus::only_safe);
         self.ptc_duties.duty_count(epoch, &signing_pubkeys)
+    }
+
+    /// Returns the total number of validators with inclusion list committee duties in the given epoch.
+    /// Used by the notifier service (Phase 6 part 2).
+    #[allow(dead_code, reason = "will be used by notifier_service")]
+    pub fn il_committee_count(&self, epoch: Epoch) -> usize {
+        let signing_pubkeys: HashSet<_> = self
+            .validator_store
+            .voting_pubkeys(DoppelgangerStatus::only_safe);
+        self.inclusion_list_duties
+            .duty_count(epoch, &signing_pubkeys)
     }
 
     /// Returns the total number of validators that are in a doppelganger detection period.
@@ -712,6 +728,28 @@ pub fn start_update_service<S: ValidatorStore + 'static, T: SlotClock + 'static>
             }
         },
         "duties_service_ptc",
+    );
+
+    // Spawn the task which keeps track of local inclusion list committee duties (Heze FOCIL).
+    let duties_service = core_duties_service.clone();
+    core_duties_service.executor.spawn(
+        async move {
+            loop {
+                if let Err(e) = poll_inclusion_list_duties(&duties_service).await {
+                    error!(
+                        error = ?e,
+                        "Failed to poll inclusion list duties"
+                    );
+                }
+
+                if let Some(duration) = duties_service.slot_clock.duration_to_next_slot() {
+                    sleep(duration).await;
+                } else {
+                    sleep(duties_service.slot_clock.slot_duration()).await;
+                }
+            }
+        },
+        "duties_service_inclusion_list",
     );
 }
 

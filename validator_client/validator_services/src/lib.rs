@@ -1,6 +1,7 @@
 pub mod attestation_service;
 pub mod block_service;
 pub mod duties_service;
+pub(crate) mod inclusion_list_duties;
 pub mod latency_service;
 pub mod notifier_service;
 pub mod payload_attestation_service;

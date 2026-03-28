@@ -796,6 +796,21 @@ pub struct PtcDutyData {
     pub ptc_committee_index: u64,
 }
 
+/// Inclusion list committee duty data for a validator (Heze FOCIL).
+///
+/// Tells the validator client which slot it needs to produce an inclusion list for,
+/// and its position within the IL committee.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InclusionListDutyData {
+    pub pubkey: PublicKeyBytes,
+    #[serde(with = "serde_utils::quoted_u64")]
+    pub validator_index: u64,
+    pub slot: Slot,
+    /// Position of this validator within the inclusion list committee (0..INCLUSION_LIST_COMMITTEE_SIZE).
+    #[serde(with = "serde_utils::quoted_u64")]
+    pub il_committee_index: u64,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProposerData {
     pub pubkey: PublicKeyBytes,

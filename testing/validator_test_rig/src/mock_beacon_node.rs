@@ -1,5 +1,6 @@
 use eth2::types::{
-    DutiesResponse, GenericResponse, PayloadAttestationData, ProposerData, PtcDutyData, SyncingData,
+    DutiesResponse, GenericResponse, InclusionListDutyData, PayloadAttestationData, ProposerData,
+    PtcDutyData, SyncingData,
 };
 use eth2::{BeaconNodeHttpClient, StatusCode, Timeouts};
 use mockito::{Matcher, Mock, Server, ServerGuard};
@@ -121,6 +122,31 @@ impl<E: EthSpec> MockBeaconNode<E> {
         duties: Vec<PtcDutyData>,
     ) -> Mock {
         let path_pattern = format!("^/eth/v1/validator/duties/ptc/{}$", epoch.as_u64());
+
+        let response = DutiesResponse {
+            dependent_root: Hash256::ZERO,
+            execution_optimistic: None,
+            data: duties,
+        };
+
+        self.server
+            .mock("POST", Matcher::Regex(path_pattern))
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(serde_json::to_string(&response).unwrap())
+            .create()
+    }
+
+    /// Mocks `POST /eth/v1/validator/duties/inclusion_list/{epoch}` to return the given duties.
+    pub fn mock_post_validator_duties_inclusion_list(
+        &mut self,
+        epoch: Epoch,
+        duties: Vec<InclusionListDutyData>,
+    ) -> Mock {
+        let path_pattern = format!(
+            "^/eth/v1/validator/duties/inclusion_list/{}$",
+            epoch.as_u64()
+        );
 
         let response = DutiesResponse {
             dependent_root: Hash256::ZERO,
