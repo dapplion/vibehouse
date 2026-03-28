@@ -6,10 +6,10 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 ## Status: DONE
 
 ### Current results
-- **82/82 ef_tests pass (real crypto, 0 skipped)** — both mainnet + minimal presets
-- **144/144 fake_crypto pass (0 skipped)** — both mainnet + minimal presets (includes Heze SSZ static types, gossip validation tests)
+- **83/83 ef_tests pass (real crypto, 0 skipped)** — both mainnet + minimal presets
+- **145/145 fake_crypto pass (0 skipped)** — both mainnet + minimal presets (includes Heze SSZ static types, gossip validation tests)
 - **check_all_files_accessed passes** — all files accessed, intentionally excluded patterns maintained
-- Gossip validation tests: `gossip_proposer_slashing` and `gossip_attester_slashing` across all forks (phase0 through heze)
+- Gossip validation tests: `gossip_proposer_slashing`, `gossip_attester_slashing`, and `gossip_voluntary_exit` across all forks (phase0 through heze)
 - All 9 fork_choice test categories pass (get_head, on_block, ex_ante, reorg, withholding, get_proposer_head, deposit_with_reorg, should_override_forkchoice_update, on_execution_payload)
 - 40/40 gloas execution_payload envelope tests pass (process_execution_payload_envelope spec validation)
 - rewards/inactivity_scores tests running across all forks (was missing)
@@ -27,9 +27,18 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 - [x] Create automated check for new spec test releases
 
 ### Test categories
-bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, networking (gossip_attester_slashing, gossip_proposer_slashing, get_custody_groups, compute_columns_for_custody_group), operations, random, rewards, sanity, ssz_static, transition
+bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, networking (gossip_attester_slashing, gossip_proposer_slashing, gossip_voluntary_exit, get_custody_groups, compute_columns_for_custody_group), operations, random, rewards, sanity, ssz_static, transition
 
 ## Progress log
+
+### run 3818 (Mar 28) — add gossip_voluntary_exit EF tests
+
+- Implemented `GossipVoluntaryExit` handler following same pattern as slashing handlers
+- Validation: already-seen check (validator_index), then `verify_exit` with signature verification
+- 8 phase0 test cases pass (valid, ignore_already_seen, reject_already_initiated_exit, reject_epoch_in_future, reject_invalid_signature, reject_not_active_long_enough, reject_validator_index_out_of_range, reject_validator_not_active)
+- Both real crypto (83/83) and fake crypto (145/145) pass
+- Removed gossip_voluntary_exit from check_all_files_accessed.py exclusion list
+- Remaining excluded gossip tests: gossip_beacon_block, gossip_beacon_attestation, gossip_beacon_aggregate_and_proof (require fork choice state + timing, significantly more complex)
 
 ### run 3499 (Mar 28) — add missing Heze SSZ static tests
 
