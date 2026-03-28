@@ -37,6 +37,8 @@ pub enum Domain {
     BeaconBuilder,
     PtcAttester,
     ProposerPreferences,
+    // Heze FOCIL domain (EIP-7805)
+    InclusionListCommittee,
 }
 
 /// Vibehouse's internal configuration struct.
@@ -267,6 +269,21 @@ pub struct ChainSpec {
     pub(crate) domain_proposer_preferences: u32,
 
     /*
+     * Heze hard fork params
+     */
+    pub heze_fork_version: [u8; 4],
+    /// The Heze fork epoch is optional, with `None` representing "Heze never happens".
+    pub heze_fork_epoch: Option<Epoch>,
+
+    /*
+     * Heze FOCIL constants (EIP-7805)
+     */
+    /// Size of the inclusion list committee (16 validators per slot)
+    pub inclusion_list_committee_size: u64,
+    /// Domain for inclusion list committee signatures
+    pub(crate) domain_inclusion_list_committee: u32,
+
+    /*
      * Networking
      */
     pub boot_nodes: Vec<String>,
@@ -386,6 +403,7 @@ impl ChainSpec {
     /// Returns the name of the fork which is active at `epoch`.
     pub fn fork_name_at_epoch(&self, epoch: Epoch) -> ForkName {
         let forks = [
+            (self.heze_fork_epoch, ForkName::Heze),
             (self.gloas_fork_epoch, ForkName::Gloas),
             (self.fulu_fork_epoch, ForkName::Fulu),
             (self.electra_fork_epoch, ForkName::Electra),
@@ -418,6 +436,7 @@ impl ChainSpec {
             ForkName::Electra => self.electra_fork_version,
             ForkName::Fulu => self.fulu_fork_version,
             ForkName::Gloas => self.gloas_fork_version,
+            ForkName::Heze => self.heze_fork_version,
         }
     }
 
@@ -437,6 +456,7 @@ impl ChainSpec {
             ForkName::Electra => self.electra_fork_epoch,
             ForkName::Fulu => self.fulu_fork_epoch,
             ForkName::Gloas => self.gloas_fork_epoch,
+            ForkName::Heze => self.heze_fork_epoch,
         }
     }
 
@@ -532,6 +552,18 @@ impl ChainSpec {
     /// Returns true if the given epoch is at or after the Gloas fork.
     pub fn is_gloas_epoch(&self, epoch: Epoch) -> bool {
         self.gloas_fork_epoch
+            .is_some_and(|fork_epoch| epoch >= fork_epoch)
+    }
+
+    /// Returns true if `HEZE_FORK_EPOCH` is set and is not set to `FAR_FUTURE_EPOCH`.
+    pub fn is_heze_scheduled(&self) -> bool {
+        self.heze_fork_epoch
+            .is_some_and(|heze_fork_epoch| heze_fork_epoch != self.far_future_epoch)
+    }
+
+    /// Returns true if the given epoch is at or after the Heze fork.
+    pub fn is_heze_epoch(&self, epoch: Epoch) -> bool {
+        self.heze_fork_epoch
             .is_some_and(|fork_epoch| epoch >= fork_epoch)
     }
 
@@ -649,6 +681,7 @@ impl ChainSpec {
             Domain::BeaconBuilder => self.domain_beacon_builder,
             Domain::PtcAttester => self.domain_ptc_attester,
             Domain::ProposerPreferences => self.domain_proposer_preferences,
+            Domain::InclusionListCommittee => self.domain_inclusion_list_committee,
         }
     }
 
@@ -1263,6 +1296,18 @@ impl ChainSpec {
             domain_proposer_preferences: 13,
 
             /*
+             * Heze hard fork params
+             */
+            heze_fork_version: [0x08, 0x00, 0x00, 0x00],
+            heze_fork_epoch: None,
+
+            /*
+             * Heze FOCIL constants (EIP-7805)
+             */
+            inclusion_list_committee_size: 16,
+            domain_inclusion_list_committee: 14, // 0x0E000000
+
+            /*
              * Network specific
              */
             boot_nodes: vec![],
@@ -1405,6 +1450,9 @@ impl ChainSpec {
             min_builder_withdrawability_delay: Epoch::new(2), // (vs mainnet 64)
             ptc_size: 2,                                      // 2^1 (vs mainnet 512)
             max_builders_per_withdrawals_sweep: 16,           // 2^4 (vs mainnet 16384)
+            // Heze
+            heze_fork_version: [0x08, 0x00, 0x00, 0x01],
+            heze_fork_epoch: None,
             // Other
             network_id: 2, // vibehouse testnet network id
             deposit_chain_id: 5,
@@ -1652,6 +1700,18 @@ impl ChainSpec {
             domain_beacon_builder: 11,
             domain_ptc_attester: 12,
             domain_proposer_preferences: 13,
+
+            /*
+             * Heze hard fork params
+             */
+            heze_fork_version: [0x08, 0x00, 0x00, 0x64],
+            heze_fork_epoch: None,
+
+            /*
+             * Heze FOCIL constants (EIP-7805)
+             */
+            inclusion_list_committee_size: 16,
+            domain_inclusion_list_committee: 14, // 0x0E000000
 
             /*
              * Network specific
@@ -1943,6 +2003,14 @@ pub struct Config {
     #[serde(deserialize_with = "deserialize_fork_epoch")]
     pub gloas_fork_epoch: Option<MaybeQuoted<Epoch>>,
 
+    #[serde(default = "default_heze_fork_version")]
+    #[serde(with = "serde_utils::bytes_4_hex")]
+    heze_fork_version: [u8; 4],
+    #[serde(default)]
+    #[serde(serialize_with = "serialize_fork_epoch")]
+    #[serde(deserialize_with = "deserialize_fork_epoch")]
+    pub heze_fork_epoch: Option<MaybeQuoted<Epoch>>,
+
     #[serde(default = "default_seconds_per_slot")]
     #[serde(with = "serde_utils::quoted_u64")]
     seconds_per_slot: u64,
@@ -2137,6 +2205,11 @@ fn default_fulu_fork_version() -> [u8; 4] {
 }
 
 fn default_gloas_fork_version() -> [u8; 4] {
+    // This value shouldn't be used.
+    [0xff, 0xff, 0xff, 0xff]
+}
+
+fn default_heze_fork_version() -> [u8; 4] {
     // This value shouldn't be used.
     [0xff, 0xff, 0xff, 0xff]
 }
@@ -2495,6 +2568,11 @@ impl Config {
                 .gloas_fork_epoch
                 .map(|epoch| MaybeQuoted { value: epoch }),
 
+            heze_fork_version: spec.heze_fork_version,
+            heze_fork_epoch: spec
+                .heze_fork_epoch
+                .map(|epoch| MaybeQuoted { value: epoch }),
+
             seconds_per_slot: spec.seconds_per_slot,
             slot_duration_ms: spec.slot_duration_ms,
             seconds_per_eth1_block: spec.seconds_per_eth1_block,
@@ -2597,6 +2675,8 @@ impl Config {
             fulu_fork_version,
             gloas_fork_version,
             gloas_fork_epoch,
+            heze_fork_version,
+            heze_fork_epoch,
             seconds_per_slot,
             slot_duration_ms,
             seconds_per_eth1_block,
@@ -2681,6 +2761,8 @@ impl Config {
             fulu_fork_version,
             gloas_fork_version,
             gloas_fork_epoch: gloas_fork_epoch.map(|q| q.value),
+            heze_fork_version,
+            heze_fork_epoch: heze_fork_epoch.map(|q| q.value),
             // Forward-compat: SECONDS_PER_SLOT is deprecated (spec PR #4926).
             // Derive from SLOT_DURATION_MS when missing, fall back to preset.
             seconds_per_slot: if seconds_per_slot > 0 {

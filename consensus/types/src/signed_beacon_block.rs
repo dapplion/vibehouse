@@ -4,14 +4,15 @@ use crate::{
     AbstractExecPayload, BeaconBlock, BeaconBlockAltair, BeaconBlockBase, BeaconBlockBellatrix,
     BeaconBlockBodyBellatrix, BeaconBlockBodyCapella, BeaconBlockBodyDeneb, BeaconBlockBodyElectra,
     BeaconBlockBodyFulu, BeaconBlockCapella, BeaconBlockDeneb, BeaconBlockElectra, BeaconBlockFulu,
-    BeaconBlockGloas, BeaconBlockHeader, BeaconBlockRef, BeaconBlockRefMut, BlindedPayload,
-    BlindedPayloadBellatrix, BlindedPayloadCapella, BlindedPayloadDeneb, BlindedPayloadElectra,
-    BlindedPayloadFulu, ChainSpec, ContextDeserialize, Domain, Epoch, Error, EthSpec,
-    ExecutionPayload, ExecutionPayloadBellatrix, ExecutionPayloadCapella, ExecutionPayloadDeneb,
-    ExecutionPayloadElectra, ExecutionPayloadFulu, FixedVector, Fork, ForkName, ForkVersionDecode,
-    FullPayload, FullPayloadBellatrix, FullPayloadCapella, FullPayloadDeneb, FullPayloadElectra,
-    FullPayloadFulu, Hash256, InconsistentFork, PublicKey, Signature, SignedBeaconBlockHeader,
-    SignedRoot, SigningData, Slot, map_fork_name, map_fork_name_with,
+    BeaconBlockGloas, BeaconBlockHeader, BeaconBlockHeze, BeaconBlockRef, BeaconBlockRefMut,
+    BlindedPayload, BlindedPayloadBellatrix, BlindedPayloadCapella, BlindedPayloadDeneb,
+    BlindedPayloadElectra, BlindedPayloadFulu, ChainSpec, ContextDeserialize, Domain, Epoch, Error,
+    EthSpec, ExecutionPayload, ExecutionPayloadBellatrix, ExecutionPayloadCapella,
+    ExecutionPayloadDeneb, ExecutionPayloadElectra, ExecutionPayloadFulu, FixedVector, Fork,
+    ForkName, ForkVersionDecode, FullPayload, FullPayloadBellatrix, FullPayloadCapella,
+    FullPayloadDeneb, FullPayloadElectra, FullPayloadFulu, Hash256, InconsistentFork, PublicKey,
+    Signature, SignedBeaconBlockHeader, SignedRoot, SigningData, Slot, map_fork_name,
+    map_fork_name_with,
 };
 use educe::Educe;
 use merkle_proof::MerkleTree;
@@ -53,7 +54,7 @@ impl From<SignedBeaconBlockHash> for Hash256 {
 
 /// A `BeaconBlock` and a signature from its proposer.
 #[superstruct(
-    variants(Base, Altair, Bellatrix, Capella, Deneb, Electra, Fulu, Gloas),
+    variants(Base, Altair, Bellatrix, Capella, Deneb, Electra, Fulu, Gloas, Heze),
     variant_attributes(
         derive(
             Debug,
@@ -106,6 +107,8 @@ pub struct SignedBeaconBlock<E: EthSpec, Payload: AbstractExecPayload<E> = FullP
     pub message: BeaconBlockFulu<E, Payload>,
     #[superstruct(only(Gloas), partial_getter(rename = "message_gloas"))]
     pub message: BeaconBlockGloas<E, Payload>,
+    #[superstruct(only(Heze), partial_getter(rename = "message_heze"))]
+    pub message: BeaconBlockHeze<E, Payload>,
     pub signature: Signature,
 }
 
@@ -194,6 +197,9 @@ impl<E: EthSpec, Payload: AbstractExecPayload<E>> SignedBeaconBlock<E, Payload> 
             }
             BeaconBlock::Gloas(message) => {
                 SignedBeaconBlock::Gloas(SignedBeaconBlockGloas { message, signature })
+            }
+            BeaconBlock::Heze(message) => {
+                SignedBeaconBlock::Heze(SignedBeaconBlockHeze { message, signature })
             }
         }
     }
@@ -674,6 +680,20 @@ impl<E: EthSpec> From<SignedBeaconBlockGloas<E, BlindedPayload<E>>>
     }
 }
 
+// Heze blocks have no execution payload (only bids), so BlindedPayload/FullPayload are phantom
+// types. This conversion is a no-op but required by the superstruct From/Into machinery.
+impl<E: EthSpec> From<SignedBeaconBlockHeze<E, BlindedPayload<E>>>
+    for SignedBeaconBlockHeze<E, FullPayload<E>>
+{
+    fn from(signed_block: SignedBeaconBlockHeze<E, BlindedPayload<E>>) -> Self {
+        let SignedBeaconBlockHeze { message, signature } = signed_block;
+        SignedBeaconBlockHeze {
+            message: message.into(),
+            signature,
+        }
+    }
+}
+
 impl<E: EthSpec> SignedBeaconBlock<E, BlindedPayload<E>> {
     pub fn try_into_full_block(
         self,
@@ -698,6 +718,7 @@ impl<E: EthSpec> SignedBeaconBlock<E, BlindedPayload<E>> {
                 SignedBeaconBlock::Fulu(block.into_full_block(payload))
             }
             (SignedBeaconBlock::Gloas(block), _) => SignedBeaconBlock::Gloas(block.into()),
+            (SignedBeaconBlock::Heze(block), _) => SignedBeaconBlock::Heze(block.into()),
             // avoid wildcard matching forks so that compiler will
             // direct us here when a new fork has been added
             (
@@ -854,6 +875,9 @@ pub mod ssz_tagged_signed_beacon_block {
                 ForkName::Gloas => Ok(SignedBeaconBlock::Gloas(
                     SignedBeaconBlockGloas::from_ssz_bytes(body)?,
                 )),
+                ForkName::Heze => Ok(SignedBeaconBlock::Heze(
+                    SignedBeaconBlockHeze::from_ssz_bytes(body)?,
+                )),
             }
         }
     }
@@ -936,6 +960,7 @@ mod test {
         chain_spec.electra_fork_epoch = Some(Epoch::new(5));
         chain_spec.fulu_fork_epoch = Some(Epoch::new(6));
         chain_spec.gloas_fork_epoch = Some(Epoch::new(7));
+        chain_spec.heze_fork_epoch = Some(Epoch::new(8));
 
         // check that we have all forks covered
         assert!(chain_spec.fork_epoch(ForkName::latest()).is_some());
@@ -977,7 +1002,11 @@ mod test {
                 BeaconBlock::Fulu(BeaconBlockFulu::empty(spec)),
                 sig.clone(),
             ),
-            SignedBeaconBlock::from_block(BeaconBlock::Gloas(BeaconBlockGloas::empty(spec)), sig),
+            SignedBeaconBlock::from_block(
+                BeaconBlock::Gloas(BeaconBlockGloas::empty(spec)),
+                sig.clone(),
+            ),
+            SignedBeaconBlock::from_block(BeaconBlock::Heze(BeaconBlockHeze::empty(spec)), sig),
         ];
 
         for block in blocks {

@@ -924,7 +924,7 @@ pub fn generate_genesis_header<E: EthSpec>(
             *header.transactions_root_mut() = empty_transactions_root;
             Some(header)
         }
-        ForkName::Gloas => {
+        ForkName::Gloas | ForkName::Heze => {
             let mut header = ExecutionPayloadHeader::Gloas(<_>::default());
             *header.block_hash_mut() = genesis_block_hash.unwrap_or_default();
             *header.transactions_root_mut() = empty_transactions_root;

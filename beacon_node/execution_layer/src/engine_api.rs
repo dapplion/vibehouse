@@ -23,8 +23,8 @@ pub use types::{
 };
 use types::{
     ExecutionPayloadBellatrix, ExecutionPayloadCapella, ExecutionPayloadDeneb,
-    ExecutionPayloadElectra, ExecutionPayloadFulu, ExecutionPayloadGloas, ExecutionRequests,
-    KzgProofs,
+    ExecutionPayloadElectra, ExecutionPayloadFulu, ExecutionPayloadGloas, ExecutionPayloadHeze,
+    ExecutionRequests, KzgProofs,
 };
 use types::{GRAFFITI_BYTES_LEN, Graffiti};
 
@@ -249,10 +249,8 @@ pub(crate) struct ForkchoiceUpdatedResponse {
 }
 
 #[superstruct(
-    variants(Bellatrix, Capella, Deneb, Electra, Fulu, Gloas),
+    variants(Bellatrix, Capella, Deneb, Electra, Fulu, Gloas, Heze),
     variant_attributes(derive(Clone, Debug, PartialEq),),
-    map_into(ExecutionPayload),
-    map_ref_into(ExecutionPayloadRef),
     cast_error(ty = "Error", expr = "Error::IncorrectStateVariant"),
     partial_getter_error(ty = "Error", expr = "Error::IncorrectStateVariant")
 )]
@@ -271,14 +269,14 @@ pub(crate) struct GetPayloadResponse<E: EthSpec> {
     pub execution_payload: ExecutionPayloadElectra<E>,
     #[superstruct(only(Fulu), partial_getter(rename = "execution_payload_fulu"))]
     pub execution_payload: ExecutionPayloadFulu<E>,
-    #[superstruct(only(Gloas), partial_getter(rename = "execution_payload_gloas"))]
+    #[superstruct(only(Gloas, Heze), partial_getter(rename = "execution_payload_gloas"))]
     pub execution_payload: ExecutionPayloadGloas<E>,
     pub block_value: Uint256,
-    #[superstruct(only(Deneb, Electra, Fulu, Gloas))]
+    #[superstruct(only(Deneb, Electra, Fulu, Gloas, Heze))]
     pub blobs_bundle: BlobsBundle<E>,
-    #[superstruct(only(Deneb, Electra, Fulu, Gloas), partial_getter(copy))]
+    #[superstruct(only(Deneb, Electra, Fulu, Gloas, Heze), partial_getter(copy))]
     pub should_override_builder: bool,
-    #[superstruct(only(Electra, Fulu, Gloas))]
+    #[superstruct(only(Electra, Fulu, Gloas, Heze))]
     pub requests: ExecutionRequests<E>,
 }
 
@@ -298,17 +296,49 @@ impl<E: EthSpec> GetPayloadResponse<E> {
 
 impl<'a, E: EthSpec> From<GetPayloadResponseRef<'a, E>> for ExecutionPayloadRef<'a, E> {
     fn from(response: GetPayloadResponseRef<'a, E>) -> Self {
-        map_get_payload_response_ref_into_execution_payload_ref!(&'a _, response, |inner, cons| {
-            cons(&inner.execution_payload)
-        })
+        match response {
+            GetPayloadResponseRef::Bellatrix(inner) => {
+                ExecutionPayloadRef::Bellatrix(&inner.execution_payload)
+            }
+            GetPayloadResponseRef::Capella(inner) => {
+                ExecutionPayloadRef::Capella(&inner.execution_payload)
+            }
+            GetPayloadResponseRef::Deneb(inner) => {
+                ExecutionPayloadRef::Deneb(&inner.execution_payload)
+            }
+            GetPayloadResponseRef::Electra(inner) => {
+                ExecutionPayloadRef::Electra(&inner.execution_payload)
+            }
+            GetPayloadResponseRef::Fulu(inner) => {
+                ExecutionPayloadRef::Fulu(&inner.execution_payload)
+            }
+            GetPayloadResponseRef::Gloas(inner) => {
+                ExecutionPayloadRef::Gloas(&inner.execution_payload)
+            }
+            GetPayloadResponseRef::Heze(inner) => {
+                ExecutionPayloadRef::Gloas(&inner.execution_payload)
+            }
+        }
     }
 }
 
 impl<E: EthSpec> From<GetPayloadResponse<E>> for ExecutionPayload<E> {
     fn from(response: GetPayloadResponse<E>) -> Self {
-        map_get_payload_response_into_execution_payload!(response, |inner, cons| {
-            cons(inner.execution_payload)
-        })
+        match response {
+            GetPayloadResponse::Bellatrix(inner) => {
+                ExecutionPayload::Bellatrix(inner.execution_payload)
+            }
+            GetPayloadResponse::Capella(inner) => {
+                ExecutionPayload::Capella(inner.execution_payload)
+            }
+            GetPayloadResponse::Deneb(inner) => ExecutionPayload::Deneb(inner.execution_payload),
+            GetPayloadResponse::Electra(inner) => {
+                ExecutionPayload::Electra(inner.execution_payload)
+            }
+            GetPayloadResponse::Fulu(inner) => ExecutionPayload::Fulu(inner.execution_payload),
+            GetPayloadResponse::Gloas(inner) => ExecutionPayload::Gloas(inner.execution_payload),
+            GetPayloadResponse::Heze(inner) => ExecutionPayload::Gloas(inner.execution_payload),
+        }
     }
 }
 
@@ -353,6 +383,12 @@ impl<E: EthSpec> From<GetPayloadResponse<E>>
                 Some(inner.requests),
             ),
             GetPayloadResponse::Gloas(inner) => (
+                ExecutionPayload::Gloas(inner.execution_payload),
+                inner.block_value,
+                Some(inner.blobs_bundle),
+                Some(inner.requests),
+            ),
+            GetPayloadResponse::Heze(inner) => (
                 ExecutionPayload::Gloas(inner.execution_payload),
                 inner.block_value,
                 Some(inner.blobs_bundle),
@@ -521,6 +557,34 @@ impl<E: EthSpec> ExecutionPayloadBodyV1<E> {
                 }
             }
             ExecutionPayloadHeader::Gloas(header) => {
+                if let Some(withdrawals) = self.withdrawals {
+                    Ok(ExecutionPayload::Gloas(ExecutionPayloadGloas {
+                        parent_hash: header.parent_hash,
+                        fee_recipient: header.fee_recipient,
+                        state_root: header.state_root,
+                        receipts_root: header.receipts_root,
+                        logs_bloom: header.logs_bloom,
+                        prev_randao: header.prev_randao,
+                        block_number: header.block_number,
+                        gas_limit: header.gas_limit,
+                        gas_used: header.gas_used,
+                        timestamp: header.timestamp,
+                        extra_data: header.extra_data,
+                        base_fee_per_gas: header.base_fee_per_gas,
+                        block_hash: header.block_hash,
+                        transactions: self.transactions,
+                        withdrawals,
+                        blob_gas_used: header.blob_gas_used,
+                        excess_blob_gas: header.excess_blob_gas,
+                    }))
+                } else {
+                    Err(format!(
+                        "block {} is post capella but payload body doesn't have withdrawals",
+                        header.block_hash
+                    ))
+                }
+            }
+            ExecutionPayloadHeader::Heze(header) => {
                 if let Some(withdrawals) = self.withdrawals {
                     Ok(ExecutionPayload::Gloas(ExecutionPayloadGloas {
                         parent_hash: header.parent_hash,

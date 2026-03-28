@@ -613,7 +613,7 @@ fn methods_required_for_fork(
                 missing_methods.push(ENGINE_NEW_PAYLOAD_V4);
             }
         }
-        ForkName::Fulu | ForkName::Gloas => {
+        ForkName::Fulu | ForkName::Gloas | ForkName::Heze => {
             if !capabilities.get_payload_v5 {
                 missing_methods.push(ENGINE_GET_PAYLOAD_V5);
             }

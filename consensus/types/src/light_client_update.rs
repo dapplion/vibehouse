@@ -5,7 +5,8 @@ use crate::light_client_header::LightClientHeaderElectra;
 use crate::{
     ChainSpec, ContextDeserialize, Epoch, ForkName, LightClientHeaderAltair,
     LightClientHeaderCapella, LightClientHeaderDeneb, LightClientHeaderFulu,
-    LightClientHeaderGloas, SignedBlindedBeaconBlock, beacon_state, test_utils::TestRandom,
+    LightClientHeaderGloas, LightClientHeaderHeze, SignedBlindedBeaconBlock, beacon_state,
+    test_utils::TestRandom,
 };
 use safe_arith::ArithError;
 use safe_arith::SafeArith;
@@ -105,7 +106,7 @@ impl From<milhouse::Error> for Error {
 /// or to sync up to the last committee period, we need to have one ready for each ALTAIR period
 /// we go over, note: there is no need to keep all of the updates from [ALTAIR_PERIOD, CURRENT_PERIOD].
 #[superstruct(
-    variants(Altair, Capella, Deneb, Electra, Fulu, Gloas),
+    variants(Altair, Capella, Deneb, Electra, Fulu, Gloas, Heze),
     variant_attributes(
         derive(
             Debug,
@@ -149,7 +150,7 @@ pub struct LightClientUpdate<E: EthSpec> {
     pub attested_header: LightClientHeaderElectra<E>,
     #[superstruct(only(Fulu), partial_getter(rename = "attested_header_fulu"))]
     pub attested_header: LightClientHeaderFulu<E>,
-    #[superstruct(only(Gloas), partial_getter(rename = "attested_header_gloas"))]
+    #[superstruct(only(Gloas, Heze), partial_getter(rename = "attested_header_gloas"))]
     pub attested_header: LightClientHeaderGloas<E>,
     /// The `SyncCommittee` used in the next period.
     pub next_sync_committee: Arc<SyncCommittee<E>>,
@@ -160,7 +161,7 @@ pub struct LightClientUpdate<E: EthSpec> {
     )]
     pub next_sync_committee_branch: NextSyncCommitteeBranch,
     #[superstruct(
-        only(Electra, Fulu, Gloas),
+        only(Electra, Fulu, Gloas, Heze),
         partial_getter(rename = "next_sync_committee_branch_electra")
     )]
     pub next_sync_committee_branch: NextSyncCommitteeBranchElectra,
@@ -175,7 +176,7 @@ pub struct LightClientUpdate<E: EthSpec> {
     pub finalized_header: LightClientHeaderElectra<E>,
     #[superstruct(only(Fulu), partial_getter(rename = "finalized_header_fulu"))]
     pub finalized_header: LightClientHeaderFulu<E>,
-    #[superstruct(only(Gloas), partial_getter(rename = "finalized_header_gloas"))]
+    #[superstruct(only(Gloas, Heze), partial_getter(rename = "finalized_header_gloas"))]
     pub finalized_header: LightClientHeaderGloas<E>,
     /// Merkle proof attesting finalized header.
     #[superstruct(
@@ -184,7 +185,7 @@ pub struct LightClientUpdate<E: EthSpec> {
     )]
     pub finality_branch: FinalityBranch,
     #[superstruct(
-        only(Electra, Fulu, Gloas),
+        only(Electra, Fulu, Gloas, Heze),
         partial_getter(rename = "finality_branch_electra")
     )]
     pub finality_branch: FinalityBranchElectra,
@@ -224,6 +225,9 @@ impl<'de, E: EthSpec> ContextDeserialize<'de, ForkName> for LightClientUpdate<E>
             }
             ForkName::Gloas => {
                 Self::Gloas(Deserialize::deserialize(deserializer).map_err(convert_err)?)
+            }
+            ForkName::Heze => {
+                Self::Heze(Deserialize::deserialize(deserializer).map_err(convert_err)?)
             }
         })
     }
@@ -390,6 +394,32 @@ impl<E: EthSpec> LightClientUpdate<E> {
                     signature_slot: block_slot,
                 })
             } // To add a new fork, just append the new fork variant on the latest fork. Forks that
+            fork_name @ ForkName::Heze => {
+                let attested_header: LightClientHeaderGloas<E> =
+                    LightClientHeaderHeze::block_to_light_client_header(attested_block)?.into();
+
+                let finalized_header: LightClientHeaderGloas<E> = if let Some(finalized_block) =
+                    finalized_block
+                {
+                    if finalized_block.fork_name_unchecked() == fork_name {
+                        LightClientHeaderHeze::block_to_light_client_header(finalized_block)?.into()
+                    } else {
+                        LightClientHeaderGloas::default()
+                    }
+                } else {
+                    LightClientHeaderGloas::default()
+                };
+
+                Self::Heze(LightClientUpdateHeze {
+                    attested_header,
+                    next_sync_committee,
+                    next_sync_committee_branch: next_sync_committee_branch.try_into()?,
+                    finalized_header,
+                    finality_branch: finality_branch.try_into()?,
+                    sync_aggregate: sync_aggregate.clone(),
+                    signature_slot: block_slot,
+                })
+            } // To add a new fork, just append the new fork variant on the latest fork. Forks that
               // have a distinct execution header will need a new LightClientUpdate variant only
               // if you need to test or support lightclient usages
         };
@@ -407,6 +437,7 @@ impl<E: EthSpec> LightClientUpdate<E> {
             ForkName::Electra => Self::Electra(LightClientUpdateElectra::from_ssz_bytes(bytes)?),
             ForkName::Fulu => Self::Fulu(LightClientUpdateFulu::from_ssz_bytes(bytes)?),
             ForkName::Gloas => Self::Gloas(LightClientUpdateGloas::from_ssz_bytes(bytes)?),
+            ForkName::Heze => Self::Heze(LightClientUpdateHeze::from_ssz_bytes(bytes)?),
             ForkName::Base => {
                 return Err(ssz::DecodeError::BytesInvalid(format!(
                     "LightClientUpdate decoding for {fork_name} not implemented"
@@ -425,6 +456,7 @@ impl<E: EthSpec> LightClientUpdate<E> {
             LightClientUpdate::Electra(update) => update.attested_header.beacon.slot,
             LightClientUpdate::Fulu(update) => update.attested_header.beacon.slot,
             LightClientUpdate::Gloas(update) => update.attested_header.beacon.slot,
+            LightClientUpdate::Heze(update) => update.attested_header.beacon.slot,
         }
     }
 
@@ -436,6 +468,7 @@ impl<E: EthSpec> LightClientUpdate<E> {
             LightClientUpdate::Electra(update) => update.finalized_header.beacon.slot,
             LightClientUpdate::Fulu(update) => update.finalized_header.beacon.slot,
             LightClientUpdate::Gloas(update) => update.finalized_header.beacon.slot,
+            LightClientUpdate::Heze(update) => update.finalized_header.beacon.slot,
         }
     }
 
@@ -557,6 +590,7 @@ impl<E: EthSpec> LightClientUpdate<E> {
             ForkName::Electra => <LightClientUpdateElectra<E> as Encode>::ssz_fixed_len(),
             ForkName::Fulu => <LightClientUpdateFulu<E> as Encode>::ssz_fixed_len(),
             ForkName::Gloas => <LightClientUpdateGloas<E> as Encode>::ssz_fixed_len(),
+            ForkName::Heze => <LightClientUpdateGloas<E> as Encode>::ssz_fixed_len(),
         };
         fixed_len + 2 * LightClientHeader::<E>::ssz_max_var_len_for_fork(fork_name)
     }
@@ -572,6 +606,7 @@ impl<E: EthSpec> LightClientUpdate<E> {
             Self::Electra(_) => func(ForkName::Electra),
             Self::Fulu(_) => func(ForkName::Fulu),
             Self::Gloas(_) => func(ForkName::Gloas),
+            Self::Heze(_) => func(ForkName::Heze),
         }
     }
 }

@@ -143,6 +143,13 @@ impl<E: EthSpec> TryFrom<BuilderBid<E>> for ProvenancedPayload<BlockProposalCont
                 blobs_and_proofs: None,
                 requests: Some(builder_bid.execution_requests),
             },
+            BuilderBid::Heze(builder_bid) => BlockProposalContents::PayloadAndBlobs {
+                payload: ExecutionPayloadHeader::Heze(builder_bid.header).into(),
+                block_value: builder_bid.value,
+                kzg_commitments: builder_bid.blob_kzg_commitments,
+                blobs_and_proofs: None,
+                requests: Some(builder_bid.execution_requests),
+            },
         };
         Ok(ProvenancedPayload::Builder(
             BlockProposalContentsType::Blinded(block_proposal_contents),
@@ -1834,7 +1841,7 @@ impl<E: EthSpec> ExecutionLayer<E> {
                 ForkName::Deneb => ExecutionPayloadDeneb::default().into(),
                 ForkName::Electra => ExecutionPayloadElectra::default().into(),
                 ForkName::Fulu => ExecutionPayloadFulu::default().into(),
-                ForkName::Gloas => ExecutionPayloadGloas::default().into(),
+                ForkName::Gloas | ForkName::Heze => ExecutionPayloadGloas::default().into(),
                 ForkName::Base | ForkName::Altair => {
                     return Err(Error::InvalidForkForPayload);
                 }

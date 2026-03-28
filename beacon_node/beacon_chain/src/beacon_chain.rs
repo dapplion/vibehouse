@@ -138,23 +138,23 @@ use types::{
     AttestationRef, AttestationShufflingId, AttesterSlashing, BeaconBlock, BeaconBlockAltair,
     BeaconBlockBase, BeaconBlockBellatrix, BeaconBlockBodyAltair, BeaconBlockBodyBase,
     BeaconBlockBodyBellatrix, BeaconBlockBodyCapella, BeaconBlockBodyDeneb, BeaconBlockBodyElectra,
-    BeaconBlockBodyFulu, BeaconBlockBodyGloas, BeaconBlockCapella, BeaconBlockDeneb,
-    BeaconBlockElectra, BeaconBlockFulu, BeaconBlockGloas, BeaconBlockRef, BeaconState,
-    BeaconStateError, BitVector, BlindedPayload, BlobSidecar, BlobSidecarList, BlobsList,
-    BlockImportSource, ChainSpec, Checkpoint, CommitteeCache, CommitteeIndex, DataColumnSidecar,
-    DataColumnSidecarList, DataColumnSubnetId, Deposit, EmptyMetadata, EnrForkId, Epoch, Eth1Data,
-    EthSpec, ExecPayload, ExecutionBlockHash, ExecutionPayloadBid, ExecutionPayloadEnvelope,
-    ExecutionPayloadGloas, ExecutionPayloadHeader, ExecutionRequests, FixedBytesExtended, ForkName,
-    ForkVersionedResponse, FullPayload, Graffiti, Hash256, InconsistentFork, KzgProofs,
-    LightClientBootstrap, LightClientFinalityUpdate, LightClientOptimisticUpdate,
-    LightClientUpdate, PayloadAttestation, PayloadAttestationData, PayloadAttestationMessage,
-    ProposerSlashing, PublicKey, PublicKeyBytes, RelativeEpoch, Signature, SignedAggregateAndProof,
-    SignedBeaconBlock, SignedBeaconBlockHash, SignedBlindedBeaconBlock,
-    SignedBlindedExecutionPayloadEnvelope, SignedBlsToExecutionChange, SignedContributionAndProof,
-    SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope, SignedProposerPreferences,
-    SignedVoluntaryExit, SingleAttestation, Slot, SubnetId, SyncAggregate, SyncCommittee,
-    SyncCommitteeContribution, SyncCommitteeMessage, SyncContributionData, SyncDuty, SyncSubnetId,
-    Uint256, VariableList, Withdrawals,
+    BeaconBlockBodyFulu, BeaconBlockBodyGloas, BeaconBlockBodyHeze, BeaconBlockCapella,
+    BeaconBlockDeneb, BeaconBlockElectra, BeaconBlockFulu, BeaconBlockGloas, BeaconBlockHeze,
+    BeaconBlockRef, BeaconState, BeaconStateError, BitVector, BlindedPayload, BlobSidecar,
+    BlobSidecarList, BlobsList, BlockImportSource, ChainSpec, Checkpoint, CommitteeCache,
+    CommitteeIndex, DataColumnSidecar, DataColumnSidecarList, DataColumnSubnetId, Deposit,
+    EmptyMetadata, EnrForkId, Epoch, Eth1Data, EthSpec, ExecPayload, ExecutionBlockHash,
+    ExecutionPayloadBid, ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExecutionPayloadHeader,
+    ExecutionRequests, FixedBytesExtended, ForkName, ForkVersionedResponse, FullPayload, Graffiti,
+    Hash256, InconsistentFork, KzgProofs, LightClientBootstrap, LightClientFinalityUpdate,
+    LightClientOptimisticUpdate, LightClientUpdate, PayloadAttestation, PayloadAttestationData,
+    PayloadAttestationMessage, ProposerSlashing, PublicKey, PublicKeyBytes, RelativeEpoch,
+    Signature, SignedAggregateAndProof, SignedBeaconBlock, SignedBeaconBlockHash,
+    SignedBlindedBeaconBlock, SignedBlindedExecutionPayloadEnvelope, SignedBlsToExecutionChange,
+    SignedContributionAndProof, SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope,
+    SignedProposerPreferences, SignedVoluntaryExit, SingleAttestation, Slot, SubnetId,
+    SyncAggregate, SyncCommittee, SyncCommitteeContribution, SyncCommitteeMessage,
+    SyncContributionData, SyncDuty, SyncSubnetId, Uint256, VariableList, Withdrawals,
 };
 
 pub type ForkChoiceError = fork_choice::Error<crate::ForkChoiceStoreError>;
@@ -7688,6 +7688,103 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         parent_root,
                         state_root: Hash256::zero(),
                         body: BeaconBlockBodyGloas {
+                            randao_reveal,
+                            eth1_data,
+                            graffiti,
+                            proposer_slashings: proposer_slashings
+                                .try_into()
+                                .map_err(BlockProductionError::SszTypesError)?,
+                            attester_slashings: attester_slashings_electra
+                                .try_into()
+                                .map_err(BlockProductionError::SszTypesError)?,
+                            attestations: attestations_electra
+                                .try_into()
+                                .map_err(BlockProductionError::SszTypesError)?,
+                            deposits: deposits
+                                .try_into()
+                                .map_err(BlockProductionError::SszTypesError)?,
+                            voluntary_exits: voluntary_exits
+                                .try_into()
+                                .map_err(BlockProductionError::SszTypesError)?,
+                            sync_aggregate: sync_aggregate
+                                .ok_or(BlockProductionError::MissingSyncAggregate)?,
+                            bls_to_execution_changes: bls_to_execution_changes
+                                .try_into()
+                                .map_err(BlockProductionError::SszTypesError)?,
+                            signed_execution_payload_bid: signed_bid,
+                            payload_attestations,
+                            _phantom: PhantomData,
+                        },
+                    }),
+                    maybe_blobs_and_proofs,
+                    execution_payload_value,
+                )
+            }
+            BeaconState::Heze(_) => {
+                let payload_attestations: VariableList<_, _> = self
+                    .get_payload_attestations_for_block(slot, parent_root)
+                    .try_into()
+                    .map_err(BlockProductionError::SszTypesError)?;
+
+                let (signed_bid, maybe_blobs_and_proofs, execution_payload_value) =
+                    if let Some(external_bid) = selected_external_bid {
+                        let bid_value = Uint256::from(external_bid.message.value);
+                        debug!(
+                            builder_index = external_bid.message.builder_index,
+                            %bid_value,
+                            "Using external builder bid for block production"
+                        );
+                        metrics::inc_counter(&metrics::BLOCK_PRODUCTION_EXTERNAL_BID_TOTAL);
+                        (external_bid, None, bid_value)
+                    } else {
+                        debug!(
+                            slot = %slot,
+                            "No external builder bid available, using self-build"
+                        );
+                        metrics::inc_counter(&metrics::BLOCK_PRODUCTION_SELF_BUILD_TOTAL);
+                        let (
+                            payload,
+                            kzg_commitments,
+                            maybe_blobs_and_proofs,
+                            _maybe_requests,
+                            execution_payload_value,
+                        ) = block_contents
+                            .ok_or(BlockProductionError::MissingExecutionPayload)?
+                            .deconstruct();
+
+                        let execution_payload_bid = ExecutionPayloadBid {
+                            parent_block_hash: payload.parent_hash(),
+                            parent_block_root: parent_root,
+                            block_hash: payload.block_hash(),
+                            prev_randao: payload.prev_randao(),
+                            fee_recipient: payload.fee_recipient(),
+                            gas_limit: payload.gas_limit(),
+                            builder_index: types::consts::gloas::BUILDER_INDEX_SELF_BUILD,
+                            slot,
+                            value: 0,
+                            execution_payment: 0,
+                            blob_kzg_commitments: kzg_commitments.unwrap_or_default(),
+                        };
+
+                        let signed_bid = SignedExecutionPayloadBid {
+                            message: execution_payload_bid,
+                            signature: Signature::infinity().map_err(|e| {
+                                BlockProductionError::InvalidBlockVariant(format!(
+                                    "failed to create infinity signature: {e:?}"
+                                ))
+                            })?,
+                        };
+
+                        (signed_bid, maybe_blobs_and_proofs, execution_payload_value)
+                    };
+
+                (
+                    BeaconBlock::Heze(BeaconBlockHeze {
+                        slot,
+                        proposer_index,
+                        parent_root,
+                        state_root: Hash256::zero(),
+                        body: BeaconBlockBodyHeze {
                             randao_reveal,
                             eth1_data,
                             graffiti,

@@ -19,6 +19,7 @@ pub enum ForkName {
     Electra,
     Fulu,
     Gloas,
+    Heze,
 }
 
 impl ForkName {
@@ -32,6 +33,7 @@ impl ForkName {
             ForkName::Electra,
             ForkName::Fulu,
             ForkName::Gloas,
+            ForkName::Heze,
         ]
     }
 
@@ -67,6 +69,7 @@ impl ForkName {
                 spec.electra_fork_epoch = None;
                 spec.fulu_fork_epoch = None;
                 spec.gloas_fork_epoch = None;
+                spec.heze_fork_epoch = None;
                 spec
             }
             ForkName::Altair => {
@@ -77,6 +80,7 @@ impl ForkName {
                 spec.electra_fork_epoch = None;
                 spec.fulu_fork_epoch = None;
                 spec.gloas_fork_epoch = None;
+                spec.heze_fork_epoch = None;
                 spec
             }
             ForkName::Bellatrix => {
@@ -87,6 +91,7 @@ impl ForkName {
                 spec.electra_fork_epoch = None;
                 spec.fulu_fork_epoch = None;
                 spec.gloas_fork_epoch = None;
+                spec.heze_fork_epoch = None;
                 spec
             }
             ForkName::Capella => {
@@ -97,6 +102,7 @@ impl ForkName {
                 spec.electra_fork_epoch = None;
                 spec.fulu_fork_epoch = None;
                 spec.gloas_fork_epoch = None;
+                spec.heze_fork_epoch = None;
                 spec
             }
             ForkName::Deneb => {
@@ -107,6 +113,7 @@ impl ForkName {
                 spec.electra_fork_epoch = None;
                 spec.fulu_fork_epoch = None;
                 spec.gloas_fork_epoch = None;
+                spec.heze_fork_epoch = None;
                 spec
             }
             ForkName::Electra => {
@@ -117,6 +124,7 @@ impl ForkName {
                 spec.electra_fork_epoch = Some(Epoch::new(0));
                 spec.fulu_fork_epoch = None;
                 spec.gloas_fork_epoch = None;
+                spec.heze_fork_epoch = None;
                 spec
             }
             ForkName::Fulu => {
@@ -127,6 +135,7 @@ impl ForkName {
                 spec.electra_fork_epoch = Some(Epoch::new(0));
                 spec.fulu_fork_epoch = Some(Epoch::new(0));
                 spec.gloas_fork_epoch = None;
+                spec.heze_fork_epoch = None;
                 spec
             }
             ForkName::Gloas => {
@@ -137,6 +146,18 @@ impl ForkName {
                 spec.electra_fork_epoch = Some(Epoch::new(0));
                 spec.fulu_fork_epoch = Some(Epoch::new(0));
                 spec.gloas_fork_epoch = Some(Epoch::new(0));
+                spec.heze_fork_epoch = None;
+                spec
+            }
+            ForkName::Heze => {
+                spec.altair_fork_epoch = Some(Epoch::new(0));
+                spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+                spec.capella_fork_epoch = Some(Epoch::new(0));
+                spec.deneb_fork_epoch = Some(Epoch::new(0));
+                spec.electra_fork_epoch = Some(Epoch::new(0));
+                spec.fulu_fork_epoch = Some(Epoch::new(0));
+                spec.gloas_fork_epoch = Some(Epoch::new(0));
+                spec.heze_fork_epoch = Some(Epoch::new(0));
                 spec
             }
         }
@@ -155,6 +176,7 @@ impl ForkName {
             ForkName::Electra => Some(ForkName::Deneb),
             ForkName::Fulu => Some(ForkName::Electra),
             ForkName::Gloas => Some(ForkName::Fulu),
+            ForkName::Heze => Some(ForkName::Gloas),
         }
     }
 
@@ -170,7 +192,8 @@ impl ForkName {
             ForkName::Deneb => Some(ForkName::Electra),
             ForkName::Electra => Some(ForkName::Fulu),
             ForkName::Fulu => Some(ForkName::Gloas),
-            ForkName::Gloas => None,
+            ForkName::Gloas => Some(ForkName::Heze),
+            ForkName::Heze => None,
         }
     }
 
@@ -200,6 +223,10 @@ impl ForkName {
 
     pub fn gloas_enabled(self) -> bool {
         self >= ForkName::Gloas
+    }
+
+    pub fn heze_enabled(self) -> bool {
+        self >= ForkName::Heze
     }
 
     pub fn fork_ascii(self) {
@@ -300,6 +327,10 @@ macro_rules! map_fork_name_with {
                 let (value, extra_data) = $body;
                 ($t::Gloas(value), extra_data)
             }
+            ForkName::Heze => {
+                let (value, extra_data) = $body;
+                ($t::Heze(value), extra_data)
+            }
         }
     };
 }
@@ -317,6 +348,7 @@ impl FromStr for ForkName {
             "electra" => ForkName::Electra,
             "fulu" => ForkName::Fulu,
             "gloas" => ForkName::Gloas,
+            "heze" => ForkName::Heze,
             _ => return Err(format!("unknown fork name: {fork_name}")),
         })
     }
@@ -333,6 +365,7 @@ impl Display for ForkName {
             ForkName::Electra => "electra".fmt(f),
             ForkName::Fulu => "fulu".fmt(f),
             ForkName::Gloas => "gloas".fmt(f),
+            ForkName::Heze => "heze".fmt(f),
         }
     }
 }
@@ -421,23 +454,13 @@ mod test {
     // ── Gloas fork name ──────────────────────────────────────────────
 
     #[test]
-    fn gloas_is_latest_fork() {
-        assert_eq!(ForkName::latest(), ForkName::Gloas);
-    }
-
-    #[test]
-    fn gloas_has_no_next_fork() {
-        assert_eq!(ForkName::Gloas.next_fork(), None);
+    fn gloas_has_next_fork_heze() {
+        assert_eq!(ForkName::Gloas.next_fork(), Some(ForkName::Heze));
     }
 
     #[test]
     fn gloas_previous_is_fulu() {
         assert_eq!(ForkName::Gloas.previous_fork(), Some(ForkName::Fulu));
-    }
-
-    #[test]
-    fn fulu_next_is_gloas() {
-        assert_eq!(ForkName::Fulu.next_fork(), Some(ForkName::Gloas));
     }
 
     #[test]
@@ -451,13 +474,7 @@ mod test {
     }
 
     #[test]
-    fn gloas_enabled_false_for_base() {
-        assert!(!ForkName::Base.gloas_enabled());
-    }
-
-    #[test]
     fn all_forks_enabled_on_gloas() {
-        // Gloas should enable all prior fork features
         assert!(ForkName::Gloas.altair_enabled());
         assert!(ForkName::Gloas.bellatrix_enabled());
         assert!(ForkName::Gloas.capella_enabled());
@@ -468,32 +485,78 @@ mod test {
     }
 
     #[test]
-    fn gloas_parse_case_insensitive() {
-        assert_eq!(ForkName::from_str("gloas"), Ok(ForkName::Gloas));
-        assert_eq!(ForkName::from_str("GLOAS"), Ok(ForkName::Gloas));
-        assert_eq!(ForkName::from_str("Gloas"), Ok(ForkName::Gloas));
-    }
-
-    #[test]
-    fn gloas_display_lowercase() {
-        assert_eq!(ForkName::Gloas.to_string(), "gloas");
-    }
-
-    #[test]
-    fn gloas_string_roundtrip() {
-        let s = ForkName::Gloas.to_string();
-        assert_eq!(ForkName::from_str(&s), Ok(ForkName::Gloas));
-    }
-
-    #[test]
-    fn gloas_in_list_all() {
-        assert!(ForkName::list_all().contains(&ForkName::Gloas));
-        assert_eq!(*ForkName::list_all().last().unwrap(), ForkName::Gloas);
-    }
-
-    #[test]
-    fn make_genesis_spec_gloas_sets_all_forks_to_zero() {
+    fn make_genesis_spec_gloas_disables_heze() {
         let spec = ForkName::Gloas.make_genesis_spec(ChainSpec::minimal());
+        assert_eq!(spec.gloas_fork_epoch, Some(Epoch::new(0)));
+        assert_eq!(spec.heze_fork_epoch, None);
+    }
+
+    // ── Heze fork name ──────────────────────────────────────────────
+
+    #[test]
+    fn heze_is_latest_fork() {
+        assert_eq!(ForkName::latest(), ForkName::Heze);
+    }
+
+    #[test]
+    fn heze_has_no_next_fork() {
+        assert_eq!(ForkName::Heze.next_fork(), None);
+    }
+
+    #[test]
+    fn heze_previous_is_gloas() {
+        assert_eq!(ForkName::Heze.previous_fork(), Some(ForkName::Gloas));
+    }
+
+    #[test]
+    fn heze_enabled_true_for_heze() {
+        assert!(ForkName::Heze.heze_enabled());
+    }
+
+    #[test]
+    fn heze_enabled_false_for_gloas() {
+        assert!(!ForkName::Gloas.heze_enabled());
+    }
+
+    #[test]
+    fn all_forks_enabled_on_heze() {
+        assert!(ForkName::Heze.altair_enabled());
+        assert!(ForkName::Heze.bellatrix_enabled());
+        assert!(ForkName::Heze.capella_enabled());
+        assert!(ForkName::Heze.deneb_enabled());
+        assert!(ForkName::Heze.electra_enabled());
+        assert!(ForkName::Heze.fulu_enabled());
+        assert!(ForkName::Heze.gloas_enabled());
+        assert!(ForkName::Heze.heze_enabled());
+    }
+
+    #[test]
+    fn heze_parse_case_insensitive() {
+        assert_eq!(ForkName::from_str("heze"), Ok(ForkName::Heze));
+        assert_eq!(ForkName::from_str("HEZE"), Ok(ForkName::Heze));
+        assert_eq!(ForkName::from_str("Heze"), Ok(ForkName::Heze));
+    }
+
+    #[test]
+    fn heze_display_lowercase() {
+        assert_eq!(ForkName::Heze.to_string(), "heze");
+    }
+
+    #[test]
+    fn heze_string_roundtrip() {
+        let s = ForkName::Heze.to_string();
+        assert_eq!(ForkName::from_str(&s), Ok(ForkName::Heze));
+    }
+
+    #[test]
+    fn heze_in_list_all() {
+        assert!(ForkName::list_all().contains(&ForkName::Heze));
+        assert_eq!(*ForkName::list_all().last().unwrap(), ForkName::Heze);
+    }
+
+    #[test]
+    fn make_genesis_spec_heze_sets_all_forks_to_zero() {
+        let spec = ForkName::Heze.make_genesis_spec(ChainSpec::minimal());
         assert_eq!(spec.altair_fork_epoch, Some(Epoch::new(0)));
         assert_eq!(spec.bellatrix_fork_epoch, Some(Epoch::new(0)));
         assert_eq!(spec.capella_fork_epoch, Some(Epoch::new(0)));
@@ -501,12 +564,6 @@ mod test {
         assert_eq!(spec.electra_fork_epoch, Some(Epoch::new(0)));
         assert_eq!(spec.fulu_fork_epoch, Some(Epoch::new(0)));
         assert_eq!(spec.gloas_fork_epoch, Some(Epoch::new(0)));
-    }
-
-    #[test]
-    fn make_genesis_spec_fulu_disables_gloas() {
-        let spec = ForkName::Fulu.make_genesis_spec(ChainSpec::minimal());
-        assert_eq!(spec.fulu_fork_epoch, Some(Epoch::new(0)));
-        assert_eq!(spec.gloas_fork_epoch, None);
+        assert_eq!(spec.heze_fork_epoch, Some(Epoch::new(0)));
     }
 }

@@ -4,8 +4,8 @@ use crate::context_deserialize;
 use crate::{
     ContextDeserialize, ForkName, LightClientHeaderAltair, LightClientHeaderCapella,
     LightClientHeaderDeneb, LightClientHeaderElectra, LightClientHeaderFulu,
-    LightClientHeaderGloas, SignedBlindedBeaconBlock, light_client_update::*,
-    test_utils::TestRandom,
+    LightClientHeaderGloas, LightClientHeaderHeze, SignedBlindedBeaconBlock,
+    light_client_update::*, test_utils::TestRandom,
 };
 use serde::{Deserialize, Deserializer, Serialize};
 use ssz::{Decode, Encode};
@@ -16,7 +16,7 @@ use test_random_derive::TestRandom;
 use tree_hash_derive::TreeHash;
 
 #[superstruct(
-    variants(Altair, Capella, Deneb, Electra, Fulu, Gloas),
+    variants(Altair, Capella, Deneb, Electra, Fulu, Gloas, Heze),
     variant_attributes(
         derive(
             Debug,
@@ -60,7 +60,7 @@ pub struct LightClientFinalityUpdate<E: EthSpec> {
     pub attested_header: LightClientHeaderElectra<E>,
     #[superstruct(only(Fulu), partial_getter(rename = "attested_header_fulu"))]
     pub attested_header: LightClientHeaderFulu<E>,
-    #[superstruct(only(Gloas), partial_getter(rename = "attested_header_gloas"))]
+    #[superstruct(only(Gloas, Heze), partial_getter(rename = "attested_header_gloas"))]
     pub attested_header: LightClientHeaderGloas<E>,
     /// The last `BeaconBlockHeader` from the last attested finalized block (end of epoch).
     #[superstruct(only(Altair), partial_getter(rename = "finalized_header_altair"))]
@@ -73,7 +73,7 @@ pub struct LightClientFinalityUpdate<E: EthSpec> {
     pub finalized_header: LightClientHeaderElectra<E>,
     #[superstruct(only(Fulu), partial_getter(rename = "finalized_header_fulu"))]
     pub finalized_header: LightClientHeaderFulu<E>,
-    #[superstruct(only(Gloas), partial_getter(rename = "finalized_header_gloas"))]
+    #[superstruct(only(Gloas, Heze), partial_getter(rename = "finalized_header_gloas"))]
     pub finalized_header: LightClientHeaderGloas<E>,
     /// Merkle proof attesting finalized header.
     #[superstruct(
@@ -82,7 +82,7 @@ pub struct LightClientFinalityUpdate<E: EthSpec> {
     )]
     pub finality_branch: FixedVector<Hash256, FinalizedRootProofLen>,
     #[superstruct(
-        only(Electra, Fulu, Gloas),
+        only(Electra, Fulu, Gloas, Heze),
         partial_getter(rename = "finality_branch_electra")
     )]
     pub finality_branch: FixedVector<Hash256, FinalizedRootProofLenElectra>,
@@ -174,6 +174,19 @@ impl<E: EthSpec> LightClientFinalityUpdate<E> {
                 sync_aggregate,
                 signature_slot,
             }),
+            ForkName::Heze => Self::Heze(LightClientFinalityUpdateHeze {
+                attested_header: LightClientHeaderHeze::block_to_light_client_header(
+                    attested_block,
+                )?
+                .into(),
+                finalized_header: LightClientHeaderHeze::block_to_light_client_header(
+                    finalized_block,
+                )?
+                .into(),
+                finality_branch: finality_branch.try_into()?,
+                sync_aggregate,
+                signature_slot,
+            }),
 
             ForkName::Base => return Err(Error::AltairForkNotActive),
         };
@@ -192,6 +205,7 @@ impl<E: EthSpec> LightClientFinalityUpdate<E> {
             Self::Electra(_) => func(ForkName::Electra),
             Self::Fulu(_) => func(ForkName::Fulu),
             Self::Gloas(_) => func(ForkName::Gloas),
+            Self::Heze(_) => func(ForkName::Heze),
         }
     }
 
@@ -230,6 +244,7 @@ impl<E: EthSpec> LightClientFinalityUpdate<E> {
             }
             ForkName::Fulu => Self::Fulu(LightClientFinalityUpdateFulu::from_ssz_bytes(bytes)?),
             ForkName::Gloas => Self::Gloas(LightClientFinalityUpdateGloas::from_ssz_bytes(bytes)?),
+            ForkName::Heze => Self::Heze(LightClientFinalityUpdateHeze::from_ssz_bytes(bytes)?),
             ForkName::Base => {
                 return Err(ssz::DecodeError::BytesInvalid(format!(
                     "LightClientFinalityUpdate decoding for {fork_name} not implemented"
@@ -252,6 +267,7 @@ impl<E: EthSpec> LightClientFinalityUpdate<E> {
             ForkName::Electra => <LightClientFinalityUpdateElectra<E> as Encode>::ssz_fixed_len(),
             ForkName::Fulu => <LightClientFinalityUpdateFulu<E> as Encode>::ssz_fixed_len(),
             ForkName::Gloas => <LightClientFinalityUpdateGloas<E> as Encode>::ssz_fixed_len(),
+            ForkName::Heze => <LightClientFinalityUpdateGloas<E> as Encode>::ssz_fixed_len(),
         };
         // `2 *` because there are two headers in the update
         fixed_size + 2 * LightClientHeader::<E>::ssz_max_var_len_for_fork(fork_name)
@@ -304,6 +320,9 @@ impl<'de, E: EthSpec> ContextDeserialize<'de, ForkName> for LightClientFinalityU
             }
             ForkName::Gloas => {
                 Self::Gloas(Deserialize::deserialize(deserializer).map_err(convert_err)?)
+            }
+            ForkName::Heze => {
+                Self::Heze(Deserialize::deserialize(deserializer).map_err(convert_err)?)
             }
         })
     }

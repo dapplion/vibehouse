@@ -29,7 +29,8 @@ use types::{
     LightClientOptimisticUpdate, LightClientUpdate, RuntimeVariableList, SignedBeaconBlock,
     SignedBeaconBlockAltair, SignedBeaconBlockBase, SignedBeaconBlockBellatrix,
     SignedBeaconBlockCapella, SignedBeaconBlockDeneb, SignedBeaconBlockElectra,
-    SignedBeaconBlockFulu, SignedBeaconBlockGloas, SignedExecutionPayloadEnvelope,
+    SignedBeaconBlockFulu, SignedBeaconBlockGloas, SignedBeaconBlockHeze,
+    SignedExecutionPayloadEnvelope,
 };
 use unsigned_varint::codec::Uvi;
 
@@ -849,6 +850,9 @@ fn handle_rpc_response<E: EthSpec>(
             Some(ForkName::Gloas) => Ok(Some(RpcSuccessResponse::BlocksByRange(Arc::new(
                 SignedBeaconBlock::Gloas(SignedBeaconBlockGloas::from_ssz_bytes(decoded_buffer)?),
             )))),
+            Some(ForkName::Heze) => Ok(Some(RpcSuccessResponse::BlocksByRange(Arc::new(
+                SignedBeaconBlock::Heze(SignedBeaconBlockHeze::from_ssz_bytes(decoded_buffer)?),
+            )))),
             None => Err(RPCError::ErrorResponse(
                 RpcErrorResponse::InvalidRequest,
                 format!("No context bytes provided for {versioned_protocol:?} response"),
@@ -884,6 +888,9 @@ fn handle_rpc_response<E: EthSpec>(
             )))),
             Some(ForkName::Gloas) => Ok(Some(RpcSuccessResponse::BlocksByRoot(Arc::new(
                 SignedBeaconBlock::Gloas(SignedBeaconBlockGloas::from_ssz_bytes(decoded_buffer)?),
+            )))),
+            Some(ForkName::Heze) => Ok(Some(RpcSuccessResponse::BlocksByRoot(Arc::new(
+                SignedBeaconBlock::Heze(SignedBeaconBlockHeze::from_ssz_bytes(decoded_buffer)?),
             )))),
             None => Err(RPCError::ErrorResponse(
                 RpcErrorResponse::InvalidRequest,

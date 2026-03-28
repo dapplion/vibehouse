@@ -37,7 +37,7 @@ pub struct DataColumnsByRootIdentifier<E: EthSpec> {
 pub type DataColumnSidecarList<E> = Vec<Arc<DataColumnSidecar<E>>>;
 
 #[superstruct(
-    variants(Fulu, Gloas),
+    variants(Fulu, Gloas, Heze),
     variant_attributes(
         derive(
             Debug,
@@ -86,12 +86,12 @@ pub struct DataColumnSidecar<E: EthSpec> {
     #[superstruct(only(Fulu))]
     pub kzg_commitments_inclusion_proof: FixedVector<Hash256, E::KzgCommitmentsInclusionProofDepth>,
     /// The slot of the beacon block. Added in Gloas to replace signed_block_header.
-    #[superstruct(only(Gloas), partial_getter(rename = "sidecar_slot", copy))]
+    #[superstruct(only(Gloas, Heze), partial_getter(rename = "sidecar_slot", copy))]
     #[serde(with = "serde_utils::quoted_u64")]
     pub slot: Slot,
     /// The root of the beacon block. Added in Gloas to replace signed_block_header.
     #[superstruct(
-        only(Gloas),
+        only(Gloas, Heze),
         partial_getter(rename = "sidecar_beacon_block_root", copy)
     )]
     pub beacon_block_root: Hash256,
@@ -102,6 +102,7 @@ impl<E: EthSpec> DataColumnSidecar<E> {
         match self {
             DataColumnSidecar::Fulu(inner) => inner.signed_block_header.message.slot,
             DataColumnSidecar::Gloas(inner) => inner.slot,
+            DataColumnSidecar::Heze(inner) => inner.slot,
         }
     }
 
@@ -113,6 +114,7 @@ impl<E: EthSpec> DataColumnSidecar<E> {
         match self {
             DataColumnSidecar::Fulu(inner) => inner.signed_block_header.message.tree_hash_root(),
             DataColumnSidecar::Gloas(inner) => inner.beacon_block_root,
+            DataColumnSidecar::Heze(inner) => inner.beacon_block_root,
         }
     }
 
@@ -120,6 +122,7 @@ impl<E: EthSpec> DataColumnSidecar<E> {
         match self {
             DataColumnSidecar::Fulu(inner) => Some(inner.signed_block_header.message.parent_root),
             DataColumnSidecar::Gloas(_) => None,
+            DataColumnSidecar::Heze(_) => None,
         }
     }
 
@@ -133,6 +136,7 @@ impl<E: EthSpec> DataColumnSidecar<E> {
                 Some(inner.signed_block_header.message.proposer_index)
             }
             DataColumnSidecar::Gloas(_) => None,
+            DataColumnSidecar::Heze(_) => None,
         }
     }
 
@@ -151,6 +155,10 @@ impl<E: EthSpec> DataColumnSidecar<E> {
                 )
             }
             DataColumnSidecar::Gloas(_) => {
+                // Gloas doesn't have inclusion proofs — validated via ePBS bid commitments
+                true
+            }
+            DataColumnSidecar::Heze(_) => {
                 // Gloas doesn't have inclusion proofs — validated via ePBS bid commitments
                 true
             }
@@ -203,6 +211,7 @@ impl<E: EthSpec> DataColumnSidecar<E> {
         match fork_name {
             ForkName::Fulu => DataColumnSidecarFulu::from_ssz_bytes(bytes).map(Self::Fulu),
             ForkName::Gloas => DataColumnSidecarGloas::from_ssz_bytes(bytes).map(Self::Gloas),
+            ForkName::Heze => DataColumnSidecarHeze::from_ssz_bytes(bytes).map(Self::Heze),
             _ => Err(ssz::DecodeError::BytesInvalid(format!(
                 "unsupported fork for DataColumnSidecar: {fork_name}",
             ))),
@@ -234,6 +243,9 @@ impl<'de, E: EthSpec> context_deserialize::ContextDeserialize<'de, ForkName>
             }
             ForkName::Gloas => {
                 Self::Gloas(Deserialize::deserialize(deserializer).map_err(convert_err)?)
+            }
+            ForkName::Heze => {
+                Self::Heze(Deserialize::deserialize(deserializer).map_err(convert_err)?)
             }
             _ => {
                 return Err(serde::de::Error::custom(format!(

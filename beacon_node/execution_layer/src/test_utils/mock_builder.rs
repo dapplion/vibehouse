@@ -129,6 +129,9 @@ impl<E: EthSpec> BidStuff<E> for BuilderBid<E> {
             ExecutionPayloadHeaderRefMut::Gloas(header) => {
                 header.fee_recipient = fee_recipient;
             }
+            ExecutionPayloadHeaderRefMut::Heze(header) => {
+                header.fee_recipient = fee_recipient;
+            }
         }
     }
 
@@ -150,6 +153,9 @@ impl<E: EthSpec> BidStuff<E> for BuilderBid<E> {
                 header.gas_limit = gas_limit;
             }
             ExecutionPayloadHeaderRefMut::Gloas(header) => {
+                header.gas_limit = gas_limit;
+            }
+            ExecutionPayloadHeaderRefMut::Heze(header) => {
                 header.gas_limit = gas_limit;
             }
         }
@@ -179,6 +185,9 @@ impl<E: EthSpec> BidStuff<E> for BuilderBid<E> {
             ExecutionPayloadHeaderRefMut::Gloas(header) => {
                 header.parent_hash = ExecutionBlockHash::from_root(parent_hash);
             }
+            ExecutionPayloadHeaderRefMut::Heze(header) => {
+                header.parent_hash = ExecutionBlockHash::from_root(parent_hash);
+            }
         }
     }
 
@@ -200,6 +209,9 @@ impl<E: EthSpec> BidStuff<E> for BuilderBid<E> {
                 header.prev_randao = prev_randao;
             }
             ExecutionPayloadHeaderRefMut::Gloas(header) => {
+                header.prev_randao = prev_randao;
+            }
+            ExecutionPayloadHeaderRefMut::Heze(header) => {
                 header.prev_randao = prev_randao;
             }
         }
@@ -225,6 +237,9 @@ impl<E: EthSpec> BidStuff<E> for BuilderBid<E> {
             ExecutionPayloadHeaderRefMut::Gloas(header) => {
                 header.block_number = block_number;
             }
+            ExecutionPayloadHeaderRefMut::Heze(header) => {
+                header.block_number = block_number;
+            }
         }
     }
 
@@ -248,6 +263,9 @@ impl<E: EthSpec> BidStuff<E> for BuilderBid<E> {
             ExecutionPayloadHeaderRefMut::Gloas(header) => {
                 header.timestamp = timestamp;
             }
+            ExecutionPayloadHeaderRefMut::Heze(header) => {
+                header.timestamp = timestamp;
+            }
         }
     }
 
@@ -269,6 +287,9 @@ impl<E: EthSpec> BidStuff<E> for BuilderBid<E> {
                 header.withdrawals_root = withdrawals_root;
             }
             ExecutionPayloadHeaderRefMut::Gloas(header) => {
+                header.withdrawals_root = withdrawals_root;
+            }
+            ExecutionPayloadHeaderRefMut::Heze(header) => {
                 header.withdrawals_root = withdrawals_root;
             }
         }
@@ -305,6 +326,10 @@ impl<E: EthSpec> BidStuff<E> for BuilderBid<E> {
                 header.block_hash = ExecutionBlockHash::from_root(header.tree_hash_root());
             }
             ExecutionPayloadHeaderRefMut::Gloas(header) => {
+                header.extra_data = extra_data.clone();
+                header.block_hash = ExecutionBlockHash::from_root(header.tree_hash_root());
+            }
+            ExecutionPayloadHeaderRefMut::Heze(header) => {
                 header.extra_data = extra_data;
                 header.block_hash = ExecutionBlockHash::from_root(header.tree_hash_root());
             }
@@ -488,7 +513,8 @@ impl<E: EthSpec> MockBuilder<E> {
         let root = match &block {
             SignedBlindedBeaconBlock::Base(_)
             | types::SignedBeaconBlock::Altair(_)
-            | SignedBlindedBeaconBlock::Gloas(_) => {
+            | SignedBlindedBeaconBlock::Gloas(_)
+            | SignedBlindedBeaconBlock::Heze(_) => {
                 return Err("invalid fork".to_string());
             }
             SignedBlindedBeaconBlock::Bellatrix(block) => {
@@ -616,7 +642,7 @@ impl<E: EthSpec> MockBuilder<E> {
                 ) = payload_response.into();
 
                 match fork {
-                    ForkName::Gloas => BuilderBid::Gloas(BuilderBidGloas {
+                    ForkName::Gloas | ForkName::Heze => BuilderBid::Gloas(BuilderBidGloas {
                         header: payload
                             .as_gloas()
                             .map_err(|_| "incorrect payload variant".to_string())?
@@ -932,15 +958,17 @@ impl<E: EthSpec> MockBuilder<E> {
                 expected_withdrawals,
                 None,
             ),
-            ForkName::Deneb | ForkName::Electra | ForkName::Fulu | ForkName::Gloas => {
-                PayloadAttributes::new(
-                    timestamp,
-                    *prev_randao,
-                    fee_recipient,
-                    expected_withdrawals,
-                    Some(head_block_root),
-                )
-            }
+            ForkName::Deneb
+            | ForkName::Electra
+            | ForkName::Fulu
+            | ForkName::Gloas
+            | ForkName::Heze => PayloadAttributes::new(
+                timestamp,
+                *prev_randao,
+                fee_recipient,
+                expected_withdrawals,
+                Some(head_block_root),
+            ),
             ForkName::Base | ForkName::Altair => {
                 return Err("invalid fork".to_string());
             }

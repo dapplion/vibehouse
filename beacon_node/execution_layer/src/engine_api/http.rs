@@ -870,6 +870,19 @@ impl HttpJsonRpc {
                     Err(Error::RequiredMethodUnsupported("engine_newPayloadV5"))
                 }
             }
+            NewPayloadRequest::Heze(new_payload_request_heze) => {
+                if engine_capabilities.new_payload_v5 {
+                    let as_gloas = NewPayloadRequestGloas {
+                        execution_payload: new_payload_request_heze.execution_payload,
+                        versioned_hashes: new_payload_request_heze.versioned_hashes,
+                        parent_beacon_block_root: new_payload_request_heze.parent_beacon_block_root,
+                        execution_requests: new_payload_request_heze.execution_requests,
+                    };
+                    self.new_payload_v5_gloas(as_gloas).await
+                } else {
+                    Err(Error::RequiredMethodUnsupported("engine_newPayloadV5"))
+                }
+            }
         }
     }
 
@@ -905,7 +918,7 @@ impl HttpJsonRpc {
                     Err(Error::RequiredMethodUnsupported("engine_getPayloadv4"))
                 }
             }
-            ForkName::Fulu | ForkName::Gloas => {
+            ForkName::Fulu | ForkName::Gloas | ForkName::Heze => {
                 if engine_capabilities.get_payload_v5 {
                     self.get_payload_v5(fork_name, payload_id).await
                 } else {

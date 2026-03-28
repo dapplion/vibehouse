@@ -1,0 +1,97 @@
+# Heze Fork Implementation (EIP-7805: FOCIL)
+
+## Objective
+
+Implement the Heze consensus-layer fork, which adds Fork-Choice Enforced Inclusion Lists (FOCIL) per EIP-7805. Heze is the fork after Gloas.
+
+## Reference
+
+- Spec: https://github.com/ethereum/consensus-specs/tree/master/specs/heze
+- EIP: https://eips.ethereum.org/EIPS/eip-7805
+
+## Spec Summary
+
+Heze adds inclusion lists — a mechanism for committees of 16 validators per slot to submit transaction inclusion requirements that builders must satisfy. Key changes:
+
+### New Types
+- `InclusionList`: slot, validator_index, inclusion_list_committee_root, transactions
+- `SignedInclusionList`: message + signature
+- `InclusionListStore`: local tracking of inclusion lists and equivocators
+
+### Modified Types
+- `ExecutionPayloadBid`: adds `inclusion_list_bits: Bitvector[INCLUSION_LIST_COMMITTEE_SIZE]`
+- `BeaconState`: `latest_execution_payload_bid` uses new ExecutionPayloadBid with inclusion_list_bits
+
+### New Constants
+- `DOMAIN_INCLUSION_LIST_COMMITTEE = 0x0E000000`
+- `INCLUSION_LIST_COMMITTEE_SIZE = 16`
+
+### Fork Config
+- `HEZE_FORK_VERSION = 0x08000000`
+- `HEZE_FORK_EPOCH = TBD`
+
+### New Functions
+- `get_inclusion_list_committee(state, slot)` — 16 validators from slot committees
+- `is_valid_inclusion_list_signature(state, signed_il)` — BLS signature check
+- `process_inclusion_list(store, il, is_before_cutoff)` — equivocation detection + storage
+- `get_inclusion_list_transactions(store, state, slot)` — deduplicated tx list
+- `get_inclusion_list_bits(store, state, slot)` — bitvector of valid submissions
+- `is_inclusion_list_bits_inclusive(store, state, slot, bits)` — superset check
+
+### Fork Choice Changes
+- New Store field: `payload_inclusion_list_satisfaction: Dict[Root, bool]`
+- `should_extend_payload()` checks inclusion list satisfaction
+- `on_execution_payload()` records satisfaction
+- `on_inclusion_list()` handler
+- New timing: view freeze cutoff at 75% of slot
+
+### P2P
+- New gossip topic: `inclusion_list`
+- New req/resp: `InclusionListByCommitteeIndices/1`
+- `MAX_REQUEST_INCLUSION_LIST = 16`
+- `MAX_BYTES_PER_INCLUSION_LIST = 8192`
+
+### Validator
+- Inclusion list committee duty discovery
+- IL construction + broadcast at ~67% of slot
+- Bid validation: `inclusion_list_bits` must be inclusive
+- PayloadAttributes gains `inclusion_list_transactions`
+
+### Builder
+- Set `bid.inclusion_list_bits` from local IL store
+
+## Phases
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 1. Types & Constants | ForkName, ChainSpec, EthSpec, new types, superstruct variants | DONE |
+| 2. State Transitions | Fork upgrade, inclusion list committee computation | NOT STARTED |
+| 3. Fork Choice | IL satisfaction tracking, should_extend_payload changes | NOT STARTED |
+| 4. P2P Networking | Gossip topic, req/resp protocol, validation | NOT STARTED |
+| 5. Beacon Chain Integration | IL store, builder bid validation | NOT STARTED |
+| 6. Validator Client | IL committee duties, IL construction, bid validation | NOT STARTED |
+| 7. REST API | IL endpoints | NOT STARTED |
+
+## Progress Log
+
+### Phase 1: Types & Constants (run 3346)
+
+Starting Heze fork implementation. Adding ForkName::Heze variant and propagating through the codebase.
+
+**Completed:** ForkName::Heze added and propagated through entire codebase (40 files, +1300/-213 lines).
+
+Changes:
+- **ForkName**: Added `Heze` variant after `Gloas`, updated `list_all()`, `from_str`, `fork_epoch`, all match arms
+- **ChainSpec**: `heze_fork_epoch`, `heze_fork_version` (0x08000000)
+- **BeaconBlock/Body**: Heze superstruct variants (ePBS: signed_execution_payload_bid + payload_attestations, no execution_payload)
+- **BeaconState**: Heze variant, `upgrade_to_heze()` state transition in state_processing
+- **ExecutionPayload/Header**: Heze variants (same fields as Gloas — no EL changes in Heze)
+- **BuilderBid**: Heze variant with ExecutionPayloadHeaderHeze
+- **FullPayload/BlindedPayload**: Heze variants (BlindedPayload shares ExecutionPayloadHeaderGloas with Gloas via `only(Gloas, Heze)`)
+- **LightClientHeader/Bootstrap/Update/FinalityUpdate/OptimisticUpdate**: Heze variants (share ExecutionPayloadHeaderGloas with Gloas)
+- **SignedBeaconBlock**: Heze variant, SSZ decode, blinded↔full conversion
+- **ExecutionLayer**: engine_api, json_structures, new_payload_request, mock_builder — Heze arms mirroring Gloas
+- **Network**: RPC codec, protocol, pubsub — Heze arms mirroring Gloas
+- **Validator**: web3signer Heze handling
+- **EF tests**: fork upgrade, transition, merkle proof test runners — Heze support
+- **Tests**: 1088/1088 types tests pass, 1033/1033 state_processing tests pass

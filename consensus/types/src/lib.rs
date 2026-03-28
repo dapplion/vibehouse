@@ -142,13 +142,13 @@ pub use crate::attester_slashing::{
 };
 pub use crate::beacon_block::{
     BeaconBlock, BeaconBlockAltair, BeaconBlockBase, BeaconBlockBellatrix, BeaconBlockCapella,
-    BeaconBlockDeneb, BeaconBlockElectra, BeaconBlockFulu, BeaconBlockGloas, BeaconBlockRef,
-    BeaconBlockRefMut, BlindedBeaconBlock, BlockImportSource, EmptyBlock,
+    BeaconBlockDeneb, BeaconBlockElectra, BeaconBlockFulu, BeaconBlockGloas, BeaconBlockHeze,
+    BeaconBlockRef, BeaconBlockRefMut, BlindedBeaconBlock, BlockImportSource, EmptyBlock,
 };
 pub use crate::beacon_block_body::{
     BeaconBlockBody, BeaconBlockBodyAltair, BeaconBlockBodyBase, BeaconBlockBodyBellatrix,
     BeaconBlockBodyCapella, BeaconBlockBodyDeneb, BeaconBlockBodyElectra, BeaconBlockBodyFulu,
-    BeaconBlockBodyGloas, BeaconBlockBodyRef, BeaconBlockBodyRefMut,
+    BeaconBlockBodyGloas, BeaconBlockBodyHeze, BeaconBlockBodyRef, BeaconBlockBodyRefMut,
 };
 pub use crate::beacon_block_header::BeaconBlockHeader;
 pub use crate::beacon_committee::{BeaconCommittee, OwnedBeaconCommittee};
@@ -166,13 +166,14 @@ pub use crate::chain_spec::{ChainSpec, Config, Domain};
 pub use crate::checkpoint::Checkpoint;
 pub use crate::config_and_preset::{
     ConfigAndPreset, ConfigAndPresetDeneb, ConfigAndPresetElectra, ConfigAndPresetFulu,
-    ConfigAndPresetGloas,
+    ConfigAndPresetGloas, ConfigAndPresetHeze,
 };
 pub use crate::consolidation_request::ConsolidationRequest;
 pub use crate::contribution_and_proof::ContributionAndProof;
 pub use crate::data_column_sidecar::{
     Cell, ColumnIndex, DataColumn, DataColumnSidecar, DataColumnSidecarFulu,
-    DataColumnSidecarGloas, DataColumnSidecarList, DataColumnsByRootIdentifier,
+    DataColumnSidecarGloas, DataColumnSidecarHeze, DataColumnSidecarList,
+    DataColumnsByRootIdentifier,
 };
 pub use crate::data_column_subnet_id::DataColumnSubnetId;
 pub use crate::deposit::{DEPOSIT_TREE_DEPTH, Deposit};
@@ -188,15 +189,16 @@ pub use crate::execution_block_hash::ExecutionBlockHash;
 pub use crate::execution_block_header::{EncodableExecutionBlockHeader, ExecutionBlockHeader};
 pub use crate::execution_payload::{
     ExecutionPayload, ExecutionPayloadBellatrix, ExecutionPayloadCapella, ExecutionPayloadDeneb,
-    ExecutionPayloadElectra, ExecutionPayloadFulu, ExecutionPayloadGloas, ExecutionPayloadRef,
-    Transaction, Transactions, Withdrawals,
+    ExecutionPayloadElectra, ExecutionPayloadFulu, ExecutionPayloadGloas, ExecutionPayloadHeze,
+    ExecutionPayloadRef, Transaction, Transactions, Withdrawals,
 };
 pub use crate::execution_payload_bid::ExecutionPayloadBid;
 pub use crate::execution_payload_envelope::ExecutionPayloadEnvelope;
 pub use crate::execution_payload_header::{
     ExecutionPayloadHeader, ExecutionPayloadHeaderBellatrix, ExecutionPayloadHeaderCapella,
     ExecutionPayloadHeaderDeneb, ExecutionPayloadHeaderElectra, ExecutionPayloadHeaderFulu,
-    ExecutionPayloadHeaderGloas, ExecutionPayloadHeaderRef, ExecutionPayloadHeaderRefMut,
+    ExecutionPayloadHeaderGloas, ExecutionPayloadHeaderHeze, ExecutionPayloadHeaderRef,
+    ExecutionPayloadHeaderRefMut,
 };
 pub use crate::execution_proof::ExecutionProof;
 pub use crate::execution_proof_subnet_id::ExecutionProofSubnetId;
@@ -214,35 +216,35 @@ pub use crate::indexed_payload_attestation::IndexedPayloadAttestation;
 pub use crate::light_client_bootstrap::{
     LightClientBootstrap, LightClientBootstrapAltair, LightClientBootstrapCapella,
     LightClientBootstrapDeneb, LightClientBootstrapElectra, LightClientBootstrapFulu,
-    LightClientBootstrapGloas,
+    LightClientBootstrapGloas, LightClientBootstrapHeze,
 };
 pub use crate::light_client_finality_update::{
     LightClientFinalityUpdate, LightClientFinalityUpdateAltair, LightClientFinalityUpdateCapella,
     LightClientFinalityUpdateDeneb, LightClientFinalityUpdateElectra,
-    LightClientFinalityUpdateFulu, LightClientFinalityUpdateGloas,
+    LightClientFinalityUpdateFulu, LightClientFinalityUpdateGloas, LightClientFinalityUpdateHeze,
 };
 pub use crate::light_client_header::{
     LightClientHeader, LightClientHeaderAltair, LightClientHeaderCapella, LightClientHeaderDeneb,
-    LightClientHeaderElectra, LightClientHeaderFulu, LightClientHeaderGloas,
+    LightClientHeaderElectra, LightClientHeaderFulu, LightClientHeaderGloas, LightClientHeaderHeze,
 };
 pub use crate::light_client_optimistic_update::{
     LightClientOptimisticUpdate, LightClientOptimisticUpdateAltair,
     LightClientOptimisticUpdateCapella, LightClientOptimisticUpdateDeneb,
     LightClientOptimisticUpdateElectra, LightClientOptimisticUpdateFulu,
-    LightClientOptimisticUpdateGloas,
+    LightClientOptimisticUpdateGloas, LightClientOptimisticUpdateHeze,
 };
 pub use crate::light_client_update::{
     Error as LightClientUpdateError, LightClientUpdate, LightClientUpdateAltair,
     LightClientUpdateCapella, LightClientUpdateDeneb, LightClientUpdateElectra,
-    LightClientUpdateFulu, LightClientUpdateGloas, MerkleProof,
+    LightClientUpdateFulu, LightClientUpdateGloas, LightClientUpdateHeze, MerkleProof,
 };
 pub use crate::participation_flags::ParticipationFlags;
 pub use crate::payload::{
     AbstractExecPayload, BlindedPayload, BlindedPayloadBellatrix, BlindedPayloadCapella,
     BlindedPayloadDeneb, BlindedPayloadElectra, BlindedPayloadFulu, BlindedPayloadGloas,
-    BlindedPayloadRef, BlockType, ExecPayload, FullPayload, FullPayloadBellatrix,
-    FullPayloadCapella, FullPayloadDeneb, FullPayloadElectra, FullPayloadFulu, FullPayloadGloas,
-    FullPayloadRef, OwnedExecPayload,
+    BlindedPayloadHeze, BlindedPayloadRef, BlockType, ExecPayload, FullPayload,
+    FullPayloadBellatrix, FullPayloadCapella, FullPayloadDeneb, FullPayloadElectra,
+    FullPayloadFulu, FullPayloadGloas, FullPayloadHeze, FullPayloadRef, OwnedExecPayload,
 };
 pub use crate::payload_attestation::PayloadAttestation;
 pub use crate::payload_attestation_data::PayloadAttestationData;
@@ -253,7 +255,7 @@ pub use crate::pending_deposit::PendingDeposit;
 pub use crate::pending_partial_withdrawal::PendingPartialWithdrawal;
 pub use crate::preset::{
     AltairPreset, BasePreset, BellatrixPreset, CapellaPreset, DenebPreset, ElectraPreset,
-    FuluPreset, GloasPreset,
+    FuluPreset, GloasPreset, HezePreset,
 };
 pub use crate::proposer_preferences::ProposerPreferences;
 pub use crate::proposer_preparation_data::ProposerPreparationData;
@@ -269,8 +271,8 @@ pub use crate::signed_aggregate_and_proof::{
 pub use crate::signed_beacon_block::{
     SignedBeaconBlock, SignedBeaconBlockAltair, SignedBeaconBlockBase, SignedBeaconBlockBellatrix,
     SignedBeaconBlockCapella, SignedBeaconBlockDeneb, SignedBeaconBlockElectra,
-    SignedBeaconBlockFulu, SignedBeaconBlockGloas, SignedBeaconBlockHash, SignedBlindedBeaconBlock,
-    ssz_tagged_signed_beacon_block, ssz_tagged_signed_beacon_block_arc,
+    SignedBeaconBlockFulu, SignedBeaconBlockGloas, SignedBeaconBlockHash, SignedBeaconBlockHeze,
+    SignedBlindedBeaconBlock, ssz_tagged_signed_beacon_block, ssz_tagged_signed_beacon_block_arc,
 };
 pub use crate::signed_beacon_block_header::SignedBeaconBlockHeader;
 pub use crate::signed_bls_to_execution_change::SignedBlsToExecutionChange;

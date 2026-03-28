@@ -106,6 +106,7 @@ pub trait AbstractExecPayload<E: EthSpec>:
     + TryInto<Self::Electra>
     + TryInto<Self::Fulu>
     + TryInto<Self::Gloas>
+    + TryInto<Self::Heze>
     + Sync
 {
     type Ref<'a>: ExecPayload<E>
@@ -115,7 +116,8 @@ pub trait AbstractExecPayload<E: EthSpec>:
         + From<&'a Self::Deneb>
         + From<&'a Self::Electra>
         + From<&'a Self::Fulu>
-        + From<&'a Self::Gloas>;
+        + From<&'a Self::Gloas>
+        + From<&'a Self::Heze>;
 
     type Bellatrix: OwnedExecPayload<E>
         + Into<Self>
@@ -147,10 +149,15 @@ pub trait AbstractExecPayload<E: EthSpec>:
         + for<'a> From<Cow<'a, ExecutionPayloadGloas<E>>>
         + TryFrom<ExecutionPayloadHeaderGloas<E>>
         + Sync;
+    type Heze: OwnedExecPayload<E>
+        + Into<Self>
+        + for<'a> From<Cow<'a, ExecutionPayloadHeze<E>>>
+        + TryFrom<ExecutionPayloadHeaderHeze<E>>
+        + Sync;
 }
 
 #[superstruct(
-    variants(Bellatrix, Capella, Deneb, Electra, Fulu, Gloas),
+    variants(Bellatrix, Capella, Deneb, Electra, Fulu, Gloas, Heze),
     variant_attributes(
         derive(
             Debug,
@@ -207,6 +214,8 @@ pub struct FullPayload<E: EthSpec> {
     pub execution_payload: ExecutionPayloadFulu<E>,
     #[superstruct(only(Gloas), partial_getter(rename = "execution_payload_gloas"))]
     pub execution_payload: ExecutionPayloadGloas<E>,
+    #[superstruct(only(Heze), partial_getter(rename = "execution_payload_heze"))]
+    pub execution_payload: ExecutionPayloadHeze<E>,
 }
 
 impl<E: EthSpec> From<FullPayload<E>> for ExecutionPayload<E> {
@@ -319,6 +328,7 @@ impl<E: EthSpec> ExecPayload<E> for FullPayload<E> {
             FullPayload::Electra(inner) => Ok(inner.execution_payload.withdrawals.tree_hash_root()),
             FullPayload::Fulu(inner) => Ok(inner.execution_payload.withdrawals.tree_hash_root()),
             FullPayload::Gloas(inner) => Ok(inner.execution_payload.withdrawals.tree_hash_root()),
+            FullPayload::Heze(inner) => Ok(inner.execution_payload.withdrawals.tree_hash_root()),
         }
     }
 
@@ -331,6 +341,7 @@ impl<E: EthSpec> ExecPayload<E> for FullPayload<E> {
             FullPayload::Electra(inner) => Ok(inner.execution_payload.blob_gas_used),
             FullPayload::Fulu(inner) => Ok(inner.execution_payload.blob_gas_used),
             FullPayload::Gloas(inner) => Ok(inner.execution_payload.blob_gas_used),
+            FullPayload::Heze(inner) => Ok(inner.execution_payload.blob_gas_used),
         }
     }
 
@@ -363,6 +374,7 @@ impl<E: EthSpec> FullPayload<E> {
             ForkName::Electra => Ok(FullPayloadElectra::default().into()),
             ForkName::Fulu => Ok(FullPayloadFulu::default().into()),
             ForkName::Gloas => Ok(FullPayloadGloas::default().into()),
+            ForkName::Heze => Ok(FullPayloadHeze::default().into()),
         }
     }
 }
@@ -466,6 +478,7 @@ impl<E: EthSpec> ExecPayload<E> for FullPayloadRef<'_, E> {
             FullPayloadRef::Gloas(inner) => {
                 Ok(inner.execution_payload.withdrawals.tree_hash_root())
             }
+            FullPayloadRef::Heze(inner) => Ok(inner.execution_payload.withdrawals.tree_hash_root()),
         }
     }
 
@@ -478,6 +491,7 @@ impl<E: EthSpec> ExecPayload<E> for FullPayloadRef<'_, E> {
             FullPayloadRef::Electra(inner) => Ok(inner.execution_payload.blob_gas_used),
             FullPayloadRef::Fulu(inner) => Ok(inner.execution_payload.blob_gas_used),
             FullPayloadRef::Gloas(inner) => Ok(inner.execution_payload.blob_gas_used),
+            FullPayloadRef::Heze(inner) => Ok(inner.execution_payload.blob_gas_used),
         }
     }
 
@@ -502,6 +516,7 @@ impl<E: EthSpec> AbstractExecPayload<E> for FullPayload<E> {
     type Electra = FullPayloadElectra<E>;
     type Fulu = FullPayloadFulu<E>;
     type Gloas = FullPayloadGloas<E>;
+    type Heze = FullPayloadHeze<E>;
 }
 
 impl<E: EthSpec> From<ExecutionPayload<E>> for FullPayload<E> {
@@ -520,7 +535,7 @@ impl<E: EthSpec> TryFrom<ExecutionPayloadHeader<E>> for FullPayload<E> {
 }
 
 #[superstruct(
-    variants(Bellatrix, Capella, Deneb, Electra, Fulu, Gloas),
+    variants(Bellatrix, Capella, Deneb, Electra, Fulu, Gloas, Heze),
     variant_attributes(
         derive(
             Debug,
@@ -576,6 +591,8 @@ pub struct BlindedPayload<E: EthSpec> {
     pub execution_payload_header: ExecutionPayloadHeaderFulu<E>,
     #[superstruct(only(Gloas), partial_getter(rename = "execution_payload_gloas"))]
     pub execution_payload_header: ExecutionPayloadHeaderGloas<E>,
+    #[superstruct(only(Heze), partial_getter(rename = "execution_payload_heze"))]
+    pub execution_payload_header: ExecutionPayloadHeaderHeze<E>,
 }
 
 impl<'a, E: EthSpec> From<BlindedPayloadRef<'a, E>> for BlindedPayload<E> {
@@ -666,6 +683,7 @@ impl<E: EthSpec> ExecPayload<E> for BlindedPayload<E> {
             BlindedPayload::Electra(inner) => Ok(inner.execution_payload_header.withdrawals_root),
             BlindedPayload::Fulu(inner) => Ok(inner.execution_payload_header.withdrawals_root),
             BlindedPayload::Gloas(inner) => Ok(inner.execution_payload_header.withdrawals_root),
+            BlindedPayload::Heze(inner) => Ok(inner.execution_payload_header.withdrawals_root),
         }
     }
 
@@ -678,6 +696,7 @@ impl<E: EthSpec> ExecPayload<E> for BlindedPayload<E> {
             BlindedPayload::Electra(inner) => Ok(inner.execution_payload_header.blob_gas_used),
             BlindedPayload::Fulu(inner) => Ok(inner.execution_payload_header.blob_gas_used),
             BlindedPayload::Gloas(inner) => Ok(inner.execution_payload_header.blob_gas_used),
+            BlindedPayload::Heze(inner) => Ok(inner.execution_payload_header.blob_gas_used),
         }
     }
 
@@ -778,6 +797,7 @@ impl<'b, E: EthSpec> ExecPayload<E> for BlindedPayloadRef<'b, E> {
             }
             BlindedPayloadRef::Fulu(inner) => Ok(inner.execution_payload_header.withdrawals_root),
             BlindedPayloadRef::Gloas(inner) => Ok(inner.execution_payload_header.withdrawals_root),
+            BlindedPayloadRef::Heze(inner) => Ok(inner.execution_payload_header.withdrawals_root),
         }
     }
 
@@ -790,6 +810,7 @@ impl<'b, E: EthSpec> ExecPayload<E> for BlindedPayloadRef<'b, E> {
             BlindedPayloadRef::Electra(inner) => Ok(inner.execution_payload_header.blob_gas_used),
             BlindedPayloadRef::Fulu(inner) => Ok(inner.execution_payload_header.blob_gas_used),
             BlindedPayloadRef::Gloas(inner) => Ok(inner.execution_payload_header.blob_gas_used),
+            BlindedPayloadRef::Heze(inner) => Ok(inner.execution_payload_header.blob_gas_used),
         }
     }
 
@@ -1107,6 +1128,13 @@ impl_exec_payload_for_fork!(
     ExecutionPayloadGloas,
     Gloas
 );
+impl_exec_payload_for_fork!(
+    BlindedPayloadHeze,
+    FullPayloadHeze,
+    ExecutionPayloadHeaderHeze,
+    ExecutionPayloadHeze,
+    Heze
+);
 
 impl<E: EthSpec> AbstractExecPayload<E> for BlindedPayload<E> {
     type Ref<'a> = BlindedPayloadRef<'a, E>;
@@ -1116,6 +1144,7 @@ impl<E: EthSpec> AbstractExecPayload<E> for BlindedPayload<E> {
     type Electra = BlindedPayloadElectra<E>;
     type Fulu = BlindedPayloadFulu<E>;
     type Gloas = BlindedPayloadGloas<E>;
+    type Heze = BlindedPayloadHeze<E>;
 }
 
 impl<E: EthSpec> From<ExecutionPayload<E>> for BlindedPayload<E> {
@@ -1162,6 +1191,11 @@ impl<E: EthSpec> From<ExecutionPayloadHeader<E>> for BlindedPayload<E> {
                     execution_payload_header,
                 })
             }
+            ExecutionPayloadHeader::Heze(execution_payload_header) => {
+                Self::Heze(BlindedPayloadHeze {
+                    execution_payload_header,
+                })
+            }
         }
     }
 }
@@ -1186,6 +1220,9 @@ impl<E: EthSpec> From<BlindedPayload<E>> for ExecutionPayloadHeader<E> {
             }
             BlindedPayload::Gloas(blinded_payload) => {
                 ExecutionPayloadHeader::Gloas(blinded_payload.execution_payload_header)
+            }
+            BlindedPayload::Heze(blinded_payload) => {
+                ExecutionPayloadHeader::Heze(blinded_payload.execution_payload_header)
             }
         }
     }

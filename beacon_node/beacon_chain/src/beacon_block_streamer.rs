@@ -101,7 +101,7 @@ fn reconstruct_default_header_block<E: EthSpec>(
         ForkName::Deneb => ExecutionPayloadDeneb::default().into(),
         ForkName::Electra => ExecutionPayloadElectra::default().into(),
         ForkName::Fulu => ExecutionPayloadFulu::default().into(),
-        ForkName::Gloas => ExecutionPayloadGloas::default().into(),
+        ForkName::Gloas | ForkName::Heze => ExecutionPayloadGloas::default().into(),
         ForkName::Base | ForkName::Altair => {
             return Err(Error::PayloadReconstruction(format!(
                 "Block with fork variant {fork} has execution payload"
