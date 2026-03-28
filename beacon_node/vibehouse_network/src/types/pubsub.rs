@@ -16,8 +16,8 @@ use types::{
     SignedBeaconBlockCapella, SignedBeaconBlockDeneb, SignedBeaconBlockElectra,
     SignedBeaconBlockFulu, SignedBeaconBlockGloas, SignedBeaconBlockHeze,
     SignedBlsToExecutionChange, SignedContributionAndProof, SignedExecutionPayloadBid,
-    SignedExecutionPayloadEnvelope, SignedProposerPreferences, SignedVoluntaryExit,
-    SingleAttestation, SubnetId, SyncCommitteeMessage, SyncSubnetId,
+    SignedExecutionPayloadEnvelope, SignedInclusionList, SignedProposerPreferences,
+    SignedVoluntaryExit, SingleAttestation, SubnetId, SyncCommitteeMessage, SyncSubnetId,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -59,6 +59,8 @@ pub enum PubsubMessage<E: EthSpec> {
     ProposerPreferences(Box<types::SignedProposerPreferences>),
     /// Gossipsub message providing a ZK execution proof on a particular proof subnet.
     ExecutionProof(Box<(ExecutionProofSubnetId, Arc<ExecutionProof>)>),
+    /// Gossipsub message providing a signed inclusion list (Heze FOCIL).
+    InclusionList(Box<SignedInclusionList<E>>),
 }
 
 // Implements the `DataTransform` trait of gossipsub to employ snappy compression
@@ -167,6 +169,7 @@ impl<E: EthSpec> PubsubMessage<E> {
             PubsubMessage::PayloadAttestation(_) => GossipKind::PayloadAttestation,
             PubsubMessage::ProposerPreferences(_) => GossipKind::ProposerPreferences,
             PubsubMessage::ExecutionProof(data) => GossipKind::ExecutionProof(data.0),
+            PubsubMessage::InclusionList(_) => GossipKind::InclusionList,
         }
     }
 
@@ -476,6 +479,19 @@ impl<E: EthSpec> PubsubMessage<E> {
                             )),
                         }
                     }
+                    GossipKind::InclusionList => {
+                        match fork_context.get_fork_from_context_bytes(gossip_topic.fork_digest) {
+                            Some(fork) if fork.heze_enabled() => {
+                                let signed_il = SignedInclusionList::from_ssz_bytes(data)
+                                    .map_err(|e| format!("{e:?}"))?;
+                                Ok(PubsubMessage::InclusionList(Box::new(signed_il)))
+                            }
+                            Some(_) | None => Err(format!(
+                                "inclusion_list topic invalid for given fork digest {:?}",
+                                gossip_topic.fork_digest
+                            )),
+                        }
+                    }
                 }
             }
         }
@@ -507,6 +523,7 @@ impl<E: EthSpec> PubsubMessage<E> {
             PubsubMessage::PayloadAttestation(data) => data.as_ssz_bytes(),
             PubsubMessage::ProposerPreferences(data) => data.as_ssz_bytes(),
             PubsubMessage::ExecutionProof(data) => data.1.as_ssz_bytes(),
+            PubsubMessage::InclusionList(data) => data.as_ssz_bytes(),
         }
     }
 }
@@ -590,6 +607,11 @@ impl<E: EthSpec> std::fmt::Display for PubsubMessage<E> {
                 f,
                 "Execution Proof: subnet_id: {}, block_root: {:?}",
                 *data.0, data.1.block_root
+            ),
+            PubsubMessage::InclusionList(data) => write!(
+                f,
+                "Inclusion List: slot: {}, validator_index: {}",
+                data.message.slot, data.message.validator_index
             ),
         }
     }

@@ -388,6 +388,23 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         })
     }
 
+    /// Create a new `Work` event for a Heze inclusion list (FOCIL).
+    pub(crate) fn send_gossip_inclusion_list(
+        self: &Arc<Self>,
+        message_id: MessageId,
+        peer_id: PeerId,
+        signed_il: Box<types::SignedInclusionList<T::EthSpec>>,
+    ) -> Result<(), Error<T::EthSpec>> {
+        let processor = self.clone();
+        let process_fn =
+            move || processor.process_gossip_inclusion_list(message_id, peer_id, *signed_il);
+
+        self.try_send(BeaconWorkEvent {
+            drop_during_sync: true,
+            work: Work::GossipInclusionList(Box::new(process_fn)),
+        })
+    }
+
     /// Create a new `Work` event for a gloas execution payload reveal (ePBS).
     pub(crate) fn send_gossip_execution_payload(
         self: &Arc<Self>,

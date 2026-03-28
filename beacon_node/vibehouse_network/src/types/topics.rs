@@ -33,6 +33,7 @@ pub(super) const EXECUTION_PAYLOAD_TOPIC: &str = "execution_payload";
 pub(super) const PAYLOAD_ATTESTATION_TOPIC: &str = "payload_attestation_message";
 pub(super) const PROPOSER_PREFERENCES_TOPIC: &str = "proposer_preferences";
 pub(super) const EXECUTION_PROOF_PREFIX: &str = "execution_proof_";
+pub(super) const INCLUSION_LIST_TOPIC: &str = "inclusion_list";
 
 #[derive(Debug)]
 pub struct TopicConfig {
@@ -119,6 +120,11 @@ pub fn core_topics_to_subscribe<E: EthSpec>(
         }
     }
 
+    if fork_name.heze_enabled() {
+        // Heze FOCIL topic - all nodes subscribe to inclusion lists
+        topics.push(GossipKind::InclusionList);
+    }
+
     topics
 }
 
@@ -148,7 +154,8 @@ pub fn is_fork_non_core_topic(topic: &GossipTopic, _fork_name: ForkName) -> bool
         | GossipKind::ExecutionPayload
         | GossipKind::PayloadAttestation
         | GossipKind::ProposerPreferences
-        | GossipKind::ExecutionProof(_) => false,
+        | GossipKind::ExecutionProof(_)
+        | GossipKind::InclusionList => false,
     }
 }
 
@@ -221,6 +228,8 @@ pub enum GossipKind {
     /// ZK execution proof on a particular proof subnet.
     #[strum(serialize = "execution_proof")]
     ExecutionProof(ExecutionProofSubnetId),
+    /// Heze FOCIL: Topic for inclusion list committee members to broadcast inclusion lists.
+    InclusionList,
 }
 
 impl std::fmt::Display for GossipKind {
@@ -310,6 +319,7 @@ impl GossipTopic {
                 EXECUTION_PAYLOAD_TOPIC => GossipKind::ExecutionPayload,
                 PAYLOAD_ATTESTATION_TOPIC => GossipKind::PayloadAttestation,
                 PROPOSER_PREFERENCES_TOPIC => GossipKind::ProposerPreferences,
+                INCLUSION_LIST_TOPIC => GossipKind::InclusionList,
                 topic => match subnet_topic_index(topic) {
                     Some(kind) => kind,
                     None => return Err(format!("Unknown topic: {topic}")),
@@ -380,6 +390,7 @@ impl std::fmt::Display for GossipTopic {
             GossipKind::ExecutionPayload => EXECUTION_PAYLOAD_TOPIC.into(),
             GossipKind::PayloadAttestation => PAYLOAD_ATTESTATION_TOPIC.into(),
             GossipKind::ProposerPreferences => PROPOSER_PREFERENCES_TOPIC.into(),
+            GossipKind::InclusionList => INCLUSION_LIST_TOPIC.into(),
             GossipKind::ExecutionProof(subnet_id) => {
                 format!("{}{}", EXECUTION_PROOF_PREFIX, *subnet_id)
             }

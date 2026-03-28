@@ -192,7 +192,9 @@ impl GossipCache {
             | GossipKind::ExecutionPayload
             | GossipKind::PayloadAttestation
             | GossipKind::ProposerPreferences
-            | GossipKind::ExecutionProof(_) => None,
+            | GossipKind::ExecutionProof(_)
+            // Heze FOCIL: inclusion lists are time-sensitive, no caching
+            | GossipKind::InclusionList => None,
         };
         let Some(expire_timeout) = expire_timeout else {
             return;

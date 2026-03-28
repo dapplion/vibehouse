@@ -535,6 +535,10 @@ impl<T: BeaconChainTypes> Router<T> {
                     ),
                 );
             }
+            PubsubMessage::InclusionList(il) => self.handle_beacon_processor_send_result(
+                self.network_beacon_processor
+                    .send_gossip_inclusion_list(message_id, peer_id, il),
+            ),
         }
     }
 

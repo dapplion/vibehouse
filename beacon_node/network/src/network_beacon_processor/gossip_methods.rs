@@ -4486,4 +4486,27 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             });
         }
     }
+
+    /// Process a gossip-received inclusion list (Heze FOCIL).
+    ///
+    /// For now this is a stub that accepts the message for propagation. Full validation
+    /// (signature check, committee membership, equivocation detection, timing) will be
+    /// wired in Phase 5 (Beacon Chain Integration) when InclusionListStore is integrated
+    /// into the beacon chain.
+    pub(crate) fn process_gossip_inclusion_list(
+        self: &Arc<Self>,
+        message_id: MessageId,
+        peer_id: PeerId,
+        signed_il: types::SignedInclusionList<T::EthSpec>,
+    ) {
+        debug!(
+            slot = %signed_il.message.slot,
+            validator_index = signed_il.message.validator_index,
+            peer = %peer_id,
+            "Received gossip inclusion list"
+        );
+
+        // Accept for now — full validation wired in beacon chain integration phase.
+        self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Accept);
+    }
 }

@@ -24,6 +24,9 @@ const EXECUTION_PAYLOAD_WEIGHT: f64 = 0.5;
 const PAYLOAD_ATTESTATION_WEIGHT: f64 = 0.4;
 const EXECUTION_PROOF_WEIGHT: f64 = 0.3;
 
+// Heze FOCIL topic weight
+const INCLUSION_LIST_WEIGHT: f64 = 0.3;
+
 /// The time window (seconds) that we expect messages to be forwarded to us in the mesh.
 const MESH_MESSAGE_DELIVERIES_WINDOW: u64 = 2;
 
@@ -76,7 +79,8 @@ impl<E: EthSpec> PeerScoreSettings<E> {
                 + EXECUTION_BID_WEIGHT
                 + EXECUTION_PAYLOAD_WEIGHT
                 + PAYLOAD_ATTESTATION_WEIGHT
-                + execution_proof_subnet_weight * MAX_EXECUTION_PROOF_SUBNETS as f64);
+                + execution_proof_subnet_weight * MAX_EXECUTION_PROOF_SUBNETS as f64
+                + INCLUSION_LIST_WEIGHT);
 
         PeerScoreSettings {
             slot,
@@ -215,6 +219,18 @@ impl<E: EthSpec> PeerScoreSettings<E> {
                 );
             }
         }
+
+        // Heze FOCIL: InclusionList — up to 16 ILs per slot (one per committee member)
+        params.topics.insert(
+            get_hash(GossipKind::InclusionList),
+            Self::get_topic_params(
+                self,
+                INCLUSION_LIST_WEIGHT,
+                16.0, // INCLUSION_LIST_COMMITTEE_SIZE messages per slot
+                self.epoch * 4,
+                Some((E::slots_per_epoch() * 2, 2.0, self.epoch / 2, current_slot)),
+            ),
+        );
 
         //dynamic topics
         let (beacon_block_params, beacon_aggregate_proof_params, beacon_attestation_subnet_params) =
