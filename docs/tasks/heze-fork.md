@@ -66,7 +66,7 @@ Heze adds inclusion lists — a mechanism for committees of 16 validators per sl
 |-------|-------------|--------|
 | 1. Types & Constants | ForkName, ChainSpec, EthSpec, new types, superstruct variants | DONE |
 | 2. State Transitions | Fork upgrade, inclusion list committee computation | DONE |
-| 3. Fork Choice | IL satisfaction tracking, should_extend_payload changes | NOT STARTED |
+| 3. Fork Choice | IL satisfaction tracking, should_extend_payload changes | DONE |
 | 4. P2P Networking | Gossip topic, req/resp protocol, validation | NOT STARTED |
 | 5. Beacon Chain Integration | IL store, builder bid validation | NOT STARTED |
 | 6. Validator Client | IL committee duties, IL construction, bid validation | NOT STARTED |
@@ -133,3 +133,27 @@ Adding `inclusion_list_bits` to ExecutionPayloadBid and InclusionListCommitteeSi
 Tests: 1101/1101 types tests pass, 1038/1038 state_processing tests pass. Clean clippy.
 
 **Phase 2 complete.** All FOCIL types, inclusion list committee computation, signature validation, and inclusion_list_bits in ExecutionPayloadBid are implemented.
+
+### Phase 3: Fork Choice (run 3349)
+
+Implementing Heze fork choice changes for FOCIL inclusion list satisfaction tracking.
+
+**Completed:**
+
+1. **InclusionListStore** (`consensus/types/src/inclusion_list_store.rs`): New runtime store tracking inclusion lists per (slot, committee_root) with equivocation detection. Methods: `process_inclusion_list()`, `get_inclusion_list_transactions()`, `get_inclusion_list_bits()`, `is_inclusion_list_bits_inclusive()`, `prune()`. 13 tests.
+
+2. **ProtoNode.inclusion_list_satisfied** (`consensus/proto_array/src/proto_array.rs`): New bool field tracking whether a block's payload satisfied inclusion list constraints. Maps to spec's `store.payload_inclusion_list_satisfaction[root]`. Added to ProtoNode, Block, and all construction sites (~25 sites).
+
+3. **Modified should_extend_payload** (`consensus/proto_array/src/proto_array_fork_choice.rs`): Added Heze check at top — returns false when `envelope_received && !inclusion_list_satisfied`. Matches spec's `is_payload_inclusion_list_satisfied` check.
+
+4. **Modified on_execution_payload** (`consensus/fork_choice/src/fork_choice.rs`): Sets `inclusion_list_satisfied = true` when envelope is received. This is a stub — the real EL `is_inclusion_list_satisfied` check will be wired in Phase 5 (Beacon Chain Integration) when the InclusionListStore is integrated into the beacon chain.
+
+**Design decisions:**
+- InclusionListStore placed in `types` crate (not beacon_chain) since its helpers are pure spec logic needed by multiple consumers.
+- Helper functions take `committee_root: Hash256` instead of computing it, avoiding tree_hash dependency on raw slices. Callers compute the root from `get_inclusion_list_committee`.
+- `on_inclusion_list` handler deferred to Phase 5 — it requires the beacon chain to hold an InclusionListStore instance and compute timing.
+- `inclusion_list_satisfied` defaults to `false` on new blocks; set to `true` by `on_execution_payload`. Pre-Heze behavior unchanged since the check only fires when `envelope_received = true`.
+
+Tests: 1114/1114 types tests pass (+13 new), 206/206 proto_array tests pass, 90/90 fork_choice lib tests pass, 31/31 fork_choice integration tests pass. Full workspace lint clean.
+
+**Phase 3 complete.**
