@@ -417,7 +417,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         let requested_columns = request
             .data_column_ids
             .iter()
-            .flat_map(|id| id.columns.clone())
+            .flat_map(|id| id.columns.iter().copied())
             .unique()
             .collect::<Vec<_>>();
         self.record_data_column_request_in_span(
