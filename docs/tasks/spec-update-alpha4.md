@@ -290,3 +290,9 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - #5052 (reduce compute_shuffled_index cache) — test infra change, not actionable.
 - Added 3 pre-Heze fork early-return tests (commit d9ba3310c): check_inclusion_list_satisfaction returns true, compute_inclusion_list_bits_for_slot returns default, verify_inclusion_list_for_gossip returns PreHezeFork. 30/30 heze_verification tests pass.
 - Zero clippy warnings. No dep updates. Codebase stable.
+
+**Monitoring (run 4029, 2026-03-30):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29) — CI tooling only.
+- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale).
+- #5056 (blob kzg commitment len check) now APPROVED by jtraglia, not yet merged. Proactive implementation verified — no code changes needed.
+- Zero clippy warnings. No dep updates. Toolchains current (stable 1.94.1, nightly 1.96.0). EF tests: 148/148. Codebase stable.
