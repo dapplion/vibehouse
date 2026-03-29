@@ -218,3 +218,7 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
   - `check_inclusion_list_satisfaction`: empty store passes, all IL txs included passes, missing IL tx fails, slot 0 edge case
   - `compute_inclusion_list_bits_for_slot`: empty store all-zeros, observed validators reflected in bits, slot 0 default, equivocator excluded
 - All 1011 beacon_chain tests pass. 148/148 EF spec tests. Zero clippy warnings.
+
+**Heze IL pool HTTP API tests (run 3841, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). All monitored PRs unchanged.
+- Added 6 HTTP API tests for `POST/GET /eth/v1/beacon/pool/inclusion_lists`: valid IL accepted, rejected pre-Heze, non-committee rejected, POST+GET round-trip with slot filter, empty pool, duplicate silently accepted. 358/358 http_api tests pass. Zero clippy warnings.
