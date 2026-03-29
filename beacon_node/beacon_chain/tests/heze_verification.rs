@@ -365,3 +365,67 @@ async fn compute_bits_equivocator_excluded() {
     // Equivocator at position 0 should NOT have bit set
     assert!(!bits.get(0).unwrap(), "equivocator bit should NOT be set");
 }
+
+// ===========================================================================
+// Block production: inclusion_list_bits embedded in Heze blocks
+// ===========================================================================
+
+#[tokio::test]
+async fn block_production_embeds_inclusion_list_bits() {
+    let harness = heze_harness(2).await;
+    let head_state = harness.get_current_state();
+    let current_slot = head_state.slot();
+    let next_slot = current_slot + 1;
+
+    // Insert an IL at current_slot (slot N) so the block at N+1 sees it
+    let (committee, committee_root) = committee_info(&harness, current_slot);
+    let il = make_signed_il(current_slot, committee[0], committee_root, vec![]);
+    {
+        let mut store = harness.chain.inclusion_list_store.lock();
+        store.process_signed_inclusion_list(il, true);
+    }
+
+    harness.advance_slot();
+    let ((signed_block, _blobs), _state) = harness.make_block(head_state, next_slot).await;
+
+    // Extract the bid's inclusion_list_bits
+    let block = signed_block.message();
+    let body = block.body();
+    let bid = body
+        .signed_execution_payload_bid_heze()
+        .expect("block should be Heze variant");
+
+    let bits = &bid.message.inclusion_list_bits;
+
+    // Position 0 should be set (we inserted an IL for committee[0])
+    assert!(
+        bits.get(0).unwrap(),
+        "bit 0 should be set for observed IL at position 0"
+    );
+    // Position 1 should NOT be set (no IL inserted for that validator)
+    assert!(
+        !bits.get(1).unwrap(),
+        "bit 1 should not be set — no IL for position 1"
+    );
+}
+
+#[tokio::test]
+async fn block_production_empty_il_store_all_bits_zero() {
+    let harness = heze_harness(2).await;
+    let head_state = harness.get_current_state();
+    let next_slot = head_state.slot() + 1;
+
+    harness.advance_slot();
+    let ((signed_block, _blobs), _state) = harness.make_block(head_state, next_slot).await;
+
+    let bid = signed_block
+        .message()
+        .body()
+        .signed_execution_payload_bid_heze()
+        .expect("block should be Heze variant");
+
+    assert!(
+        bid.message.inclusion_list_bits.is_zero(),
+        "all bits should be zero when IL store is empty"
+    );
+}
