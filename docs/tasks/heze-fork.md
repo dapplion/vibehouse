@@ -460,3 +460,14 @@ Added 7 integration tests for `POST /eth/v1/validator/duties/inclusion_list/{epo
 7. `il_duties_dependent_root_consistent`: dependent_root is deterministic across calls
 
 Also added `heze_spec()` helper function. Tests: 352/352 http_api — all pass.
+
+### InclusionListByCommitteeIndices RPC format update (run 3842+)
+
+Updated the `InclusionListByCommitteeIndices/1` RPC request format to match the spec more closely:
+
+- **Wire format**: Changed from `RuntimeVariableList<u64>` (variable-length) to fixed-size `(slot: Slot, committee_indices: Bitvector[INCLUSION_LIST_COMMITTEE_SIZE])` = 10 bytes (8 slot + 2 bitvector).
+- **Request now includes slot**: RPC handler uses `request.slot` instead of inferring from the local slot clock.
+- **Gossip validation ordering**: Reordered checks so committee root comparison (IGNORE) happens before membership check (REJECT), since membership check is meaningless if the committee root doesn't match.
+- **Response size limit**: Increased `SIGNED_INCLUSION_LIST_MAX` from 8192 to 50000 to account for SSZ encoding overhead (worst case: 8192 single-byte txs with 4-byte offsets each + fixed fields = ~41KB).
+
+Tests: 214/214 network, 12/12 heze beacon_chain, 407/407 vibehouse_network — all pass. Zero clippy warnings.
