@@ -234,3 +234,9 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - New non-Gloas PRs: #5055 (EIP-8025 refactor), #5054 (test workflow), #5050 (networking test yield), #5049/#5047 (gossip validation tests for Capella/Bellatrix) — none actionable.
 - Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix).
 - EF spec tests: 148/148 (fake crypto). Codebase stable. Nothing actionable.
+
+**Monitoring + devnet verification (run 3845, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
+- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, 144 reviews, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- Zero clippy warnings. No compatible dependency updates. No new crate versions.
+- Heze devnet verified: Gloas@epoch1, Heze@epoch3, finalized_epoch=8 at slot 81. RPC format changes from run 3842 (InclusionListByCommitteeIndices slot+bitvector format) confirmed working end-to-end.
