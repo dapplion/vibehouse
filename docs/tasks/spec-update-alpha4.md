@@ -203,7 +203,7 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Non-Gloas PRs: #5054 (test workflow), #5055 (EIP-8025 refactor), #5049/#5047/#5033 (gossip validation tests for capella/bellatrix/altair) — none actionable.
 - Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 transitive rsa vuln (no fix). CI green. Codebase stable.
 
-**Monitoring (runs 3876-3881, 2026-03-29):**
+**Monitoring (runs 3876-3882, 2026-03-29):**
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
 - All 9 monitored open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954 (unreviewed), #4898/#4892 (stalled), #4960/#4932 (test vectors), #4840/#4630 (stale).
 - Non-Gloas PRs: #5054 (test workflow), #5055 (EIP-8025 refactor), #5050/#5049/#5047/#5033 — none actionable.
