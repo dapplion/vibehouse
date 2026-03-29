@@ -235,3 +235,8 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
 - All 9 monitored open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954 (unreviewed), #4898/#4892 (stalled), #4960/#4932 (test vectors), #4840/#4630 (stale).
 - Zero clippy warnings, zero dependency updates, cargo audit unchanged (1 rsa vuln, no fix). Codebase stable.
+
+**Bug fix + monitoring (run 3903, 2026-03-29):**
+- **Fixed missing InclusionListStore pruning** — `prune_gloas_pools()` was pruning all other slot-keyed pools (payload_attestation_pool, proposer_preferences_pool, observed_execution_bids, etc.) but not the inclusion_list_store. This caused unbounded memory growth from stale ILs in long-running nodes. Fix: added `self.inclusion_list_store.lock().prune(earliest_slot)` to `prune_gloas_pools()`. All 1013 beacon_chain tests pass (Heze fork). Commit 264469b7d.
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). All 8 open Gloas/Heze PRs unchanged.
+- EF spec tests: 148/148 (fake crypto). Zero clippy warnings. Zero dependency updates.
