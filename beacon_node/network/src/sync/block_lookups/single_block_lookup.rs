@@ -690,3 +690,484 @@ fn fmt_peer_set_as_len(
 ) -> Result<(), std::fmt::Error> {
     write!(f, "{}", peer_set.read().len())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use beacon_chain::builder::Witness;
+    use slot_clock::ManualSlotClock;
+    use std::time::Duration;
+    use store::MemoryStore;
+    use types::{FixedBytesExtended, MinimalEthSpec};
+
+    type E = MinimalEthSpec;
+    type T = Witness<ManualSlotClock, E, MemoryStore<E>, MemoryStore<E>>;
+
+    /// Helper to create a DownloadResult with a simple u64 value for testing.
+    fn make_download_result(value: u64) -> DownloadResult<u64> {
+        DownloadResult {
+            value,
+            block_root: Hash256::zero(),
+            seen_timestamp: Duration::from_secs(0),
+            peer_group: PeerGroup::from_single(PeerId::random()),
+        }
+    }
+
+    // --- SingleLookupRequestState transitions ---
+
+    #[test]
+    fn new_state_is_awaiting_download() {
+        let state = SingleLookupRequestState::<u64>::new();
+        assert!(state.is_awaiting_download());
+        assert!(!state.is_processed());
+        assert!(!state.is_awaiting_event());
+        assert_eq!(state.failed_attempts(), 0);
+    }
+
+    #[test]
+    fn awaiting_download_to_downloading() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        state.on_download_start(1).unwrap();
+        assert!(!state.is_awaiting_download());
+        assert!(!state.is_processed());
+        assert!(state.is_awaiting_event());
+    }
+
+    #[test]
+    fn downloading_to_awaiting_process_on_success() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        state.on_download_start(1).unwrap();
+        state
+            .on_download_success(1, make_download_result(42))
+            .unwrap();
+        assert!(!state.is_awaiting_download());
+        assert!(!state.is_processed());
+        assert!(!state.is_awaiting_event());
+        assert_eq!(state.peek_downloaded_data(), Some(&42));
+    }
+
+    #[test]
+    fn downloading_to_awaiting_download_on_failure() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        state.on_download_start(1).unwrap();
+        state.on_download_failure(1).unwrap();
+        assert!(state.is_awaiting_download());
+        assert_eq!(state.failed_attempts(), 1);
+    }
+
+    #[test]
+    fn awaiting_process_to_processing() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        state.on_download_start(1).unwrap();
+        state
+            .on_download_success(1, make_download_result(42))
+            .unwrap();
+        let result = state.maybe_start_processing();
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().value, 42);
+        assert!(state.is_awaiting_event()); // Processing state awaits event
+    }
+
+    #[test]
+    fn processing_to_processed_on_success() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        state.on_download_start(1).unwrap();
+        state
+            .on_download_success(1, make_download_result(42))
+            .unwrap();
+        state.maybe_start_processing();
+        state.on_processing_success().unwrap();
+        assert!(state.is_processed());
+        assert!(!state.is_awaiting_event());
+    }
+
+    #[test]
+    fn processing_to_awaiting_download_on_failure() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        state.on_download_start(1).unwrap();
+        state
+            .on_download_success(1, make_download_result(42))
+            .unwrap();
+        state.maybe_start_processing();
+        let peer_group = state.on_processing_failure().unwrap();
+        assert!(state.is_awaiting_download());
+        assert_eq!(state.failed_attempts(), 1);
+        assert!(peer_group.all().next().is_some());
+    }
+
+    #[test]
+    fn processing_revert_to_awaiting_process() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        state.on_download_start(1).unwrap();
+        state
+            .on_download_success(1, make_download_result(42))
+            .unwrap();
+        state.maybe_start_processing();
+        state.revert_to_awaiting_processing().unwrap();
+        // Should be back in AwaitingProcess — can start processing again
+        assert_eq!(state.peek_downloaded_data(), Some(&42));
+        let result = state.maybe_start_processing();
+        assert!(result.is_some());
+    }
+
+    #[test]
+    fn completed_request_from_awaiting_download() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        state.on_completed_request("already known").unwrap();
+        assert!(state.is_processed());
+    }
+
+    #[test]
+    fn insert_verified_response_from_awaiting_download() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        let result = make_download_result(99);
+        assert!(state.insert_verified_response(result));
+        assert_eq!(state.peek_downloaded_data(), Some(&99));
+    }
+
+    #[test]
+    fn insert_verified_response_ignored_when_not_awaiting_download() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        state.on_download_start(1).unwrap();
+        let result = make_download_result(99);
+        assert!(!state.insert_verified_response(result));
+    }
+
+    // --- Error cases: wrong request IDs ---
+
+    #[test]
+    fn download_success_wrong_req_id() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        state.on_download_start(1).unwrap();
+        let err = state
+            .on_download_success(999, make_download_result(42))
+            .unwrap_err();
+        assert!(matches!(
+            err,
+            LookupRequestError::UnexpectedRequestId {
+                expected_req_id: 1,
+                req_id: 999,
+            }
+        ));
+    }
+
+    #[test]
+    fn download_failure_wrong_req_id() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        state.on_download_start(1).unwrap();
+        let err = state.on_download_failure(999).unwrap_err();
+        assert!(matches!(
+            err,
+            LookupRequestError::UnexpectedRequestId {
+                expected_req_id: 1,
+                req_id: 999,
+            }
+        ));
+    }
+
+    // --- Error cases: wrong state transitions ---
+
+    #[test]
+    fn download_start_from_downloading_is_error() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        state.on_download_start(1).unwrap();
+        let err = state.on_download_start(2).unwrap_err();
+        assert!(matches!(err, LookupRequestError::BadState(_)));
+    }
+
+    #[test]
+    fn download_failure_from_awaiting_download_is_error() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        let err = state.on_download_failure(1).unwrap_err();
+        assert!(matches!(err, LookupRequestError::BadState(_)));
+    }
+
+    #[test]
+    fn download_success_from_awaiting_download_is_error() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        let err = state
+            .on_download_success(1, make_download_result(42))
+            .unwrap_err();
+        assert!(matches!(err, LookupRequestError::BadState(_)));
+    }
+
+    #[test]
+    fn processing_success_from_awaiting_process_is_error() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        state.on_download_start(1).unwrap();
+        state
+            .on_download_success(1, make_download_result(42))
+            .unwrap();
+        // Don't call maybe_start_processing — still in AwaitingProcess
+        let err = state.on_processing_success().unwrap_err();
+        assert!(matches!(err, LookupRequestError::BadState(_)));
+    }
+
+    #[test]
+    fn processing_failure_from_awaiting_process_is_error() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        state.on_download_start(1).unwrap();
+        state
+            .on_download_success(1, make_download_result(42))
+            .unwrap();
+        let err = state.on_processing_failure().unwrap_err();
+        assert!(matches!(err, LookupRequestError::BadState(_)));
+    }
+
+    #[test]
+    fn revert_from_non_processing_is_error() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        let err = state.revert_to_awaiting_processing().unwrap_err();
+        assert!(matches!(err, LookupRequestError::BadState(_)));
+    }
+
+    #[test]
+    fn completed_request_from_downloading_is_error() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        state.on_download_start(1).unwrap();
+        let err = state.on_completed_request("test").unwrap_err();
+        assert!(matches!(err, LookupRequestError::BadState(_)));
+    }
+
+    // --- Failure counting ---
+
+    #[test]
+    fn failed_attempts_counts_both_download_and_processing() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        // Download failure
+        state.on_download_start(1).unwrap();
+        state.on_download_failure(1).unwrap();
+        assert_eq!(state.failed_attempts(), 1);
+        // Processing failure
+        state.on_download_start(2).unwrap();
+        state
+            .on_download_success(2, make_download_result(42))
+            .unwrap();
+        state.maybe_start_processing();
+        state.on_processing_failure().unwrap();
+        assert_eq!(state.failed_attempts(), 2);
+    }
+
+    #[test]
+    fn more_failed_processing_attempts_tracks_correctly() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        // 1 download failure
+        state.on_download_start(1).unwrap();
+        state.on_download_failure(1).unwrap();
+        assert!(!state.more_failed_processing_attempts()); // 0 processing < 1 download
+        // 1 processing failure
+        state.on_download_start(2).unwrap();
+        state
+            .on_download_success(2, make_download_result(42))
+            .unwrap();
+        state.maybe_start_processing();
+        state.on_processing_failure().unwrap();
+        assert!(state.more_failed_processing_attempts()); // 1 processing >= 1 download
+    }
+
+    // --- maybe_start_processing returns None when not ready ---
+
+    #[test]
+    fn maybe_start_processing_returns_none_when_downloading() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        state.on_download_start(1).unwrap();
+        assert!(state.maybe_start_processing().is_none());
+    }
+
+    #[test]
+    fn maybe_start_processing_returns_none_when_awaiting_download() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        assert!(state.maybe_start_processing().is_none());
+    }
+
+    // --- update_awaiting_download_status ---
+
+    #[test]
+    fn update_awaiting_download_status_in_awaiting_download() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        state.update_awaiting_download_status("waiting for peers");
+        // Should not panic, status is informational only
+        assert!(state.is_awaiting_download());
+    }
+
+    #[test]
+    fn update_awaiting_download_status_ignored_in_other_states() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        state.on_download_start(1).unwrap();
+        state.update_awaiting_download_status("ignored");
+        // Should not panic, no-op in Downloading state
+        assert!(!state.is_awaiting_download());
+    }
+
+    // --- Full lifecycle ---
+
+    #[test]
+    fn full_successful_lifecycle() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        assert!(state.is_awaiting_download());
+        state.on_download_start(1).unwrap();
+        state
+            .on_download_success(1, make_download_result(42))
+            .unwrap();
+        let result = state.maybe_start_processing().unwrap();
+        assert_eq!(result.value, 42);
+        state.on_processing_success().unwrap();
+        assert!(state.is_processed());
+        assert_eq!(state.failed_attempts(), 0);
+    }
+
+    #[test]
+    fn lifecycle_with_retries() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        // First attempt: download fails
+        state.on_download_start(1).unwrap();
+        state.on_download_failure(1).unwrap();
+        assert_eq!(state.failed_attempts(), 1);
+        // Second attempt: processing fails
+        state.on_download_start(2).unwrap();
+        state
+            .on_download_success(2, make_download_result(42))
+            .unwrap();
+        state.maybe_start_processing();
+        state.on_processing_failure().unwrap();
+        assert_eq!(state.failed_attempts(), 2);
+        // Third attempt: success
+        state.on_download_start(3).unwrap();
+        state
+            .on_download_success(3, make_download_result(42))
+            .unwrap();
+        state.maybe_start_processing();
+        state.on_processing_success().unwrap();
+        assert!(state.is_processed());
+        assert_eq!(state.failed_attempts(), 2);
+    }
+
+    // --- peek_downloaded_data ---
+
+    #[test]
+    fn peek_downloaded_data_none_in_non_data_states() {
+        let mut state = SingleLookupRequestState::<u64>::new();
+        assert!(state.peek_downloaded_data().is_none()); // AwaitingDownload
+        state.on_download_start(1).unwrap();
+        assert!(state.peek_downloaded_data().is_none()); // Downloading
+        state
+            .on_download_success(1, make_download_result(42))
+            .unwrap();
+        assert_eq!(state.peek_downloaded_data(), Some(&42)); // AwaitingProcess
+        state.maybe_start_processing();
+        assert_eq!(state.peek_downloaded_data(), Some(&42)); // Processing
+        state.on_processing_success().unwrap();
+        assert!(state.peek_downloaded_data().is_none()); // Processed
+    }
+
+    // --- SingleBlockLookup basic operations ---
+
+    #[test]
+    fn lookup_new_and_basic_getters() {
+        let peer = PeerId::random();
+        let root = Hash256::repeat_byte(0xaa);
+        let lookup = SingleBlockLookup::<T>::new(root, &[peer], 42, None);
+        assert_eq!(lookup.block_root(), root);
+        assert!(lookup.is_for_block(root));
+        assert!(!lookup.is_for_block(Hash256::zero()));
+        assert!(lookup.awaiting_parent().is_none());
+        assert_eq!(lookup.id, 42);
+    }
+
+    #[test]
+    fn lookup_peer_management() {
+        let peer1 = PeerId::random();
+        let peer2 = PeerId::random();
+        let root = Hash256::repeat_byte(0xbb);
+        let lookup = SingleBlockLookup::<T>::new(root, &[peer1], 1, None);
+        assert!(!lookup.has_no_peers());
+        assert!(lookup.add_peer(peer2));
+        assert!(!lookup.add_peer(peer2)); // duplicate
+        assert_eq!(lookup.all_peers().len(), 2);
+        lookup.remove_peer(&peer1);
+        lookup.remove_peer(&peer2);
+        assert!(lookup.has_no_peers());
+    }
+
+    #[test]
+    fn lookup_awaiting_parent() {
+        let root = Hash256::repeat_byte(0xcc);
+        let parent = Hash256::repeat_byte(0xdd);
+        let mut lookup = SingleBlockLookup::<T>::new(root, &[PeerId::random()], 1, None);
+        assert!(lookup.awaiting_parent().is_none());
+        lookup.set_awaiting_parent(parent);
+        assert_eq!(lookup.awaiting_parent(), Some(parent));
+        lookup.resolve_awaiting_parent();
+        assert!(lookup.awaiting_parent().is_none());
+    }
+
+    #[test]
+    fn lookup_all_components_processed_when_block_and_components_done() {
+        let root = Hash256::repeat_byte(0xee);
+        let mut lookup = SingleBlockLookup::<T>::new(root, &[PeerId::random()], 1, None);
+        // Block not processed, components waiting — not all processed
+        assert!(!lookup.all_components_processed());
+
+        // Process the block through its state machine
+        lookup
+            .block_request_state
+            .state
+            .on_download_start(1)
+            .unwrap();
+        lookup
+            .block_request_state
+            .state
+            .on_download_success(
+                1,
+                DownloadResult {
+                    value: Arc::new(SignedBeaconBlock::from_block(
+                        types::BeaconBlock::empty(&E::default_spec()),
+                        types::Signature::empty(),
+                    )),
+                    block_root: root,
+                    seen_timestamp: Duration::from_secs(0),
+                    peer_group: PeerGroup::from_single(PeerId::random()),
+                },
+            )
+            .unwrap();
+        lookup.block_request_state.state.maybe_start_processing();
+        lookup
+            .block_request_state
+            .state
+            .on_processing_success()
+            .unwrap();
+
+        // Block processed but component_requests is WaitingForBlock — still false
+        assert!(!lookup.all_components_processed());
+
+        // Set components to NotNeeded
+        lookup.component_requests = ComponentRequests::NotNeeded("no data");
+        assert!(lookup.all_components_processed());
+    }
+
+    #[test]
+    fn lookup_is_awaiting_event() {
+        let root = Hash256::repeat_byte(0xff);
+        let mut lookup = SingleBlockLookup::<T>::new(root, &[PeerId::random()], 1, None);
+        // Not awaiting event initially (AwaitingDownload is not an event)
+        assert!(!lookup.is_awaiting_event());
+
+        // Start downloading — now awaiting network event
+        lookup
+            .block_request_state
+            .state
+            .on_download_start(1)
+            .unwrap();
+        assert!(lookup.is_awaiting_event());
+
+        // Awaiting parent — also awaiting event
+        lookup
+            .block_request_state
+            .state
+            .on_download_failure(1)
+            .unwrap();
+        let parent = Hash256::repeat_byte(0x01);
+        lookup.set_awaiting_parent(parent);
+        assert!(lookup.is_awaiting_event());
+    }
+}
