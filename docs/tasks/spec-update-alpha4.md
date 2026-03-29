@@ -283,3 +283,10 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale).
 - #5056 now APPROVED by jtraglia with suggestion to use `get_blob_parameters()` for dynamic lookup. Vibehouse already uses epoch-aware `spec.max_blobs_per_block(epoch)` in all 3 locations — exact equivalent. No code changes needed.
 - Codebase stable. All tests passing. Zero clippy warnings. No dep updates. EF tests: 148/148.
+
+**Monitoring + test coverage (run 4028, 2026-03-30):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). Only new merge since last check: #5054 (test workflow, Mar 29) — CI tooling only. No new PRs.
+- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale).
+- #5052 (reduce compute_shuffled_index cache) — test infra change, not actionable.
+- Added 3 pre-Heze fork early-return tests (commit d9ba3310c): check_inclusion_list_satisfaction returns true, compute_inclusion_list_bits_for_slot returns default, verify_inclusion_list_for_gossip returns PreHezeFork. 30/30 heze_verification tests pass.
+- Zero clippy warnings. No dep updates. Codebase stable.
