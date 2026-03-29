@@ -7,6 +7,7 @@
 //! - `get_inclusion_lists_by_committee_indices` — query cached ILs by committee position
 //! - `check_inclusion_list_satisfaction` — envelope IL satisfaction check
 //! - `compute_inclusion_list_bits_for_slot` — bit computation for block production
+//! - `get_best_execution_bid` — Heze bid filtering by inclusion_list_bits
 
 use beacon_chain::heze_verification::InclusionListError;
 use beacon_chain::test_utils::{
@@ -729,5 +730,207 @@ async fn block_production_empty_il_store_all_bits_zero() {
     assert!(
         bid.message.inclusion_list_bits.is_zero(),
         "all bits should be zero when IL store is empty"
+    );
+}
+
+// ===========================================================================
+// get_best_execution_bid: Heze IL bits filtering
+// ===========================================================================
+
+/// When the external bid's inclusion_list_bits are a superset of the locally-observed
+/// bits, get_best_execution_bid should return the bid.
+#[tokio::test]
+async fn heze_get_best_bid_inclusive_bits_accepted() {
+    let harness = heze_harness(2).await;
+    let head = harness.chain.canonical_head.cached_head();
+    let state = &head.snapshot.beacon_state;
+    let current_slot = state.slot();
+    let target_slot = current_slot + 1;
+
+    // Insert an IL at current_slot for committee[0]
+    let (committee, committee_root) = committee_info(&harness, current_slot);
+    let il = make_signed_il(current_slot, committee[0], committee_root, vec![]);
+    {
+        let mut store = harness.chain.inclusion_list_store.lock();
+        store.process_signed_inclusion_list(il, true);
+    }
+
+    // Compute the actual local bits (a validator may appear at multiple committee positions
+    // with a small validator set, so we need all positions covered)
+    let local_bits = harness
+        .chain
+        .inclusion_list_store
+        .lock()
+        .get_inclusion_list_bits(&committee, committee_root, current_slot);
+
+    // Build bid bits as a superset: set all local bits + one extra
+    let mut bits = BitVector::default();
+    for (i, &b) in local_bits.iter().enumerate() {
+        if b {
+            bits.set(i, true).unwrap();
+        }
+    }
+    // Set an extra bit to verify superset is accepted
+    let extra_pos = local_bits.iter().position(|b| !b).unwrap();
+    bits.set(extra_pos, true).unwrap();
+
+    let bid = SignedExecutionPayloadBidHeze::<E> {
+        message: ExecutionPayloadBidHeze {
+            slot: target_slot,
+            builder_index: 0,
+            value: 1000,
+            parent_block_root: Hash256::zero(),
+            inclusion_list_bits: bits,
+            ..Default::default()
+        },
+        signature: bls::Signature::empty(),
+    };
+    harness.chain.execution_bid_pool.lock().insert(bid.into());
+
+    let result = harness
+        .chain
+        .get_best_execution_bid(target_slot, Hash256::zero());
+    assert!(
+        result.is_some(),
+        "bid with inclusive IL bits should be accepted"
+    );
+    assert_eq!(*result.unwrap().to_ref().message().value(), 1000);
+}
+
+/// When the external bid's inclusion_list_bits do NOT cover all locally-observed ILs,
+/// get_best_execution_bid should reject it (return None).
+#[tokio::test]
+async fn heze_get_best_bid_non_inclusive_bits_rejected() {
+    let harness = heze_harness(2).await;
+    let head = harness.chain.canonical_head.cached_head();
+    let state = &head.snapshot.beacon_state;
+    let current_slot = state.slot();
+    let target_slot = current_slot + 1;
+
+    // Find two DISTINCT committee members (skip duplicates in small validator sets)
+    let (committee, committee_root) = committee_info(&harness, current_slot);
+    let vi0 = committee[0];
+    let (_, &vi1) = committee
+        .iter()
+        .enumerate()
+        .find(|&(_, &vi)| vi != vi0)
+        .expect("need at least 2 distinct validators in committee");
+
+    // Insert ILs for both distinct validators
+    let il0 = make_signed_il(current_slot, vi0, committee_root, vec![]);
+    let il1 = make_signed_il(current_slot, vi1, committee_root, vec![]);
+    {
+        let mut store = harness.chain.inclusion_list_store.lock();
+        store.process_signed_inclusion_list(il0, true);
+        store.process_signed_inclusion_list(il1, true);
+    }
+
+    // Build bits that only cover vi0's positions but NOT vi1's
+    let mut bits = BitVector::default();
+    for (i, &vi) in committee.iter().enumerate() {
+        if vi == vi0 {
+            bits.set(i, true).unwrap();
+        }
+    }
+    // vi1 positions are NOT set — bid is missing a locally-observed IL
+
+    let bid = SignedExecutionPayloadBidHeze::<E> {
+        message: ExecutionPayloadBidHeze {
+            slot: target_slot,
+            builder_index: 0,
+            value: 5000,
+            parent_block_root: Hash256::zero(),
+            inclusion_list_bits: bits,
+            ..Default::default()
+        },
+        signature: bls::Signature::empty(),
+    };
+    harness.chain.execution_bid_pool.lock().insert(bid.into());
+
+    let result = harness
+        .chain
+        .get_best_execution_bid(target_slot, Hash256::zero());
+    assert!(
+        result.is_none(),
+        "bid with non-inclusive IL bits should be rejected"
+    );
+}
+
+/// When the IL store is empty (no ILs observed), any bid's inclusion_list_bits
+/// are trivially inclusive, so the bid should be accepted.
+#[tokio::test]
+async fn heze_get_best_bid_empty_store_accepts_any_bits() {
+    let harness = heze_harness(2).await;
+    let head = harness.chain.canonical_head.cached_head();
+    let state = &head.snapshot.beacon_state;
+    let target_slot = state.slot() + 1;
+
+    // No ILs inserted — store is empty
+
+    let bid = SignedExecutionPayloadBidHeze::<E> {
+        message: ExecutionPayloadBidHeze {
+            slot: target_slot,
+            builder_index: 0,
+            value: 999,
+            parent_block_root: Hash256::zero(),
+            inclusion_list_bits: BitVector::default(), // all-zero bits
+            ..Default::default()
+        },
+        signature: bls::Signature::empty(),
+    };
+    harness.chain.execution_bid_pool.lock().insert(bid.into());
+
+    let result = harness
+        .chain
+        .get_best_execution_bid(target_slot, Hash256::zero());
+    assert!(
+        result.is_some(),
+        "bid should be accepted when no local ILs observed"
+    );
+}
+
+/// When the highest-value Heze bid has non-inclusive bits,
+/// get_best_execution_bid should return None.
+#[tokio::test]
+async fn heze_get_best_bid_highest_value_rejected_returns_none() {
+    let harness = heze_harness(2).await;
+    let head = harness.chain.canonical_head.cached_head();
+    let state = &head.snapshot.beacon_state;
+    let current_slot = state.slot();
+    let target_slot = current_slot + 1;
+
+    // Insert an IL for committee[0]
+    let (committee, committee_root) = committee_info(&harness, current_slot);
+    let il = make_signed_il(current_slot, committee[0], committee_root, vec![]);
+    {
+        let mut store = harness.chain.inclusion_list_store.lock();
+        store.process_signed_inclusion_list(il, true);
+    }
+
+    // High-value bid with all-zero bits — non-inclusive since local has at least bit 0
+    let bid_high = SignedExecutionPayloadBidHeze::<E> {
+        message: ExecutionPayloadBidHeze {
+            slot: target_slot,
+            builder_index: 0,
+            value: 10000,
+            parent_block_root: Hash256::zero(),
+            inclusion_list_bits: BitVector::default(), // all-zero — non-inclusive
+            ..Default::default()
+        },
+        signature: bls::Signature::empty(),
+    };
+
+    harness
+        .chain
+        .execution_bid_pool
+        .lock()
+        .insert(bid_high.into());
+
+    let result = harness
+        .chain
+        .get_best_execution_bid(target_slot, Hash256::zero());
+    assert!(
+        result.is_none(),
+        "best bid with non-inclusive bits should be rejected"
     );
 }
