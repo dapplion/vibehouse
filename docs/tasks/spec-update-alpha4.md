@@ -192,3 +192,9 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 
 **Heze test coverage (run 3835, 2026-03-29):**
 - Added 10 unit tests for `upgrade_to_heze` (Gloas→Heze state transition): versioning, registry, electra fields, capella fields, finality, gloas-specific fields, bid field preservation with `inclusion_list_bits` default initialization, execution payload availability, eth1 deposit index, non-gloas-input rejection. All 1048 state_processing tests pass. Zero clippy warnings.
+
+**Monitoring (run 3836, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). Still on v1.7.0-alpha.4. No new Gloas/Heze PRs opened.
+- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix).
+- EF spec tests: 148/148 (fake crypto). Workspace tests: 5075/5075 passing. Codebase stable.
