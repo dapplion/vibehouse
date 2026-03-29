@@ -5507,6 +5507,35 @@ mod tests {
             );
         }
 
+        /// on_execution_payload with inclusion_list_satisfied=false must store
+        /// that value on the proto node, so should_extend_payload blocks
+        /// extension for blocks whose payload didn't satisfy FOCIL requirements.
+        #[test]
+        fn execution_payload_stores_inclusion_list_not_satisfied() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let hash = ExecutionBlockHash::repeat_byte(0xCC);
+            fc.on_execution_payload(block_root, hash, false).unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert!(
+                node.envelope_received,
+                "envelope_received should still be true"
+            );
+            assert!(
+                !node.inclusion_list_satisfied,
+                "inclusion_list_satisfied must be false when passed false"
+            );
+        }
+
         // ── on_valid_execution_payload transition test ────────────────────
 
         /// After on_execution_payload marks a block as Optimistic, calling
