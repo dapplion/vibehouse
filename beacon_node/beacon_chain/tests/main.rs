@@ -8,6 +8,7 @@ mod column_verification;
 mod events;
 mod gloas;
 mod gloas_verification;
+mod heze_verification;
 mod op_verification;
 mod payload_invalidation;
 mod rewards;
