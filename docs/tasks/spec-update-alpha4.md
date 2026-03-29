@@ -272,3 +272,9 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - New non-Gloas PR: #5055 (EIP-8025 refactor, opened Mar 28) — not actionable.
 - Audited Heze fork choice for spec compliance: virtual FULL child creation correctly uses `envelope_received` only (matching spec); `inclusion_list_satisfied` check is correctly in `should_extend_payload()` tiebreaker only. No issues found.
 - CI: check+clippy+fmt passed, remaining jobs in progress. Zero clippy warnings. No dependency updates. Codebase stable.
+
+**Monitoring (run 3851, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
+- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- Deep Heze fork choice spec audit: verified `on_inclusion_list` handler fully implemented across gossip validation + import path (is_before_view_freeze_cutoff computed, passed to process_signed_inclusion_list). `record_payload_inclusion_list_satisfaction` maps to `check_inclusion_list_satisfaction` with local transaction set comparison. `payload_inclusion_list_satisfaction` store maps to `inclusion_list_satisfied` on ProtoNode. PayloadAttributes `inclusion_list_transactions` field deferred (requires EL-side FOCIL support). All spec functions accounted for.
+- CI in progress (check+clippy+fmt, ef-tests, network+op_pool passed). Zero clippy warnings. No dependency updates. Codebase stable.
