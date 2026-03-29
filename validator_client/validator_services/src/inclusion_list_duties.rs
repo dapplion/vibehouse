@@ -31,8 +31,6 @@ impl InclusionListDutiesMap {
     }
 
     /// Get IL committee duties for the given slot.
-    /// Used by the InclusionListService (Phase 6 part 2).
-    #[allow(dead_code, reason = "will be used by inclusion_list_service")]
     pub(crate) fn duties_for_slot(
         &self,
         slot: Slot,
