@@ -251,3 +251,230 @@ pub(crate) trait ActiveRequestItems {
     /// Return all accumulated items consuming them.
     fn consume(&mut self) -> Vec<Self::Item>;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+    use vibehouse_network::rpc::RPCError;
+
+    /// Simple mock that accepts N items then signals completion.
+    struct MockRequestItems {
+        expected: usize,
+        items: Vec<u32>,
+        /// If set, rejects items with this error.
+        reject: bool,
+    }
+
+    impl MockRequestItems {
+        fn new(expected: usize) -> Self {
+            Self {
+                expected,
+                items: vec![],
+                reject: false,
+            }
+        }
+
+        fn rejecting() -> Self {
+            Self {
+                expected: 1,
+                items: vec![],
+                reject: true,
+            }
+        }
+    }
+
+    impl ActiveRequestItems for MockRequestItems {
+        type Item = u32;
+
+        fn add(&mut self, item: Self::Item) -> Result<bool, LookupVerifyError> {
+            if self.reject {
+                return Err(LookupVerifyError::UnrequestedIndex(u64::from(item)));
+            }
+            self.items.push(item);
+            Ok(self.items.len() >= self.expected)
+        }
+
+        fn consume(&mut self) -> Vec<Self::Item> {
+            std::mem::take(&mut self.items)
+        }
+    }
+
+    fn make_active_requests() -> ActiveRequests<u64, MockRequestItems> {
+        ActiveRequests::new("test")
+    }
+
+    fn response(item: u32) -> RpcEvent<u32> {
+        RpcEvent::Response(item, Duration::from_secs(0))
+    }
+
+    fn stream_termination() -> RpcEvent<u32> {
+        RpcEvent::StreamTermination
+    }
+
+    fn rpc_error() -> RpcEvent<u32> {
+        RpcEvent::RPCError(RPCError::StreamTimeout)
+    }
+
+    #[test]
+    fn response_completes_early_when_all_items_received() {
+        let mut reqs = make_active_requests();
+        let peer = PeerId::random();
+        // Request expects 2 items
+        reqs.insert(1, peer, false, MockRequestItems::new(2), Span::none());
+        assert_eq!(reqs.len(), 1);
+
+        // First item — not complete yet
+        assert!(reqs.on_response(1, response(10)).is_none());
+
+        // Second item — completes early
+        let result = reqs.on_response(1, response(20));
+        assert!(result.is_some());
+        let (items, _seen) = result.unwrap().unwrap();
+        assert_eq!(items, vec![10, 20]);
+
+        // Stream termination after early completion is ignored
+        assert!(reqs.on_response(1, stream_termination()).is_none());
+        // Request removed after stream termination
+        assert_eq!(reqs.len(), 0);
+    }
+
+    #[test]
+    fn stream_termination_returns_items_when_not_expecting_max() {
+        let mut reqs = make_active_requests();
+        let peer = PeerId::random();
+        // expect_max_responses=false, so partial response is OK
+        reqs.insert(1, peer, false, MockRequestItems::new(3), Span::none());
+
+        reqs.on_response(1, response(10));
+
+        let result = reqs.on_response(1, stream_termination());
+        assert!(result.is_some());
+        let (items, _) = result.unwrap().unwrap();
+        assert_eq!(items, vec![10]);
+        assert_eq!(reqs.len(), 0);
+    }
+
+    #[test]
+    fn stream_termination_errors_when_expecting_max_responses() {
+        let mut reqs = make_active_requests();
+        let peer = PeerId::random();
+        // expect_max_responses=true — stream termination before all items is an error
+        reqs.insert(1, peer, true, MockRequestItems::new(3), Span::none());
+
+        reqs.on_response(1, response(10));
+
+        let result = reqs.on_response(1, stream_termination());
+        assert!(result.is_some());
+        assert!(result.unwrap().is_err());
+        assert_eq!(reqs.len(), 0);
+    }
+
+    #[test]
+    fn rpc_error_propagated_for_active_request() {
+        let mut reqs = make_active_requests();
+        let peer = PeerId::random();
+        reqs.insert(1, peer, false, MockRequestItems::new(2), Span::none());
+
+        let result = reqs.on_response(1, rpc_error());
+        assert!(result.is_some());
+        assert!(result.unwrap().is_err());
+        assert_eq!(reqs.len(), 0);
+    }
+
+    #[test]
+    fn rpc_error_after_early_completion_is_ignored() {
+        let mut reqs = make_active_requests();
+        let peer = PeerId::random();
+        reqs.insert(1, peer, false, MockRequestItems::new(1), Span::none());
+
+        // Complete early
+        let result = reqs.on_response(1, response(10));
+        assert!(result.is_some());
+        assert!(result.unwrap().is_ok());
+
+        // Error after completion — ignored
+        assert!(reqs.on_response(1, rpc_error()).is_none());
+        assert_eq!(reqs.len(), 0);
+    }
+
+    #[test]
+    fn invalid_item_transitions_to_errored_state() {
+        let mut reqs = make_active_requests();
+        let peer = PeerId::random();
+        reqs.insert(1, peer, false, MockRequestItems::rejecting(), Span::none());
+
+        // Invalid item triggers error
+        let result = reqs.on_response(1, response(42));
+        assert!(result.is_some());
+        assert!(result.unwrap().is_err());
+
+        // Subsequent responses are ignored (errored state)
+        assert!(reqs.on_response(1, response(43)).is_none());
+
+        // Stream termination after error is ignored and cleans up
+        assert!(reqs.on_response(1, stream_termination()).is_none());
+        assert_eq!(reqs.len(), 0);
+    }
+
+    #[test]
+    fn unknown_request_id_returns_none() {
+        let mut reqs = make_active_requests();
+        assert!(reqs.on_response(999, response(10)).is_none());
+    }
+
+    #[test]
+    fn active_requests_of_peer_returns_matching_ids() {
+        let mut reqs = make_active_requests();
+        let peer_a = PeerId::random();
+        let peer_b = PeerId::random();
+        reqs.insert(1, peer_a, false, MockRequestItems::new(1), Span::none());
+        reqs.insert(2, peer_b, false, MockRequestItems::new(1), Span::none());
+        reqs.insert(3, peer_a, false, MockRequestItems::new(1), Span::none());
+
+        let mut ids = reqs.active_requests_of_peer(&peer_a);
+        ids.sort();
+        assert_eq!(ids, vec![&1, &3]);
+    }
+
+    #[test]
+    fn iter_request_peers_returns_all_peers() {
+        let mut reqs = make_active_requests();
+        let peer_a = PeerId::random();
+        let peer_b = PeerId::random();
+        reqs.insert(1, peer_a, false, MockRequestItems::new(1), Span::none());
+        reqs.insert(2, peer_b, false, MockRequestItems::new(1), Span::none());
+
+        let peers: Vec<_> = reqs.iter_request_peers().collect();
+        assert_eq!(peers.len(), 2);
+        assert!(peers.contains(&peer_a));
+        assert!(peers.contains(&peer_b));
+    }
+
+    #[test]
+    fn multiple_independent_requests() {
+        let mut reqs = make_active_requests();
+        let peer = PeerId::random();
+        reqs.insert(1, peer, false, MockRequestItems::new(1), Span::none());
+        reqs.insert(2, peer, false, MockRequestItems::new(1), Span::none());
+        assert_eq!(reqs.len(), 2);
+
+        // Complete request 1 early (items received)
+        let r1 = reqs.on_response(1, response(10));
+        assert!(r1.is_some());
+        assert!(r1.unwrap().is_ok());
+
+        // Request 1 still in map as CompletedEarly (awaiting stream termination)
+        assert_eq!(reqs.len(), 2);
+
+        // Stream termination removes request 1
+        assert!(reqs.on_response(1, stream_termination()).is_none());
+        assert_eq!(reqs.len(), 1);
+
+        // Complete request 2
+        let r2 = reqs.on_response(2, response(20));
+        assert!(r2.is_some());
+        let (items, _) = r2.unwrap().unwrap();
+        assert_eq!(items, vec![20]);
+    }
+}
