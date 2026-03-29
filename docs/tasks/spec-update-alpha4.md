@@ -201,3 +201,9 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
   - Run 3908: Optimized `get_missing_columns_for_epoch` — replaced 3 HashSet allocations with direct slice indexing. Commit 1fef8b416.
 - **Audits completed:** full TODO audit (all blocked on external deps), full Heze audit (zero issues), codebase deep scan (no FIXME/HACK/unimplemented!/todo!/unwrap in production code), all #[allow(dead_code)] justified.
 - Zero clippy warnings, zero dead code. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix). CI all green (nightly 31/31 jobs passed). EF spec tests: 86/86 + 148/148. Devnet verified: finalized_epoch=8.
+
+**Monitoring + code improvements (run 3910, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). All 9 monitored open Gloas/Heze PRs unchanged.
+- Non-Gloas PRs: #5054 (test workflow, updated today) — CI tooling only, not actionable.
+- Optimized `compute_ptc_inner` to accept `&[&[usize]]` instead of `&[Vec<usize>]`, eliminating per-committee `to_vec()` allocations in `compute_ptc` and `compute_ptc_from_committees`. Commit da6ea859f.
+- Full audit: zero clippy warnings, all TODOs have issue links, no production unwrap() calls. 2512 core tests + 148/148 EF tests passing.
