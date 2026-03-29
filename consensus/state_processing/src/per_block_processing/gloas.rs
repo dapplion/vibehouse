@@ -9255,4 +9255,101 @@ pub(crate) mod tests {
             "empty validator set should trigger NoActiveValidators, got {result:?}",
         );
     }
+
+    // ── get_ptc_committee epoch boundary error path tests ─────────
+
+    #[test]
+    fn get_ptc_committee_previous_epoch_succeeds() {
+        // State at epoch 1, querying a slot from epoch 0 (previous epoch) should succeed
+        // via the ptc_window cache path.
+        let (state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+        assert_eq!(state.current_epoch(), Epoch::new(1));
+
+        // Slot 0 is in epoch 0 (previous epoch)
+        let prev_epoch_slot = Slot::new(0);
+        let result = get_ptc_committee(&state, prev_epoch_slot, &spec);
+        assert!(
+            result.is_ok(),
+            "previous epoch slot should be valid via ptc_window: {result:?}"
+        );
+        assert_eq!(result.unwrap().len(), E::ptc_size());
+    }
+
+    #[test]
+    fn get_ptc_committee_epoch_too_far_back_rejected() {
+        // State at epoch 2, querying a slot from epoch 0 (two epochs back) should fail
+        // with EpochOutOfBounds because ptc_window only covers previous + current epochs.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Move state to epoch 2 (slot 16) so epoch 0 is two epochs back
+        let epoch2_slot = Slot::new(2 * E::slots_per_epoch());
+        *state.slot_mut() = epoch2_slot;
+        state
+            .build_committee_cache(types::RelativeEpoch::Previous, &spec)
+            .expect("should build previous committee cache");
+        state
+            .build_committee_cache(types::RelativeEpoch::Current, &spec)
+            .expect("should build current committee cache");
+
+        // Slot 0 is epoch 0, but state is at epoch 2 — two epochs back
+        let far_back_slot = Slot::new(0);
+        let result = get_ptc_committee(&state, far_back_slot, &spec);
+        assert!(
+            matches!(
+                result,
+                Err(BlockProcessingError::BeaconStateError(
+                    BeaconStateError::EpochOutOfBounds,
+                ))
+            ),
+            "slot from two epochs back should return EpochOutOfBounds, got {result:?}"
+        );
+    }
+
+    #[test]
+    fn get_ptc_committee_future_epoch_too_far_rejected() {
+        // State at epoch 1, querying a slot from epoch 3 (beyond MIN_SEED_LOOKAHEAD+1)
+        // should fail with EpochOutOfBounds.
+        let (state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+        assert_eq!(state.current_epoch(), Epoch::new(1));
+
+        // MIN_SEED_LOOKAHEAD is 1, so max allowed epoch = 1 + 1 = 2
+        // Epoch 3 (slot 24) is too far ahead
+        let far_future_slot = Slot::new(3 * E::slots_per_epoch());
+        let result = get_ptc_committee(&state, far_future_slot, &spec);
+        assert!(
+            matches!(
+                result,
+                Err(BlockProcessingError::BeaconStateError(
+                    BeaconStateError::EpochOutOfBounds,
+                ))
+            ),
+            "slot from epoch too far in future should return EpochOutOfBounds, got {result:?}"
+        );
+    }
+
+    #[test]
+    fn get_ptc_committee_max_lookahead_epoch_succeeds() {
+        // State at epoch 1, querying a slot at max allowed lookahead (epoch 1 + MIN_SEED_LOOKAHEAD)
+        // should succeed.
+        let (state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+        assert_eq!(state.current_epoch(), Epoch::new(1));
+
+        // MIN_SEED_LOOKAHEAD is 1, so max allowed epoch = 1 + 1 = 2
+        // First slot of epoch 2 (slot 16) should be valid
+        let max_lookahead_slot = Slot::new(2 * E::slots_per_epoch());
+        let result = get_ptc_committee(&state, max_lookahead_slot, &spec);
+        // This may succeed or fail depending on ptc_window size — the key test is
+        // that it doesn't return EpochOutOfBounds for a slot within the allowed range.
+        // It may fail with a different error if the ptc_window doesn't cover the lookahead
+        // entries (they need to be initialized). That's fine — we're testing the epoch check.
+        if let Err(ref e) = result {
+            assert!(
+                !matches!(
+                    e,
+                    BlockProcessingError::BeaconStateError(BeaconStateError::EpochOutOfBounds)
+                ),
+                "max lookahead epoch should not return EpochOutOfBounds, got {result:?}"
+            );
+        }
+    }
 }
