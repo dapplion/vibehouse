@@ -233,9 +233,10 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Deep audits: hot-path clone() calls all architecturally necessary, zero production unwrap()/expect(), all TODOs linked to issues, all #[allow(dead_code)] justified.
 - Zero clippy warnings. Zero compatible dep updates. Cargo audit unchanged (1 rsa vuln, no fix). EF spec tests: 86/86 + 148/148. CI all green. Codebase stable.
 
-**Monitoring (runs 3966-3975, 2026-03-29):**
+**Monitoring (runs 3966-3976, 2026-03-29):**
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
 - All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, 144 reviews, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
 - #5056 (blob kzg commitment len check) — open, 0 reviews, updated today. Proactively implemented in commit 42e33200c.
 - vibehouse repo quiet: no new issues/PRs/comments since mid-March. Issue #36 has only blocked + non-critical items remaining.
+- Deep audit (run 3976): Heze IL implementation fully verified — slot-1 semantics correct, InclusionListStore pruning sound, zero panics/unwraps in production code, all edge cases (slot 0, empty store, equivocators) handled. RPC `InclusionListByCommitteeIndices/1` encoding correct (10-byte SSZ fixed), rate-limited, response bounded by bitvector. EF tests: 148/148 (fake crypto). Heze SSZ static types (`InclusionList`, `SignedInclusionList`) properly covered.
 - Zero compatible dep updates. Zero clippy warnings. Cargo audit: 1 rsa vuln (no fix). Codebase stable.
