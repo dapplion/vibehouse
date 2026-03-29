@@ -372,9 +372,7 @@ impl<E: EthSpec> Encoder<RequestType<E>> for SSZSnappyOutboundCodec<E> {
             RequestType::DataColumnsByRange(req) => req.as_ssz_bytes(),
             RequestType::DataColumnsByRoot(req) => req.data_column_ids.as_ssz_bytes(),
             RequestType::ExecutionPayloadEnvelopesByRoot(req) => req.block_roots.as_ssz_bytes(),
-            RequestType::InclusionListByCommitteeIndices(req) => {
-                req.committee_indices.as_ssz_bytes()
-            }
+            RequestType::InclusionListByCommitteeIndices(req) => req.as_ssz_bytes(),
             RequestType::Ping(req) => req.as_ssz_bytes(),
             RequestType::LightClientBootstrap(req) => req.as_ssz_bytes(),
             RequestType::LightClientUpdatesByRange(req) => req.as_ssz_bytes(),
@@ -593,14 +591,11 @@ fn handle_rpc_request<E: EthSpec>(
                 )?,
             }),
         )),
-        SupportedProtocol::InclusionListByCommitteeIndicesV1 => Ok(Some(
-            RequestType::InclusionListByCommitteeIndices(InclusionListByCommitteeIndicesRequest {
-                committee_indices: RuntimeVariableList::from_ssz_bytes(
-                    decoded_buffer,
-                    spec.max_request_inclusion_lists,
-                )?,
-            }),
-        )),
+        SupportedProtocol::InclusionListByCommitteeIndicesV1 => {
+            Ok(Some(RequestType::InclusionListByCommitteeIndices(
+                InclusionListByCommitteeIndicesRequest::from_ssz_bytes(decoded_buffer)?,
+            )))
+        }
         SupportedProtocol::PingV1 => Ok(Some(RequestType::Ping(Ping {
             data: u64::from_ssz_bytes(decoded_buffer)?,
         }))),

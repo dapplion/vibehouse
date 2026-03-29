@@ -5,7 +5,7 @@ use regex::bytes::Regex;
 use serde::Serialize;
 use ssz::Encode;
 use ssz_derive::{Decode, Encode};
-use ssz_types::{VariableList, typenum::U256};
+use ssz_types::{BitVector, VariableList, typenum, typenum::U256};
 use std::fmt::Display;
 use std::marker::PhantomData;
 use std::ops::Deref;
@@ -569,19 +569,84 @@ impl ExecutionPayloadEnvelopesByRootRequest {
 }
 
 /// Request inclusion lists from a peer by committee indices.
+///
+/// Spec: `(slot: Slot, committee_indices: Bitvector[INCLUSION_LIST_COMMITTEE_SIZE])`
+/// Wire format: 8 bytes (slot) + 2 bytes (bitvector[16]) = 10 bytes fixed.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InclusionListByCommitteeIndicesRequest {
-    /// The list of committee member indices for which inclusion lists are requested.
-    pub committee_indices: RuntimeVariableList<u64>,
+    /// The slot for which inclusion lists are requested.
+    pub slot: Slot,
+    /// Bitvector indicating which committee member positions are requested.
+    /// Bit i set means "request the IL from committee member at position i".
+    pub committee_indices: BitVector<typenum::U16>,
 }
 
 impl InclusionListByCommitteeIndicesRequest {
-    pub fn new(committee_indices: Vec<u64>, spec: &ChainSpec) -> Result<Self, String> {
-        let committee_indices =
-            RuntimeVariableList::new(committee_indices, spec.max_request_inclusion_lists).map_err(
-                |e| format!("InclusionListByCommitteeIndicesRequest too many indices: {e:?}"),
-            )?;
-        Ok(Self { committee_indices })
+    /// Create a request from a slot and a list of committee position indices.
+    pub fn new(slot: Slot, positions: &[u64]) -> Self {
+        let mut bits = BitVector::<typenum::U16>::new();
+        for &pos in positions {
+            if (pos as usize) < 16 {
+                bits.set(pos as usize, true)
+                    .expect("position within bounds");
+            }
+        }
+        Self {
+            slot,
+            committee_indices: bits,
+        }
+    }
+
+    /// Return the requested committee positions as a list of indices.
+    pub fn requested_positions(&self) -> Vec<u64> {
+        (0..16u64)
+            .filter(|&i| self.committee_indices.get(i as usize).unwrap_or(false))
+            .collect()
+    }
+}
+
+impl ssz::Encode for InclusionListByCommitteeIndicesRequest {
+    fn is_ssz_fixed_len() -> bool {
+        true
+    }
+
+    fn ssz_fixed_len() -> usize {
+        // slot (8 bytes) + bitvector[16] (2 bytes)
+        10
+    }
+
+    fn ssz_bytes_len(&self) -> usize {
+        10
+    }
+
+    fn ssz_append(&self, buf: &mut Vec<u8>) {
+        self.slot.ssz_append(buf);
+        self.committee_indices.ssz_append(buf);
+    }
+}
+
+impl ssz::Decode for InclusionListByCommitteeIndicesRequest {
+    fn is_ssz_fixed_len() -> bool {
+        true
+    }
+
+    fn ssz_fixed_len() -> usize {
+        10
+    }
+
+    fn from_ssz_bytes(bytes: &[u8]) -> Result<Self, ssz::DecodeError> {
+        if bytes.len() != 10 {
+            return Err(ssz::DecodeError::InvalidByteLength {
+                len: bytes.len(),
+                expected: 10,
+            });
+        }
+        let slot = Slot::from_ssz_bytes(&bytes[..8])?;
+        let committee_indices = BitVector::<typenum::U16>::from_ssz_bytes(&bytes[8..10])?;
+        Ok(Self {
+            slot,
+            committee_indices,
+        })
     }
 }
 

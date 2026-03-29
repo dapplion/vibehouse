@@ -92,9 +92,9 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     /// 2. Slot is current or previous
     /// 3. Timing: current slot always ok, previous slot only before attestation_due
     /// 4. Committee root matches (IGNORE on mismatch — depends on chain view)
-    /// 5. Validator is in the inclusion list committee
-    /// 6. Not a duplicate/equivocator
-    /// 7. Signature is valid
+    /// 5. Validator is in the inclusion list committee (REJECT)
+    /// 6. Not a duplicate/equivocator (IGNORE)
+    /// 7. Signature is valid (REJECT)
     #[allow(clippy::result_large_err)]
     pub fn verify_inclusion_list_for_gossip(
         &self,
@@ -158,20 +158,13 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let head = self.canonical_head.cached_head();
         let state = &head.snapshot.beacon_state;
 
-        // Check 3: Validator is in the inclusion list committee
+        // Compute committee for this slot
         let committee = get_inclusion_list_committee(state, il_slot, &self.spec)
             .map_err(BeaconChainError::BlockProcessingError)?;
 
-        if !committee.contains(&validator_index) {
-            return Err(InclusionListError::NotInCommittee {
-                validator_index,
-                slot: il_slot,
-            });
-        }
-
-        // Check 4: Committee root matches
+        // Check 4: Committee root matches (IGNORE on mismatch — peer may have different chain view)
         // Spec: hash_tree_root(get_inclusion_list_committee(state, slot))
-        // The committee is a fixed-length vector of u64 (ValidatorIndex).
+        // Must check root BEFORE membership — if root mismatches, membership check is meaningless.
         let committee_fixed: ssz_types::FixedVector<
             u64,
             <T::EthSpec as EthSpec>::InclusionListCommitteeSize,
@@ -190,7 +183,15 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             });
         }
 
-        // Check 5: Signature is valid
+        // Check 5: Validator is in the inclusion list committee
+        if !committee.contains(&validator_index) {
+            return Err(InclusionListError::NotInCommittee {
+                validator_index,
+                slot: il_slot,
+            });
+        }
+
+        // Check 7: Signature is valid
         let sig_valid = is_valid_inclusion_list_signature(state, &signed_il, &self.spec)
             .map_err(BeaconChainError::BlockProcessingError)?;
 
@@ -198,7 +199,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             return Err(InclusionListError::InvalidSignature);
         }
 
-        // Check 6: Not a duplicate — check if this validator already submitted for this slot.
+        // Check 6: Not a duplicate/equivocator — check if this validator already submitted for this slot.
         // The InclusionListStore will handle equivocation detection on import, but we
         // can pre-check duplicates here for early IGNORE.
         {

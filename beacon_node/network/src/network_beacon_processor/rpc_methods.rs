@@ -566,7 +566,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     /// Handle an `InclusionListByCommitteeIndices` request from the peer.
     ///
     /// Serves inclusion lists from the local InclusionListStore for the requested
-    /// committee member indices at the current slot.
+    /// committee member positions at the requested slot.
     pub(crate) fn handle_inclusion_list_by_committee_indices_request(
         self: Arc<Self>,
         peer_id: PeerId,
@@ -577,23 +577,13 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         Span::current().record("client", field::display(client.kind));
 
         let mut send_count = 0usize;
+        let positions = request.requested_positions();
 
-        // Get current slot for lookups.
-        let Some(current_slot) = self.chain.slot_clock.now() else {
-            debug!(%peer_id, "Unable to read slot for IL request");
-            self.send_response(
-                peer_id,
-                inbound_request_id,
-                Response::InclusionListByCommitteeIndices(None),
-            );
-            return;
-        };
-
-        // Query the beacon chain for matching inclusion lists.
-        if let Ok(signed_ils) = self.chain.get_inclusion_lists_by_committee_indices(
-            current_slot,
-            request.committee_indices.as_slice(),
-        ) {
+        // Query the beacon chain for matching inclusion lists at the requested slot.
+        if let Ok(signed_ils) = self
+            .chain
+            .get_inclusion_lists_by_committee_indices(request.slot, &positions)
+        {
             for signed_il in &signed_ils {
                 self.send_response(
                     peer_id,
@@ -606,7 +596,8 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
 
         debug!(
             %peer_id,
-            requested = request.committee_indices.len(),
+            slot = %request.slot,
+            requested = positions.len(),
             returned = send_count,
             "InclusionListByCommitteeIndices response processed"
         );

@@ -78,8 +78,19 @@ pub(super) static SIGNED_EXECUTION_PAYLOAD_ENVELOPE_MAX: LazyLock<usize> = LazyL
     *SIGNED_BEACON_BLOCK_BELLATRIX_MAX
 });
 
-/// Maximum bytes per signed inclusion list (spec: MAX_BYTES_PER_INCLUSION_LIST = 8192).
-pub(super) const SIGNED_INCLUSION_LIST_MAX: usize = 8192;
+/// Maximum SSZ-encoded size of a SignedInclusionList response chunk.
+///
+/// SSZ structure: SignedInclusionList container (100 fixed) + InclusionList container (52 fixed)
+/// + transactions (List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]).
+///
+/// The gossip validation limits total transaction bytes to MAX_BYTES_PER_INCLUSION_LIST (8192),
+/// but the SSZ type allows much larger messages. We use a practical upper bound: the gossip limit
+/// plus generous overhead for SSZ encoding of many small transactions (each with 4-byte offset)
+/// plus the fixed fields (signature, slot, validator_index, committee_root).
+///
+/// Worst case with gossip limit: 8192 single-byte txs = 8192 bytes data + 8192*4 offsets + 152
+/// fixed = 41112 bytes. We round up to 50000 for safety.
+pub(super) const SIGNED_INCLUSION_LIST_MAX: usize = 50_000;
 
 pub(super) static BLOB_SIDECAR_SIZE_MINIMAL: LazyLock<usize> =
     LazyLock::new(BlobSidecar::<MinimalEthSpec>::max_size);
@@ -590,8 +601,8 @@ impl ProtocolId {
                 RpcLimits::new(0, spec.max_execution_payload_envelopes_by_root_request)
             }
             Protocol::InclusionListByCommitteeIndices => {
-                // Request is a list of u64 committee indices, each 8 bytes.
-                RpcLimits::new(0, spec.max_request_inclusion_lists.saturating_mul(8))
+                // Request is fixed: slot (8 bytes) + Bitvector[16] (2 bytes) = 10 bytes.
+                RpcLimits::new(10, 10)
             }
         }
     }
@@ -822,7 +833,9 @@ impl<E: EthSpec> RequestType<E> {
             RequestType::DataColumnsByRange(req) => req.max_requested::<E>(),
             RequestType::LightClientUpdatesByRange(req) => req.count,
             RequestType::ExecutionPayloadEnvelopesByRoot(req) => req.block_roots.len() as u64,
-            RequestType::InclusionListByCommitteeIndices(req) => req.committee_indices.len() as u64,
+            RequestType::InclusionListByCommitteeIndices(req) => {
+                req.requested_positions().len() as u64
+            }
         }
     }
 
@@ -1103,8 +1116,9 @@ impl<E: EthSpec> std::fmt::Display for RequestType<E> {
             ),
             RequestType::InclusionListByCommitteeIndices(req) => write!(
                 f,
-                "Inclusion list by committee indices: {} indices",
-                req.committee_indices.len()
+                "Inclusion list by committee indices: slot {}, {} positions",
+                req.slot,
+                req.requested_positions().len()
             ),
         }
     }
