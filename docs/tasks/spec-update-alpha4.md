@@ -270,8 +270,8 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Test coverage audit (run 3993): ~95-98% of Gloas/Heze public functions tested (217 unit + 89 integration tests). No actionable gaps.
 - CI all green. Zero clippy warnings. No dep updates available. Cargo audit: 1 rsa vuln (no fix). EF tests: 86/86 + 148/148. Codebase stable.
 
-**Monitoring (runs 4008-4012, 2026-03-29):**
+**Monitoring (runs 4008-4013, 2026-03-29/30):**
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
-- #5056 (blob kzg commitment len check) still open, 0 reviews/comments. Updated today but no new feedback.
+- #5056 (blob kzg commitment len check) still open, 0 reviews/comments. Already proactively implemented.
 - All 8 open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
 - Zero clippy warnings. No dep updates available. CI all green. EF tests: 148/148. Codebase stable.
