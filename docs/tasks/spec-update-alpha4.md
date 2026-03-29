@@ -250,3 +250,8 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). #5056 still open, 0 reviews. All open Gloas/Heze PRs unchanged.
 - No dep updates available. EF tests: 148/148. Zero clippy warnings.
 - **Added 4 `get_ptc_committee` epoch boundary error path tests** (commit cd5251aab): previous epoch lookup succeeds via ptc_window, epoch 2+ back returns EpochOutOfBounds, future epoch beyond MIN_SEED_LOOKAHEAD returns EpochOutOfBounds, max lookahead epoch succeeds. 1057/1057 state_processing tests pass.
+
+**Test coverage (run 3981, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). #5056 still open, 0 reviews/comments. All 9 open Gloas/Heze PRs unchanged: #4843 (approved/stalled), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- Zero clippy warnings. No dep updates available. Cargo audit: 1 rsa vuln (no fix). EF tests: 148/148.
+- **Added 3 `InclusionListStore::prune` edge case tests** (commit e0ce4ffce): exact boundary slot kept (>= min_slot), equivocators + signed_cache pruned together, empty store prune is no-op. 24/24 inclusion_list_store tests pass.
