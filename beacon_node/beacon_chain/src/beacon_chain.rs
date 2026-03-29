@@ -9350,22 +9350,20 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     pub fn get_missing_columns_for_epoch(&self, epoch: Epoch) -> HashSet<ColumnIndex> {
         let custody_context = self.data_availability_checker.custody_context();
 
-        let columns_required = custody_context
-            .custody_columns_for_epoch(None, &self.spec)
-            .iter()
-            .copied()
-            .collect::<HashSet<_>>();
+        // Both slices are prefixes of the same ordered array
+        // (`CustodyContext::ordered_custody_column_indices`), so the set difference
+        // is simply the tail of the longer slice beyond the shorter one's length.
+        let columns_required = custody_context.custody_columns_for_epoch(None, &self.spec);
+        let current_columns = custody_context.custody_columns_for_epoch(Some(epoch), &self.spec);
 
-        let current_columns_at_epoch = custody_context
-            .custody_columns_for_epoch(Some(epoch), &self.spec)
-            .iter()
-            .copied()
-            .collect::<HashSet<_>>();
-
-        columns_required
-            .difference(&current_columns_at_epoch)
-            .copied()
-            .collect::<HashSet<_>>()
+        if columns_required.len() > current_columns.len() {
+            columns_required[current_columns.len()..]
+                .iter()
+                .copied()
+                .collect()
+        } else {
+            HashSet::new()
+        }
     }
 
     /// The da boundary for custodying columns. It will just be the DA boundary unless we are near the Fulu fork epoch.

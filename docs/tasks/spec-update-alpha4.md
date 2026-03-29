@@ -258,3 +258,7 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Non-Gloas PRs: #5054 (test workflow, updated today), #5055 (EIP-8025 refactor), #5050/#5049/#5047/#5033 — none actionable.
 - New issue #5043 (define Gloas genesis block hash as 0x00) — audited: vibehouse already handles genesis correctly. Fork choice anchor uses `state.latest_block_hash()` for genesis (fork_choice.rs:446), upgrade sets both `latest_block_hash` and `latest_execution_payload_bid.block_hash` from Fulu header (upgrade/gloas.rs:89-123), tests cover both zero and non-zero genesis. No changes needed if #5043 codifies zero-hash requirement.
 - Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix). CI in progress. Codebase stable.
+
+**Code improvement (run 3908, 2026-03-29):**
+- Optimized `get_missing_columns_for_epoch` in beacon_chain.rs: replaced 3 HashSet allocations + set difference with direct slice indexing. Both slices are prefixes of the same sorted `ordered_custody_column_indices` array, so the difference is just the tail of the longer slice. Test `test_missing_columns_after_cgc_change` passes.
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). All monitored Gloas/Heze PRs unchanged.
