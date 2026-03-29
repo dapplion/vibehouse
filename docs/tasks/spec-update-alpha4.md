@@ -230,3 +230,4 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Run 3922: Deep audit of hot-path optimizations (epoch processing, fork choice). All clone() calls in consensus paths are architecturally necessary (state mutation requires snapshots). No actionable optimization opportunities.
 - Run 3923: No new consensus-specs merges or releases. #4843 still blocked, #4747 still dirty/conflicting. Zero clippy warnings, zero dep updates. Codebase stable.
 - Run 3924: No new consensus-specs merges or releases. All 9 open Gloas/Heze PRs unchanged. #5054 (test workflow) updated — CI only. Zero clippy warnings, zero dep updates. Codebase stable.
+- Run 3925: No new consensus-specs merges or releases since alpha.4 (Mar 27). All 9 open Gloas/Heze PRs unchanged. Zero clippy warnings, zero dep updates. Cargo audit unchanged (1 rsa vuln). Build clean. EF spec tests: 148/148 (fake crypto). Codebase stable.
