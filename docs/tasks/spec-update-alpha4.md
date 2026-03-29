@@ -157,3 +157,8 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting, stalled since Feb 16), #4954 (unreviewed), #4898/#4892 (stale), #4960/#4932 (test vectors), #4840/#4630 (stale).
 - Deep audits confirmed: all 7 Heze spec documents fully compliant, fork choice IL integration correct, production code unwrap() audit clean.
 - Deps fully current. Cargo audit: 1 rsa vuln (no fix). CI all green. Codebase stable.
+
+**Devnet verification (run 3824, 2026-03-29):**
+- Heze devnet: Gloas@epoch1, Heze@epoch3, finalized_epoch=8 at slot 81. IL slot-1 fix verified end-to-end.
+- Standard Gloas devnet: finalized_epoch=8 at slot 80. Clean fork transition.
+- No new consensus-specs merges or releases. All monitored PRs unchanged. Codebase stable.
