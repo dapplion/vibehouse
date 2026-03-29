@@ -221,9 +221,8 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Zero clippy warnings. No compatible dependency updates. Cargo audit unchanged (1 rsa vuln, no fix).
 - Full codebase audit: zero todo!(), FIXME, HACK in production code. All unreachable!()/unimplemented!() are justified (test mocks or type-system invariants). All #[allow(dead_code)] properly justified.
 
-**Monitoring (runs 3913-3917, 2026-03-29):**
+**Monitoring (runs 3913-3918, 2026-03-29):**
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
 - All 9 monitored open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed). #4932 now dirty (conflicts).
 - Zero clippy warnings. No compatible dependency updates. Cargo audit unchanged (1 rsa vuln, no fix). Build clean.
-- CI: 4/6 jobs passed (check, ef-tests, network+op_pool, http_api), 2 in progress (unit tests, beacon_chain).
-- Deep code quality scan: zero removable #[allow(dead_code)], all TODOs have issue links, no new production unwrap() calls. Codebase fully clean.
+- CI all green (latest run: success). EF spec tests: 86/86 + 148/148. Codebase fully clean.
