@@ -570,8 +570,8 @@ impl ExecutionPayloadEnvelopesByRootRequest {
 
 /// Request inclusion lists from a peer by committee indices.
 ///
-/// Spec: `(slot: Slot, committee_indices: Bitvector[INCLUSION_LIST_COMMITTEE_SIZE])`
-/// Wire format: 8 bytes (slot) + 2 bytes (bitvector[16]) = 10 bytes fixed.
+/// Spec: `(slot: Slot, committee_indices: Bitvector\[INCLUSION_LIST_COMMITTEE_SIZE\])`
+/// Wire format: 8 bytes (slot) + 2 bytes (bitvector\[16\]) = 10 bytes fixed.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InclusionListByCommitteeIndicesRequest {
     /// The slot for which inclusion lists are requested.
