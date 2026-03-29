@@ -265,3 +265,10 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Full code quality audit: zero unwrap() in Heze production code, all TODOs have issue links, zero clippy warnings.
 - Comprehensive Heze test coverage review: 100+ tests across types (29), state processing (21), fork choice (3), beacon chain (14), network (9), validator client (14), HTTP API (13). No gaps found.
 - EF spec tests: 148/148 (fake crypto). All deps fully current. Codebase stable.
+
+**Monitoring (run 3850, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
+- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- New non-Gloas PR: #5055 (EIP-8025 refactor, opened Mar 28) — not actionable.
+- Audited Heze fork choice for spec compliance: virtual FULL child creation correctly uses `envelope_received` only (matching spec); `inclusion_list_satisfied` check is correctly in `should_extend_payload()` tiebreaker only. No issues found.
+- CI: check+clippy+fmt passed, remaining jobs in progress. Zero clippy warnings. No dependency updates. Codebase stable.
