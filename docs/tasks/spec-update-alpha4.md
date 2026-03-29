@@ -278,8 +278,8 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Zero clippy warnings. No dep updates available. CI all green. EF tests: 148/148. Codebase stable.
 - Rust stable 1.94.1, nightly 1.96.0 (fb27476aa) — both up to date. All toolchains current.
 
-**Monitoring (runs 4024-4026, 2026-03-30):**
+**Monitoring (runs 4024-4027, 2026-03-30):**
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). Only new merge: #5054 (test workflow update, Mar 29) — CI tooling only, not actionable. No new PRs since #5056 (Mar 29).
 - All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale).
-- #5056 still open, 0 reviews/comments. Already proactively implemented.
+- #5056 now APPROVED by jtraglia with suggestion to use `get_blob_parameters()` for dynamic lookup. Vibehouse already uses epoch-aware `spec.max_blobs_per_block(epoch)` in all 3 locations — exact equivalent. No code changes needed.
 - Codebase stable. All tests passing. Zero clippy warnings. No dep updates. EF tests: 148/148.
