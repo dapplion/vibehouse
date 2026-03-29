@@ -206,3 +206,11 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 **Heze signature validation tests (run 3838, 2026-03-29):**
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). All monitored Gloas/Heze PRs unchanged.
 - Added 5 unit tests for `is_valid_inclusion_list_signature`: valid signature accepted, wrong key rejected, corrupted signature rejected, out-of-bounds validator index errors, multiple committee members validated. Total Heze state_processing tests: 16 (11 committee + 5 signature). All 1053 state_processing tests pass. Zero clippy warnings.
+
+**Heze beacon chain integration tests (run 3839, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). All monitored Gloas/Heze PRs unchanged.
+- Added 12 integration tests for 3 previously untested BeaconChain Heze methods:
+  - `get_inclusion_lists_by_committee_indices`: empty store, cached ILs returned, position filtering, out-of-range indices
+  - `check_inclusion_list_satisfaction`: empty store passes, all IL txs included passes, missing IL tx fails, slot 0 edge case
+  - `compute_inclusion_list_bits_for_slot`: empty store all-zeros, observed validators reflected in bits, slot 0 default, equivocator excluded
+- All 1011 beacon_chain tests pass. 148/148 EF spec tests. Zero clippy warnings.
