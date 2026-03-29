@@ -31,6 +31,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, netwo
 
 ## Progress log
 
+### run 3841 (Mar 29) — fix check_all_files_accessed exclusions, spec compliance audit
+
+- Replaced stale `eip7732`/`eip7805` exclusion patterns (no such test directories exist in alpha.4 vectors) with PartialDataColumn SSZ static exclusions: `PartialDataColumnHeader`, `PartialDataColumnPartsMetadata`, `PartialDataColumnSidecar`. These types are from consensus-specs PR #4558 (Cell Dissemination) which requires rust-libp2p gossipsub partial messages support not yet available.
+- Audited Heze FOCIL implementation against spec: all 7 gossip validation conditions match (`p2p-interface.md`), fork choice functions match (`fork-choice.md`: `is_payload_inclusion_list_satisfied`, `should_extend_payload`, `on_execution_payload`, `on_inclusion_list`, `record_payload_inclusion_list_satisfaction`), inclusion list store functions match (`inclusion-list.md`: `process_inclusion_list`, `get_inclusion_list_transactions`, `get_inclusion_list_bits`, `is_inclusion_list_bits_inclusive`), timing constants correct (`VIEW_FREEZE_CUTOFF_BPS=7500`, `INCLUSION_LIST_SUBMISSION_DUE_BPS=6667`).
+- Verified Heze EF test coverage: all test categories have vectors and handlers (operations, epoch_processing, fork, fork_choice, sanity, ssz_static, networking, transition, finality, rewards).
+- No new spec merges since Mar 27. Spec quiet. alpha.4 vectors current.
+- Both real crypto (86/86) and fake crypto (148/148) pass.
+
 ### run 3820 (Mar 28) — add gossip_beacon_attestation and gossip_beacon_aggregate_and_proof EF tests
 
 - Implemented `GossipBeaconAttestation` handler — validates slot range, committee index, aggregation bits length, unaggregated check, block known/valid, already-seen attester, correct subnet, target ancestry, finalized ancestry, and signature verification

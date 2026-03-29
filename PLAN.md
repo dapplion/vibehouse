@@ -70,9 +70,9 @@ Reference:
 
 **Open PRs to watch:** #4898/#4892 (fork choice simplifications), #4843 (variable PTC deadline, proactively implemented), #4954 (fork choice milliseconds), #4747 (fast confirmation rule — [design doc](docs/workstreams/fast-confirmation-rule.md) ready, implementation blocked on PR merge)
 
-**Post-alpha.4 merges (2026-03-25):** #4979 PTC window cache (proactively implemented, verified exact match), #5040 fork choice test fix (test infra only), #4558 cell dissemination partial messages (blocked on rust-libp2p support), #5036 reverted. See [docs/tasks/spec-update-alpha4.md](docs/tasks/spec-update-alpha4.md) for full audit. No new merges since Mar 27.
+**Post-alpha.4 merges (2026-03-25):** #4979 PTC window cache (proactively implemented, verified exact match), #5040 fork choice test fix (test infra only), #4558 cell dissemination partial messages (blocked on rust-libp2p support), #5036 reverted. See [docs/tasks/spec-update-alpha4.md](docs/tasks/spec-update-alpha4.md) for full audit. No new merges since Mar 27. Heze FOCIL audited against spec (run 3841): all functions match.
 
-Spec tests: [docs/tasks/spec-tests.md](docs/tasks/spec-tests.md) — DONE: 86/86 + 148/148 passing (v1.7.0-alpha.4 vectors, Heze SSZ static types, all gossip validation tests — beacon blocks, attestations, aggregates, proposer/attester slashings, voluntary exits), automated release check workflow deployed
+Spec tests: [docs/tasks/spec-tests.md](docs/tasks/spec-tests.md) — DONE: 86/86 + 148/148 passing (v1.7.0-alpha.4 vectors, Heze SSZ static types, all gossip validation tests — beacon blocks, attestations, aggregates, proposer/attester slashings, voluntary exits), automated release check workflow deployed. PartialDataColumn exclusions added for #4558.
 
 ### 4. ZK execution proofs (stateless validation) — DONE (stub proofs, SP1 infra ready)
 [docs/tasks/zk-execution-proofs.md](docs/tasks/zk-execution-proofs.md) | [GitHub #28](https://github.com/dapplion/vibehouse/issues/28)
