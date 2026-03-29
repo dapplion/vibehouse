@@ -311,3 +311,9 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - #5056 (blob kzg commitment len check) still open, 0 reviews/comments. Already proactively implemented.
 - All 9 open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
 - No dep updates available. Cargo audit: 1 rsa vuln (no fix). Codebase stable.
+
+**Monitoring (run 3997, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
+- #5056 (blob kzg commitment len check) still open, 0 reviews/comments. Already proactively implemented.
+- All 9 open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- No dep updates available. No lockfile updates. Cargo audit: 1 rsa vuln (no fix). Codebase stable.
