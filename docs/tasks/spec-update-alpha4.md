@@ -245,3 +245,9 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - **Added VC-side Prometheus metrics for Gloas/Heze services** — payload attestation service now tracks signing success/error counts (`vc_signed_payload_attestations_total`), HTTP GET/POST timing (`vc_payload_attestation_service_task_times_seconds`). Inclusion list service tracks signing counts (`vc_signed_inclusion_lists_total`), HTTP POST timing (`vc_inclusion_list_service_task_times_seconds`). Beacon node side already had 47 metrics; this fills the validator client gap.
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). All monitored Gloas/Heze PRs unchanged.
 - 61/61 validator_services tests pass. Zero clippy warnings.
+
+**Monitoring (run 3905, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27). No new Gloas/Heze PRs opened.
+- All monitored open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, dirty/conflicting), #4954 (unreviewed), #4898/#4892 (stalled), #4960/#4932 (test vectors), #4840/#4630 (stale).
+- Deep Heze/FOCIL code audit: no unwrap() in production code, proper error handling throughout, safe arithmetic in slot computations, memory leak prevention via slot-keyed pruning, spec compliance verified across all 7 implementation phases. No issues found.
+- Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix). CI running (latest commit). Codebase stable.
