@@ -101,6 +101,8 @@ impl<E: EthSpec> InclusionListStore<E> {
         );
 
         // Process the unsigned IL (equivocation detection, storage).
+        // Clone the message since process_inclusion_list takes ownership and we need
+        // signed_il intact for the signed_cache below.
         self.process_inclusion_list(signed_il.message.clone(), is_before_view_freeze_cutoff);
 
         // Cache the signed version if the unsigned was accepted (i.e., it's in the store
@@ -135,7 +137,7 @@ impl<E: EthSpec> InclusionListStore<E> {
         let key = (slot, committee_root);
 
         let equivocators = self.equivocators.get(&key);
-        let mut seen = HashSet::new();
+        let mut seen: HashSet<&[u8]> = HashSet::new();
         let mut transactions = Vec::new();
 
         if let Some(lists) = self.inclusion_lists.get(&key) {
@@ -145,9 +147,8 @@ impl<E: EthSpec> InclusionListStore<E> {
                     continue;
                 }
                 for tx in &il.transactions {
-                    let tx_bytes: Vec<u8> = tx.to_vec();
-                    if seen.insert(tx_bytes.clone()) {
-                        transactions.push(tx_bytes);
+                    if seen.insert(tx.as_ref()) {
+                        transactions.push(tx.to_vec());
                     }
                 }
             }

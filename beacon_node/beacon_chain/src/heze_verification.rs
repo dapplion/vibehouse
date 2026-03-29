@@ -221,7 +221,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
             // Check for exact duplicate
             if let Some(lists) = store.inclusion_lists.get(&key)
-                && lists.iter().any(|existing| *existing == il.clone())
+                && lists.iter().any(|existing| existing == il)
             {
                 return Err(InclusionListError::Duplicate {
                     validator_index,
@@ -247,10 +247,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     }
 
     /// Import a verified inclusion list into the InclusionListStore.
-    pub fn import_inclusion_list(&self, verified: &VerifiedInclusionList<T>) {
+    pub fn import_inclusion_list(&self, verified: VerifiedInclusionList<T>) {
         let mut store = self.inclusion_list_store.lock();
         store.process_signed_inclusion_list(
-            verified.signed_il.clone(),
+            verified.signed_il,
             verified.is_before_view_freeze_cutoff,
         );
     }
@@ -352,21 +352,18 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             return true;
         }
 
-        // Build a set of payload transactions for O(1) lookup.
-        let payload_tx_set: std::collections::HashSet<Vec<u8>> = envelope
+        // Build a set of payload transactions for O(1) lookup using references to avoid cloning.
+        let payload_tx_set: std::collections::HashSet<&[u8]> = envelope
             .payload
             .transactions
             .iter()
-            .map(
-                |tx: &ssz_types::VariableList<
-                    u8,
-                    <T::EthSpec as EthSpec>::MaxBytesPerTransaction,
-                >| tx.to_vec(),
-            )
+            .map(|tx| tx.as_ref() as &[u8])
             .collect();
 
         // Check that every IL transaction is included in the payload.
-        let satisfied = il_txs.iter().all(|il_tx| payload_tx_set.contains(il_tx));
+        let satisfied = il_txs
+            .iter()
+            .all(|il_tx| payload_tx_set.contains(il_tx.as_slice()));
         if satisfied {
             metrics::inc_counter(&metrics::INCLUSION_LIST_SATISFACTION_PASS_TOTAL);
         } else {

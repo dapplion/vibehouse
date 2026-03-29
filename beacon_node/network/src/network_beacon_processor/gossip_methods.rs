@@ -4679,7 +4679,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Accept);
 
         // Import to InclusionListStore
-        self.chain.import_inclusion_list(&verified);
+        self.chain.import_inclusion_list(verified);
         metrics::inc_counter(&metrics::BEACON_PROCESSOR_INCLUSION_LIST_IMPORTED_TOTAL);
         debug!(
             validator_index,

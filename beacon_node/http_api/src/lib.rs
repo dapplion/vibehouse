@@ -2836,7 +2836,7 @@ async fn post_beacon_pool_inclusion_lists<T: BeaconChainTypes>(
             };
 
             let signed_for_gossip = verified_il.signed_il.clone();
-            chain.import_inclusion_list(&verified_il);
+            chain.import_inclusion_list(verified_il);
 
             publish_pubsub_message(
                 &network_tx,
