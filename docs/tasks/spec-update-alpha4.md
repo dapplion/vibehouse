@@ -240,3 +240,8 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - **Fixed missing InclusionListStore pruning** — `prune_gloas_pools()` was pruning all other slot-keyed pools (payload_attestation_pool, proposer_preferences_pool, observed_execution_bids, etc.) but not the inclusion_list_store. This caused unbounded memory growth from stale ILs in long-running nodes. Fix: added `self.inclusion_list_store.lock().prune(earliest_slot)` to `prune_gloas_pools()`. All 1013 beacon_chain tests pass (Heze fork). Commit 264469b7d.
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). All 8 open Gloas/Heze PRs unchanged.
 - EF spec tests: 148/148 (fake crypto). Zero clippy warnings. Zero dependency updates.
+
+**VC metrics + monitoring (run 3904, 2026-03-29):**
+- **Added VC-side Prometheus metrics for Gloas/Heze services** — payload attestation service now tracks signing success/error counts (`vc_signed_payload_attestations_total`), HTTP GET/POST timing (`vc_payload_attestation_service_task_times_seconds`). Inclusion list service tracks signing counts (`vc_signed_inclusion_lists_total`), HTTP POST timing (`vc_inclusion_list_service_task_times_seconds`). Beacon node side already had 47 metrics; this fills the validator client gap.
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). All monitored Gloas/Heze PRs unchanged.
+- 61/61 validator_services tests pass. Zero clippy warnings.
