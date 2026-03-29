@@ -268,3 +268,18 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - #5056 (blob kzg commitment len check) still open, 0 reviews/comments. Proactively implemented. Verified implementation matches spec diff exactly.
 - Zero clippy warnings. No dep updates available. Cargo audit: 1 rsa vuln (no fix). EF tests: 148/148. Codebase stable.
 - Full codebase quality audit (run 3986): zero unlinked TODOs, zero stale #[allow(dead_code)], zero #[ignore] tests, zero compilation warnings, zero clippy warnings. All issue #36 items either done or blocked on external deps. No actionable improvements found.
+
+**Monitoring (run 3987, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
+- #5056 (blob kzg commitment len check) still open, updated today (2026-03-29T16:44:21Z), 0 reviews. Spec change adds `[REJECT] len(bid.blob_kzg_commitments) <= get_blob_parameters(compute_epoch_at_slot(bid.slot)).max_blobs_per_block` to bid gossip validation. **Already proactively implemented** in 3 locations: gossip (gloas_verification.rs:441-449 TooManyBlobKzgCommitments), block processing (gloas.rs:119-127), and block_verification.rs:899-905. Verified exact spec alignment.
+- All 9 open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, 79 commits, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- CI run 23716832297 in progress: 5/6 jobs green (check+clippy+fmt, ef-tests, unit-tests, network+op_pool, http_api all pass), beacon_chain tests running.
+- Deep Heze fork choice audit confirmed: `inclusion_list_satisfied` properly integrated into `get_node_children` filter (proto_array_fork_choice.rs:1866-1875), blocks extension, and on_execution_payload. 25+ test references covering IL satisfaction paths.
+- Codebase stable. No actionable work items.
+
+**Monitoring (run 3988, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
+- #5056 (blob kzg commitment len check) still open, 0 reviews. Already proactively implemented.
+- All 9 open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- CI run 23716832297: success (all 6 jobs green). Zero clippy warnings. No dep updates available. Cargo audit: 1 rsa vuln (no fix).
+- Codebase stable. All priorities DONE or blocked on external deps.
