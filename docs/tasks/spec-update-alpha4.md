@@ -210,7 +210,7 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Nightly tests (run 23705614396): all 31 jobs passed. CI green.
 - Zero clippy warnings. No dependency updates (0 compatible). Cargo audit: 1 rsa vuln (no fix). Codebase stable.
 
-**Monitoring (run 3883, 2026-03-29):**
+**Monitoring (runs 3883-3884, 2026-03-29):**
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
-- All 9 monitored open Gloas/Heze PRs unchanged. Only open Heze PR: #4954 (milliseconds, stale since Mar 2).
-- Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix). EF spec tests: 148/148. Codebase stable.
+- All 9 monitored open Gloas/Heze PRs unchanged. #4747 (FCR) still conflicting with active review discussion (mkalinin, 0xMushow comments Mar 26-27) but not near merge.
+- Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix). EF spec tests: 148/148. Build clean. Codebase stable.
