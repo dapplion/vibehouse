@@ -252,8 +252,9 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Deep Heze/FOCIL code audit: no unwrap() in production code, proper error handling throughout, safe arithmetic in slot computations, memory leak prevention via slot-keyed pruning, spec compliance verified across all 7 implementation phases. No issues found.
 - Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix). CI running (latest commit). Codebase stable.
 
-**Monitoring (run 3906, 2026-03-29):**
+**Monitoring (runs 3906-3907, 2026-03-29):**
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27). No new Gloas/Heze PRs opened.
 - All monitored open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, dirty/conflicting), #4954 (unreviewed), #4898/#4892 (stalled), #4960/#4932 (test vectors), #4840/#4630 (stale).
 - Non-Gloas PRs: #5054 (test workflow, updated today), #5055 (EIP-8025 refactor), #5050/#5049/#5047/#5033 — none actionable.
-- Zero clippy warnings. No compatible dependency updates. CI in progress (latest commit). Codebase stable.
+- New issue #5043 (define Gloas genesis block hash as 0x00) — audited: vibehouse already handles genesis correctly. Fork choice anchor uses `state.latest_block_hash()` for genesis (fork_choice.rs:446), upgrade sets both `latest_block_hash` and `latest_execution_payload_bid.block_hash` from Fulu header (upgrade/gloas.rs:89-123), tests cover both zero and non-zero genesis. No changes needed if #5043 codifies zero-hash requirement.
+- Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix). CI in progress. Codebase stable.
