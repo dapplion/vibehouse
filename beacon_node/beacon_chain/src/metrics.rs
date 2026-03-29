@@ -340,6 +340,47 @@ pub static BUFFERED_ENVELOPE_FAILED_TOTAL: LazyLock<Result<IntCounter>> = LazyLo
 });
 
 /*
+ * Heze FOCIL Gossip Verification Timing
+ */
+pub static INCLUSION_LIST_GOSSIP_VERIFICATION_TIMES: LazyLock<Result<Histogram>> =
+    LazyLock::new(|| {
+        try_create_histogram(
+            "beacon_inclusion_list_gossip_verification_seconds",
+            "Full runtime of inclusion list gossip verification",
+        )
+    });
+
+/*
+ * Heze FOCIL Gauges
+ */
+pub static INCLUSION_LIST_STORE_SIZE: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+    try_create_int_gauge(
+        "beacon_inclusion_list_store_size",
+        "Number of inclusion lists currently in the IL store.",
+    )
+});
+pub static INCLUSION_LIST_EQUIVOCATORS_SIZE: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+    try_create_int_gauge(
+        "beacon_inclusion_list_equivocators_size",
+        "Number of equivocating validators tracked in the IL store.",
+    )
+});
+pub static INCLUSION_LIST_SATISFACTION_PASS_TOTAL: LazyLock<Result<IntCounter>> =
+    LazyLock::new(|| {
+        try_create_int_counter(
+            "beacon_inclusion_list_satisfaction_pass_total",
+            "Number of payload envelopes that passed IL satisfaction check.",
+        )
+    });
+pub static INCLUSION_LIST_SATISFACTION_FAIL_TOTAL: LazyLock<Result<IntCounter>> =
+    LazyLock::new(|| {
+        try_create_int_counter(
+            "beacon_inclusion_list_satisfaction_fail_total",
+            "Number of payload envelopes that failed IL satisfaction check.",
+        )
+    });
+
+/*
  * Gloas ePBS Pool Gauges
  */
 pub static EXECUTION_BID_POOL_SIZE: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
@@ -2198,6 +2239,18 @@ pub fn scrape_for_metrics<T: BeaconChainTypes>(beacon_chain: &BeaconChain<T>) {
             .lock()
             .observed_bid_count(),
     );
+
+    {
+        let il_store = beacon_chain.inclusion_list_store.lock();
+        set_gauge_by_usize(
+            &INCLUSION_LIST_STORE_SIZE,
+            il_store.total_inclusion_list_count(),
+        );
+        set_gauge_by_usize(
+            &INCLUSION_LIST_EQUIVOCATORS_SIZE,
+            il_store.total_equivocator_count(),
+        );
+    }
 
     beacon_chain
         .validator_monitor

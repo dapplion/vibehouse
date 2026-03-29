@@ -209,6 +209,20 @@ impl<E: EthSpec> InclusionListStore<E> {
             .all(|(&local_bit, &provided_bit)| provided_bit || !local_bit)
     }
 
+    /// Total number of inclusion lists in the store across all keys.
+    pub fn total_inclusion_list_count(&self) -> usize {
+        self.inclusion_lists
+            .values()
+            .fold(0usize, |acc, s| acc.saturating_add(s.len()))
+    }
+
+    /// Total number of equivocating validators tracked across all keys.
+    pub fn total_equivocator_count(&self) -> usize {
+        self.equivocators
+            .values()
+            .fold(0usize, |acc, s| acc.saturating_add(s.len()))
+    }
+
     /// Prune all entries for slots older than the given slot.
     pub fn prune(&mut self, min_slot: Slot) {
         self.inclusion_lists
@@ -617,5 +631,35 @@ mod tests {
         // Signed cache should not contain the equivocator
         let cache = store.signed_cache.get(&key);
         assert!(cache.is_none() || !cache.unwrap().contains_key(&0));
+    }
+
+    #[test]
+    fn total_counts_track_store_size() {
+        let mut store = InclusionListStore::<E>::new();
+        let c1 = vec![10, 20, 30, 40];
+        let cr1 = test_committee_root(&c1);
+        let c2 = vec![50, 60, 70, 80];
+        let cr2 = test_committee_root(&c2);
+
+        assert_eq!(store.total_inclusion_list_count(), 0);
+        assert_eq!(store.total_equivocator_count(), 0);
+
+        // Add ILs across different keys
+        store.process_inclusion_list(make_il(1, 10, cr1), true);
+        store.process_inclusion_list(make_il(1, 20, cr1), true);
+        store.process_inclusion_list(make_il(2, 50, cr2), true);
+        assert_eq!(store.total_inclusion_list_count(), 3);
+        assert_eq!(store.total_equivocator_count(), 0);
+
+        // Equivocation removes from ILs, adds to equivocators
+        let eq = make_il_with_txs(1, 10, cr1, vec![vec![99]]);
+        store.process_inclusion_list(eq, true);
+        assert_eq!(store.total_inclusion_list_count(), 2); // 10's IL removed
+        assert_eq!(store.total_equivocator_count(), 1);
+
+        // Prune slot 1
+        store.prune(Slot::new(2));
+        assert_eq!(store.total_inclusion_list_count(), 1); // only slot 2 remains
+        assert_eq!(store.total_equivocator_count(), 0); // slot 1 equivocators pruned
     }
 }

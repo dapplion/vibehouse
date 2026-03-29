@@ -4520,6 +4520,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     PeerAction::LowToleranceError,
                     "inclusion_list_tx_too_large",
                 );
+                metrics::inc_counter_vec(
+                    &metrics::BEACON_PROCESSOR_INCLUSION_LIST_REJECTED_TOTAL,
+                    &["tx_too_large"],
+                );
                 return;
             }
             // [REJECT] Slot not current or previous
@@ -4535,6 +4539,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     peer_id,
                     PeerAction::LowToleranceError,
                     "inclusion_list_slot_out_of_range",
+                );
+                metrics::inc_counter_vec(
+                    &metrics::BEACON_PROCESSOR_INCLUSION_LIST_REJECTED_TOTAL,
+                    &["slot_out_of_range"],
                 );
                 return;
             }
@@ -4563,6 +4571,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     PeerAction::LowToleranceError,
                     "inclusion_list_pre_heze",
                 );
+                metrics::inc_counter_vec(
+                    &metrics::BEACON_PROCESSOR_INCLUSION_LIST_REJECTED_TOTAL,
+                    &["pre_heze"],
+                );
                 return;
             }
             // [REJECT] Not in committee
@@ -4578,6 +4590,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     peer_id,
                     PeerAction::LowToleranceError,
                     "inclusion_list_not_in_committee",
+                );
+                metrics::inc_counter_vec(
+                    &metrics::BEACON_PROCESSOR_INCLUSION_LIST_REJECTED_TOTAL,
+                    &["not_in_committee"],
                 );
                 return;
             }
@@ -4606,6 +4622,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     PeerAction::LowToleranceError,
                     "inclusion_list_bad_signature",
                 );
+                metrics::inc_counter_vec(
+                    &metrics::BEACON_PROCESSOR_INCLUSION_LIST_REJECTED_TOTAL,
+                    &["bad_signature"],
+                );
                 return;
             }
             // [IGNORE] Duplicate
@@ -4617,6 +4637,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     "Ignoring duplicate inclusion list"
                 );
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                metrics::inc_counter(&metrics::BEACON_PROCESSOR_INCLUSION_LIST_DUPLICATE_TOTAL);
                 return;
             }
             // [IGNORE] Equivocator
@@ -4628,6 +4649,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     "Ignoring inclusion list from equivocator"
                 );
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                metrics::inc_counter(&metrics::BEACON_PROCESSOR_INCLUSION_LIST_EQUIVOCATING_TOTAL);
                 return;
             }
             // Internal errors
@@ -4645,14 +4667,20 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     PeerAction::HighToleranceError,
                     "inclusion_list_internal_error",
                 );
+                metrics::inc_counter_vec(
+                    &metrics::BEACON_PROCESSOR_INCLUSION_LIST_REJECTED_TOTAL,
+                    &["internal_error"],
+                );
                 return;
             }
         };
 
+        metrics::inc_counter(&metrics::BEACON_PROCESSOR_INCLUSION_LIST_VERIFIED_TOTAL);
         self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Accept);
 
         // Import to InclusionListStore
         self.chain.import_inclusion_list(&verified);
+        metrics::inc_counter(&metrics::BEACON_PROCESSOR_INCLUSION_LIST_IMPORTED_TOTAL);
         debug!(
             validator_index,
             slot = %il_slot,

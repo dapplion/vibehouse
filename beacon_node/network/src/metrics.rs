@@ -302,6 +302,44 @@ pub(crate) static BEACON_PROCESSOR_PAYLOAD_ENVELOPE_REJECTED_TOTAL: LazyLock<Res
         )
     });
 
+// Gossip inclusion lists (heze FOCIL).
+pub(crate) static BEACON_PROCESSOR_INCLUSION_LIST_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
+    LazyLock::new(|| {
+        try_create_int_counter(
+            "beacon_processor_inclusion_list_verified_total",
+            "Total number of inclusion lists verified for propagation.",
+        )
+    });
+pub(crate) static BEACON_PROCESSOR_INCLUSION_LIST_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
+    LazyLock::new(|| {
+        try_create_int_counter(
+            "beacon_processor_inclusion_list_imported_total",
+            "Total number of inclusion lists imported to the IL store.",
+        )
+    });
+pub(crate) static BEACON_PROCESSOR_INCLUSION_LIST_EQUIVOCATING_TOTAL: LazyLock<Result<IntCounter>> =
+    LazyLock::new(|| {
+        try_create_int_counter(
+            "beacon_processor_inclusion_list_equivocating_total",
+            "Total number of equivocating inclusion lists ignored.",
+        )
+    });
+pub(crate) static BEACON_PROCESSOR_INCLUSION_LIST_DUPLICATE_TOTAL: LazyLock<Result<IntCounter>> =
+    LazyLock::new(|| {
+        try_create_int_counter(
+            "beacon_processor_inclusion_list_duplicate_total",
+            "Total number of duplicate inclusion lists ignored.",
+        )
+    });
+pub(crate) static BEACON_PROCESSOR_INCLUSION_LIST_REJECTED_TOTAL: LazyLock<Result<IntCounterVec>> =
+    LazyLock::new(|| {
+        try_create_int_counter_vec(
+            "beacon_processor_inclusion_list_rejected_total",
+            "Total number of inclusion lists rejected by reason.",
+            &["reason"],
+        )
+    });
+
 // Rpc blocks.
 pub(crate) static BEACON_PROCESSOR_RPC_BLOCK_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {

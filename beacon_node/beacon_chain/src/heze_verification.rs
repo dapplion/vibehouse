@@ -6,7 +6,7 @@
 //! 1. Propagation to other peers
 //! 2. Import to the InclusionListStore
 
-use crate::{BeaconChain, BeaconChainError, BeaconChainTypes};
+use crate::{BeaconChain, BeaconChainError, BeaconChainTypes, metrics};
 use slot_clock::SlotClock;
 use state_processing::per_block_processing::heze::{
     get_inclusion_list_committee, is_valid_inclusion_list_signature,
@@ -100,6 +100,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         &self,
         signed_il: SignedInclusionList<T::EthSpec>,
     ) -> Result<VerifiedInclusionList<T>, InclusionListError> {
+        let _timer = metrics::start_timer(&metrics::INCLUSION_LIST_GOSSIP_VERIFICATION_TIMES);
         let il = &signed_il.message;
         let il_slot = il.slot;
         let validator_index = il.validator_index;
@@ -365,7 +366,13 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .collect();
 
         // Check that every IL transaction is included in the payload.
-        il_txs.iter().all(|il_tx| payload_tx_set.contains(il_tx))
+        let satisfied = il_txs.iter().all(|il_tx| payload_tx_set.contains(il_tx));
+        if satisfied {
+            metrics::inc_counter(&metrics::INCLUSION_LIST_SATISFACTION_PASS_TOTAL);
+        } else {
+            metrics::inc_counter(&metrics::INCLUSION_LIST_SATISFACTION_FAIL_TOTAL);
+        }
+        satisfied
     }
 
     /// Compute `inclusion_list_bits` for self-build block production (Heze).
