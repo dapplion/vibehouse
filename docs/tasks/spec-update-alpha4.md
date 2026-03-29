@@ -311,3 +311,8 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). No new PRs since #5056 (Mar 29). All open Gloas/Heze PRs unchanged.
 - **Added 34 unit tests for SingleLookupRequestState and SingleBlockLookup** (commit 394a8d856): state machine transitions (AwaitingDownload→Downloading→AwaitingProcess→Processing→Processed), error paths (wrong request IDs, invalid transitions), failure counting, retry lifecycle, peer management, parent awaiting, component completion tracking. Previously 0 unit tests for this 692-line state machine.
 - Zero clippy warnings. All 34 new tests pass. CI green.
+
+**Sync test coverage (run 4034, 2026-03-30):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new PRs since #5056 (Mar 29). All open Gloas/Heze PRs unchanged.
+- **Added 23 unit tests for sync RPC request handling** (commit 5976dde98): ActiveRequests state machine (10 tests — early completion, stream termination, RPC errors, invalid items, peer tracking, multi-request), BlocksByRangeRequestItems (9 tests — slot validation, duplicates, out-of-order, consume), BlocksByRootRequestItems (4 tests — root matching, rejection, consume). Previously 0 unit tests for these modules.
+- Zero clippy warnings. All 23 new tests pass. CI green.
