@@ -244,3 +244,10 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 **Heze block production tests (run 3846, 2026-03-29):**
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). All monitored Gloas/Heze PRs unchanged.
 - Added 2 integration tests for Heze block production verifying `inclusion_list_bits` in produced blocks: `block_production_embeds_inclusion_list_bits` (IL in store → bit set in bid), `block_production_empty_il_store_all_bits_zero` (no ILs → all zero). 14/14 Heze beacon_chain tests pass. Zero clippy warnings.
+
+**Monitoring + test coverage (run 3847, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
+- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- Fixed cargo doc warning: escaped `[16]` bracket notation in `InclusionListByCommitteeIndicesRequest` doc comment (was triggering rustdoc broken-intra-doc-links error in CI).
+- Added fork choice test `execution_payload_stores_inclusion_list_not_satisfied`: verifies `on_execution_payload(root, hash, false)` correctly stores `inclusion_list_satisfied=false` on the proto node, ensuring `should_extend_payload` blocks extension. 122/122 fork_choice tests pass.
+- Zero clippy warnings. Codebase stable.
