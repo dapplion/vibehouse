@@ -45,8 +45,10 @@ excluded_paths = [
     "bls12-381-tests/deserialization_G1",
     "bls12-381-tests/deserialization_G2",
     "bls12-381-tests/hash_to_G2",
-    "tests/.*/eip7732",
-    "tests/.*/eip7805",
+    # PartialDataColumn types require rust-libp2p gossipsub partial messages support (not yet available)
+    "tests/.*/.*/ssz_static/PartialDataColumnHeader/.*",
+    "tests/.*/.*/ssz_static/PartialDataColumnPartsMetadata/.*",
+    "tests/.*/.*/ssz_static/PartialDataColumnSidecar/.*",
     # Ignore MatrixEntry SSZ tests for now.
     "tests/.*/.*/ssz_static/MatrixEntry/.*",
     # EIP-7916 is still in draft and hasn't been implemented yet https://eips.ethereum.org/EIPS/eip-7916
