@@ -635,6 +635,53 @@ mod tests {
     }
 
     #[test]
+    fn prune_keeps_exact_boundary_slot() {
+        let mut store = InclusionListStore::<E>::new();
+        let cr = test_committee_root(&[0, 1, 2, 3]);
+        let il = make_il(5, 0, cr);
+        store.process_inclusion_list(il, true);
+
+        // Prune at exactly slot 5 — should keep it (>= min_slot)
+        store.prune(Slot::new(5));
+        assert_eq!(store.inclusion_lists.len(), 1);
+        assert!(store.inclusion_lists.contains_key(&(Slot::new(5), cr)));
+    }
+
+    #[test]
+    fn prune_removes_equivocators_and_signed_cache() {
+        let mut store = InclusionListStore::<E>::new();
+        let cr = test_committee_root(&[0, 1, 2, 3]);
+
+        // Create equivocation at slot 1
+        let signed1 = make_signed_il(1, 0, cr);
+        let signed1_eq = make_signed_il_with_txs(1, 0, cr, vec![vec![1]]);
+        store.process_signed_inclusion_list(signed1, true);
+        store.process_signed_inclusion_list(signed1_eq, true);
+
+        // Add valid IL at slot 5
+        let signed5 = make_signed_il(5, 1, cr);
+        store.process_signed_inclusion_list(signed5, true);
+
+        // Verify equivocator at slot 1 exists
+        assert_eq!(store.equivocators.len(), 1);
+
+        // Prune at slot 3 — slot 1 equivocators should be removed
+        store.prune(Slot::new(3));
+        assert!(store.equivocators.is_empty());
+        assert_eq!(store.inclusion_lists.len(), 1);
+        assert_eq!(store.signed_cache.len(), 1);
+    }
+
+    #[test]
+    fn prune_empty_store_is_noop() {
+        let mut store = InclusionListStore::<E>::new();
+        store.prune(Slot::new(100));
+        assert!(store.inclusion_lists.is_empty());
+        assert!(store.equivocators.is_empty());
+        assert!(store.signed_cache.is_empty());
+    }
+
+    #[test]
     fn total_counts_track_store_size() {
         let mut store = InclusionListStore::<E>::new();
         let c1 = vec![10, 20, 30, 40];
