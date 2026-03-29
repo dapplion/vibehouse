@@ -240,3 +240,7 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, 144 reviews, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
 - Zero clippy warnings. No compatible dependency updates. No new crate versions.
 - Heze devnet verified: Gloas@epoch1, Heze@epoch3, finalized_epoch=8 at slot 81. RPC format changes from run 3842 (InclusionListByCommitteeIndices slot+bitvector format) confirmed working end-to-end.
+
+**Heze block production tests (run 3846, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). All monitored Gloas/Heze PRs unchanged.
+- Added 2 integration tests for Heze block production verifying `inclusion_list_bits` in produced blocks: `block_production_embeds_inclusion_list_bits` (IL in store → bit set in bid), `block_production_empty_il_store_all_bits_zero` (no ILs → all zero). 14/14 Heze beacon_chain tests pass. Zero clippy warnings.
