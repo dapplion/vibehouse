@@ -239,3 +239,9 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - #5056 (blob kzg commitment len check) — open, 0 reviews. Proactively implemented in commit 42e33200c.
 - vibehouse repo quiet: no new issues/PRs/comments since mid-March. Issue #36 has only blocked + non-critical items remaining.
 - Run 3978: Verified EF tests 148/148 (fake crypto), zero clippy warnings, clean build. No new merges, no dep updates. Codebase stable.
+
+**Test coverage + monitoring (run 3979, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). #5056 still open, 0 reviews/comments.
+- All open Gloas/Heze PRs unchanged.
+- Zero clippy warnings, no dep updates available. Cargo audit: 1 rsa vuln (no fix). EF tests: 148/148.
+- **Added 4 new tests for `get_best_execution_bid` Heze IL bits filtering** (commit c559c350a): inclusive bits accepted, non-inclusive bits rejected, empty store accepts any, highest-value non-inclusive rejected. Key insight: with small validator sets, same validator can appear at multiple committee positions — tests compute actual local bits instead of hardcoding positions. 27/27 heze_verification tests pass.
