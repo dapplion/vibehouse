@@ -147,6 +147,10 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Runs 3819-3820: Added `gossip_beacon_block` (12 phase0 tests), `gossip_beacon_attestation` (16 tests), `gossip_beacon_aggregate_and_proof` (20 tests). All gossip validation test types now implemented.
 - Final EF test counts: 86/86 (real crypto) + 148/148 (fake crypto). Zero clippy warnings.
 
+**Heze HTTP API tests (run 3840, 2026-03-29):**
+- Added 7 IL duty endpoint tests (`POST /eth/v1/validator/duties/inclusion_list/{epoch}`). 352/352 http_api tests pass.
+- No new consensus-specs merges since #5053 (2026-03-27). All open Gloas/Heze PRs unchanged.
+
 **Heze IL slot-1 fix (run 3823, 2026-03-28):**
 - Fixed `check_inclusion_list_satisfaction` and `compute_inclusion_list_bits_for_slot` to use `slot - 1` per spec's `record_payload_inclusion_list_satisfaction`. ILs broadcast at slot N-1 constrain the payload at slot N.
 

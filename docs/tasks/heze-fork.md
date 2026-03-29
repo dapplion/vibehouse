@@ -446,3 +446,17 @@ The existing `get_best_execution_bid` already correctly used `slot - 1` for the 
 Fix: both functions now compute `il_slot = slot - 1` and use it for committee computation and IL store lookups. Slot 0 gracefully returns true/default (no previous slot).
 
 Tests: 86/86 EF (real crypto) + 148/148 EF (fake crypto) + 209 proto_array + 33 inclusion_list_store — all pass.
+
+### HTTP API inclusion list duty tests (run 3840+)
+
+Added 7 integration tests for `POST /eth/v1/validator/duties/inclusion_list/{epoch}` endpoint in `beacon_node/http_api/tests/fork_tests.rs`:
+
+1. `il_duties_rejected_before_heze_scheduled`: returns 400 when Heze not configured
+2. `il_duties_returns_duties_after_heze`: returns duties with valid fields after fork activation
+3. `il_duties_rejects_future_epoch`: rejects epoch > current+1
+4. `il_duties_past_epoch_rejected`: rejects epoch too far in the past
+5. `il_duties_empty_indices`: empty validator list returns empty duties
+6. `il_duties_next_epoch`: next epoch duties succeed with correct slot range
+7. `il_duties_dependent_root_consistent`: dependent_root is deterministic across calls
+
+Also added `heze_spec()` helper function. Tests: 352/352 http_api — all pass.
