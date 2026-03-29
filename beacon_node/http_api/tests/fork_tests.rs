@@ -4631,6 +4631,297 @@ async fn bid_submission_rejected_builder_equivocation() {
     }
 }
 
+// ── Heze (FOCIL) Inclusion List Duty Tests ──────────────────────────
+
+fn heze_spec(heze_fork_epoch: Epoch) -> ChainSpec {
+    let mut spec = gloas_spec(Epoch::new(0));
+    spec.heze_fork_epoch = Some(heze_fork_epoch);
+    spec
+}
+
+/// Inclusion list duties endpoint should return 400 when Heze is not scheduled.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn il_duties_rejected_before_heze_scheduled() {
+    let validator_count = 32;
+    // Gloas scheduled, but Heze not
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let client = &tester.client;
+
+    let indices: Vec<u64> = (0..validator_count as u64).collect();
+    let result = client
+        .post_validator_duties_inclusion_list(Epoch::new(0), &indices)
+        .await;
+
+    assert!(
+        result.is_err(),
+        "should reject IL duties when Heze is not scheduled"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("Heze is not scheduled"),
+            "expected 'Heze is not scheduled', got: {}",
+            msg.message
+        );
+    } else {
+        panic!("expected ServerMessage error, got: {result:?}");
+    }
+}
+
+/// Inclusion list duties endpoint should return duties after Heze fork is active.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn il_duties_returns_duties_after_heze() {
+    let validator_count = 32;
+    let spec = heze_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let all_validators: Vec<u64> = (0..validator_count as u64).collect();
+
+    let slots_per_epoch = E::slots_per_epoch();
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_val_indices = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_val_indices,
+        )
+        .await
+        .unwrap();
+
+    let duties_response = client
+        .post_validator_duties_inclusion_list(Epoch::new(0), &all_validators)
+        .await
+        .expect("IL duties should succeed after Heze fork");
+
+    let duties = &duties_response.data;
+
+    // INCLUSION_LIST_COMMITTEE_SIZE=16 members per slot. With 32 validators,
+    // we should get some duties.
+    assert!(
+        !duties.is_empty(),
+        "IL duties should not be empty for {validator_count} validators"
+    );
+
+    for duty in duties {
+        assert!(
+            duty.validator_index < validator_count as u64,
+            "validator_index {} out of range",
+            duty.validator_index
+        );
+        assert_eq!(
+            duty.slot.epoch(slots_per_epoch),
+            Epoch::new(0),
+            "duty slot {} not in epoch 0",
+            duty.slot
+        );
+        // il_committee_index should be in range
+        assert!(
+            duty.il_committee_index < 16,
+            "il_committee_index {} out of range (INCLUSION_LIST_COMMITTEE_SIZE=16)",
+            duty.il_committee_index
+        );
+        // committee root should be non-zero
+        assert_ne!(
+            duty.inclusion_list_committee_root,
+            Hash256::zero(),
+            "inclusion_list_committee_root should be non-zero"
+        );
+    }
+
+    assert_ne!(
+        duties_response.dependent_root,
+        Hash256::zero(),
+        "dependent_root should be set"
+    );
+}
+
+/// IL duties should reject epochs too far in the future.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn il_duties_rejects_future_epoch() {
+    let validator_count = 32;
+    let spec = heze_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let client = &tester.client;
+
+    let indices: Vec<u64> = (0..validator_count as u64).collect();
+
+    // Current epoch is 0, requesting epoch 5 should fail (> current + 1)
+    let result = client
+        .post_validator_duties_inclusion_list(Epoch::new(5), &indices)
+        .await;
+
+    assert!(
+        result.is_err(),
+        "should reject IL duties for epoch too far in the future"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+    }
+}
+
+/// IL duties should handle past epoch gracefully.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn il_duties_past_epoch_rejected() {
+    let validator_count = 32;
+    let spec = heze_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    // Advance to epoch 3
+    let slots_per_epoch = E::slots_per_epoch();
+    let target_slot = Slot::new(slots_per_epoch * 3);
+    harness.extend_to_slot(target_slot).await;
+
+    let head_slot = harness.chain.head_snapshot().beacon_block.slot();
+    assert!(
+        head_slot.epoch(slots_per_epoch) >= Epoch::new(3),
+        "should be at epoch 3+, got epoch {}",
+        head_slot.epoch(slots_per_epoch)
+    );
+
+    let indices: Vec<u64> = (0..validator_count as u64).collect();
+
+    // Request epoch 0 when current epoch is 3 — should fail (too far in the past)
+    let result = client
+        .post_validator_duties_inclusion_list(Epoch::new(0), &indices)
+        .await;
+
+    assert!(
+        result.is_err(),
+        "should reject IL duties for epoch too far in the past"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+    }
+}
+
+/// IL duties with empty validator index list should return empty duties.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn il_duties_empty_indices() {
+    let validator_count = 32;
+    let spec = heze_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let empty_indices: Vec<u64> = vec![];
+    let response = client
+        .post_validator_duties_inclusion_list(Epoch::new(0), &empty_indices)
+        .await
+        .expect("empty index list should succeed");
+
+    assert!(
+        response.data.is_empty(),
+        "empty validator index list should return no duties"
+    );
+}
+
+/// IL duties for next epoch should succeed.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn il_duties_next_epoch() {
+    let validator_count = 32;
+    let spec = heze_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let indices: Vec<u64> = (0..validator_count as u64).collect();
+    let slots_per_epoch = E::slots_per_epoch();
+
+    // Current epoch is 0, request next epoch (1) — should succeed
+    let response = client
+        .post_validator_duties_inclusion_list(Epoch::new(1), &indices)
+        .await
+        .expect("next epoch IL duties should succeed");
+
+    assert!(
+        !response.data.is_empty(),
+        "next epoch IL duties should not be empty"
+    );
+
+    for duty in &response.data {
+        assert_eq!(
+            duty.slot.epoch(slots_per_epoch),
+            Epoch::new(1),
+            "duty slot {} not in epoch 1",
+            duty.slot
+        );
+    }
+}
+
+/// IL duties should return consistent dependent_root across calls for same epoch.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn il_duties_dependent_root_consistent() {
+    let validator_count = 32;
+    let spec = heze_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let indices: Vec<u64> = (0..validator_count as u64).collect();
+
+    let resp1 = client
+        .post_validator_duties_inclusion_list(Epoch::new(0), &indices)
+        .await
+        .expect("first call should succeed");
+    let resp2 = client
+        .post_validator_duties_inclusion_list(Epoch::new(0), &indices)
+        .await
+        .expect("second call should succeed");
+
+    assert_eq!(
+        resp1.dependent_root, resp2.dependent_root,
+        "dependent_root should be consistent across calls"
+    );
+    assert_eq!(
+        resp1.data.len(),
+        resp2.data.len(),
+        "duties count should be consistent across calls"
+    );
+}
+
 /// POST vibehouse/execution_proofs with an unknown block root returns 400.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn post_execution_proof_unknown_block_root_rejected() {
