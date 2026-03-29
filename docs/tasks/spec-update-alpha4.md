@@ -188,10 +188,11 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Multiple deep audits: Heze fork choice spec compliance verified, all spec functions accounted for, zero unwrap() in Heze production code, all TODOs have issue links.
 - Devnet verified: Gloas 4-node finalized_epoch=8, Heze devnet Gloas@epoch1/Heze@epoch3 finalized_epoch=8.
 
-**Monitoring steady state (runs 3850-3870, 2026-03-29):**
+**Monitoring steady state (runs 3850-3871, 2026-03-29):**
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting, 148 reviews), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, REVIEW_REQUIRED, conflicting, 148 reviews), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
 - Non-Gloas PRs: #5055 (EIP-8025 refactor), #5054 (test workflow), #5050 (networking test yield), #5049/#5047 (gossip validation for older forks) — none actionable.
 - Updated transitive dep: syn 1.0.109→2.0.117 (run 3865).
 - Full TODO audit (run 3866): all remaining TODOs blocked on external deps (EIP-7892 ×3, blst safe API, PeerDAS checkpoint sync) or non-critical (#36). No unimplemented!() in production code.
-- Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix). CI green. EF spec tests: 86/86 + 148/148. Codebase stable.
+- Full Heze audit (run 3871): zero TODOs/FIXMEs/unimplemented!() in all Heze/FOCIL code. All 7 implementation phases verified clean.
+- Zero clippy warnings. No compatible dependency updates. No transitive dep updates. Cargo audit: 1 rsa vuln (no fix). CI green. EF spec tests: 86/86 + 148/148. Devnet verified: finalized_epoch=8. Codebase stable.
