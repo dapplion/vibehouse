@@ -6783,3 +6783,117 @@ async fn test_heze_gossip_inclusion_list_duplicate_ignored() {
     let result = drain_validation_result(&mut rig.network_rx).await;
     assert_ignore(result);
 }
+
+/// Heze gossip: inclusion list with transactions exceeding MAX_BYTES_PER_INCLUSION_LIST is REJECTED.
+///
+/// Per spec: [REJECT] The size of message.transactions is within upperbound
+/// MAX_BYTES_PER_INCLUSION_LIST.
+#[tokio::test]
+async fn test_heze_gossip_inclusion_list_transactions_too_large_rejected() {
+    if test_spec::<E>().heze_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = heze_rig(SMALL_CHAIN).await;
+    let current_slot = rig.chain.slot().unwrap();
+
+    let mut il = make_inclusion_list(&rig, current_slot, 0);
+
+    // Add a single transaction that exceeds MAX_BYTES_PER_INCLUSION_LIST (8192 bytes)
+    let big_tx = vec![0xab_u8; 8193];
+    let tx = ssz_types::VariableList::new(big_tx).unwrap();
+    il.transactions = ssz_types::VariableList::new(vec![tx]).unwrap();
+
+    let signed_il = sign_inclusion_list(&rig, il);
+
+    rig.network_beacon_processor
+        .send_gossip_inclusion_list(junk_message_id(), junk_peer_id(), Box::new(signed_il))
+        .unwrap();
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
+/// Heze gossip: third distinct inclusion list from same validator is IGNORED (equivocator).
+///
+/// Per spec: [IGNORE] The message is either the first or second valid message
+/// received from the validator with the same validator_index for the slot.
+#[tokio::test]
+async fn test_heze_gossip_inclusion_list_equivocator_ignored() {
+    if test_spec::<E>().heze_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = heze_rig(SMALL_CHAIN).await;
+    let current_slot = rig.chain.slot().unwrap();
+
+    // First IL: accepted
+    let il1 = make_inclusion_list(&rig, current_slot, 0);
+    let signed_il1 = sign_inclusion_list(&rig, il1);
+
+    rig.network_beacon_processor
+        .send_gossip_inclusion_list(
+            junk_message_id(),
+            junk_peer_id(),
+            Box::new(signed_il1.clone()),
+        )
+        .unwrap();
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+
+    // Second IL (different content, same validator): accepted (equivocation detected but
+    // spec allows up to 2 messages)
+    let mut il2 = make_inclusion_list(&rig, current_slot, 0);
+    let small_tx = vec![0x01_u8; 10];
+    let tx = ssz_types::VariableList::new(small_tx).unwrap();
+    il2.transactions = ssz_types::VariableList::new(vec![tx]).unwrap();
+    let signed_il2 = sign_inclusion_list(&rig, il2);
+
+    rig.network_beacon_processor
+        .send_gossip_inclusion_list(
+            junk_message_id(),
+            junk_peer_id(),
+            Box::new(signed_il2.clone()),
+        )
+        .unwrap();
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    // Second distinct message: accepted (equivocator flag set, but message still accepted)
+    assert_accept(result);
+
+    // Third IL (yet another different content): IGNORED (equivocator)
+    let mut il3 = make_inclusion_list(&rig, current_slot, 0);
+    let small_tx2 = vec![0x02_u8; 20];
+    let tx2 = ssz_types::VariableList::new(small_tx2).unwrap();
+    il3.transactions = ssz_types::VariableList::new(vec![tx2]).unwrap();
+    let signed_il3 = sign_inclusion_list(&rig, il3);
+
+    rig.network_beacon_processor
+        .send_gossip_inclusion_list(junk_message_id(), junk_peer_id(), Box::new(signed_il3))
+        .unwrap();
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
+}
+
+/// Heze gossip: inclusion list from a different committee position is also accepted.
+///
+/// Verifies that the test infrastructure works with non-zero committee positions.
+#[tokio::test]
+async fn test_heze_gossip_inclusion_list_different_committee_position_accepted() {
+    if test_spec::<E>().heze_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = heze_rig(SMALL_CHAIN).await;
+    let current_slot = rig.chain.slot().unwrap();
+
+    // Use committee position 1 instead of the default 0
+    let il = make_inclusion_list(&rig, current_slot, 1);
+    let signed_il = sign_inclusion_list(&rig, il);
+
+    rig.network_beacon_processor
+        .send_gossip_inclusion_list(junk_message_id(), junk_peer_id(), Box::new(signed_il))
+        .unwrap();
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+}
