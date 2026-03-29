@@ -257,3 +257,11 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - All open Gloas/Heze PRs unchanged: #4843 (approved/blocked since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
 - Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix).
 - EF spec tests on v1.7.0-alpha.4 vectors. Codebase stable. Nothing actionable.
+
+**Monitoring (run 3849, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
+- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, 144 reviews, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- Removed stale `#[allow(dead_code)]` from `InclusionListDutiesMap::duties_for_slot` — method is now used by `inclusion_list_service.rs`.
+- Full code quality audit: zero unwrap() in Heze production code, all TODOs have issue links, zero clippy warnings.
+- Comprehensive Heze test coverage review: 100+ tests across types (29), state processing (21), fork choice (3), beacon chain (14), network (9), validator client (14), HTTP API (13). No gaps found.
+- EF spec tests: 148/148 (fake crypto). All deps fully current. Codebase stable.
