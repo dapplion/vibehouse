@@ -103,7 +103,7 @@ cargo nextest run --release -p validator_client
 ### Before pushing
 
 ```bash
-cargo nextest run --workspace --release --exclude ef_tests --exclude beacon_chain --exclude slasher --exclude network --exclude http_api
+cargo nextest run --workspace --release --exclude ef_tests --exclude beacon_chain --exclude slasher --exclude network --exclude http_api --exclude web3signer_tests
 ```
 
 ### Full EF spec tests (minimal only)

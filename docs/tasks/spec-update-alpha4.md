@@ -169,3 +169,9 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Updated zerocopy 0.8.47→0.8.48. Build clean, zero clippy warnings, cargo audit unchanged (1 rsa vuln).
 - EF spec tests: 86/86 (real crypto) + 148/148 (fake crypto). All passing.
 - CI green. Deps fully current.
+
+**Monitoring (run 3826, 2026-03-29):**
+- No new consensus-specs merges or releases. All monitored Gloas/Heze PRs unchanged.
+- Zero clippy warnings. No compatible dependency updates available.
+- EF spec tests: 148/148 (fake crypto). Workspace tests: 5065/5065 passing.
+- Fixed CLAUDE.md "Before pushing" command to exclude web3signer_tests (requires external Java process, not available in CI/dev environments).
