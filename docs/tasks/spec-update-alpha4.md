@@ -162,3 +162,10 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Heze devnet: Gloas@epoch1, Heze@epoch3, finalized_epoch=8 at slot 81. IL slot-1 fix verified end-to-end.
 - Standard Gloas devnet: finalized_epoch=8 at slot 80. Clean fork transition.
 - No new consensus-specs merges or releases. All monitored PRs unchanged. Codebase stable.
+
+**Monitoring (run 3825, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
+- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- Updated zerocopy 0.8.47→0.8.48. Build clean, zero clippy warnings, cargo audit unchanged (1 rsa vuln).
+- EF spec tests: 86/86 (real crypto) + 148/148 (fake crypto). All passing.
+- CI green. Deps fully current.
