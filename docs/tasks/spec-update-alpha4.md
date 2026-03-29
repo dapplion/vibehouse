@@ -196,3 +196,8 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Full TODO audit (run 3866): all remaining TODOs blocked on external deps (EIP-7892 ×3, blst safe API, PeerDAS checkpoint sync) or non-critical (#36). No unimplemented!() in production code.
 - Full Heze audit (run 3871): zero TODOs/FIXMEs/unimplemented!() in all Heze/FOCIL code. All 7 implementation phases verified clean.
 - Zero clippy warnings. No compatible dependency updates. No transitive dep updates. Cargo audit: 1 rsa vuln (no fix). CI green. EF spec tests: 86/86 + 148/148. Devnet verified: finalized_epoch=8. Codebase stable.
+
+**Monitoring (run 3872, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
+- All 7 monitored open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954 (unreviewed), #4898/#4892 (approved but stalled), #4960/#4932 (test vectors, #4932 conflicting).
+- Zero clippy warnings. No compatible dependency updates. EF spec tests: 148/148 (fake crypto). Codebase stable.
