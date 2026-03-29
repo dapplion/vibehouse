@@ -180,134 +180,18 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - EF spec tests: 148/148 (fake crypto). Workspace tests: 5065/5065 passing.
 - Fixed CLAUDE.md "Before pushing" command to exclude web3signer_tests (requires external Java process, not available in CI/dev environments).
 
-**Monitoring (runs 3827-3828, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
-- New non-Gloas PRs: #5055 (EIP-8025 refactor), #5054 (test workflow), #5050 (networking test yield), #5049 (Capella gossip tests) — none actionable.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix).
-- EF spec tests: 148/148 (fake crypto). CI green. Codebase stable.
-- Devnet verified: 4-node finalized_epoch=8, clean Gloas fork transition.
+**Heze test coverage + code improvements (runs 3827-3849, 2026-03-29):**
+- Added 10 `upgrade_to_heze` unit tests (run 3835), 3 IL gossip validation tests (run 3837), 5 `is_valid_inclusion_list_signature` tests (run 3838), 12 beacon chain integration tests for IL methods (run 3839), 7 IL duty endpoint tests (run 3840), 6 IL pool HTTP API tests (run 3841), 2 block production IL tests (run 3846), 1 fork choice IL test (run 3847). Total: 46 new Heze tests.
+- Updated `InclusionListByCommitteeIndices/1` RPC request to match spec: `(slot, Bitvector[INCLUSION_LIST_COMMITTEE_SIZE])` = 10 bytes fixed (run 3842). Fixed gossip validation ordering, RPC handler slot source, response size limit.
+- Removed stale `#[allow(dead_code)]`, fixed cargo doc warning for bitvector bracket notation.
+- Comprehensive Heze test coverage review (run 3849): 100+ tests across types (29), state processing (21), fork choice (3), beacon chain (14), network (9), validator client (14), HTTP API (13). No gaps found.
+- Multiple deep audits: Heze fork choice spec compliance verified, all spec functions accounted for, zero unwrap() in Heze production code, all TODOs have issue links.
+- Devnet verified: Gloas 4-node finalized_epoch=8, Heze devnet Gloas@epoch1/Heze@epoch3 finalized_epoch=8.
 
-**Monitoring (runs 3829-3834, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix).
-- EF spec tests: 148/148 (fake crypto). Codebase stable.
-
-**Heze test coverage (run 3835, 2026-03-29):**
-- Added 10 unit tests for `upgrade_to_heze` (Gloas→Heze state transition): versioning, registry, electra fields, capella fields, finality, gloas-specific fields, bid field preservation with `inclusion_list_bits` default initialization, execution payload availability, eth1 deposit index, non-gloas-input rejection. All 1048 state_processing tests pass. Zero clippy warnings.
-
-**Monitoring (run 3836, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Still on v1.7.0-alpha.4. No new Gloas/Heze PRs opened.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix).
-- EF spec tests: 148/148 (fake crypto). Workspace tests: 5075/5075 passing. Codebase stable.
-
-**Heze gossip test coverage (run 3837, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). All monitored PRs unchanged.
-- Added 3 new Heze IL gossip validation tests: TransactionsTooLarge (8193 bytes exceeds MAX_BYTES_PER_INCLUSION_LIST), equivocator detection (3rd distinct IL from same validator is IGNORED), different committee position (position 1 instead of default 0). All 9 IL gossip tests + 214 network tests pass. Zero clippy warnings.
-
-**Heze signature validation tests (run 3838, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). All monitored Gloas/Heze PRs unchanged.
-- Added 5 unit tests for `is_valid_inclusion_list_signature`: valid signature accepted, wrong key rejected, corrupted signature rejected, out-of-bounds validator index errors, multiple committee members validated. Total Heze state_processing tests: 16 (11 committee + 5 signature). All 1053 state_processing tests pass. Zero clippy warnings.
-
-**Heze beacon chain integration tests (run 3839, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). All monitored Gloas/Heze PRs unchanged.
-- Added 12 integration tests for 3 previously untested BeaconChain Heze methods:
-  - `get_inclusion_lists_by_committee_indices`: empty store, cached ILs returned, position filtering, out-of-range indices
-  - `check_inclusion_list_satisfaction`: empty store passes, all IL txs included passes, missing IL tx fails, slot 0 edge case
-  - `compute_inclusion_list_bits_for_slot`: empty store all-zeros, observed validators reflected in bits, slot 0 default, equivocator excluded
-- All 1011 beacon_chain tests pass. 148/148 EF spec tests. Zero clippy warnings.
-
-**Heze IL pool HTTP API tests (run 3841, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). All monitored PRs unchanged.
-- Added 6 HTTP API tests for `POST/GET /eth/v1/beacon/pool/inclusion_lists`: valid IL accepted, rejected pre-Heze, non-committee rejected, POST+GET round-trip with slot filter, empty pool, duplicate silently accepted. 358/358 http_api tests pass. Zero clippy warnings.
-
-**InclusionListByCommitteeIndices RPC format + spec check (run 3842, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Recent merges (#5052, #5053, #5051, #5048) are all CI/testing infra — no behavioral changes.
-- Updated `InclusionListByCommitteeIndices/1` RPC request to match spec: `(slot: Slot, committee_indices: Bitvector[INCLUSION_LIST_COMMITTEE_SIZE])` = 10 bytes fixed. Previously used `RuntimeVariableList<u64>`. Verified against Heze p2p-interface.md.
-- Fixed gossip validation check ordering, RPC handler slot source, and response size limit. 214+12+407 tests pass. Zero warnings.
-
-**Monitoring (runs 3843-3844, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, 144 reviews, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- New non-Gloas PRs: #5055 (EIP-8025 refactor), #5054 (test workflow), #5050 (networking test yield), #5049/#5047 (gossip validation tests for Capella/Bellatrix) — none actionable.
-- Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix).
-- EF spec tests: 148/148 (fake crypto). Codebase stable. Nothing actionable.
-
-**Monitoring + devnet verification (run 3845, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, 144 reviews, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No compatible dependency updates. No new crate versions.
-- Heze devnet verified: Gloas@epoch1, Heze@epoch3, finalized_epoch=8 at slot 81. RPC format changes from run 3842 (InclusionListByCommitteeIndices slot+bitvector format) confirmed working end-to-end.
-
-**Heze block production tests (run 3846, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). All monitored Gloas/Heze PRs unchanged.
-- Added 2 integration tests for Heze block production verifying `inclusion_list_bits` in produced blocks: `block_production_embeds_inclusion_list_bits` (IL in store → bit set in bid), `block_production_empty_il_store_all_bits_zero` (no ILs → all zero). 14/14 Heze beacon_chain tests pass. Zero clippy warnings.
-
-**Monitoring + test coverage (run 3847, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Fixed cargo doc warning: escaped `[16]` bracket notation in `InclusionListByCommitteeIndicesRequest` doc comment (was triggering rustdoc broken-intra-doc-links error in CI).
-- Added fork choice test `execution_payload_stores_inclusion_list_not_satisfied`: verifies `on_execution_payload(root, hash, false)` correctly stores `inclusion_list_satisfied=false` on the proto node, ensuring `should_extend_payload` blocks extension. 122/122 fork_choice tests pass.
-- Zero clippy warnings. Codebase stable.
-
-**Monitoring (run 3848, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix).
-- EF spec tests on v1.7.0-alpha.4 vectors. Codebase stable. Nothing actionable.
-
-**Monitoring (run 3849, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, 144 reviews, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Removed stale `#[allow(dead_code)]` from `InclusionListDutiesMap::duties_for_slot` — method is now used by `inclusion_list_service.rs`.
-- Full code quality audit: zero unwrap() in Heze production code, all TODOs have issue links, zero clippy warnings.
-- Comprehensive Heze test coverage review: 100+ tests across types (29), state processing (21), fork choice (3), beacon chain (14), network (9), validator client (14), HTTP API (13). No gaps found.
-- EF spec tests: 148/148 (fake crypto). All deps fully current. Codebase stable.
-
-**Monitoring (run 3850, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- New non-Gloas PR: #5055 (EIP-8025 refactor, opened Mar 28) — not actionable.
-- Audited Heze fork choice for spec compliance: virtual FULL child creation correctly uses `envelope_received` only (matching spec); `inclusion_list_satisfied` check is correctly in `should_extend_payload()` tiebreaker only. No issues found.
-- CI: check+clippy+fmt passed, remaining jobs in progress. Zero clippy warnings. No dependency updates. Codebase stable.
-
-**Monitoring (run 3851, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Deep Heze fork choice spec audit: verified `on_inclusion_list` handler fully implemented across gossip validation + import path (is_before_view_freeze_cutoff computed, passed to process_signed_inclusion_list). `record_payload_inclusion_list_satisfaction` maps to `check_inclusion_list_satisfaction` with local transaction set comparison. `payload_inclusion_list_satisfaction` store maps to `inclusion_list_satisfied` on ProtoNode. PayloadAttributes `inclusion_list_transactions` field deferred (requires EL-side FOCIL support). All spec functions accounted for.
-- CI in progress (check+clippy+fmt, ef-tests, network+op_pool passed). Zero clippy warnings. No dependency updates. Codebase stable.
-
-**Monitoring (runs 3852-3855, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No compatible dependency updates. Cargo audit unchanged (1 rsa vuln, no fix).
-- EF spec tests: 148/148 (fake crypto). Codebase stable. Nothing actionable.
-
-**Monitoring (runs 3856-3864, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting/dirty, 148 reviews), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- New non-Gloas PRs: #5055 (EIP-8025 refactor), #5054 (test workflow), #5050 (networking test yield), #5049/#5047 (gossip validation for Capella/Bellatrix) — none actionable.
-- Zero clippy warnings. No compatible dependency updates. No transitive updates. Cargo audit: 1 rsa vuln (no fix). CI green. Codebase stable. All TODOs blocked on external deps. Nothing actionable.
-
-**Monitoring (run 3865, 2026-03-29):**
+**Monitoring steady state (runs 3850-3868, 2026-03-29):**
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
 - All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting, 148 reviews), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Deep Heze implementation audit (agent-driven): all 5 implementation areas (heze_verification, inclusion_list_store, gossip validation, fork choice, block production) verified spec-compliant. No panics, no missing validation steps, no edge case gaps. 77+ Heze tests across all modules.
-- Updated transitive dep: syn 1.0.109→2.0.117 for data-encoding-macro-internal.
-- CI green (all 6 jobs passed on latest commit). Zero clippy warnings. Codebase stable.
-
-**Monitoring (run 3866, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting, 148 reviews), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix).
-- Full TODO audit: all remaining TODOs blocked on external deps (EIP-7892 ×3, blst safe API, PeerDAS checkpoint sync) or non-critical (#36). No unimplemented!() in production code. No ignored tests.
-- Codebase stable. Nothing actionable.
-
-**Monitoring (run 3867, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting, 148 reviews), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Note: #5052 merged (reduce compute_shuffled_index cache 65536→1024) — test infra only, not spec-substantive.
-- Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix). CI green.
-- Codebase stable. Nothing actionable.
+- Non-Gloas PRs: #5055 (EIP-8025 refactor), #5054 (test workflow), #5050 (networking test yield), #5049/#5047 (gossip validation for older forks) — none actionable.
+- Updated transitive dep: syn 1.0.109→2.0.117 (run 3865).
+- Full TODO audit (run 3866): all remaining TODOs blocked on external deps (EIP-7892 ×3, blst safe API, PeerDAS checkpoint sync) or non-critical (#36). No unimplemented!() in production code.
+- Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix). CI green. EF spec tests: 86/86 + 148/148. Codebase stable.
