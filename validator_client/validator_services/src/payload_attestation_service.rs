@@ -7,7 +7,7 @@ use task_executor::TaskExecutor;
 use tokio::time::{Duration, sleep};
 use tracing::{debug, error, info, trace};
 use types::{ChainSpec, Epoch, EthSpec};
-use validator_metrics::{self as metrics};
+use validator_metrics as metrics;
 use validator_store::ValidatorStore;
 
 /// Builds a `PayloadAttestationService`.
