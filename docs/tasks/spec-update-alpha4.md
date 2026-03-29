@@ -209,3 +209,8 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Non-Gloas PRs: #5054 (test workflow), #5055 (EIP-8025 refactor), #5050/#5049/#5047/#5033 — none actionable.
 - Nightly tests (run 23705614396): all 31 jobs passed. CI green.
 - Zero clippy warnings. No dependency updates (0 compatible). Cargo audit: 1 rsa vuln (no fix). Codebase stable.
+
+**Monitoring (run 3883, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
+- All 9 monitored open Gloas/Heze PRs unchanged. Only open Heze PR: #4954 (milliseconds, stale since Mar 2).
+- Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix). EF spec tests: 148/148. Codebase stable.
