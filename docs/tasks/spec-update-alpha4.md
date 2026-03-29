@@ -202,3 +202,7 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 **Heze gossip test coverage (run 3837, 2026-03-29):**
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). All monitored PRs unchanged.
 - Added 3 new Heze IL gossip validation tests: TransactionsTooLarge (8193 bytes exceeds MAX_BYTES_PER_INCLUSION_LIST), equivocator detection (3rd distinct IL from same validator is IGNORED), different committee position (position 1 instead of default 0). All 9 IL gossip tests + 214 network tests pass. Zero clippy warnings.
+
+**Heze signature validation tests (run 3838, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). All monitored Gloas/Heze PRs unchanged.
+- Added 5 unit tests for `is_valid_inclusion_list_signature`: valid signature accepted, wrong key rejected, corrupted signature rejected, out-of-bounds validator index errors, multiple committee members validated. Total Heze state_processing tests: 16 (11 committee + 5 signature). All 1053 state_processing tests pass. Zero clippy warnings.
