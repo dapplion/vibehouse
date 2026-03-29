@@ -3260,6 +3260,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     /// Called once per slot from `per_slot_task`. Removes stale entries from:
     /// - `payload_attestation_pool` — slot-keyed, only useful for current/recent slots
     /// - `proposer_preferences_pool` — slot-keyed, only useful for current/recent slots
+    /// - `inclusion_list_store` — slot-keyed, only useful for current/recent slots
     /// - `pending_gossip_envelopes` — root-keyed, bounded by capacity
     /// - `execution_proof_tracker` — root-keyed, bounded by capacity
     /// - `pending_execution_proofs` — root-keyed, bounded by capacity
@@ -3279,6 +3280,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         self.proposer_preferences_pool
             .lock()
             .retain(|&slot, _| slot >= earliest_slot);
+        self.inclusion_list_store.lock().prune(earliest_slot);
 
         // Bound root-keyed pending buffers. These are self-draining (entries are
         // consumed on block import), but if blocks never arrive the entries become
