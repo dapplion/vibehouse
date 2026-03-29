@@ -224,6 +224,33 @@ async fn bid_zero_execution_payment() {
 }
 
 #[tokio::test]
+async fn bid_too_many_blob_kzg_commitments() {
+    let harness = gloas_harness(1).await;
+    let current_slot = harness.chain.slot().unwrap();
+
+    let mut bid = SignedExecutionPayloadBidGloas::<E>::empty();
+    bid.message.slot = current_slot;
+    bid.message.execution_payment = 1;
+
+    // Add more blob commitments than the max allowed
+    let epoch = current_slot.epoch(E::slots_per_epoch());
+    let max_blobs = harness.chain.spec.max_blobs_per_block(epoch) as usize;
+    let commitments: Vec<_> = (0..=max_blobs)
+        .map(|_| KzgCommitment::empty_for_testing())
+        .collect();
+    bid.message.blob_kzg_commitments = ssz_types::VariableList::new(commitments).unwrap();
+
+    let err = unwrap_err(
+        harness.chain.verify_execution_bid_for_gossip(bid.into()),
+        "should reject bid with too many blob commitments",
+    );
+    assert!(
+        matches!(err, ExecutionBidError::TooManyBlobKzgCommitments { .. }),
+        "expected TooManyBlobKzgCommitments, got {err:?}"
+    );
+}
+
+#[tokio::test]
 async fn bid_unknown_builder_index_zero() {
     let harness = gloas_harness(1).await;
     let current_slot = harness.chain.slot().unwrap();

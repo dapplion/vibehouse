@@ -3439,6 +3439,30 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
                 return;
             }
+            // Spec: [REJECT] blob_kzg_commitments length within limit
+            Err(ExecutionBidError::TooManyBlobKzgCommitments {
+                num_commitments,
+                max_blobs,
+            }) => {
+                warn!(
+                    builder_index,
+                    num_commitments,
+                    max_blobs,
+                    %peer_id,
+                    "Rejecting execution bid with too many blob KZG commitments"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::LowToleranceError,
+                    "execution_bid_too_many_blobs",
+                );
+                metrics::inc_counter_vec(
+                    &metrics::BEACON_PROCESSOR_EXECUTION_BID_REJECTED_TOTAL,
+                    &["too_many_blobs"],
+                );
+                return;
+            }
             // Spec: [REJECT] bid.builder_index is a valid/active builder index
             Err(
                 e @ (ExecutionBidError::UnknownBuilder { .. }

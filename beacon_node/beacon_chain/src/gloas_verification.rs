@@ -52,6 +52,16 @@ pub enum ExecutionBidError {
     /// ## Peer scoring
     /// The peer has sent an invalid message.
     ZeroExecutionPayment,
+    /// The bid has too many blob KZG commitments.
+    ///
+    /// Spec: `[REJECT] len(bid.blob_kzg_commitments) <= max_blobs_per_block`
+    ///
+    /// ## Peer scoring
+    /// The peer has sent an invalid message.
+    TooManyBlobKzgCommitments {
+        num_commitments: usize,
+        max_blobs: usize,
+    },
     /// The builder index does not exist in the builder registry.
     ///
     /// ## Peer scoring
@@ -426,6 +436,17 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Check 1b: Spec: [REJECT] bid.execution_payment is zero.
         if *bid.to_ref().message().execution_payment() == 0 {
             return Err(ExecutionBidError::ZeroExecutionPayment);
+        }
+
+        // Check 1c: Spec: [REJECT] blob_kzg_commitments length within limit.
+        let bid_epoch = bid_slot.epoch(T::EthSpec::slots_per_epoch());
+        let max_blobs = self.spec.max_blobs_per_block(bid_epoch) as usize;
+        let num_commitments = bid.to_ref().message().blob_kzg_commitments().len();
+        if num_commitments > max_blobs {
+            return Err(ExecutionBidError::TooManyBlobKzgCommitments {
+                num_commitments,
+                max_blobs,
+            });
         }
 
         // Get head state for validation
