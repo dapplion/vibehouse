@@ -233,10 +233,9 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Deep audits: hot-path clone() calls all architecturally necessary, zero production unwrap()/expect(), all TODOs linked to issues, all #[allow(dead_code)] justified.
 - Zero clippy warnings. Zero compatible dep updates. Cargo audit unchanged (1 rsa vuln, no fix). EF spec tests: 86/86 + 148/148. CI all green. Codebase stable.
 
-**Monitoring (runs 3966-3977, 2026-03-29):**
+**Monitoring (runs 3966-3978, 2026-03-29):**
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
 - All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, 148 reviews, dirty/conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
 - #5056 (blob kzg commitment len check) — open, 0 reviews. Proactively implemented in commit 42e33200c.
 - vibehouse repo quiet: no new issues/PRs/comments since mid-March. Issue #36 has only blocked + non-critical items remaining.
-- Run 3977: Verified EF tests 148/148 (fake crypto), zero clippy warnings, clean build. Heze test vectors present (operations, fork_choice, epoch_processing, ssz_static, sanity, fork, transition, networking) — all running and passing. No Heze-specific FOCIL test vectors yet from spec team.
-- Zero compatible dep updates. Cargo audit: 1 rsa vuln (no fix). Codebase stable.
+- Run 3978: Verified EF tests 148/148 (fake crypto), zero clippy warnings, clean build. No new merges, no dep updates. Codebase stable.
