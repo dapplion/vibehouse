@@ -262,64 +262,10 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - #5056 (blob kzg commitment len check) still open, 0 reviews/comments. Proactive implementation verified against spec diff — exact match.
 - Zero clippy warnings. No dep updates available. Cargo audit: 1 rsa vuln (no fix). EF tests: 148/148. Codebase stable.
 
-**Monitoring (runs 3983-3986, 2026-03-29):**
+**Monitoring (runs 3983-4007, 2026-03-29):**
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
-- All 9 open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- #5056 (blob kzg commitment len check) still open, 0 reviews/comments. Proactively implemented. Verified implementation matches spec diff exactly.
-- Zero clippy warnings. No dep updates available. Cargo audit: 1 rsa vuln (no fix). EF tests: 148/148. Codebase stable.
-- Full codebase quality audit (run 3986): zero unlinked TODOs, zero stale #[allow(dead_code)], zero #[ignore] tests, zero compilation warnings, zero clippy warnings. All issue #36 items either done or blocked on external deps. No actionable improvements found.
-
-**Monitoring (run 3987, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
-- #5056 (blob kzg commitment len check) still open, updated today (2026-03-29T16:44:21Z), 0 reviews. Spec change adds `[REJECT] len(bid.blob_kzg_commitments) <= get_blob_parameters(compute_epoch_at_slot(bid.slot)).max_blobs_per_block` to bid gossip validation. **Already proactively implemented** in 3 locations: gossip (gloas_verification.rs:441-449 TooManyBlobKzgCommitments), block processing (gloas.rs:119-127), and block_verification.rs:899-905. Verified exact spec alignment.
-- All 9 open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, 79 commits, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- CI run 23716832297 in progress: 5/6 jobs green (check+clippy+fmt, ef-tests, unit-tests, network+op_pool, http_api all pass), beacon_chain tests running.
-- Deep Heze fork choice audit confirmed: `inclusion_list_satisfied` properly integrated into `get_node_children` filter (proto_array_fork_choice.rs:1866-1875), blocks extension, and on_execution_payload. 25+ test references covering IL satisfaction paths.
-- Codebase stable. No actionable work items.
-
-**Monitoring (runs 3988-3992, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
-- #5056 (blob kzg commitment len check) still open, 0 reviews. Already proactively implemented.
-- All 9 open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- CI all green. Zero clippy warnings. No dep updates available (cargo outdated: only rand_xorshift 0.4→0.5 behind, blocked by rand_core version conflicts). Cargo audit: 1 rsa vuln (no fix). EF tests: 148/148.
-- Codebase stable. All priorities DONE or blocked on external deps.
-
-**Monitoring (run 3993, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
-- #5056 (blob kzg commitment len check) still open, 0 reviews/comments. Already proactively implemented.
-- All 9 open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- CI all green. Zero clippy warnings. Zero compilation warnings. No dep updates available. Cargo audit: 1 rsa vuln (no fix).
-- Comprehensive test coverage audit: ~95-98% of Gloas/Heze public functions tested (217 unit + 89 integration tests). No actionable gaps found.
-- Codebase stable. All priorities DONE or blocked on external deps.
-
-**Monitoring (run 3994, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
-- #5056 (blob kzg commitment len check) still open, 0 reviews/comments. Already proactively implemented.
-- All 9 open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- CI all green. Zero clippy warnings. No dep updates available. Cargo audit: 1 rsa vuln (no fix). EF tests: 148/148.
-- Codebase stable. All priorities DONE or blocked on external deps.
-
-**Monitoring (run 3995, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
-- #5056 (blob kzg commitment len check) still open, 0 reviews/comments. Already proactively implemented.
-- All 9 open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- No compatible dep updates available. Only rand_xorshift 0.4→0.5 behind (blocked by rand_core version conflicts).
-- Codebase stable. All priorities DONE or blocked on external deps.
-
-**Monitoring (run 3996, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
-- #5056 (blob kzg commitment len check) still open, 0 reviews/comments. Already proactively implemented.
-- All 9 open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- No dep updates available. Cargo audit: 1 rsa vuln (no fix). Codebase stable.
-
-**Monitoring (runs 3997-4002, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
-- #5056 (blob kzg commitment len check) still open, 0 reviews/comments. Already proactively implemented.
-- All 9 open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting, test vectors updated Mar 22), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- No dep updates available. No lockfile updates. Cargo audit: 1 rsa vuln (no fix). CI all green. Codebase stable.
-
-**Monitoring (runs 4003-4006, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
-- #5056 (blob kzg commitment len check) still open, 0 reviews/comments. Already proactively implemented.
-- All 8 open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4840/#4630 (stale/unreviewed). #5036 effectively dead.
-- No dep updates available. Zero clippy warnings. Codebase stable.
+- #5056 (blob kzg commitment len check) still open, 0 reviews/comments. Already proactively implemented in 3 locations: gossip (gloas_verification.rs TooManyBlobKzgCommitments), block processing (gloas.rs), and block_verification.rs. Verified exact spec alignment.
+- All 8 open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting, 79 commits), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed). #5036 effectively dead.
+- Full codebase quality audit (run 3986): zero unlinked TODOs, zero stale #[allow(dead_code)], zero #[ignore] tests, zero compilation warnings, zero clippy warnings. All issue #36 items either done or blocked on external deps.
+- Test coverage audit (run 3993): ~95-98% of Gloas/Heze public functions tested (217 unit + 89 integration tests). No actionable gaps.
+- CI all green. Zero clippy warnings. No dep updates available. Cargo audit: 1 rsa vuln (no fix). EF tests: 86/86 + 148/148. Codebase stable.
