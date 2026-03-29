@@ -197,8 +197,8 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Full Heze audit (run 3871): zero TODOs/FIXMEs/unimplemented!() in all Heze/FOCIL code. All 7 implementation phases verified clean.
 - Zero clippy warnings. No compatible dependency updates. No transitive dep updates. Cargo audit: 1 rsa vuln (no fix). CI green. EF spec tests: 86/86 + 148/148. Devnet verified: finalized_epoch=8. Codebase stable.
 
-**Monitoring (runs 3872-3873, 2026-03-29):**
+**Monitoring (runs 3872-3874, 2026-03-29):**
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
-- All 7 monitored open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954 (unreviewed), #4898/#4892 (approved but stalled), #4960/#4932 (test vectors, #4932 conflicting).
+- All 9 monitored open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting, 148 review comments), #4954 (unreviewed), #4898/#4892 (approved but stalled), #4960/#4932 (test vectors, #4932 conflicting), #4840/#4630 (stale).
 - Non-Gloas PRs: #5054 (test workflow, updated Mar 29), #5055 (EIP-8025 refactor) — none actionable.
-- Zero clippy warnings. No compatible dependency updates. CI green (check/clippy/fmt, EF tests, network, http_api all passing). Codebase stable.
+- Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 transitive rsa vuln (no fix). CI running. Codebase stable.
