@@ -13,8 +13,8 @@ use http_api::Config;
 use http_api::test_utils::*;
 use std::collections::HashSet;
 use types::{
-    Address, BitVector, ChainSpec, Domain, Epoch, EthSpec, FixedBytesExtended, ForkName, Hash256,
-    MinimalEthSpec, Signature, SignatureBytes, SignedRoot, Slot,
+    Address, BitVector, ChainSpec, Domain, Epoch, EthSpec, FixedBytesExtended, FixedVector,
+    ForkName, Hash256, MinimalEthSpec, Signature, SignatureBytes, SignedRoot, Slot,
     test_utils::{generate_deterministic_keypair, generate_deterministic_keypairs},
 };
 
@@ -4919,6 +4919,312 @@ async fn il_duties_dependent_root_consistent() {
         resp1.data.len(),
         resp2.data.len(),
         "duties count should be consistent across calls"
+    );
+}
+
+// ── Heze (FOCIL) Inclusion List Pool Tests ──────────────────────────
+
+/// Helper: construct and sign a valid inclusion list for a committee member.
+fn make_signed_inclusion_list(
+    harness: &beacon_chain::test_utils::BeaconChainHarness<
+        beacon_chain::test_utils::EphemeralHarnessType<E>,
+    >,
+    spec: &ChainSpec,
+    slot: Slot,
+    committee_position: usize,
+) -> types::SignedInclusionList<E> {
+    use state_processing::per_block_processing::heze::get_inclusion_list_committee;
+    use tree_hash::TreeHash;
+    use types::{Domain, InclusionList, SignedInclusionList, SigningData};
+
+    let head = harness.chain.head_snapshot();
+    let state = &head.beacon_state;
+    let committee =
+        get_inclusion_list_committee(state, slot, spec).expect("should get IL committee");
+
+    let committee_fixed: FixedVector<u64, <E as EthSpec>::InclusionListCommitteeSize> =
+        FixedVector::new(committee.clone()).expect("committee size");
+    let committee_root = TreeHash::tree_hash_root(&committee_fixed);
+
+    let validator_index = committee[committee_position];
+
+    let il = InclusionList {
+        slot,
+        validator_index,
+        inclusion_list_committee_root: committee_root,
+        transactions: <_>::default(),
+    };
+
+    let epoch = slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(
+        epoch,
+        Domain::InclusionListCommittee,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let signing_root = tree_hash::TreeHash::tree_hash_root(&SigningData {
+        object_root: tree_hash::TreeHash::tree_hash_root(&il),
+        domain,
+    });
+
+    let keypairs = generate_deterministic_keypairs(harness.validator_keypairs.len());
+    let signature = keypairs[validator_index as usize].sk.sign(signing_root);
+
+    SignedInclusionList {
+        message: il,
+        signature,
+    }
+}
+
+/// POST beacon/pool/inclusion_lists should accept a valid IL from a committee member.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_inclusion_list_valid_accepted() {
+    let validator_count = 32;
+    let spec = heze_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head_slot = harness.chain.head_snapshot().beacon_block.slot();
+    let signed_il = make_signed_inclusion_list(harness, &spec, head_slot, 0);
+
+    let result = client.post_beacon_pool_inclusion_lists(&signed_il).await;
+    assert!(
+        result.is_ok(),
+        "should accept valid IL from committee member, got: {:?}",
+        result.err()
+    );
+}
+
+/// POST beacon/pool/inclusion_lists should reject when Heze is not scheduled.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_inclusion_list_rejected_before_heze() {
+    use types::InclusionList;
+
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let client = &tester.client;
+
+    let signed_il: types::SignedInclusionList<E> = types::SignedInclusionList {
+        message: InclusionList {
+            slot: Slot::new(0),
+            validator_index: 0,
+            inclusion_list_committee_root: Hash256::zero(),
+            transactions: <_>::default(),
+        },
+        signature: Signature::empty(),
+    };
+
+    let result = client.post_beacon_pool_inclusion_lists(&signed_il).await;
+    assert!(result.is_err(), "should reject IL when Heze not scheduled");
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("Heze is not scheduled"),
+            "expected 'Heze is not scheduled', got: {}",
+            msg.message
+        );
+    } else {
+        panic!("expected ServerMessage error, got: {result:?}");
+    }
+}
+
+/// POST beacon/pool/inclusion_lists should reject an IL from a non-committee validator.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_inclusion_list_non_committee_rejected() {
+    use state_processing::per_block_processing::heze::get_inclusion_list_committee;
+    use types::InclusionList;
+
+    let validator_count = 32;
+    let spec = heze_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head_slot = harness.chain.head_snapshot().beacon_block.slot();
+    let head = harness.chain.head_snapshot();
+    let state = &head.beacon_state;
+
+    let committee =
+        get_inclusion_list_committee(state, head_slot, &spec).expect("should get IL committee");
+
+    // Find a validator NOT in the committee
+    let non_member = (0..validator_count as u64)
+        .find(|idx| !committee.contains(idx))
+        .expect("should find a non-committee validator with 32 validators and 16 committee size");
+
+    let il: InclusionList<E> = InclusionList {
+        slot: head_slot,
+        validator_index: non_member,
+        inclusion_list_committee_root: Hash256::zero(),
+        transactions: <_>::default(),
+    };
+
+    let signed_il: types::SignedInclusionList<E> = types::SignedInclusionList {
+        message: il,
+        signature: Signature::empty(),
+    };
+
+    let result = client.post_beacon_pool_inclusion_lists(&signed_il).await;
+    assert!(result.is_err(), "should reject non-committee member IL");
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+    } else {
+        panic!("expected ServerMessage error, got: {result:?}");
+    }
+}
+
+/// POST then GET beacon/pool/inclusion_lists should return the submitted IL.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_then_get_inclusion_list_round_trip() {
+    let validator_count = 32;
+    let spec = heze_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head_slot = harness.chain.head_snapshot().beacon_block.slot();
+    let signed_il = make_signed_inclusion_list(harness, &spec, head_slot, 0);
+    let validator_index = signed_il.message.validator_index;
+
+    // Submit
+    client
+        .post_beacon_pool_inclusion_lists(&signed_il)
+        .await
+        .expect("should accept valid IL");
+
+    // Retrieve all
+    let resp = client
+        .get_beacon_pool_inclusion_lists::<E>(None)
+        .await
+        .expect("GET should succeed");
+    assert_eq!(resp.data.len(), 1, "should have exactly one IL in pool");
+    assert_eq!(
+        resp.data[0].message.validator_index, validator_index,
+        "returned IL should match submitted validator"
+    );
+    assert_eq!(
+        resp.data[0].message.slot, head_slot,
+        "returned IL should match submitted slot"
+    );
+
+    // Retrieve with slot filter — matching
+    let resp = client
+        .get_beacon_pool_inclusion_lists::<E>(Some(head_slot))
+        .await
+        .expect("GET with slot filter should succeed");
+    assert_eq!(resp.data.len(), 1, "should find IL for matching slot");
+
+    // Retrieve with slot filter — non-matching
+    let resp = client
+        .get_beacon_pool_inclusion_lists::<E>(Some(head_slot + 100))
+        .await
+        .expect("GET with non-matching slot should succeed");
+    assert!(
+        resp.data.is_empty(),
+        "should return empty for non-matching slot"
+    );
+}
+
+/// GET beacon/pool/inclusion_lists should return empty when pool is empty.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn get_inclusion_list_pool_empty() {
+    let validator_count = 32;
+    let spec = heze_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let client = &tester.client;
+
+    let resp = client
+        .get_beacon_pool_inclusion_lists::<E>(None)
+        .await
+        .expect("GET should succeed");
+    assert!(resp.data.is_empty(), "pool should be empty initially");
+}
+
+/// POST beacon/pool/inclusion_lists duplicate submission should succeed (silently ignored).
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_inclusion_list_duplicate_accepted() {
+    let validator_count = 32;
+    let spec = heze_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head_slot = harness.chain.head_snapshot().beacon_block.slot();
+    let signed_il = make_signed_inclusion_list(harness, &spec, head_slot, 0);
+
+    // First submission
+    client
+        .post_beacon_pool_inclusion_lists(&signed_il)
+        .await
+        .expect("first submission should succeed");
+
+    // Duplicate submission should also succeed (IGNORE, not error)
+    let result = client.post_beacon_pool_inclusion_lists(&signed_il).await;
+    assert!(
+        result.is_ok(),
+        "duplicate IL should be silently accepted, got: {:?}",
+        result.err()
+    );
+
+    // Pool should still have only one IL
+    let resp = client
+        .get_beacon_pool_inclusion_lists::<E>(None)
+        .await
+        .expect("GET should succeed");
+    assert_eq!(
+        resp.data.len(),
+        1,
+        "duplicate should not create second entry"
     );
 }
 
