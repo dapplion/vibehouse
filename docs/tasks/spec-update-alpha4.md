@@ -207,3 +207,10 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Non-Gloas PRs: #5054 (test workflow, updated today) — CI tooling only, not actionable.
 - Optimized `compute_ptc_inner` to accept `&[&[usize]]` instead of `&[Vec<usize>]`, eliminating per-committee `to_vec()` allocations in `compute_ptc` and `compute_ptc_from_committees`. Commit da6ea859f.
 - Full audit: zero clippy warnings, all TODOs have issue links, no production unwrap() calls. 2512 core tests + 148/148 EF tests passing.
+
+**Monitoring (run 3911, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
+- All 9 monitored open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- Non-Gloas PRs: #5054 (test workflow) — CI tooling only, not actionable.
+- Zero clippy warnings. No compatible dependency updates available. Cargo audit unchanged (1 rsa vuln, no fix).
+- Deep production code audit: searched all `.clone()` and `.collect::<Vec>()` in consensus hot paths — all are either in test code or necessary for borrow-checker reasons. No actionable optimization opportunities remaining.
