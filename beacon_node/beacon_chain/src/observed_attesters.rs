@@ -52,10 +52,6 @@ pub enum Error {
         slot: Slot,
         lowest_permissible_slot: Slot,
     },
-    /// We have reached the maximum number of unique items that can be observed in a slot.
-    /// This is a DoS protection function.
-    #[allow(dead_code)]
-    ReachedMaxObservationsPerSlot(usize),
     /// The function to obtain a set index failed, this is an internal error.
     ValidatorIndexTooHigh(usize),
 }

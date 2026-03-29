@@ -173,9 +173,6 @@ pub enum Error {
     /// stored. This indicates a fairly serious error somewhere in the code that called this
     /// function.
     InconsistentBitfieldLengths,
-    /// The given item was for the incorrect slot. This is an internal error.
-    #[allow(dead_code)]
-    IncorrectSlot { expected: Slot, actual: Slot },
 }
 
 /// Implemented for items in the `NaiveAggregationPool`. Requires that items implement `SlotData`,

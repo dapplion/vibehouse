@@ -38,7 +38,6 @@ type CacheHashMap = HashMap<AttesterCacheKey, AttesterCacheValue>;
 const MAX_CACHE_LEN: usize = 1_024;
 
 #[derive(Debug)]
-#[allow(dead_code)]
 pub enum Error {
     BeaconState(BeaconStateError),
     // Boxed to avoid an infinite-size recursion issue.
