@@ -210,8 +210,8 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Nightly tests (run 23705614396): all 31 jobs passed. CI green.
 - Zero clippy warnings. No dependency updates (0 compatible). Cargo audit: 1 rsa vuln (no fix). Codebase stable.
 
-**Monitoring (runs 3883-3888, 2026-03-29):**
+**Monitoring (runs 3883-3889, 2026-03-29):**
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27). No new Gloas/Heze PRs opened.
 - All 9 monitored open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, dirty/conflicting), #4954 (unreviewed), #4898/#4892 (stalled), #4960/#4932 (test vectors), #4840/#4630 (stale).
 - Full codebase audit (run 3888): zero unimplemented!()/todo!() in production code, all #[allow(dead_code)] and clippy suppressions justified, all TODO(#36) items tracked and blocked on external deps.
-- Zero clippy warnings. No compatible dependency updates (0 packages to update). Cargo audit: 1 rsa vuln (no fix). Build clean. Codebase stable.
+- Zero clippy warnings. No compatible dependency updates (0 packages to update). Cargo audit: 1 rsa vuln (no fix). Build clean. CI all green (ci, nightly, spec-test-check). Codebase stable.
