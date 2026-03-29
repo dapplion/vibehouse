@@ -434,9 +434,8 @@ pub fn compute_ptc<E: EthSpec>(
     let committees = state
         .get_beacon_committees_at_slot(slot)
         .map_err(BlockProcessingError::BeaconStateError)?;
-    let committee_indices: Vec<Vec<usize>> =
-        committees.iter().map(|c| c.committee.to_vec()).collect();
-    compute_ptc_inner::<E>(state, slot, spec, &committee_indices)
+    let committee_refs: Vec<&[usize]> = committees.iter().map(|c| c.committee).collect();
+    compute_ptc_inner::<E>(state, slot, spec, &committee_refs)
 }
 
 /// Compute PTC using an explicit committee cache (for epoch processing where the
@@ -450,16 +449,15 @@ pub fn compute_ptc_from_committees<E: EthSpec>(
     let committees = cache
         .get_beacon_committees_at_slot(slot)
         .map_err(BlockProcessingError::BeaconStateError)?;
-    let committee_indices: Vec<Vec<usize>> =
-        committees.iter().map(|c| c.committee.to_vec()).collect();
-    compute_ptc_inner::<E>(state, slot, spec, &committee_indices)
+    let committee_refs: Vec<&[usize]> = committees.iter().map(|c| c.committee).collect();
+    compute_ptc_inner::<E>(state, slot, spec, &committee_refs)
 }
 
 fn compute_ptc_inner<E: EthSpec>(
     state: &BeaconState<E>,
     slot: Slot,
     spec: &ChainSpec,
-    committee_indices: &[Vec<usize>],
+    committee_indices: &[&[usize]],
 ) -> Result<Vec<u64>, BlockProcessingError> {
     let epoch = slot.epoch(E::slots_per_epoch());
 
@@ -491,7 +489,7 @@ fn compute_ptc_inner<E: EthSpec>(
     let mut indices = Vec::with_capacity(total);
     let mut effective_balances = Vec::with_capacity(total);
     let validators = state.validators();
-    for committee in committee_indices {
+    for &committee in committee_indices {
         for &idx in committee {
             let balance = validators
                 .get(idx)
