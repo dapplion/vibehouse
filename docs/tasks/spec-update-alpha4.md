@@ -188,77 +188,16 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Multiple deep audits: Heze fork choice spec compliance verified, all spec functions accounted for, zero unwrap() in Heze production code, all TODOs have issue links.
 - Devnet verified: Gloas 4-node finalized_epoch=8, Heze devnet Gloas@epoch1/Heze@epoch3 finalized_epoch=8.
 
-**Monitoring steady state (runs 3850-3871, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, REVIEW_REQUIRED, conflicting, 148 reviews), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Non-Gloas PRs: #5055 (EIP-8025 refactor), #5054 (test workflow), #5050 (networking test yield), #5049/#5047 (gossip validation for older forks) — none actionable.
-- Updated transitive dep: syn 1.0.109→2.0.117 (run 3865).
-- Full TODO audit (run 3866): all remaining TODOs blocked on external deps (EIP-7892 ×3, blst safe API, PeerDAS checkpoint sync) or non-critical (#36). No unimplemented!() in production code.
-- Full Heze audit (run 3871): zero TODOs/FIXMEs/unimplemented!() in all Heze/FOCIL code. All 7 implementation phases verified clean.
-- Zero clippy warnings. No compatible dependency updates. No transitive dep updates. Cargo audit: 1 rsa vuln (no fix). CI green. EF spec tests: 86/86 + 148/148. Devnet verified: finalized_epoch=8. Codebase stable.
-
-**Monitoring (runs 3872-3875, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
-- All 9 monitored open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting, 148 review comments), #4954 (unreviewed), #4898/#4892 (approved but stalled), #4960/#4932 (test vectors, #4932 conflicting), #4840/#4630 (stale).
-- Non-Gloas PRs: #5054 (test workflow), #5055 (EIP-8025 refactor), #5049/#5047/#5033 (gossip validation tests for capella/bellatrix/altair) — none actionable.
-- Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 transitive rsa vuln (no fix). CI green. Codebase stable.
-
-**Monitoring (runs 3876-3882, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
-- All 9 monitored open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954 (unreviewed), #4898/#4892 (stalled), #4960/#4932 (test vectors), #4840/#4630 (stale).
-- Non-Gloas PRs: #5054 (test workflow), #5055 (EIP-8025 refactor), #5050/#5049/#5047/#5033 — none actionable.
-- Nightly tests (run 23705614396): all 31 jobs passed. CI green.
-- Zero clippy warnings. No dependency updates (0 compatible). Cargo audit: 1 rsa vuln (no fix). Codebase stable.
-
-**Monitoring (runs 3883-3893, 2026-03-29):**
+**Monitoring + code improvements (runs 3850-3909, 2026-03-29):**
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27). No new Gloas/Heze PRs opened.
-- All 9 monitored open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, dirty/conflicting), #4954 (unreviewed), #4898/#4892 (stalled), #4960/#4932 (test vectors), #4840/#4630 (stale).
+- All 9 monitored open Gloas/Heze PRs unchanged throughout: #4843 (approved/stalled since Mar 20), #4747 (FCR, dirty/conflicting, 148 reviews), #4954 (unreviewed), #4898/#4892 (stalled), #4960/#4932 (test vectors), #4840/#4630 (stale).
 - Non-Gloas PRs: #5055 (EIP-8025 refactor), #5054 (test workflow), #5050/#5049/#5047/#5033 (gossip validation tests for older forks) — none actionable.
-- Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix). CI all green. Codebase stable.
-- Codebase deep scan (run 3893): no FIXME/HACK comments, no unimplemented!()/todo!() in production code, no unwrap() in production paths, all #[allow(dead_code)] are justified. No actionable improvements found.
-
-**Monitoring (run 3894, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27). No new Gloas/Heze PRs opened.
-- All 9 monitored open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting, 148 reviews), #4954 (unreviewed), #4898/#4892 (stalled), #4960/#4932 (test vectors), #4840/#4630 (stale).
-- Non-Gloas PRs: #5054 (test workflow, updated today), #5055 (EIP-8025 refactor), #5050/#5049/#5047/#5033 — none actionable.
-- Zero compatible dependency updates. Cargo audit: 1 rsa vuln (no fix). CI all green (nightly 31/31 jobs passed).
-- EF spec tests: 148/148 (fake crypto). Codebase stable.
-
-**Monitoring (runs 3895-3901, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27). No new Gloas/Heze PRs opened.
-- All 9 monitored open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954 (unreviewed), #4898/#4892 (stalled), #4960/#4932 (test vectors), #4840/#4630 (stale).
-- Non-Gloas PRs: #5054 (test workflow, updated today), #5055 (EIP-8025 refactor), #5050/#5049/#5047/#5033 — none actionable.
-- Zero compatible dependency updates. CI all green (ci, nightly, spec-test-check all passed). Zero clippy warnings.
-- Run 3901: Optimized Heze IL processing — removed unnecessary clones in duplicate detection, import, and tx dedup/satisfaction checks. Used reference-based HashSets instead of owned Vec<u8> copies. 20 IL tests pass.
-
-**Monitoring (run 3902, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
-- All 9 monitored open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954 (unreviewed), #4898/#4892 (stalled), #4960/#4932 (test vectors), #4840/#4630 (stale).
-- Zero clippy warnings, zero dependency updates, cargo audit unchanged (1 rsa vuln, no fix). Codebase stable.
-
-**Bug fix + monitoring (run 3903, 2026-03-29):**
-- **Fixed missing InclusionListStore pruning** — `prune_gloas_pools()` was pruning all other slot-keyed pools (payload_attestation_pool, proposer_preferences_pool, observed_execution_bids, etc.) but not the inclusion_list_store. This caused unbounded memory growth from stale ILs in long-running nodes. Fix: added `self.inclusion_list_store.lock().prune(earliest_slot)` to `prune_gloas_pools()`. All 1013 beacon_chain tests pass (Heze fork). Commit 264469b7d.
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). All 8 open Gloas/Heze PRs unchanged.
-- EF spec tests: 148/148 (fake crypto). Zero clippy warnings. Zero dependency updates.
-
-**VC metrics + monitoring (run 3904, 2026-03-29):**
-- **Added VC-side Prometheus metrics for Gloas/Heze services** — payload attestation service now tracks signing success/error counts (`vc_signed_payload_attestations_total`), HTTP GET/POST timing (`vc_payload_attestation_service_task_times_seconds`). Inclusion list service tracks signing counts (`vc_signed_inclusion_lists_total`), HTTP POST timing (`vc_inclusion_list_service_task_times_seconds`). Beacon node side already had 47 metrics; this fills the validator client gap.
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). All monitored Gloas/Heze PRs unchanged.
-- 61/61 validator_services tests pass. Zero clippy warnings.
-
-**Monitoring (run 3905, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27). No new Gloas/Heze PRs opened.
-- All monitored open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, dirty/conflicting), #4954 (unreviewed), #4898/#4892 (stalled), #4960/#4932 (test vectors), #4840/#4630 (stale).
-- Deep Heze/FOCIL code audit: no unwrap() in production code, proper error handling throughout, safe arithmetic in slot computations, memory leak prevention via slot-keyed pruning, spec compliance verified across all 7 implementation phases. No issues found.
-- Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix). CI running (latest commit). Codebase stable.
-
-**Monitoring (runs 3906-3907, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27). No new Gloas/Heze PRs opened.
-- All monitored open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, dirty/conflicting), #4954 (unreviewed), #4898/#4892 (stalled), #4960/#4932 (test vectors), #4840/#4630 (stale).
-- Non-Gloas PRs: #5054 (test workflow, updated today), #5055 (EIP-8025 refactor), #5050/#5049/#5047/#5033 — none actionable.
-- New issue #5043 (define Gloas genesis block hash as 0x00) — audited: vibehouse already handles genesis correctly. Fork choice anchor uses `state.latest_block_hash()` for genesis (fork_choice.rs:446), upgrade sets both `latest_block_hash` and `latest_execution_payload_bid.block_hash` from Fulu header (upgrade/gloas.rs:89-123), tests cover both zero and non-zero genesis. No changes needed if #5043 codifies zero-hash requirement.
-- Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix). CI in progress. Codebase stable.
-
-**Code improvement (run 3908, 2026-03-29):**
-- Optimized `get_missing_columns_for_epoch` in beacon_chain.rs: replaced 3 HashSet allocations + set difference with direct slice indexing. Both slices are prefixes of the same sorted `ordered_custody_column_indices` array, so the difference is just the tail of the longer slice. Test `test_missing_columns_after_cgc_change` passes.
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). All monitored Gloas/Heze PRs unchanged.
+- New issue #5043 (define Gloas genesis block hash as 0x00) — audited: vibehouse already handles genesis correctly (fork_choice.rs:446, upgrade/gloas.rs:89-123).
+- **Code improvements shipped:**
+  - Run 3865: Updated transitive dep syn 1.0.109→2.0.117.
+  - Run 3901: Optimized Heze IL processing — removed unnecessary clones, reference-based HashSets. 20 IL tests pass.
+  - Run 3903: **Fixed missing InclusionListStore pruning** — unbounded memory growth from stale ILs. Added `inclusion_list_store.lock().prune(earliest_slot)` to `prune_gloas_pools()`. Commit 264469b7d.
+  - Run 3904: Added VC-side Prometheus metrics for payload attestation + inclusion list services. 61/61 validator_services tests pass.
+  - Run 3908: Optimized `get_missing_columns_for_epoch` — replaced 3 HashSet allocations with direct slice indexing. Commit 1fef8b416.
+- **Audits completed:** full TODO audit (all blocked on external deps), full Heze audit (zero issues), codebase deep scan (no FIXME/HACK/unimplemented!/todo!/unwrap in production code), all #[allow(dead_code)] justified.
+- Zero clippy warnings, zero dead code. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix). CI all green (nightly 31/31 jobs passed). EF spec tests: 86/86 + 148/148. Devnet verified: finalized_epoch=8.
