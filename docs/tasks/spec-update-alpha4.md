@@ -216,3 +216,10 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Non-Gloas PRs: #5055 (EIP-8025 refactor), #5054 (test workflow), #5050/#5049/#5047/#5033 (gossip validation tests for older forks) — none actionable.
 - Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix). CI all green. Codebase stable.
 - Codebase deep scan (run 3893): no FIXME/HACK comments, no unimplemented!()/todo!() in production code, no unwrap() in production paths, all #[allow(dead_code)] are justified. No actionable improvements found.
+
+**Monitoring (run 3894, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27). No new Gloas/Heze PRs opened.
+- All 9 monitored open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting, 148 reviews), #4954 (unreviewed), #4898/#4892 (stalled), #4960/#4932 (test vectors), #4840/#4630 (stale).
+- Non-Gloas PRs: #5054 (test workflow, updated today), #5055 (EIP-8025 refactor), #5050/#5049/#5047/#5033 — none actionable.
+- Zero compatible dependency updates. Cargo audit: 1 rsa vuln (no fix). CI all green (nightly 31/31 jobs passed).
+- EF spec tests: 148/148 (fake crypto). Codebase stable.
