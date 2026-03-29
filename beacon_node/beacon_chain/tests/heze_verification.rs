@@ -2,10 +2,13 @@
 
 //! Integration tests for Heze FOCIL (EIP-7805) beacon chain functions:
 //!
+//! - `verify_inclusion_list_for_gossip` — gossip validation (7 checks)
+//! - `import_inclusion_list` — import into InclusionListStore
 //! - `get_inclusion_lists_by_committee_indices` — query cached ILs by committee position
 //! - `check_inclusion_list_satisfaction` — envelope IL satisfaction check
 //! - `compute_inclusion_list_bits_for_slot` — bit computation for block production
 
+use beacon_chain::heze_verification::InclusionListError;
 use beacon_chain::test_utils::{
     AttestationStrategy, BeaconChainHarness, BlockStrategy, EphemeralHarnessType,
 };
@@ -98,6 +101,305 @@ fn make_signed_il(
         },
         signature: bls::Signature::empty(),
     }
+}
+
+/// Create a properly signed inclusion list using deterministic keypairs (for gossip verification).
+fn make_valid_signed_il(
+    harness: &BeaconChainHarness<EphemeralHarnessType<E>>,
+    slot: Slot,
+    validator_index: u64,
+    committee_root: Hash256,
+    transactions: Vec<Vec<u8>>,
+) -> SignedInclusionList<E> {
+    let tx_vecs: Vec<VariableList<u8, <E as EthSpec>::MaxBytesPerTransaction>> = transactions
+        .into_iter()
+        .map(|tx| VariableList::new(tx).unwrap())
+        .collect();
+    let tx_list = VariableList::new(tx_vecs).unwrap();
+
+    let il = InclusionList {
+        slot,
+        validator_index,
+        inclusion_list_committee_root: committee_root,
+        transactions: tx_list,
+    };
+
+    let head = harness.chain.canonical_head.cached_head();
+    let state = &head.snapshot.beacon_state;
+    let spec = &harness.chain.spec;
+
+    let epoch = slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(
+        epoch,
+        Domain::InclusionListCommittee,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+
+    let signing_root = SigningData {
+        object_root: il.tree_hash_root(),
+        domain,
+    }
+    .tree_hash_root();
+
+    let signature = KEYPAIRS[validator_index as usize].sk.sign(signing_root);
+
+    SignedInclusionList {
+        message: il,
+        signature,
+    }
+}
+
+// ===========================================================================
+// verify_inclusion_list_for_gossip tests
+// ===========================================================================
+
+/// Helper: unwrap Err from gossip verification (Ok variant doesn't impl Debug).
+fn unwrap_il_err(
+    result: Result<
+        beacon_chain::heze_verification::VerifiedInclusionList<EphemeralHarnessType<E>>,
+        InclusionListError,
+    >,
+    msg: &str,
+) -> InclusionListError {
+    match result {
+        Ok(_) => panic!("{msg}: expected Err, got Ok"),
+        Err(e) => e,
+    }
+}
+
+#[tokio::test]
+async fn gossip_il_valid_current_slot() {
+    let harness = heze_harness(1).await;
+    let current_slot = harness.chain.slot().unwrap();
+    let (committee, committee_root) = committee_info(&harness, current_slot);
+
+    let signed_il =
+        make_valid_signed_il(&harness, current_slot, committee[0], committee_root, vec![]);
+
+    let result = harness.chain.verify_inclusion_list_for_gossip(signed_il);
+    assert!(result.is_ok(), "valid IL at current slot should pass");
+}
+
+#[tokio::test]
+async fn gossip_il_valid_import_roundtrip() {
+    let harness = heze_harness(1).await;
+    let current_slot = harness.chain.slot().unwrap();
+    let (committee, committee_root) = committee_info(&harness, current_slot);
+
+    let signed_il = make_valid_signed_il(
+        &harness,
+        current_slot,
+        committee[0],
+        committee_root,
+        vec![vec![0xaa, 0xbb]],
+    );
+
+    let verified = harness
+        .chain
+        .verify_inclusion_list_for_gossip(signed_il)
+        .unwrap_or_else(|e| panic!("should verify: {e:?}"));
+
+    // Import and verify it shows up in the store
+    harness.chain.import_inclusion_list(verified);
+
+    let result = harness
+        .chain
+        .get_inclusion_lists_by_committee_indices(current_slot, &[0])
+        .unwrap();
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0].message.validator_index, committee[0]);
+}
+
+#[tokio::test]
+async fn gossip_il_reject_wrong_slot() {
+    let harness = heze_harness(1).await;
+    let current_slot = harness.chain.slot().unwrap();
+    let far_future_slot = current_slot + 10;
+    let (committee, committee_root) = committee_info(&harness, current_slot);
+
+    let signed_il = make_valid_signed_il(
+        &harness,
+        far_future_slot,
+        committee[0],
+        committee_root,
+        vec![],
+    );
+
+    let err = unwrap_il_err(
+        harness.chain.verify_inclusion_list_for_gossip(signed_il),
+        "should reject future slot",
+    );
+    assert!(
+        matches!(err, InclusionListError::SlotNotCurrentOrPrevious { .. }),
+        "expected SlotNotCurrentOrPrevious, got {err:?}"
+    );
+}
+
+#[tokio::test]
+async fn gossip_il_reject_transactions_too_large() {
+    let harness = heze_harness(1).await;
+    let current_slot = harness.chain.slot().unwrap();
+    let (committee, committee_root) = committee_info(&harness, current_slot);
+
+    // MAX_BYTES_PER_INCLUSION_LIST = 8192
+    let big_tx = vec![0xffu8; 8193];
+    let signed_il = make_valid_signed_il(
+        &harness,
+        current_slot,
+        committee[0],
+        committee_root,
+        vec![big_tx],
+    );
+
+    let err = unwrap_il_err(
+        harness.chain.verify_inclusion_list_for_gossip(signed_il),
+        "should reject oversized transactions",
+    );
+    assert!(
+        matches!(err, InclusionListError::TransactionsTooLarge { .. }),
+        "expected TransactionsTooLarge, got {err:?}"
+    );
+}
+
+#[tokio::test]
+async fn gossip_il_reject_not_in_committee() {
+    let harness = heze_harness(1).await;
+    let current_slot = harness.chain.slot().unwrap();
+    let (committee, committee_root) = committee_info(&harness, current_slot);
+
+    // Find a validator NOT in the committee
+    let not_in_committee = (0..VALIDATOR_COUNT as u64)
+        .find(|idx| !committee.contains(idx))
+        .expect("should find validator not in committee");
+
+    let signed_il = make_valid_signed_il(
+        &harness,
+        current_slot,
+        not_in_committee,
+        committee_root,
+        vec![],
+    );
+
+    let err = unwrap_il_err(
+        harness.chain.verify_inclusion_list_for_gossip(signed_il),
+        "should reject non-committee member",
+    );
+    assert!(
+        matches!(err, InclusionListError::NotInCommittee { .. }),
+        "expected NotInCommittee, got {err:?}"
+    );
+}
+
+#[tokio::test]
+async fn gossip_il_reject_invalid_signature() {
+    let harness = heze_harness(1).await;
+    let current_slot = harness.chain.slot().unwrap();
+    let (committee, committee_root) = committee_info(&harness, current_slot);
+
+    // Use empty (invalid) signature
+    let signed_il = make_signed_il(current_slot, committee[0], committee_root, vec![]);
+
+    let err = unwrap_il_err(
+        harness.chain.verify_inclusion_list_for_gossip(signed_il),
+        "should reject invalid signature",
+    );
+    assert!(
+        matches!(err, InclusionListError::InvalidSignature),
+        "expected InvalidSignature, got {err:?}"
+    );
+}
+
+#[tokio::test]
+async fn gossip_il_reject_committee_root_mismatch() {
+    let harness = heze_harness(1).await;
+    let current_slot = harness.chain.slot().unwrap();
+    let (committee, _committee_root) = committee_info(&harness, current_slot);
+
+    let wrong_root = Hash256::repeat_byte(0xff);
+    let signed_il = make_valid_signed_il(&harness, current_slot, committee[0], wrong_root, vec![]);
+
+    let err = unwrap_il_err(
+        harness.chain.verify_inclusion_list_for_gossip(signed_il),
+        "should reject wrong committee root",
+    );
+    assert!(
+        matches!(err, InclusionListError::CommitteeRootMismatch { .. }),
+        "expected CommitteeRootMismatch, got {err:?}"
+    );
+}
+
+#[tokio::test]
+async fn gossip_il_ignore_duplicate() {
+    let harness = heze_harness(1).await;
+    let current_slot = harness.chain.slot().unwrap();
+    let (committee, committee_root) = committee_info(&harness, current_slot);
+
+    let signed_il =
+        make_valid_signed_il(&harness, current_slot, committee[0], committee_root, vec![]);
+
+    // First submission should succeed
+    let verified = harness
+        .chain
+        .verify_inclusion_list_for_gossip(signed_il.clone())
+        .unwrap_or_else(|e| panic!("first submission should pass: {e:?}"));
+    harness.chain.import_inclusion_list(verified);
+
+    // Second identical submission should be IGNORE (duplicate)
+    let err = unwrap_il_err(
+        harness.chain.verify_inclusion_list_for_gossip(signed_il),
+        "duplicate should be rejected",
+    );
+    assert!(
+        matches!(err, InclusionListError::Duplicate { .. }),
+        "expected Duplicate, got {err:?}"
+    );
+}
+
+#[tokio::test]
+async fn gossip_il_ignore_equivocator() {
+    let harness = heze_harness(1).await;
+    let current_slot = harness.chain.slot().unwrap();
+    let (committee, committee_root) = committee_info(&harness, current_slot);
+
+    // Submit two different ILs from same validator (creates equivocation)
+    let il_a = make_valid_signed_il(&harness, current_slot, committee[0], committee_root, vec![]);
+    let il_b = make_valid_signed_il(
+        &harness,
+        current_slot,
+        committee[0],
+        committee_root,
+        vec![vec![0x01]],
+    );
+
+    let verified_a = harness
+        .chain
+        .verify_inclusion_list_for_gossip(il_a)
+        .unwrap_or_else(|e| panic!("first IL should pass: {e:?}"));
+    harness.chain.import_inclusion_list(verified_a);
+
+    let verified_b = harness
+        .chain
+        .verify_inclusion_list_for_gossip(il_b)
+        .unwrap_or_else(|e| panic!("second IL should pass: {e:?}"));
+    harness.chain.import_inclusion_list(verified_b);
+
+    // Third IL should be IGNORE (equivocator)
+    let il_c = make_valid_signed_il(
+        &harness,
+        current_slot,
+        committee[0],
+        committee_root,
+        vec![vec![0x02]],
+    );
+    let err = unwrap_il_err(
+        harness.chain.verify_inclusion_list_for_gossip(il_c),
+        "third IL from equivocator should be rejected",
+    );
+    assert!(
+        matches!(err, InclusionListError::Equivocator { .. }),
+        "expected Equivocator, got {err:?}"
+    );
 }
 
 // ===========================================================================
