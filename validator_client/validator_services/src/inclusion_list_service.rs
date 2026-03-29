@@ -7,6 +7,7 @@ use task_executor::TaskExecutor;
 use tokio::time::{Duration, sleep};
 use tracing::{debug, error, info, trace};
 use types::{ChainSpec, Epoch, EthSpec, InclusionList};
+use validator_metrics::{self as metrics};
 use validator_store::ValidatorStore;
 
 /// Builds an `InclusionListService`.
@@ -204,6 +205,11 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> InclusionListService<S
 
     /// Main routine: read duties from DutiesService, construct ILs, sign, and submit.
     async fn produce_inclusion_lists(self) -> Result<(), ()> {
+        let _timer = metrics::start_timer_vec(
+            &metrics::INCLUSION_LIST_SERVICE_TIMES,
+            &[metrics::INCLUSION_LISTS],
+        );
+
         let slot = self.slot_clock.now().ok_or_else(|| {
             error!("Failed to read slot clock");
         })?;
@@ -243,8 +249,18 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> InclusionListService<S
                 .sign_inclusion_list(duty.pubkey, &inclusion_list)
                 .await
             {
-                Ok(signed) => signed,
+                Ok(signed) => {
+                    metrics::inc_counter_vec(
+                        &metrics::SIGNED_INCLUSION_LISTS_TOTAL,
+                        &[metrics::SUCCESS],
+                    );
+                    signed
+                }
                 Err(e) => {
+                    metrics::inc_counter_vec(
+                        &metrics::SIGNED_INCLUSION_LISTS_TOTAL,
+                        &[metrics::ERROR],
+                    );
                     error!(
                         error = format!("{:?}", e),
                         validator_index = duty.validator_index,
@@ -256,19 +272,24 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> InclusionListService<S
             };
 
             // Submit to BN for gossip propagation.
-            match self
-                .beacon_nodes
-                .request(ApiTopic::Attestations, |beacon_node| {
-                    let signed_il = signed_il.clone();
-                    async move {
-                        beacon_node
-                            .post_beacon_pool_inclusion_lists(&signed_il)
-                            .await
-                            .map_err(|e| e.to_string())
-                    }
-                })
-                .await
-            {
+            let submit_result = {
+                let _http_timer = metrics::start_timer_vec(
+                    &metrics::INCLUSION_LIST_SERVICE_TIMES,
+                    &[metrics::INCLUSION_LISTS_HTTP_POST],
+                );
+                self.beacon_nodes
+                    .request(ApiTopic::Attestations, |beacon_node| {
+                        let signed_il = signed_il.clone();
+                        async move {
+                            beacon_node
+                                .post_beacon_pool_inclusion_lists(&signed_il)
+                                .await
+                                .map_err(|e| e.to_string())
+                        }
+                    })
+                    .await
+            };
+            match submit_result {
                 Ok(()) => {
                     debug!(
                         validator_index = duty.validator_index,

@@ -7,6 +7,7 @@ use task_executor::TaskExecutor;
 use tokio::time::{Duration, sleep};
 use tracing::{debug, error, info, trace};
 use types::{ChainSpec, Epoch, EthSpec};
+use validator_metrics::{self as metrics};
 use validator_store::ValidatorStore;
 
 /// Builds a `PayloadAttestationService`.
@@ -209,6 +210,11 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> PayloadAttestationServ
 
     /// Main routine: read duties from DutiesService, get attestation data, sign, and submit.
     async fn produce_payload_attestations(self) -> Result<(), ()> {
+        let _timer = metrics::start_timer_vec(
+            &metrics::PAYLOAD_ATTESTATION_SERVICE_TIMES,
+            &[metrics::PAYLOAD_ATTESTATIONS],
+        );
+
         let slot = self.slot_clock.now().ok_or_else(|| {
             error!("Failed to read slot clock");
         })?;
@@ -231,23 +237,28 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> PayloadAttestationServ
         );
 
         // Fetch payload attestation data from BN.
-        let attestation_data = self
-            .beacon_nodes
-            .first_success(|beacon_node| async move {
-                beacon_node
-                    .get_validator_payload_attestation_data(slot)
-                    .await
-                    .map_err(|e| e.to_string())
-                    .map(|response| response.data)
-            })
-            .await
-            .map_err(|e| {
-                error!(
-                    error = %e,
-                    slot = slot.as_u64(),
-                    "Failed to get payload attestation data"
-                );
-            })?;
+        let attestation_data = {
+            let _http_timer = metrics::start_timer_vec(
+                &metrics::PAYLOAD_ATTESTATION_SERVICE_TIMES,
+                &[metrics::PAYLOAD_ATTESTATIONS_HTTP_GET],
+            );
+            self.beacon_nodes
+                .first_success(|beacon_node| async move {
+                    beacon_node
+                        .get_validator_payload_attestation_data(slot)
+                        .await
+                        .map_err(|e| e.to_string())
+                        .map(|response| response.data)
+                })
+                .await
+                .map_err(|e| {
+                    error!(
+                        error = %e,
+                        slot = slot.as_u64(),
+                        "Failed to get payload attestation data"
+                    );
+                })?
+        };
 
         // Sign and collect all payload attestation messages.
         let mut messages = Vec::with_capacity(slot_duties.len());
@@ -259,6 +270,10 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> PayloadAttestationServ
                 .await
             {
                 Ok(message) => {
+                    metrics::inc_counter_vec(
+                        &metrics::SIGNED_PAYLOAD_ATTESTATIONS_TOTAL,
+                        &[metrics::SUCCESS],
+                    );
                     debug!(
                         validator_index = duty.validator_index,
                         slot = slot.as_u64(),
@@ -268,6 +283,10 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> PayloadAttestationServ
                     messages.push(message);
                 }
                 Err(e) => {
+                    metrics::inc_counter_vec(
+                        &metrics::SIGNED_PAYLOAD_ATTESTATIONS_TOTAL,
+                        &[metrics::ERROR],
+                    );
                     error!(
                         error = format!("{:?}", e),
                         validator_index = duty.validator_index,
@@ -284,24 +303,30 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> PayloadAttestationServ
 
         // Submit to BN.
         let num_messages = messages.len();
-        self.beacon_nodes
-            .request(ApiTopic::Attestations, |beacon_node| {
-                let messages = messages.clone();
-                async move {
-                    beacon_node
-                        .post_beacon_pool_payload_attestations(&messages)
-                        .await
-                        .map_err(|e| e.to_string())
-                }
-            })
-            .await
-            .map_err(|e| {
-                error!(
-                    error = %e,
-                    slot = slot.as_u64(),
-                    "Failed to publish payload attestations"
-                );
-            })?;
+        {
+            let _http_timer = metrics::start_timer_vec(
+                &metrics::PAYLOAD_ATTESTATION_SERVICE_TIMES,
+                &[metrics::PAYLOAD_ATTESTATIONS_HTTP_POST],
+            );
+            self.beacon_nodes
+                .request(ApiTopic::Attestations, |beacon_node| {
+                    let messages = messages.clone();
+                    async move {
+                        beacon_node
+                            .post_beacon_pool_payload_attestations(&messages)
+                            .await
+                            .map_err(|e| e.to_string())
+                    }
+                })
+                .await
+                .map_err(|e| {
+                    error!(
+                        error = %e,
+                        slot = slot.as_u64(),
+                        "Failed to publish payload attestations"
+                    );
+                })?;
+        }
 
         info!(
             slot = slot.as_u64(),

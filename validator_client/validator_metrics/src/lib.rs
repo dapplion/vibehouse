@@ -32,6 +32,12 @@ pub const ATTESTATION_SELECTION_PROOFS: &str = "attestation_selection_proofs";
 pub const SUBSCRIPTIONS: &str = "subscriptions";
 pub const LOCAL_KEYSTORE: &str = "local_keystore";
 pub const WEB3SIGNER: &str = "web3signer";
+pub const PAYLOAD_ATTESTATIONS: &str = "payload_attestations";
+pub const PAYLOAD_ATTESTATIONS_HTTP_GET: &str = "payload_attestations_http_get";
+pub const PAYLOAD_ATTESTATIONS_HTTP_POST: &str = "payload_attestations_http_post";
+pub const INCLUSION_LISTS: &str = "inclusion_lists";
+pub const INCLUSION_LISTS_HTTP_POST: &str = "inclusion_lists_http_post";
+pub const ERROR: &str = "error";
 
 pub use metrics::*;
 
@@ -238,6 +244,36 @@ pub static BLOCK_SIGNING_TIMES: LazyLock<Result<Histogram>> = LazyLock::new(|| {
     )
 });
 
+pub static SIGNED_PAYLOAD_ATTESTATIONS_TOTAL: LazyLock<Result<IntCounterVec>> =
+    LazyLock::new(|| {
+        try_create_int_counter_vec(
+            "vc_signed_payload_attestations_total",
+            "Total count of attempted PayloadAttestationMessage signings",
+            &["status"],
+        )
+    });
+pub static SIGNED_INCLUSION_LISTS_TOTAL: LazyLock<Result<IntCounterVec>> = LazyLock::new(|| {
+    try_create_int_counter_vec(
+        "vc_signed_inclusion_lists_total",
+        "Total count of attempted InclusionList signings",
+        &["status"],
+    )
+});
+pub static PAYLOAD_ATTESTATION_SERVICE_TIMES: LazyLock<Result<HistogramVec>> =
+    LazyLock::new(|| {
+        try_create_histogram_vec(
+            "vc_payload_attestation_service_task_times_seconds",
+            "Duration to perform payload attestation service tasks",
+            &["task"],
+        )
+    });
+pub static INCLUSION_LIST_SERVICE_TIMES: LazyLock<Result<HistogramVec>> = LazyLock::new(|| {
+    try_create_histogram_vec(
+        "vc_inclusion_list_service_task_times_seconds",
+        "Duration to perform inclusion list service tasks",
+        &["task"],
+    )
+});
 pub static ATTESTATION_DUTY: LazyLock<Result<IntGaugeVec>> = LazyLock::new(|| {
     try_create_int_gauge_vec(
         "vc_attestation_duty_slot",
