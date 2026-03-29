@@ -251,3 +251,9 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Fixed cargo doc warning: escaped `[16]` bracket notation in `InclusionListByCommitteeIndicesRequest` doc comment (was triggering rustdoc broken-intra-doc-links error in CI).
 - Added fork choice test `execution_payload_stores_inclusion_list_not_satisfied`: verifies `on_execution_payload(root, hash, false)` correctly stores `inclusion_list_satisfied=false` on the proto node, ensuring `should_extend_payload` blocks extension. 122/122 fork_choice tests pass.
 - Zero clippy warnings. Codebase stable.
+
+**Monitoring (run 3848, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
+- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- Zero clippy warnings. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix).
+- EF spec tests on v1.7.0-alpha.4 vectors. Codebase stable. Nothing actionable.
