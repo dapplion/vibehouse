@@ -245,3 +245,8 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - All open Gloas/Heze PRs unchanged.
 - Zero clippy warnings, no dep updates available. Cargo audit: 1 rsa vuln (no fix). EF tests: 148/148.
 - **Added 4 new tests for `get_best_execution_bid` Heze IL bits filtering** (commit c559c350a): inclusive bits accepted, non-inclusive bits rejected, empty store accepts any, highest-value non-inclusive rejected. Key insight: with small validator sets, same validator can appear at multiple committee positions — tests compute actual local bits instead of hardcoding positions. 27/27 heze_verification tests pass.
+
+**Test coverage (run 3980, 2026-03-29):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). #5056 still open, 0 reviews. All open Gloas/Heze PRs unchanged.
+- No dep updates available. EF tests: 148/148. Zero clippy warnings.
+- **Added 4 `get_ptc_committee` epoch boundary error path tests** (commit cd5251aab): previous epoch lookup succeeds via ptc_window, epoch 2+ back returns EpochOutOfBounds, future epoch beyond MIN_SEED_LOOKAHEAD returns EpochOutOfBounds, max lookahead epoch succeeds. 1057/1057 state_processing tests pass.
