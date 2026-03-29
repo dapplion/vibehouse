@@ -934,3 +934,79 @@ async fn heze_get_best_bid_highest_value_rejected_returns_none() {
         "best bid with non-inclusive bits should be rejected"
     );
 }
+
+// ===========================================================================
+// Pre-Heze fork early-return tests
+// ===========================================================================
+
+/// Build a Gloas (pre-Heze) harness to test pre-fork early returns.
+async fn gloas_harness(num_blocks: usize) -> BeaconChainHarness<EphemeralHarnessType<E>> {
+    let mut spec = ForkName::Gloas.make_genesis_spec(E::default_spec());
+    spec.target_aggregators_per_committee = 1 << 32;
+
+    let harness = BeaconChainHarness::builder(MainnetEthSpec)
+        .spec(Arc::new(spec))
+        .keypairs(KEYPAIRS[0..VALIDATOR_COUNT].to_vec())
+        .fresh_ephemeral_store()
+        .mock_execution_layer()
+        .build();
+
+    harness.advance_slot();
+
+    if num_blocks > 0 {
+        harness
+            .extend_chain(
+                num_blocks,
+                BlockStrategy::OnCanonicalHead,
+                AttestationStrategy::AllValidators,
+            )
+            .await;
+    }
+
+    harness
+}
+
+/// Pre-Heze: check_inclusion_list_satisfaction always returns true.
+#[tokio::test]
+async fn check_satisfaction_pre_heze_returns_true() {
+    let harness = gloas_harness(2).await;
+    let current_slot = head_slot(&harness);
+
+    // Even with a fabricated envelope, pre-Heze should always return true
+    let envelope = make_envelope(current_slot, vec![]);
+    assert!(
+        harness.chain.check_inclusion_list_satisfaction(&envelope),
+        "pre-Heze should always return true"
+    );
+}
+
+/// Pre-Heze: compute_inclusion_list_bits_for_slot returns all-zeros.
+#[tokio::test]
+async fn compute_bits_pre_heze_returns_default() {
+    let harness = gloas_harness(2).await;
+    let current_slot = head_slot(&harness);
+
+    let bits = harness
+        .chain
+        .compute_inclusion_list_bits_for_slot(current_slot);
+    assert!(bits.is_zero(), "pre-Heze should return all-zero bits");
+}
+
+/// Pre-Heze: verify_inclusion_list_for_gossip rejects with PreHezeFork error.
+#[tokio::test]
+async fn gossip_il_reject_pre_heze_fork() {
+    let harness = gloas_harness(1).await;
+    let current_slot = harness.chain.slot().unwrap();
+
+    // Create a dummy IL — the fork check should fire before any other validation
+    let signed_il = make_signed_il(current_slot, 0, Hash256::zero(), vec![]);
+
+    let err = unwrap_il_err(
+        harness.chain.verify_inclusion_list_for_gossip(signed_il),
+        "should reject pre-Heze IL",
+    );
+    assert!(
+        matches!(err, InclusionListError::PreHezeFork { .. }),
+        "expected PreHezeFork, got {err:?}"
+    );
+}
