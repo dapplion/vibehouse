@@ -326,3 +326,9 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). No new PRs since #5056 (Mar 29). All open Gloas/Heze PRs unchanged.
 - **Added 16 unit tests for blob and data column request items validation** (commit 51c60ec9c): BlobsByRangeRequestItems (6 tests — slot range rejection, index exceeding max_blobs, consume), BlobsByRootRequestItems (2 tests — wrong block root, consume), DataColumnsByRangeRequestItems (6 tests — slot range rejection, unrequested column index, consume), DataColumnsByRootRequestItems (2 tests — wrong block root via Gloas variant, consume). Tests cover all error paths before inclusion proof verification.
 - Zero clippy warnings. All 16 new tests pass. CI green.
+
+**Monitoring (run 4037, 2026-03-30):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29) — CI tooling only. No new PRs since #5056 (Mar 29).
+- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- Comprehensive untested code audit: surveyed all sync/, store/, operation_pool/, proto_array/, fork_choice/, beacon_chain/, common/ directories. Nearly all remaining untested modules require complex BeaconChain<T> or BeaconState dependencies — not unit-testable without full integration harnesses. Self-contained modules (memory_store, historic_state_cache, justified_balances, hdiff, etc.) already have tests from prior runs.
+- Zero clippy warnings. No dep updates available (10 behind latest all require major version bumps). Toolchains current (stable 1.94.1, nightly 1.96.0). Codebase stable.
