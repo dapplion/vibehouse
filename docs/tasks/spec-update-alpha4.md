@@ -45,6 +45,9 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 | #5052 | Reduce `compute_shuffled_index` cache from 65536 to 1024 | **Merged 2026-03-27.** Python spec tooling only (reverts #5046 cache size). Not relevant to vibehouse. |
 | #5053 | Rename nightly-tests.yml to tests.yml | **Merged 2026-03-27.** CI file rename only — no code changes. |
 | #5054 | Update tests workflow | **Merged 2026-03-29.** CI workflow update — no code changes. |
+| #5057 | Update dependency ruff to v0.15.8 | **Merged 2026-03-30.** Python tooling dependency — no code changes. |
+| #5058 | Update astral-sh/setup-uv action to v8 | **Merged 2026-03-30.** CI action update — no code changes. |
+| #5059 | Update dependency deepdiff to v9 | **Merged 2026-03-30.** Python test dependency — no code changes. |
 
 ### Open Gloas PRs (still monitoring)
 
