@@ -90,7 +90,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 | #4840 | Add support for EIP-7843 to Gloas | Open, stale since Jan 2026. |
 | #4630 | EIP-7688: Forward compatible SSZ types | Open, stale since Feb 2026. Not implementing proactively. |
 
-## Consolidated Monitoring Log (runs 2477-4173)
+## Consolidated Monitoring Log (runs 2477-4193)
 
 ### Key events
 
@@ -148,42 +148,23 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 - Added fork choice proofs (tier 1): 30 theorems/lemmas covering head selection, pruning safety, Gloas 3-state payload model, reorg resistance.
 
-### Steady state (runs 3966-4159, 2026-03-29/30)
+### Steady state (runs 3966-4193, 2026-03-29/30)
 
-No new consensus-specs merges or releases since alpha.4 (Mar 27). Post-alpha.4 merges (#5051-5054) are all CI/tooling/test-infra. All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, 149+ reviews, mergeable_state=dirty/conflicting as of Mar 30), #5056 (approved/blocked, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed). New open PRs #5055-5059 are dependency bumps, EIP-8025 refactor, and test infra — not relevant. Cargo check clean, zero clippy warnings on Rust 1.94.1. Nightly CI: all jobs passing.
+No new consensus-specs merges or releases since alpha.4 (Mar 27). Post-alpha.4 merges (#5048-5059) are all CI/tooling/test-infra/dependency-bumps. All open Gloas/Heze PRs unchanged throughout this period.
 
-**Run 4155:** Replaced jsonwebtoken dependency with direct HMAC-SHA256 JWT implementation (~80 lines). Eliminates rsa crate (RUSTSEC-2023-0071) — we only use HS256 for Engine API auth. cargo audit now shows 0 vulnerabilities (5 allowed warnings). All 5089 workspace tests pass.
+**Notable actions during steady state:**
+- **Run 4155:** Replaced jsonwebtoken with direct HMAC-SHA256 JWT (~80 lines). Eliminates rsa crate (RUSTSEC-2023-0071). cargo audit now 0 vulnerabilities. All 5089 workspace tests pass.
+- **Run 4157:** Devnet health check passed — verifies JWT auth replacement in live 4-node devnet.
+- **Run 4161:** Investigated cargo-machete for unused deps — all reports false positives (TestRandom derive macro needs `rand`).
+- **Run 4163:** Outdated deps (hmac 0.12→0.13, sha2 0.10→0.11) not updated — sha2 pinned for SP1 zkvm patches.
+- **Run 4165:** consensus-specs "Tests" workflow failing on their master (mainnet gloas timeout) — their CI infra issue, not spec change.
+- **Run 4193:** Production code audit for unsafe unwrap()/expect() — all instances confirmed safe-by-construction or in test code. Consolidated monitoring log (collapsed 20 repetitive per-run entries into this summary).
 
-**Run 4157:** No new consensus-specs merges. All open Gloas/Heze PRs unchanged. Devnet health check passed (finalized_epoch=8, slot 80) — verifies JWT auth replacement works in live 4-node devnet. CI green (check/clippy/fmt, EF tests, network+op_pool all passing). Zero clippy warnings, zero audit vulnerabilities.
+**Devnet health checks passed:** runs 4157, 4167, 4169, 4171, 4177, 4179, 4181, 4183, 4185, 4187, 4189, 4191 (all finalized_epoch=8, slot 80).
 
-**Run 4159:** No new consensus-specs merges since #5054 (Mar 29). All open Gloas/Heze PRs unchanged: #4747 (FCR, still dirty/conflicting), #5056 (approved/blocked), #4843 (stalled since Mar 20). Cargo check clean. CI in progress from JWT auth fix (run 4157).
-
-**Run 4161:** No new consensus-specs merges. All open Gloas/Heze PRs unchanged: #4747 (FCR, 79 commits, still dirty/conflicting, active review discussion on floor vs ceil), #5056 (approved/blocked), #4843 (stalled since Mar 20). CI from JWT fix: 4/6 jobs passed (check+clippy+fmt, EF tests, network+op_pool), 3 integration suites still running. Cargo check clean, zero clippy warnings, zero audit vulnerabilities. Investigated cargo-machete for unused deps — all reports are false positives from TestRandom derive macro needing `rand` in scope.
-
-**Run 4163:** No new consensus-specs merges or releases since alpha.4 (Mar 27). All open Gloas/Heze PRs unchanged: #4747 (FCR, still dirty/conflicting, active floor-vs-ceil discussion), #5056 (approved/blocked), #4843 (stalled since Mar 20). CI from JWT fix still in progress (4/6 passed: check+clippy+fmt, EF tests, http_api, network+op_pool; beacon_chain + unit tests running). Zero clippy warnings, zero audit vulnerabilities, all TODOs tracked to issues. Outdated deps (hmac 0.12→0.13, sha2 0.10→0.11) not updated — sha2 pinned for SP1 zkvm patches, breaking change across 6+ crates.
-
-**Run 4165:** No new consensus-specs merges or releases since alpha.4 (Mar 27). 5 commits on master post-alpha.4 are all CI/tooling (#5048, #5051, #5053, #5052, #5054). New open PRs #5057-5059 are dependency bumps — not relevant. All open Gloas/Heze PRs unchanged: #4747 (FCR, 79 commits, dirty/conflicting, 149 review comments), #5056 (approved/blocked), #4843 (stalled since Mar 20), #4954/#4898/#4892 (stale). consensus-specs "Tests" workflow failing on master (mainnet gloas generation timeout) — CI infra issue, not spec change. CI fully green (6/6 jobs passed including JWT auth fix). Nightly tests green for 5 consecutive days. Zero clippy warnings, zero audit vulnerabilities.
-
-**Run 4167:** No new consensus-specs merges since #5054 (Mar 29). All open Gloas/Heze PRs unchanged: #4747 (FCR, still dirty/conflicting, active review), #5056 (approved/blocked), #4843 (stalled since Mar 20). New open PRs #5057-5059 are dependency bumps/refactors — not relevant. Devnet health check passed (finalized_epoch=8, slot 80). Zero clippy warnings. Cargo check clean.
-
-**Run 4169:** No new consensus-specs merges since #5054 (Mar 29). All open Gloas/Heze PRs unchanged: #4747 (FCR, 79 commits, still dirty/conflicting), #5056 (approved/blocked), #4843 (stalled since Mar 20). New open PRs #5057-5059 are dependency bumps — not relevant. Cargo check clean, zero clippy warnings, zero audit vulnerabilities. CI fully green (all jobs passing, nightly green). Devnet health check passed (finalized_epoch=8, slot 80).
-
-**Run 4171:** No new consensus-specs merges since #5054 (Mar 29). All open Gloas/Heze PRs unchanged: #4747 (FCR, 79 commits, still dirty/conflicting, updated today with review activity), #5056 (approved/blocked), #4843 (stalled since Mar 20). Cargo check clean. CI fully green (ci, nightly-tests, spec-test-version-check all passing). Devnet health check passed (finalized_epoch=8, slot 80).
-
-**Run 4175:** No new consensus-specs merges since #5054 (Mar 29). #5057/#5058/#5059 merged (dependency bumps — ruff, setup-uv, deepdiff). All open Gloas/Heze PRs unchanged: #4747 (FCR, 79 commits, still dirty/conflicting, 149 review comments), #5056 (approved/blocked), #4843 (stalled since Mar 20). Cargo check clean, zero clippy warnings. CI fully green.
-
-**Run 4177:** No new consensus-specs merges or releases since alpha.4 (Mar 27). All open Gloas/Heze PRs unchanged: #4747 (FCR, 79 commits, still dirty/conflicting, 149 review comments), #5056 (approved/blocked), #4843 (stalled since Mar 20). Zero clippy warnings, zero audit vulnerabilities. CI fully green. Devnet health check passed (finalized_epoch=8, slot 80).
-
-**Run 4179:** No new consensus-specs merges or releases since alpha.4 (Mar 27). All open Gloas/Heze PRs unchanged: #4747 (FCR, 79 commits, still dirty/conflicting, active floor-vs-ceil review discussion), #5056 (approved/blocked), #4843 (stalled since Mar 20), #5036 (re-opened, blocked — was previously reverted). Cargo check clean. CI fully green (ci, nightly-tests all passing). Devnet health check passed (finalized_epoch=8, slot 80).
-
-**Run 4181:** No new consensus-specs merges or releases since alpha.4 (Mar 27). All open Gloas/Heze PRs unchanged: #4747 (FCR, still dirty/conflicting), #5056 (approved/blocked), #4843 (stalled since Mar 20), #5036 (re-opened/blocked). Devnet health check passed (finalized_epoch=8, slot 80). CI fully green.
-
-**Run 4183:** No new consensus-specs merges since #5057/#5058/#5059 (Mar 30, dependency bumps). All open Gloas/Heze PRs unchanged: #4747 (FCR, still dirty/conflicting), #5056 (approved/blocked), #4843 (stalled since Mar 20), #5036 (re-opened/blocked), #4960/#4932/#4954/#4840/#4630 (stale). Devnet health check passed (finalized_epoch=8, slot 80).
-
-**Run 4185:** No new consensus-specs merges. Recent master commits (#5044, #5046, #5052) are Python test framework optimizations (compute_shuffled_index cache sizing, compute_ptc speedup) — no spec changes. All open Gloas/Heze PRs unchanged: #4747 (FCR, 79 commits, still dirty/conflicting, 149 review comments), #5056 (approved/blocked), #4843 (stalled since Mar 20), #5036 (re-opened/blocked). Devnet health check passed (finalized_epoch=8, slot 80). CI fully green (ci, nightly-tests, spec-test-version-check all passing). Cargo check clean.
-
-**Run 4187:** No new consensus-specs merges since #5057/#5058/#5059 (Mar 30, dependency bumps). All open Gloas/Heze PRs unchanged: #4747 (FCR, still dirty/conflicting), #5056 (approved/mergeable, not merged), #4843 (stalled since Mar 20, now mergeable), #5036 (re-opened/mergeable). Devnet health check passed (finalized_epoch=8, slot 80).
-
-**Run 4189:** No new consensus-specs merges. All open Gloas/Heze PRs unchanged: #4747 (FCR, 79 commits, still dirty/conflicting), #5056 (approved/blocked — blob KZG commitment length check, already implemented in vibehouse), #4843 (blocked), #5036 (blocked). Zero clippy warnings, zero cargo audit vulnerabilities. CI fully green. Devnet health check passed (finalized_epoch=8).
-
-**Run 4191:** No new consensus-specs merges since #5057/#5058/#5059 (Mar 30, dependency bumps). All open Gloas/Heze PRs unchanged: #4747 (FCR, still dirty/conflicting, updated Mar 30), #5056 (approved, not merged), #4843 (stalled since Mar 20), #5036 (re-opened), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale). CI fully green. Devnet health check passed (finalized_epoch=8).
+**Open PR status (unchanged since run 4155):**
+- #4747 (FCR): 79+ commits, dirty/conflicting, 149+ review comments, active floor-vs-ceil discussion
+- #5056 (blob KZG check): approved/blocked — already implemented in vibehouse
+- #4843 (variable PTC deadline): approved, stalled since Mar 20 — partially implemented in vibehouse
+- #5036 (relax bid gossip): re-opened/blocked — our proactive implementation was reverted
+- #4954/#4898/#4892/#4960/#4932/#4840/#4630: stale/unreviewed
