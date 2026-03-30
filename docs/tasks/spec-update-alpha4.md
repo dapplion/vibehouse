@@ -320,11 +320,11 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - No dependency updates available (0 compatible, 10 behind latest require major bumps). Cargo audit: 1 rsa vuln (no fix).
 - Zero clippy warnings. Toolchains current (stable 1.94.1, nightly 1.96.0-nightly a25435bcf). CI all green. Codebase stable.
 
-**Monitoring (run 4080, 2026-03-30):**
+**Monitoring (runs 4080-4081, 2026-03-30):**
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). Last actionable merge: #5054 (test workflow, Mar 29). #5057 (ruff dep) and #5058 (setup-uv action) still open — CI deps only.
 - #5056 (blob kzg commitment len check): still open, approved (2 reviews), mergeable. Already proactively implemented.
 - #4843 (variable PTC deadline): still open, approved, mergeable, stalled since Mar 20. Already proactively implemented.
 - #4747 (FCR): still conflicting, review required, stalled since Mar 27. Design doc ready.
 - All other open Gloas/Heze PRs unchanged: #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
 - No new spec test release (still v1.7.0-alpha.4). No new Gloas/Heze PRs opened.
-- Zero clippy warnings. No compatible dep updates. EF tests verified. Codebase stable.
+- Zero clippy warnings. No compatible dep updates. Toolchains current (stable 1.94.1, nightly 1.96.0-nightly a25435bcf). Cargo audit: 1 rsa vuln (no fix). EF tests: 148/148. Codebase stable.
