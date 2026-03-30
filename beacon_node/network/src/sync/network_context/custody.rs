@@ -487,3 +487,204 @@ impl<E: EthSpec> ColumnRequest<E> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use types::data_column_sidecar::DataColumnSidecarGloas;
+    use types::{FixedBytesExtended, MinimalEthSpec, Slot};
+    use vibehouse_network::service::api_types::{CustodyRequester, SingleLookupReqId};
+
+    type E = MinimalEthSpec;
+
+    fn make_req_id(id: u32) -> DataColumnsByRootRequestId {
+        DataColumnsByRootRequestId {
+            id,
+            requester: CustodyId {
+                requester: CustodyRequester(SingleLookupReqId {
+                    lookup_id: 0,
+                    req_id: 0,
+                }),
+            },
+        }
+    }
+
+    fn make_peer_id() -> PeerId {
+        PeerId::random()
+    }
+
+    fn make_data_column(index: u64) -> Arc<DataColumnSidecar<E>> {
+        Arc::new(DataColumnSidecar::Gloas(DataColumnSidecarGloas {
+            index,
+            column: <_>::default(),
+            kzg_proofs: <_>::default(),
+            slot: Slot::new(1),
+            beacon_block_root: Hash256::zero(),
+        }))
+    }
+
+    #[test]
+    fn new_column_request_starts_not_started() {
+        let req = ColumnRequest::<E>::new();
+        assert!(req.is_awaiting_download().is_some());
+        assert!(!req.is_downloaded());
+        assert_eq!(req.download_failures, 0);
+    }
+
+    #[test]
+    fn on_download_start_transitions_to_downloading() {
+        let mut req = ColumnRequest::<E>::new();
+        let req_id = make_req_id(1);
+        req.on_download_start(req_id).unwrap();
+        assert!(req.is_awaiting_download().is_none());
+        assert!(!req.is_downloaded());
+    }
+
+    #[test]
+    fn on_download_start_from_downloading_errors() {
+        let mut req = ColumnRequest::<E>::new();
+        let req_id = make_req_id(1);
+        req.on_download_start(req_id).unwrap();
+        assert!(matches!(
+            req.on_download_start(make_req_id(2)),
+            Err(Error::BadState(_))
+        ));
+    }
+
+    #[test]
+    fn on_download_error_transitions_back_to_not_started() {
+        let mut req = ColumnRequest::<E>::new();
+        let req_id = make_req_id(1);
+        req.on_download_start(req_id).unwrap();
+        req.on_download_error(req_id).unwrap();
+        assert!(req.is_awaiting_download().is_some());
+        assert!(!req.is_downloaded());
+    }
+
+    #[test]
+    fn on_download_error_wrong_req_id_returns_unexpected() {
+        let mut req = ColumnRequest::<E>::new();
+        let req_id = make_req_id(1);
+        let wrong_id = make_req_id(2);
+        req.on_download_start(req_id).unwrap();
+        assert!(matches!(
+            req.on_download_error(wrong_id),
+            Err(Error::UnexpectedRequestId { .. })
+        ));
+    }
+
+    #[test]
+    fn on_download_error_from_not_started_errors() {
+        let mut req = ColumnRequest::<E>::new();
+        assert!(matches!(
+            req.on_download_error(make_req_id(1)),
+            Err(Error::BadState(_))
+        ));
+    }
+
+    #[test]
+    fn on_download_error_and_mark_failure_increments_count() {
+        let mut req = ColumnRequest::<E>::new();
+        let req_id = make_req_id(1);
+        req.on_download_start(req_id).unwrap();
+        req.on_download_error_and_mark_failure(req_id).unwrap();
+        assert_eq!(req.download_failures, 1);
+        // Can start again after error
+        let req_id2 = make_req_id(2);
+        req.on_download_start(req_id2).unwrap();
+        req.on_download_error_and_mark_failure(req_id2).unwrap();
+        assert_eq!(req.download_failures, 2);
+    }
+
+    #[test]
+    fn on_download_success_transitions_to_downloaded() {
+        let mut req = ColumnRequest::<E>::new();
+        let req_id = make_req_id(1);
+        let peer = make_peer_id();
+        let col = make_data_column(0);
+        let ts = Duration::from_secs(42);
+        req.on_download_start(req_id).unwrap();
+        req.on_download_success(req_id, peer, col, ts).unwrap();
+        assert!(req.is_downloaded());
+        assert!(req.is_awaiting_download().is_none());
+    }
+
+    #[test]
+    fn on_download_success_wrong_req_id_returns_unexpected() {
+        let mut req = ColumnRequest::<E>::new();
+        let req_id = make_req_id(1);
+        let wrong_id = make_req_id(2);
+        let peer = make_peer_id();
+        let col = make_data_column(0);
+        req.on_download_start(req_id).unwrap();
+        assert!(matches!(
+            req.on_download_success(wrong_id, peer, col, Duration::ZERO),
+            Err(Error::UnexpectedRequestId { .. })
+        ));
+    }
+
+    #[test]
+    fn on_download_success_from_not_started_errors() {
+        let mut req = ColumnRequest::<E>::new();
+        let peer = make_peer_id();
+        let col = make_data_column(0);
+        assert!(matches!(
+            req.on_download_success(make_req_id(1), peer, col, Duration::ZERO),
+            Err(Error::BadState(_))
+        ));
+    }
+
+    #[test]
+    fn complete_returns_data_when_downloaded() {
+        let mut req = ColumnRequest::<E>::new();
+        let req_id = make_req_id(1);
+        let peer = make_peer_id();
+        let col = make_data_column(5);
+        let ts = Duration::from_secs(100);
+        req.on_download_start(req_id).unwrap();
+        req.on_download_success(req_id, peer, col.clone(), ts)
+            .unwrap();
+        let (ret_peer, ret_col, ret_ts) = req.complete().unwrap();
+        assert_eq!(ret_peer, peer);
+        assert_eq!(ret_col.index(), 5);
+        assert_eq!(ret_ts, ts);
+    }
+
+    #[test]
+    fn complete_from_not_started_errors() {
+        let req = ColumnRequest::<E>::new();
+        assert!(matches!(req.complete(), Err(Error::BadState(_))));
+    }
+
+    #[test]
+    fn complete_from_downloading_errors() {
+        let mut req = ColumnRequest::<E>::new();
+        req.on_download_start(make_req_id(1)).unwrap();
+        assert!(matches!(req.complete(), Err(Error::BadState(_))));
+    }
+
+    #[test]
+    fn full_lifecycle_with_retry() {
+        let mut req = ColumnRequest::<E>::new();
+        // First attempt: start, fail
+        let req_id1 = make_req_id(1);
+        req.on_download_start(req_id1).unwrap();
+        req.on_download_error_and_mark_failure(req_id1).unwrap();
+        assert_eq!(req.download_failures, 1);
+        assert!(req.is_awaiting_download().is_some());
+
+        // Second attempt: start, succeed
+        let req_id2 = make_req_id(2);
+        let peer = make_peer_id();
+        let col = make_data_column(3);
+        let ts = Duration::from_secs(50);
+        req.on_download_start(req_id2).unwrap();
+        req.on_download_success(req_id2, peer, col, ts).unwrap();
+        assert!(req.is_downloaded());
+
+        let (ret_peer, ret_col, ret_ts) = req.complete().unwrap();
+        assert_eq!(ret_peer, peer);
+        assert_eq!(ret_col.index(), 3);
+        assert_eq!(ret_ts, ts);
+    }
+}
