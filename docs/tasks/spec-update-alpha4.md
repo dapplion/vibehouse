@@ -147,10 +147,12 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 - Added fork choice proofs (tier 1): 30 theorems/lemmas covering head selection, pruning safety, Gloas 3-state payload model, reorg resistance.
 
-### Steady state (runs 3966-4155, 2026-03-29/30)
+### Steady state (runs 3966-4159, 2026-03-29/30)
 
 No new consensus-specs merges or releases since alpha.4 (Mar 27). Post-alpha.4 merges (#5051-5054) are all CI/tooling/test-infra. All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, 149+ reviews, mergeable_state=dirty/conflicting as of Mar 30), #5056 (approved/blocked, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed). New open PRs #5055-5059 are dependency bumps, EIP-8025 refactor, and test infra — not relevant. Cargo check clean, zero clippy warnings on Rust 1.94.1. Nightly CI: all jobs passing.
 
 **Run 4155:** Replaced jsonwebtoken dependency with direct HMAC-SHA256 JWT implementation (~80 lines). Eliminates rsa crate (RUSTSEC-2023-0071) — we only use HS256 for Engine API auth. cargo audit now shows 0 vulnerabilities (5 allowed warnings). All 5089 workspace tests pass.
 
 **Run 4157:** No new consensus-specs merges. All open Gloas/Heze PRs unchanged. Devnet health check passed (finalized_epoch=8, slot 80) — verifies JWT auth replacement works in live 4-node devnet. CI green (check/clippy/fmt, EF tests, network+op_pool all passing). Zero clippy warnings, zero audit vulnerabilities.
+
+**Run 4159:** No new consensus-specs merges since #5054 (Mar 29). All open Gloas/Heze PRs unchanged: #4747 (FCR, still dirty/conflicting), #5056 (approved/blocked), #4843 (stalled since Mar 20). Cargo check clean. CI in progress from JWT auth fix (run 4157).
