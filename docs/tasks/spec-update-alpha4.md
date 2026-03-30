@@ -321,3 +321,8 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). No new PRs since #5056 (Mar 29). All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
 - **Added 14 unit tests for ColumnRequest custody state machine** (commits c22ece239, 1ad833790): state transitions (NotStarted→Downloading→Downloaded), error paths (wrong req_id returns UnexpectedRequestId, invalid state transitions return BadState), failure counting via on_download_error_and_mark_failure, complete() extraction, full retry lifecycle. Previously 0 unit tests for this state machine.
 - Zero clippy warnings. All 14 new tests pass. CI green.
+
+**Sync test coverage (run 4036, 2026-03-30):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new PRs since #5056 (Mar 29). All open Gloas/Heze PRs unchanged.
+- **Added 16 unit tests for blob and data column request items validation** (commit 51c60ec9c): BlobsByRangeRequestItems (6 tests — slot range rejection, index exceeding max_blobs, consume), BlobsByRootRequestItems (2 tests — wrong block root, consume), DataColumnsByRangeRequestItems (6 tests — slot range rejection, unrequested column index, consume), DataColumnsByRootRequestItems (2 tests — wrong block root via Gloas variant, consume). Tests cover all error paths before inclusion proof verification.
+- Zero clippy warnings. All 16 new tests pass. CI green.

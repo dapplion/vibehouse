@@ -59,7 +59,8 @@ mod tests {
     use bls::Signature;
     use ssz_types::{FixedVector, VariableList};
     use types::{
-        BeaconBlockHeader, DataColumnSidecarFulu, MinimalEthSpec, SignedBeaconBlockHeader, Slot,
+        BeaconBlockHeader, DataColumnSidecarFulu, Hash256, MinimalEthSpec, SignedBeaconBlockHeader,
+        Slot,
     };
 
     type E = MinimalEthSpec;
@@ -74,9 +75,9 @@ mod tests {
                 message: BeaconBlockHeader {
                     slot: Slot::new(slot),
                     proposer_index: 0,
-                    parent_root: Default::default(),
-                    state_root: Default::default(),
-                    body_root: Default::default(),
+                    parent_root: Hash256::ZERO,
+                    state_root: Hash256::ZERO,
+                    body_root: Hash256::ZERO,
                 },
                 signature: Signature::empty(),
             },
