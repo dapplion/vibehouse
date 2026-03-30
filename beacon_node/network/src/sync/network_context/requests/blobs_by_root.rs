@@ -69,3 +69,35 @@ impl<E: EthSpec> ActiveRequestItems for BlobsByRootRequestItems<E> {
         std::mem::take(&mut self.items)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use types::{BlobSidecar, FixedBytesExtended, MinimalEthSpec};
+
+    type E = MinimalEthSpec;
+
+    #[test]
+    fn reject_blob_with_wrong_block_root() {
+        let blob = Arc::new(BlobSidecar::<E>::empty());
+        let actual_root = blob.block_root();
+        let wrong_root = Hash256::repeat_byte(0xff);
+        let mut req = BlobsByRootRequestItems::new(BlobsByRootSingleBlockRequest {
+            block_root: wrong_root,
+            indices: vec![0],
+        });
+        assert_eq!(
+            req.add(blob),
+            Err(LookupVerifyError::UnrequestedBlockRoot(actual_root))
+        );
+    }
+
+    #[test]
+    fn consume_returns_empty_initially() {
+        let mut req = BlobsByRootRequestItems::<E>::new(BlobsByRootSingleBlockRequest {
+            block_root: Hash256::zero(),
+            indices: vec![0],
+        });
+        assert!(req.consume().is_empty());
+    }
+}

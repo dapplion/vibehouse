@@ -78,3 +78,48 @@ impl<E: EthSpec> ActiveRequestItems for DataColumnsByRootRequestItems<E> {
         std::mem::take(&mut self.items)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ssz_types::VariableList;
+    use types::{DataColumnSidecarGloas, FixedBytesExtended, MinimalEthSpec, Slot};
+
+    type E = MinimalEthSpec;
+
+    fn make_column_with_root(root: Hash256, index: u64) -> Arc<DataColumnSidecar<E>> {
+        Arc::new(DataColumnSidecar::Gloas(DataColumnSidecarGloas {
+            index,
+            column: VariableList::empty(),
+            kzg_proofs: VariableList::empty(),
+            slot: Slot::new(10),
+            beacon_block_root: root,
+        }))
+    }
+
+    #[test]
+    fn reject_column_with_wrong_block_root() {
+        let actual_root = Hash256::repeat_byte(0xAA);
+        let wrong_root = Hash256::repeat_byte(0xFF);
+        let column = make_column_with_root(actual_root, 0);
+        let mut req =
+            DataColumnsByRootRequestItems::<E>::new(DataColumnsByRootSingleBlockRequest {
+                block_root: wrong_root,
+                indices: vec![0],
+            });
+        assert_eq!(
+            req.add(column),
+            Err(LookupVerifyError::UnrequestedBlockRoot(actual_root))
+        );
+    }
+
+    #[test]
+    fn consume_returns_empty_initially() {
+        let mut req =
+            DataColumnsByRootRequestItems::<E>::new(DataColumnsByRootSingleBlockRequest {
+                block_root: Hash256::zero(),
+                indices: vec![0],
+            });
+        assert!(req.consume().is_empty());
+    }
+}
