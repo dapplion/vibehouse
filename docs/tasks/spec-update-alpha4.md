@@ -338,3 +338,8 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 **ROCQ fork choice proofs + monitoring (run 4087, 2026-03-30):**
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). All open Gloas/Heze PRs unchanged.
 - **Added ROCQ formal proofs for fork choice (tier 1):** 30 theorems/lemmas in `rocq/ForkChoice.v`. Covers head selection viability, best-child weight ordering, pruning safety (parent order + weight/viability preservation), Gloas 3-state payload model (vote exclusivity, status transitions, tiebreaker injectivity/totality), should_extend_payload complete characterization, reorg resistance. All 3 proof files compile (PtcQuorum.v + BuilderPayments.v + ForkChoice.v). Commit 371f47b25.
+
+**Monitoring (run 4088, 2026-03-30):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29).
+- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #5056 (approved/blocked, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- Zero clippy warnings. No dep updates. Toolchains current (stable 1.94.1, nightly 1.96.0-nightly a25435bcf). EF tests: 148/148. Codebase stable.
