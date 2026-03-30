@@ -306,3 +306,9 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - #5056 (blob kzg commitment len check): still open/blocked, approved by jtraglia, not merged. Already proactively implemented.
 - All open Gloas/Heze PRs unchanged: #4843 (approved/blocked since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
 - Zero clippy warnings. No compatible dep updates (10 behind latest require major bumps). Toolchains current (stable 1.94.1, nightly 1.96.0-nightly a25435bcf). EF tests: 148/148. Codebase stable.
+
+**Monitoring (run 4071, 2026-03-30):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last actionable merge: #5054 (test workflow, Mar 29). #5057 (ruff dep) and #5058 (setup-uv action) still open — CI deps only.
+- #5056 (blob kzg commitment len check): still open/blocked, approved by jtraglia, not merged. Already proactively implemented.
+- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked since Mar 20), #4747 (FCR, conflicting), #5056 (approved/blocked), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- Zero clippy warnings. No dep updates. Toolchains current (stable 1.94.1, nightly 1.96.0-nightly a25435bcf). Codebase stable.
