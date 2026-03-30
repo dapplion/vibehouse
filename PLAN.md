@@ -100,7 +100,7 @@ Current devnet only tests the happy path (4 homogeneous nodes, self-build, minim
 
 All 5 phases complete: (1) clippy/doc/dead-code/unwrap audit, (2) architecture review (superstruct, duplication, error types, pub visibility, module organization), (3) correctness deep-dive (spec conformance, constants, edge cases), (4) performance (clone/allocation audit, DB patterns, serialization), (5) test quality (~600+ Gloas tests, strong assertions, no flakiness). Fixes shipped: GnosisEthSpec MaxPayloadAttestations U2→U4, envelope error type wrapping, 2 pub→pub(crate) downgrades, withdrawal processing optimization, cargo doc warnings.
 
-### 7. ROCQ formal proofs for consensus-critical invariants — IN PROGRESS
+### 7. ROCQ formal proofs for consensus-critical invariants — DONE
 [GitHub #29](https://github.com/dapplion/vibehouse/issues/29)
 
 | Tier | Scope | Status |
