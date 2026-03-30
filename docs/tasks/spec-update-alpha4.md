@@ -350,3 +350,9 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
 - Comprehensive untested module survey (run 4041): checked common/ (logging, system_health, pretty_reqwest_error), beacon_node/ (graffiti_calculator, block_sidecar_coupling), consensus/ (proto_array), sync/ (parent_chain, block_lookups). Nearly all candidates already have test suites or require complex integration harnesses (BeaconChain<T>, ExecutionLayer, sysinfo). No actionable test coverage gaps remain for self-contained modules.
 - Zero clippy warnings. No dep updates. Toolchains current (stable 1.94.1, nightly 1.96.0). Codebase stable.
+
+**Monitoring (run 4042, 2026-03-30):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29) — CI tooling only. No new PRs since #5056 (Mar 29).
+- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- Fixed Cargo.lock: data-encoding-macro-internal was incorrectly pointing to syn 2.0.117 (requires syn 1.0.109). Commit 5cc5f4cb3.
+- Zero clippy warnings. No dep updates. Toolchains current (stable 1.94.1, nightly 1.96.0). Cargo audit: 1 rsa vuln (no fix). CI all green (nightly passing). Codebase stable.
