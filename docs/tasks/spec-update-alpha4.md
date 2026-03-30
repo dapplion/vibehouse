@@ -332,3 +332,9 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
 - Comprehensive untested code audit: surveyed all sync/, store/, operation_pool/, proto_array/, fork_choice/, beacon_chain/, common/ directories. Nearly all remaining untested modules require complex BeaconChain<T> or BeaconState dependencies — not unit-testable without full integration harnesses. Self-contained modules (memory_store, historic_state_cache, justified_balances, hdiff, etc.) already have tests from prior runs.
 - Zero clippy warnings. No dep updates available (10 behind latest all require major version bumps). Toolchains current (stable 1.94.1, nightly 1.96.0). Codebase stable.
+
+**Monitoring (run 4038, 2026-03-30):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29) — CI tooling only. No new PRs since #5056 (Mar 29).
+- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- Exhaustive search for untested self-contained modules: observed_execution_bids, observed_payload_envelopes, observed_payload_attestations, execution_bid_pool — all already have comprehensive test suites. bls_to_execution_changes depends on SigVerifiedOp/BeaconState (not unit-testable). peer_sync_info and sync_type depend on BeaconChain<T> (not unit-testable without mocking).
+- Zero clippy warnings. No dep updates available. Toolchains current (stable 1.94.1, nightly 1.96.0). Codebase stable.
