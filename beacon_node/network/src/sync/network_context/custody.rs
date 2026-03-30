@@ -324,8 +324,15 @@ impl<T: BeaconChainTypes> ActiveCustodyRequest<T> {
                         },
                     );
                 }
-                LookupRequestResult::NoRequestNeeded(_) | LookupRequestResult::Pending(_) => {
-                    unreachable!()
+                LookupRequestResult::NoRequestNeeded(reason) => {
+                    return Err(Error::BadState(format!(
+                        "expected RequestSent but got NoRequestNeeded: {reason}"
+                    )));
+                }
+                LookupRequestResult::Pending(reason) => {
+                    return Err(Error::BadState(format!(
+                        "expected RequestSent but got Pending: {reason}"
+                    )));
                 }
             }
         }

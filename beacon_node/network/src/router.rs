@@ -346,7 +346,9 @@ impl<T: BeaconChainTypes> Router<T> {
             Response::LightClientBootstrap(_)
             | Response::LightClientOptimisticUpdate(_)
             | Response::LightClientFinalityUpdate(_)
-            | Response::LightClientUpdatesByRange(_) => unreachable!(),
+            | Response::LightClientUpdatesByRange(_) => {
+                warn!(%peer_id, "Received unexpected light client RPC response");
+            }
         }
     }
 
