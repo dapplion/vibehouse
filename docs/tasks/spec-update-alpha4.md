@@ -328,7 +328,7 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - All other open Gloas/Heze PRs unchanged: #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
 - No new spec test release (still v1.7.0-alpha.4). No new Gloas/Heze PRs opened.
 
-**Monitoring (runs 4082-4084, 2026-03-30):**
+**Monitoring (runs 4082-4085, 2026-03-30):**
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29). #5057/#5058 still open (CI deps only).
 - #5056 (blob kzg commitment len check): still open, approved (2 reviews), not merged. Already implemented.
 - All open Gloas/Heze PRs unchanged: #4843 (approved/stalled), #4747 (FCR, conflicting), #5056 (approved/blocked), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed). No new PRs opened.
