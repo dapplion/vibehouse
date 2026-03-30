@@ -90,7 +90,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 | #4840 | Add support for EIP-7843 to Gloas | Open, stale since Jan 2026. |
 | #4630 | EIP-7688: Forward compatible SSZ types | Open, stale since Feb 2026. Not implementing proactively. |
 
-## Consolidated Monitoring Log (runs 2477-4100)
+## Consolidated Monitoring Log (runs 2477-4167)
 
 ### Key events
 
@@ -162,3 +162,5 @@ No new consensus-specs merges or releases since alpha.4 (Mar 27). Post-alpha.4 m
 **Run 4163:** No new consensus-specs merges or releases since alpha.4 (Mar 27). All open Gloas/Heze PRs unchanged: #4747 (FCR, still dirty/conflicting, active floor-vs-ceil discussion), #5056 (approved/blocked), #4843 (stalled since Mar 20). CI from JWT fix still in progress (4/6 passed: check+clippy+fmt, EF tests, http_api, network+op_pool; beacon_chain + unit tests running). Zero clippy warnings, zero audit vulnerabilities, all TODOs tracked to issues. Outdated deps (hmac 0.12→0.13, sha2 0.10→0.11) not updated — sha2 pinned for SP1 zkvm patches, breaking change across 6+ crates.
 
 **Run 4165:** No new consensus-specs merges or releases since alpha.4 (Mar 27). 5 commits on master post-alpha.4 are all CI/tooling (#5048, #5051, #5053, #5052, #5054). New open PRs #5057-5059 are dependency bumps — not relevant. All open Gloas/Heze PRs unchanged: #4747 (FCR, 79 commits, dirty/conflicting, 149 review comments), #5056 (approved/blocked), #4843 (stalled since Mar 20), #4954/#4898/#4892 (stale). consensus-specs "Tests" workflow failing on master (mainnet gloas generation timeout) — CI infra issue, not spec change. CI fully green (6/6 jobs passed including JWT auth fix). Nightly tests green for 5 consecutive days. Zero clippy warnings, zero audit vulnerabilities.
+
+**Run 4167:** No new consensus-specs merges since #5054 (Mar 29). All open Gloas/Heze PRs unchanged: #4747 (FCR, still dirty/conflicting, active review), #5056 (approved/blocked), #4843 (stalled since Mar 20). New open PRs #5057-5059 are dependency bumps/refactors — not relevant. Devnet health check passed (finalized_epoch=8, slot 80). Zero clippy warnings. Cargo check clean.
