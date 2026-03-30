@@ -343,3 +343,9 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29).
 - All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #5056 (approved/blocked, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
 - Zero clippy warnings. No dep updates. Toolchains current (stable 1.94.1, nightly 1.96.0-nightly a25435bcf). EF tests: 148/148. Codebase stable.
+
+**Monitoring (run 4089, 2026-03-30):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29). #5057/#5058 still open (CI deps only).
+- #5056: approved by jtraglia (2 reviews), still not merged. Review comment suggests `get_blob_parameters()` helper — vibehouse already uses equivalent `spec.max_blobs_per_block(epoch)`.
+- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #5056 (approved/blocked), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- Zero clippy warnings. No dep updates. Toolchains current (stable 1.94.1, nightly 1.96.0-nightly a25435bcf). Cargo audit: 1 rsa vuln (no fix). Codebase stable.
