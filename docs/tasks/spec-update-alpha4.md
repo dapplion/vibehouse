@@ -294,3 +294,9 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - **Exhaustive untested code audit complete:** all sync/, store/, operation_pool/, proto_array/, fork_choice/, beacon_chain/, common/ surveyed. All remaining untested modules require BeaconChain<T>/BeaconState integration harnesses — no actionable self-contained test gaps remain.
 - **Safety audit complete:** remaining `unreachable!()` calls safe by construction (4 locations), all 20 `unimplemented!()` are test-only mocks, all `.expect()` in consensus/ are `#[cfg(test)]` only.
 - Zero clippy warnings. No compatible dep updates (2 behind latest require major version bumps). Toolchains current (stable 1.94.1, nightly 1.96.0). Cargo audit: 1 rsa vuln (no fix). EF tests: 86/86 + 148/148. CI all green. Codebase stable.
+
+**Monitoring (run 4069, 2026-03-30):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new PRs opened since #5058 (Mar 30, CI dep update).
+- #5056 (blob kzg commitment len check): now approved by jtraglia, still not merged. Review comment suggests using `get_blob_parameters()` helper — vibehouse uses equivalent `spec.max_blobs_per_block(epoch)`. No code change needed.
+- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- Zero clippy warnings. No compatible dep updates. Toolchains current (stable 1.94.1, nightly 1.96.0-nightly a25435bcf). EF tests: 148/148. Codebase stable.
