@@ -90,7 +90,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 | #4840 | Add support for EIP-7843 to Gloas | Open, stale since Jan 2026. |
 | #4630 | EIP-7688: Forward compatible SSZ types | Open, stale since Feb 2026. Not implementing proactively. |
 
-## Consolidated Monitoring Log (runs 2477-4197)
+## Consolidated Monitoring Log (runs 2477-4199)
 
 ### Key events
 
