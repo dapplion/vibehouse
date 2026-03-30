@@ -106,7 +106,7 @@ All 5 phases complete: (1) clippy/doc/dead-code/unwrap audit, (2) architecture r
 | Tier | Scope | Status |
 |------|-------|--------|
 | 2. PTC quorum + builder payments | Quorum threshold soundness/completeness, slot index bounds/injectivity, epoch rotation correctness | DONE |
-| 1. Fork choice | Head selection, pruning, should_extend_payload | TODO |
+| 1. Fork choice | Head selection viability, best-child ordering, pruning safety, Gloas payload model, should_extend_payload, reorg resistance | DONE |
 | 3. Envelope state transition | process_execution_payload_envelope consistency | TODO |
 
 Infrastructure: ROCQ 9.1.1 (Coq), proofs in `rocq/`, trust assumptions in `rocq/TRUST_ASSUMPTIONS.md`.
