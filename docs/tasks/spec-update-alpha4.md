@@ -69,307 +69,84 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 **Field rename fix (run 3227):** Alpha.4 release was re-published with #4979 (PTC window cache) included, meaning test vectors now use `payload_present` for the PayloadAttestationData boolean field. Our proactive #4843 implementation had renamed this to `payload_timely`, causing SSZ static test failures. Reverted to `payload_present` (26 files, 25 Rust source files). Also removed the Gloas test loading skip workaround since alpha.4 vectors now include `ptc_window` field correctly. All tests passing: 80/80 + 140/140 EF tests, 327 fork_choice, 1033 state_processing.
 
-Run 2439: Audited all PRs merged since run 2438 — #5035, #4962, #5023, #4939 all already handled (no code changes needed). Devnet verified: 4-node finalized epoch 8 with all recent proactive implementations (variable PTC deadline, bid gossip relaxation, same-epoch preferences) working correctly. CI green.
-
-Runs 2440-2460: Continuous monitoring, no new spec PRs merged. Key observations: #4843 (variable PTC deadline) received negative analysis from ethDreamer; #4979 was briefly closed for #4992 then reopened; #4992 (alternative approach) was closed. Heze fork assessment (run 2454): FOCIL spec complete but too early for implementation. Devnet verified multiple times (finalized epoch 8). All audits clean (clippy, cargo audit, zero unwrap() in production paths). No actionable work.
-
-Run 2879: New PR #5044 opened (2026-03-26) — "Speed up compute_ptc". Pre-fetches effective_balances before selection loop. Proactively implemented the optimization in vibehouse: flatten committees into parallel indices/effective_balances Vecs, use indexed lookups in the loop instead of repeated state.validators() access. Also added #4840 (EIP-7843 blob limits) and #4630 (EIP-7688 forward-compatible SSZ) to monitoring list. All state_processing tests (1033) and EF spec tests (36/36) pass.
-
-Run 2461/2463: Fixed HTTP API gap — `post_beacon_pool_proposer_preferences` was missing epoch/slot validation that gossip path already had. Added checks + fixed 8 bid tests using `current_slot + 1`. CI green.
-
-Runs 2464-2468: Monitoring, no new merges. CI green, all open PRs unchanged.
-
-Run 2469-2470: **#4979 merged** (2026-03-25T18:24:01Z). Verified proactive implementation matches final merge commit (a196ff3e) across all 7 behavioral aspects. No code changes needed. EF test handler ready for updated vectors. Devnet verified: finalized epoch 8.
-
-Runs 2471-2475: Monitoring, no new Gloas merges. #4558 (Cell Dissemination) updated but PeerDAS scope.
-
-Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code changes needed — vibehouse already allows current+next epoch in gossip, HTTP API, and VC broadcast.
-
 ## Open Gloas PRs to Watch
 
 | PR | Description | Notes |
 |----|-------------|-------|
-| ~~#4979~~ | ~~PTC window cache in BeaconState~~ | **MERGED 2026-03-25.** Proactively implemented and verified against final merge commit (a196ff3e). EF test handler ready, awaiting updated test vectors. |
+| ~~#4979~~ | ~~PTC window cache in BeaconState~~ | **MERGED 2026-03-25.** Proactively implemented and verified against final merge commit (a196ff3e). |
 | ~~#5035~~ | ~~Allow same epoch proposer preferences~~ | **MERGED 2026-03-25.** Already implemented — no code changes needed. |
-| ~~#4558~~ | ~~Cell Dissemination via Partial Messages~~ | **MERGED 2026-03-25.** Adds `PartialDataColumnHeader` + validation for `data_column_sidecar_{subnet_id}`. **Not actionable** — requires Gossipsub partial messages extension (no Rust libp2p implementation). |
-| ~~#5036~~ | ~~Relax bid gossip dependency on proposer preferences~~ | **Effectively dead** — both author and reviewer opposed. Proactive implementation reverted (run 2488). |
-| ~~#5044~~ | ~~Speed up `compute_ptc`~~ | **MERGED 2026-03-26T19:03:01Z.** Pre-fetches effective_balances, changes `compute_balance_weighted_acceptance` signature. **Already implemented** — vibehouse pre-computes effective_balances (gloas.rs:465-477). No code changes needed. |
-| ~~#5046~~ | ~~Increase `compute_shuffled_index` cache~~ | **MERGED 2026-03-26T19:02:36Z.** Python test infra LRU cache optimization. Not relevant to vibehouse. |
-| #5056 | Add check on bid gossip for blob kzg commitment len | **Open 2026-03-29.** Proactively implemented — gossip validation now [REJECT]s bids where `blob_kzg_commitments` exceeds `max_blobs_per_block`. Commit 42e33200c. |
-| #4843 | Variable PTC deadline | Open, APPROVED. **Proactively implemented** (commit a7baf6b57). |
+| ~~#4558~~ | ~~Cell Dissemination via Partial Messages~~ | **MERGED 2026-03-25.** Not actionable — requires Gossipsub partial messages extension (no Rust libp2p implementation). |
+| ~~#5036~~ | ~~Relax bid gossip dependency on proposer preferences~~ | **Effectively dead** — both author and reviewer opposed. Proactive implementation reverted. |
+| ~~#5044~~ | ~~Speed up `compute_ptc`~~ | **MERGED 2026-03-26.** Already implemented — vibehouse pre-computes effective_balances. |
+| ~~#5046~~ | ~~Increase `compute_shuffled_index` cache~~ | **MERGED 2026-03-26.** Python test infra only. Not relevant. |
+| #5056 | Add check on bid gossip for blob kzg commitment len | **Open 2026-03-29.** Approved (2 reviews), not merged. Proactively implemented — commit 42e33200c. |
+| #4843 | Variable PTC deadline | Open, APPROVED. **Proactively implemented** (commit a7baf6b57). Field rename reverted pending merge. |
 | #4898 | Remove pending status from tiebreaker | Open — vibehouse already matches post-PR behavior. |
 | #4892 | Remove impossible branch in forkchoice | Open — vibehouse already uses debug_assert + ==. |
 | #4960 | Fork choice test for new validator deposit | Test vectors — will integrate when released. |
 | #4932 | Sanity/blocks tests with payload attestation coverage | Test vectors — will integrate when released. |
 | #4954 | Update fork choice store to use milliseconds | Open, 0 reviews, large refactor, also tagged `heze` — not implementing proactively. |
-| #4747 | Fast Confirmation Rule | Open, 128+ reviews, CONFLICTING. Actively debated, not close to merge. |
+| #4747 | Fast Confirmation Rule | Open, 148+ reviews, CONFLICTING. Design doc ready (`docs/workstreams/fast-confirmation-rule.md`). |
 | #4840 | Add support for EIP-7843 to Gloas | Open, stale since Jan 2026. |
 | #4630 | EIP-7688: Forward compatible SSZ types | Open, stale since Feb 2026. Not implementing proactively. |
 
-### Consolidated monitoring log (runs 2477-3313)
+## Consolidated Monitoring Log (runs 2477-4100)
 
-**Notable events:**
-- Run 2479: #5040 merged (fork choice test bug fix — Python only). #4558 merged, #5041/#5042 merged (Python deps).
-- Run 2489: Fixed stale test from #5036 revert.
-- Run 2501: Verified #4979 implementation matches final merge (a196ff3e).
-- Run 2547: Audit gap fix — #5001 (bid key 3-tuple) and #5002 (doc-only) confirmed already handled.
-- Run 2629: Created FCR design doc (`docs/workstreams/fast-confirmation-rule.md`) analyzing PR #4747.
-- Run 2805: Updated alloy crates 1.8.1→1.8.2.
-- Run 2869: Fixed yanked unicode-segmentation 1.13.1→1.13.2.
-- Run 2879: Proactively optimized `compute_ptc` to pre-compute effective balances (matching #5044).
-- Run 2922: #5044 merged (compute_ptc speedup) — already implemented. #5046 merged (Python cache) — not relevant.
-- Run 3199: **v1.7.0-alpha.4 released** with test vectors. Fixed CommitteeCache epoch bound for PTC window lookahead. All tests passing: 80/80 + 140/140 EF. Commit 8a83ed8ab.
-- Run 3200: Fixed beacon_chain empty-committee panic in `process_ptc_window`. Commit 8181c4647.
-- Run 3201: Updated transitive deps (windows-sys, socket2, etc). Commit 71c46c13e.
-- Run 3214: Devnet verification — 4-node finalized_epoch=8, clean Gloas fork transition.
-- Run 3222: Updated Rust stable 1.94.0→1.94.1 and nightly to 1.96.0-nightly.
-- Run 3227: Reverted payload_timely→payload_present to match alpha.4 test vectors.
+### Key events
 
-**Steady state (runs 3202-3315, 2026-03-27 to 2026-03-28):**
-- No new consensus-specs merges affecting vibehouse since #5048 (2026-03-27)
-- Non-relevant merges: #5051 (test timeout), #5052 (Python cache reduction), #5053 (CI rename)
-- v1.7.0-alpha.4 published as GitHub prerelease with test vectors
-- CI: all green (ci, nightly, spec-test-check). Zero clippy warnings
-- All deps at latest (0 compatible updates). 9 behind latest requiring major bumps (not viable)
-- Cargo audit: 1 transitive rsa vuln (no fix available)
-- All 8 open Gloas PRs unchanged: #4843 (approved/mergeable), #4898/#4892 (stale), #4954 (unreviewed), #4747 (FCR, 144 reviews, conflicting), #4960/#4932 (test vectors), #4840/#4630 (stale)
-- New open PRs (not Gloas): #5055 (EIP-8025 refactor), #5054 (test workflow), #5050 (networking test), #5049/#5047 (gossip validation) — all non-Gloas
-- Issue #36: 5 blocked, 2 non-critical remaining
-- Rust 1.94.1 stable + 1.96.0-nightly up to date
-- Devnet verified multiple times: 4-node finalized_epoch=8, clean Gloas fork transition
-- Full test verification (run 3285): 80/80 EF (real crypto) + 140/140 EF (fake crypto) + 2445 core tests + 4998 workspace tests
-- Run 3314: Updated transitive deps (wasm-bindgen 0.2.115, js-sys 0.3.92, web-sys 0.3.92). 4998 workspace tests pass. Only outdated dep: rand_xorshift 0.4→0.5 (blocked by rand_core version conflicts)
-**Code improvements (runs 3316-3600+, 2026-03-28):**
-- Run 3346: Fixed test compilation from ExecutionPayloadBid split (3 test files), fixed cargo doc warning. Tests: beacon_chain 422, network 68, http_api 78 — all passing.
-- Run 3502: Added proposer-side bid `inclusion_list_bits` validation per Heze validator.md spec.
-- Run 3600: Fixed 3 Heze gossip validation spec compliance gaps: (1) accept previous-slot ILs with attestation_due timing, (2) MAX_BYTES_PER_INCLUSION_LIST=8192 tx size check, (3) committee root mismatch REJECT→IGNORE.
+- **#4979 merged** (2026-03-25): proactive implementation verified against final merge (a196ff3e). No changes needed.
+- **#5035 merged** (2026-03-24): already implemented (same-epoch proposer preferences).
+- **#5040 merged** (2026-03-25): fork choice test bug fix — Python only.
+- **#4558 merged** (2026-03-25): partial messages — blocked on rust-libp2p support.
+- **#5044 merged** (2026-03-26): compute_ptc speedup — already implemented.
+- **v1.7.0-alpha.4 released** (2026-03-27): test vectors downloaded, all tests passing 86/86 + 148/148 EF.
+- **#5054 merged** (2026-03-29): test workflow update — CI only.
+- Created FCR design doc (`docs/workstreams/fast-confirmation-rule.md`) analyzing PR #4747.
+- Issue #5043 audited (Gloas genesis block hash): vibehouse already handles correctly.
 
-**EF gossip validation tests (runs 3817-3822, 2026-03-28):**
-- Run 3817: Added EF tests for `gossip_proposer_slashing` and `gossip_attester_slashing` (all forks phase0→heze). Fixed `is_valid_indexed_attestation` to check validator index range (spec compliance gap). Removed blanket Heze exclusion from `check_all_files_accessed.py`.
-- Runs 3819-3820: Added `gossip_beacon_block` (12 phase0 tests), `gossip_beacon_attestation` (16 tests), `gossip_beacon_aggregate_and_proof` (20 tests). All gossip validation test types now implemented.
-- Final EF test counts: 86/86 (real crypto) + 148/148 (fake crypto). Zero clippy warnings.
+### Bug fixes shipped
 
-**Heze HTTP API tests (run 3840, 2026-03-29):**
-- Added 7 IL duty endpoint tests (`POST /eth/v1/validator/duties/inclusion_list/{epoch}`). 352/352 http_api tests pass.
-- No new consensus-specs merges since #5053 (2026-03-27). All open Gloas/Heze PRs unchanged.
+- Fixed CommitteeCache epoch bound for PTC window lookahead (commit 8a83ed8ab).
+- Fixed beacon_chain empty-committee panic in `process_ptc_window` (commit 8181c4647).
+- Reverted payload_timely→payload_present to match alpha.4 test vectors.
+- Fixed HTTP API `post_beacon_pool_proposer_preferences` missing epoch/slot validation.
+- Fixed `check_inclusion_list_satisfaction` slot-1 per spec (ILs at slot N-1 constrain payload at slot N).
+- Fixed missing InclusionListStore pruning — unbounded memory growth (commit 264469b7d).
+- Fixed `is_valid_indexed_attestation` validator index range check (spec compliance gap).
+- Fixed 3 Heze gossip validation spec compliance gaps.
+- Replaced 2 production `unreachable!()` with proper error handling.
 
-**Heze IL slot-1 fix (run 3823, 2026-03-28):**
-- Fixed `check_inclusion_list_satisfaction` and `compute_inclusion_list_bits_for_slot` to use `slot - 1` per spec's `record_payload_inclusion_list_satisfaction`. ILs broadcast at slot N-1 constrain the payload at slot N.
+### Code improvements shipped
 
-**Monitoring steady state (runs 3316-3823+, 2026-03-28/29):**
-- No new consensus-specs merges since #5053 (Mar 27). No new releases (still alpha.4).
-- Open non-Gloas PRs: #5054 (test workflow), #5055 (EIP-8025 refactor), #5050 (networking test yield fix) — none actionable.
-- All monitored Gloas PRs unchanged: #4843 (variable PTC deadline, approved not merged), #4747 (FCR, 148 reviews, conflicting), #4954/#4840/#4630 (stale).
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting, stalled since Feb 16), #4954 (unreviewed), #4898/#4892 (stale), #4960/#4932 (test vectors), #4840/#4630 (stale).
-- Deep audits confirmed: all 7 Heze spec documents fully compliant, fork choice IL integration correct, production code unwrap() audit clean.
-- Deps fully current. Cargo audit: 1 rsa vuln (no fix). CI all green. Codebase stable.
+- Proactively implemented #5056 (blob kzg commitment length check, commit 42e33200c).
+- Optimized: `compute_ptc_inner` (eliminated allocations), `get_missing_columns_for_epoch` (direct slice indexing), `handle_data_columns_by_root_request` (iter().copied()), Heze IL processing (removed clones).
+- Added VC-side Prometheus metrics for payload attestation + inclusion list services.
+- Removed dead code enum variants, stale `#[allow(dead_code)]`.
+- Updated `InclusionListByCommitteeIndices/1` RPC to match spec (10 bytes fixed).
+- Added proposer-side bid `inclusion_list_bits` validation per Heze validator.md spec.
 
-**Devnet verification (run 3824, 2026-03-29):**
-- Heze devnet: Gloas@epoch1, Heze@epoch3, finalized_epoch=8 at slot 81. IL slot-1 fix verified end-to-end.
-- Standard Gloas devnet: finalized_epoch=8 at slot 80. Clean fork transition.
-- No new consensus-specs merges or releases. All monitored PRs unchanged. Codebase stable.
+### Test coverage added
 
-**Monitoring (run 3825, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new Gloas/Heze PRs opened.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Updated zerocopy 0.8.47→0.8.48. Build clean, zero clippy warnings, cargo audit unchanged (1 rsa vuln).
-- EF spec tests: 86/86 (real crypto) + 148/148 (fake crypto). All passing.
-- CI green. Deps fully current.
+- 46 Heze tests (upgrade, gossip, signatures, beacon chain, HTTP API, block production, fork choice).
+- EF gossip validation tests: proposer/attester slashings, beacon blocks (12), attestations (16), aggregates (20).
+- 34 SingleLookupRequestState/SingleBlockLookup state machine tests.
+- 23 sync RPC request handling tests.
+- 14 ColumnRequest custody state machine tests.
+- 16 blob/data column request items validation tests.
+- 11 edge case tests (get_best_execution_bid IL bits, get_ptc_committee epoch bounds, InclusionListStore::prune).
+- Final EF test counts: 86/86 (real crypto) + 148/148 (fake crypto).
 
-**Monitoring (run 3826, 2026-03-29):**
-- No new consensus-specs merges or releases. All monitored Gloas/Heze PRs unchanged.
-- Zero clippy warnings. No compatible dependency updates available.
-- EF spec tests: 148/148 (fake crypto). Workspace tests: 5065/5065 passing.
-- Fixed CLAUDE.md "Before pushing" command to exclude web3signer_tests (requires external Java process, not available in CI/dev environments).
+### Audits completed
 
-**Heze test coverage + code improvements (runs 3827-3849, 2026-03-29):**
-- Added 10 `upgrade_to_heze` unit tests (run 3835), 3 IL gossip validation tests (run 3837), 5 `is_valid_inclusion_list_signature` tests (run 3838), 12 beacon chain integration tests for IL methods (run 3839), 7 IL duty endpoint tests (run 3840), 6 IL pool HTTP API tests (run 3841), 2 block production IL tests (run 3846), 1 fork choice IL test (run 3847). Total: 46 new Heze tests.
-- Updated `InclusionListByCommitteeIndices/1` RPC request to match spec: `(slot, Bitvector[INCLUSION_LIST_COMMITTEE_SIZE])` = 10 bytes fixed (run 3842). Fixed gossip validation ordering, RPC handler slot source, response size limit.
-- Removed stale `#[allow(dead_code)]`, fixed cargo doc warning for bitvector bracket notation.
-- Comprehensive Heze test coverage review (run 3849): 100+ tests across types (29), state processing (21), fork choice (3), beacon chain (14), network (9), validator client (14), HTTP API (13). No gaps found.
-- Multiple deep audits: Heze fork choice spec compliance verified, all spec functions accounted for, zero unwrap() in Heze production code, all TODOs have issue links.
-- Devnet verified: Gloas 4-node finalized_epoch=8, Heze devnet Gloas@epoch1/Heze@epoch3 finalized_epoch=8.
+- ~95-98% of Gloas/Heze public functions tested (217 unit + 89 integration tests).
+- Zero production unwrap/todo!/FIXME/HACK. All TODOs linked to issues.
+- All remaining untested code requires BeaconChain<T>/BeaconState integration harnesses.
+- All `unreachable!()` safe by construction, all `unimplemented!()` are test-only mocks.
 
-**Monitoring + code improvements (runs 3850-3909, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27). No new Gloas/Heze PRs opened.
-- All 9 monitored open Gloas/Heze PRs unchanged throughout: #4843 (approved/stalled since Mar 20), #4747 (FCR, dirty/conflicting, 148 reviews), #4954 (unreviewed), #4898/#4892 (stalled), #4960/#4932 (test vectors), #4840/#4630 (stale).
-- Non-Gloas PRs: #5055 (EIP-8025 refactor), #5054 (test workflow), #5050/#5049/#5047/#5033 (gossip validation tests for older forks) — none actionable.
-- New issue #5043 (define Gloas genesis block hash as 0x00) — audited: vibehouse already handles genesis correctly (fork_choice.rs:446, upgrade/gloas.rs:89-123).
-- **Code improvements shipped:**
-  - Run 3865: Updated transitive dep syn 1.0.109→2.0.117.
-  - Run 3901: Optimized Heze IL processing — removed unnecessary clones, reference-based HashSets. 20 IL tests pass.
-  - Run 3903: **Fixed missing InclusionListStore pruning** — unbounded memory growth from stale ILs. Added `inclusion_list_store.lock().prune(earliest_slot)` to `prune_gloas_pools()`. Commit 264469b7d.
-  - Run 3904: Added VC-side Prometheus metrics for payload attestation + inclusion list services. 61/61 validator_services tests pass.
-  - Run 3908: Optimized `get_missing_columns_for_epoch` — replaced 3 HashSet allocations with direct slice indexing. Commit 1fef8b416.
-- **Audits completed:** full TODO audit (all blocked on external deps), full Heze audit (zero issues), codebase deep scan (no FIXME/HACK/unimplemented!/todo!/unwrap in production code), all #[allow(dead_code)] justified.
-- Zero clippy warnings, zero dead code. No compatible dependency updates. Cargo audit: 1 rsa vuln (no fix). CI all green (nightly 31/31 jobs passed). EF spec tests: 86/86 + 148/148. Devnet verified: finalized_epoch=8.
+### ROCQ formal proofs (run 4087)
 
-**Monitoring + code improvements (run 3910, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). All 9 monitored open Gloas/Heze PRs unchanged.
-- Non-Gloas PRs: #5054 (test workflow, updated today) — CI tooling only, not actionable.
-- Optimized `compute_ptc_inner` to accept `&[&[usize]]` instead of `&[Vec<usize>]`, eliminating per-committee `to_vec()` allocations in `compute_ptc` and `compute_ptc_from_committees`. Commit da6ea859f.
-- Full audit: zero clippy warnings, all TODOs have issue links, no production unwrap() calls. 2512 core tests + 148/148 EF tests passing.
+- Added fork choice proofs (tier 1): 30 theorems/lemmas covering head selection, pruning safety, Gloas 3-state payload model, reorg resistance.
 
-**Monitoring (run 3911, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
-- All 9 monitored open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Non-Gloas PRs: #5054 (test workflow) — CI tooling only, not actionable.
-- Zero clippy warnings. No compatible dependency updates available. Cargo audit unchanged (1 rsa vuln, no fix).
-- Deep production code audit: searched all `.clone()` and `.collect::<Vec>()` in consensus hot paths — all are either in test code or necessary for borrow-checker reasons. No actionable optimization opportunities remaining.
+### Steady state (runs 3966-4100, 2026-03-29/30)
 
-**Monitoring (run 3912, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
-- All 9 monitored open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No compatible dependency updates. Cargo audit unchanged (1 rsa vuln, no fix).
-- Full codebase audit: zero todo!(), FIXME, HACK in production code. All unreachable!()/unimplemented!() are justified (test mocks or type-system invariants). All #[allow(dead_code)] properly justified.
-
-**Monitoring + code improvements (runs 3913-3965, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
-- All open Gloas/Heze PRs unchanged throughout: #4843 (approved/stalled since Mar 20), #4747 (FCR, dirty/conflicting, 79 commits), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed). #5036 effectively dead.
-- **Code improvements shipped:**
-  - Run 3945: Updated iri-string 0.7.11→0.7.12.
-  - Run 3959: Optimized `handle_data_columns_by_root_request` — `iter().copied()` instead of `clone()` on VariableList. Commit 5eb408d6b.
-  - Run 3961: Removed 2 dead code enum variants + stale `#[allow(dead_code)]`. Commit cc350b705.
-  - Run 3962: Proactively implemented #5056 (blob kzg commitment length check in bid gossip validation). Commit 42e33200c.
-- Deep audits: hot-path clone() calls all architecturally necessary, zero production unwrap()/expect(), all TODOs linked to issues, all #[allow(dead_code)] justified.
-- Zero clippy warnings. Zero compatible dep updates. Cargo audit unchanged (1 rsa vuln, no fix). EF spec tests: 86/86 + 148/148. CI all green. Codebase stable.
-
-**Monitoring (runs 3966-3978, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, 148 reviews, dirty/conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- #5056 (blob kzg commitment len check) — open, 0 reviews. Proactively implemented in commit 42e33200c.
-- vibehouse repo quiet: no new issues/PRs/comments since mid-March. Issue #36 has only blocked + non-critical items remaining.
-- Run 3978: Verified EF tests 148/148 (fake crypto), zero clippy warnings, clean build. No new merges, no dep updates. Codebase stable.
-
-**Test coverage + monitoring (run 3979, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). #5056 still open, 0 reviews/comments.
-- All open Gloas/Heze PRs unchanged.
-- Zero clippy warnings, no dep updates available. Cargo audit: 1 rsa vuln (no fix). EF tests: 148/148.
-- **Added 4 new tests for `get_best_execution_bid` Heze IL bits filtering** (commit c559c350a): inclusive bits accepted, non-inclusive bits rejected, empty store accepts any, highest-value non-inclusive rejected. Key insight: with small validator sets, same validator can appear at multiple committee positions — tests compute actual local bits instead of hardcoding positions. 27/27 heze_verification tests pass.
-
-**Test coverage (run 3980, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). #5056 still open, 0 reviews. All open Gloas/Heze PRs unchanged.
-- No dep updates available. EF tests: 148/148. Zero clippy warnings.
-- **Added 4 `get_ptc_committee` epoch boundary error path tests** (commit cd5251aab): previous epoch lookup succeeds via ptc_window, epoch 2+ back returns EpochOutOfBounds, future epoch beyond MIN_SEED_LOOKAHEAD returns EpochOutOfBounds, max lookahead epoch succeeds. 1057/1057 state_processing tests pass.
-
-**Test coverage (run 3981, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). #5056 still open, 0 reviews/comments. All 9 open Gloas/Heze PRs unchanged: #4843 (approved/stalled), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No dep updates available. Cargo audit: 1 rsa vuln (no fix). EF tests: 148/148.
-- **Added 3 `InclusionListStore::prune` edge case tests** (commit e0ce4ffce): exact boundary slot kept (>= min_slot), equivocators + signed_cache pruned together, empty store prune is no-op. 24/24 inclusion_list_store tests pass.
-
-**Monitoring (run 3982, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
-- All 9 open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting, review required), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- #5056 (blob kzg commitment len check) still open, 0 reviews/comments. Proactive implementation verified against spec diff — exact match.
-- Zero clippy warnings. No dep updates available. Cargo audit: 1 rsa vuln (no fix). EF tests: 148/148. Codebase stable.
-
-**Monitoring (runs 3983-4007, 2026-03-29):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27).
-- #5056 (blob kzg commitment len check) still open, 0 reviews/comments. Already proactively implemented in 3 locations: gossip (gloas_verification.rs TooManyBlobKzgCommitments), block processing (gloas.rs), and block_verification.rs. Verified exact spec alignment.
-- All 8 open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting, 79 commits), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed). #5036 effectively dead.
-- Full codebase quality audit (run 3986): zero unlinked TODOs, zero stale #[allow(dead_code)], zero #[ignore] tests, zero compilation warnings, zero clippy warnings. All issue #36 items either done or blocked on external deps.
-- Test coverage audit (run 3993): ~95-98% of Gloas/Heze public functions tested (217 unit + 89 integration tests). No actionable gaps.
-- CI all green. Zero clippy warnings. No dep updates available. Cargo audit: 1 rsa vuln (no fix). EF tests: 86/86 + 148/148. Codebase stable.
-
-**Monitoring (runs 4008-4023, 2026-03-29/30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5053 (CI rename, Mar 27). No new PRs opened since #5056 (Mar 29).
-- #5056 (blob kzg commitment len check) still open, 0 reviews/comments. Already proactively implemented.
-- All 8 open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20, mergeable_state=blocked), #4747 (FCR, conflicting, 79 commits), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Updated nightly toolchain 1.96.0-nightly (fda6d37bb 2026-03-27) → (fb27476aa 2026-03-28).
-- Zero clippy warnings. No dep updates available. CI all green. EF tests: 148/148. Codebase stable.
-- Rust stable 1.94.1, nightly 1.96.0 (fb27476aa) — both up to date. All toolchains current.
-
-**Consolidated monitoring + test coverage (runs 4024-4068, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last actionable merge: #5054 (test workflow, Mar 29) — CI tooling only. New non-actionable PRs: #5057 (ruff dep), #5058 (setup-uv action).
-- All open Gloas/Heze PRs unchanged throughout: #4843 (approved/blocked since Mar 20), #4747 (FCR, conflicting, 79 commits), #5056 (approved by jtraglia, not merged — vibehouse uses epoch-aware `spec.max_blobs_per_block(epoch)` which is exact equivalent of suggested `get_blob_parameters()`), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- **Sync test coverage added (runs 4033-4036):**
-  - 34 tests for SingleLookupRequestState/SingleBlockLookup state machine (commit 394a8d856)
-  - 23 tests for sync RPC request handling — ActiveRequests, BlocksByRange/Root (commit 5976dde98)
-  - 14 tests for ColumnRequest custody state machine (commits c22ece239, 1ad833790)
-  - 16 tests for blob/data column request items validation (commit 51c60ec9c)
-- **Other improvements:**
-  - 3 pre-Heze fork early-return tests (commit d9ba3310c)
-  - Fixed Cargo.lock: data-encoding-macro-internal syn version (commit 5cc5f4cb3)
-  - Replaced 2 production `unreachable!()` with proper error handling — custody.rs:328 → BadState, router.rs:349 → warning log (commit ef44e8c5a)
-  - Updated nightly toolchain to 1.96.0-nightly (a25435bcf 2026-03-29)
-- **Exhaustive untested code audit complete:** all sync/, store/, operation_pool/, proto_array/, fork_choice/, beacon_chain/, common/ surveyed. All remaining untested modules require BeaconChain<T>/BeaconState integration harnesses — no actionable self-contained test gaps remain.
-- **Safety audit complete:** remaining `unreachable!()` calls safe by construction (4 locations), all 20 `unimplemented!()` are test-only mocks, all `.expect()` in consensus/ are `#[cfg(test)]` only.
-- Zero clippy warnings. No compatible dep updates (2 behind latest require major version bumps). Toolchains current (stable 1.94.1, nightly 1.96.0). Cargo audit: 1 rsa vuln (no fix). EF tests: 86/86 + 148/148. CI all green. Codebase stable.
-
-**Monitoring (run 4069, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new PRs opened since #5058 (Mar 30, CI dep update).
-- #5056 (blob kzg commitment len check): now approved by jtraglia, still not merged. Review comment suggests using `get_blob_parameters()` helper — vibehouse uses equivalent `spec.max_blobs_per_block(epoch)`. No code change needed.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No compatible dep updates. Toolchains current (stable 1.94.1, nightly 1.96.0-nightly a25435bcf). EF tests: 148/148. Codebase stable.
-
-**Monitoring (run 4070, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last actionable merge: #5054 (test workflow, Mar 29). New non-actionable PRs: #5057 (ruff dep), #5058 (setup-uv action) — both CI deps.
-- #5056 (blob kzg commitment len check): still open/blocked, approved by jtraglia, not merged. Already proactively implemented.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked since Mar 20), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No compatible dep updates (10 behind latest require major bumps). Toolchains current (stable 1.94.1, nightly 1.96.0-nightly a25435bcf). EF tests: 148/148. Codebase stable.
-
-**Monitoring (runs 4071-4072, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last actionable merge: #5054 (test workflow, Mar 29). #5057 (ruff dep) and #5058 (setup-uv action) still open — CI deps only.
-- #5056 (blob kzg commitment len check): still open/blocked, approved by jtraglia, not merged. Already proactively implemented.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked since Mar 20), #4747 (FCR, conflicting), #5056 (approved/blocked), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No dep updates. Toolchains current (stable 1.94.1, nightly 1.96.0-nightly a25435bcf). Codebase stable.
-
-**Monitoring (runs 4073-4079, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last actionable merge: #5054 (test workflow, Mar 29). #5057 (ruff dep) and #5058 (setup-uv action) still open — CI deps only.
-- #5056 (blob kzg commitment len check): still open, approved by jtraglia (2 reviews), blocked, not merged. Already proactively implemented.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/mergeable since Mar 20), #4747 (FCR, conflicting), #5056 (approved/blocked), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- No dependency updates available (0 compatible, 10 behind latest require major bumps). Cargo audit: 1 rsa vuln (no fix).
-- Zero clippy warnings. Toolchains current (stable 1.94.1, nightly 1.96.0-nightly a25435bcf). CI all green. Codebase stable.
-
-**Monitoring (runs 4080-4081, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last actionable merge: #5054 (test workflow, Mar 29). #5057 (ruff dep) and #5058 (setup-uv action) still open — CI deps only.
-- #5056 (blob kzg commitment len check): still open, approved (2 reviews), mergeable. Already proactively implemented.
-- #4843 (variable PTC deadline): still open, approved, mergeable, stalled since Mar 20. Already proactively implemented.
-- #4747 (FCR): still conflicting, review required, stalled since Mar 27. Design doc ready.
-- All other open Gloas/Heze PRs unchanged: #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- No new spec test release (still v1.7.0-alpha.4). No new Gloas/Heze PRs opened.
-
-**Monitoring (runs 4082-4086, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29). #5057/#5058 still open (CI deps only). No new PRs opened.
-- #5056 (blob kzg commitment len check): still open, approved (2 reviews), not merged. Already implemented.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #5056 (approved/blocked), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No compatible dep updates. Toolchains current (stable 1.94.1, nightly 1.96.0-nightly a25435bcf). Cargo audit: 1 rsa vuln + 5 unmaintained crate warnings (all transitive, no fix). EF tests: 148/148. CI all green. Codebase stable.
-
-**ROCQ fork choice proofs + monitoring (run 4087, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). All open Gloas/Heze PRs unchanged.
-- **Added ROCQ formal proofs for fork choice (tier 1):** 30 theorems/lemmas in `rocq/ForkChoice.v`. Covers head selection viability, best-child weight ordering, pruning safety (parent order + weight/viability preservation), Gloas 3-state payload model (vote exclusivity, status transitions, tiebreaker injectivity/totality), should_extend_payload complete characterization, reorg resistance. All 3 proof files compile (PtcQuorum.v + BuilderPayments.v + ForkChoice.v). Commit 371f47b25.
-
-**Monitoring (run 4088, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29).
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #5056 (approved/blocked, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No dep updates. Toolchains current (stable 1.94.1, nightly 1.96.0-nightly a25435bcf). EF tests: 148/148. Codebase stable.
-
-**Monitoring (run 4089, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29). #5057/#5058 still open (CI deps only).
-- #5056: approved by jtraglia (2 reviews), still not merged. Review comment suggests `get_blob_parameters()` helper — vibehouse already uses equivalent `spec.max_blobs_per_block(epoch)`.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #5056 (approved/blocked), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No dep updates. Toolchains current (stable 1.94.1, nightly 1.96.0-nightly a25435bcf). Cargo audit: 1 rsa vuln (no fix). Codebase stable.
-
-**Monitoring (runs 4090-4094, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29). #5057/#5058 still open (CI deps only). No new PRs opened.
-- #5056 (blob kzg commitment len check): still open, approved (2 reviews), not merged. Already proactively implemented.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #5056 (approved/not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No dep updates (0 compatible). Toolchains current (stable 1.94.1, nightly 1.96.0-nightly a25435bcf). CI all green. Codebase stable.
-
-**Monitoring (run 4095, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29). #5057/#5058 still open (CI deps only). No new PRs opened.
-- #5056 (blob kzg commitment len check): still open, approved (2 reviews), not merged. Already proactively implemented.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #5056 (approved/not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No dep updates (0 compatible). EF tests: 148/148. Codebase stable.
-
-**Monitoring (runs 4096-4097, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29). #5057/#5058 still open (CI deps only). No new PRs opened.
-- #5056 (blob kzg commitment len check): still open, approved (2 reviews), not merged. Already proactively implemented.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #5056 (approved/not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No dep updates (0 compatible). Toolchains current (stable 1.94.1, nightly 1.96.0-nightly a25435bcf). EF tests: 148/148. Codebase stable.
-
-**Monitoring (runs 4098-4099, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29). #5057/#5058 still open (CI deps only). No new PRs opened.
-- #5056 (blob kzg commitment len check): still open, approved (2 reviews), not merged. Already proactively implemented.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #5056 (approved/not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No dep updates (0 compatible). Toolchains current (stable 1.94.1, nightly 1.96.0-nightly a25435bcf). Codebase stable.
+No new consensus-specs merges or releases since alpha.4 (Mar 27). All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed). Zero clippy warnings. Toolchains: stable 1.94.1, nightly 1.96.0. Cargo audit: 1 rsa vuln (no fix). EF tests: 86/86 + 148/148. CI all green. Codebase stable.
