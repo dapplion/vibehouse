@@ -642,8 +642,7 @@ mod tests {
         let col = make_data_column(5);
         let ts = Duration::from_secs(100);
         req.on_download_start(req_id).unwrap();
-        req.on_download_success(req_id, peer, col.clone(), ts)
-            .unwrap();
+        req.on_download_success(req_id, peer, col, ts).unwrap();
         let (ret_peer, ret_col, ret_ts) = req.complete().unwrap();
         assert_eq!(ret_peer, peer);
         assert_eq!(ret_col.index(), 5);
