@@ -90,7 +90,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 | #4840 | Add support for EIP-7843 to Gloas | Open, stale since Jan 2026. |
 | #4630 | EIP-7688: Forward compatible SSZ types | Open, stale since Feb 2026. Not implementing proactively. |
 
-## Consolidated Monitoring Log (runs 2477-4167)
+## Consolidated Monitoring Log (runs 2477-4173)
 
 ### Key events
 
@@ -101,6 +101,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 - **#5044 merged** (2026-03-26): compute_ptc speedup — already implemented.
 - **v1.7.0-alpha.4 released** (2026-03-27): test vectors downloaded, all tests passing 86/86 + 148/148 EF.
 - **#5054 merged** (2026-03-29): test workflow update — CI only.
+- **#5057/#5058/#5059 merged** (2026-03-30): CI dependency updates (ruff, setup-uv, deepdiff) — no code changes.
 - Created FCR design doc (`docs/workstreams/fast-confirmation-rule.md`) analyzing PR #4747.
 - Issue #5043 audited (Gloas genesis block hash): vibehouse already handles correctly.
 
