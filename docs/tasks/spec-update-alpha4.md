@@ -356,3 +356,10 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
 - Fixed Cargo.lock: data-encoding-macro-internal was incorrectly pointing to syn 2.0.117 (requires syn 1.0.109). Commit 5cc5f4cb3.
 - Zero clippy warnings. No dep updates. Toolchains current (stable 1.94.1, nightly 1.96.0). Cargo audit: 1 rsa vuln (no fix). CI all green (nightly passing). Codebase stable.
+
+**Code safety (run 4043, 2026-03-30):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new PRs since #5056 (Mar 29). All open Gloas/Heze PRs unchanged.
+- Replaced 2 production `unreachable!()` calls with proper error handling (CLAUDE.md rule: "No Panics at Runtime"):
+  - `custody.rs:328`: `unreachable!()` on unexpected `LookupRequestResult` → returns `BadState` error
+  - `router.rs:349`: `unreachable!()` on unexpected light client RPC response → logs warning
+- 22/22 custody tests pass. Zero clippy warnings. Commit ef44e8c5a.
