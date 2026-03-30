@@ -364,45 +364,9 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
   - `router.rs:349`: `unreachable!()` on unexpected light client RPC response → logs warning
 - 22/22 custody tests pass. Zero clippy warnings. Commit ef44e8c5a.
 
-**Monitoring (run 4044, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Only merge since last check: none. Last merge: #5054 (test workflow, Mar 29) — CI tooling only. No new PRs since #5056 (Mar 29).
-- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No dep updates available. Toolchains current (stable 1.94.1, nightly 1.96.0). EF tests: 148/148. Codebase stable.
-
-**Monitoring (run 4045, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new PRs since #5056 (Mar 29). All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting/dirty), #5056 (approved/blocked, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale).
-- Audited remaining production `unreachable!()` calls: api_error.rs:90 (structurally guaranteed by outer match), protocol.rs:912 (documented precondition — only called after multiple_responses()), handler.rs:664 (iterating collected keys — structurally impossible), beacon_state.rs:1818 (inside `if false` dead code for type inference). All are safe by construction — no changes needed.
-- Audited `unimplemented!()` calls: all 20 are in test-only mock implementations (ptc.rs, duties_service.rs). Safe.
-- Zero clippy warnings. No dep updates. Cargo audit: 1 rsa vuln (no fix). Codebase stable.
-
-**Monitoring (run 4046, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29) — CI tooling only. No new PRs since #5056 (Mar 29).
-- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting/dirty), #5056 (approved/blocked, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No dep updates. No toolchain updates. Codebase stable.
-
-**Monitoring (run 4047, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29) — CI tooling only. No new PRs since #5056 (Mar 29).
-- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting/dirty), #5056 (approved/not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No dep updates. No toolchain updates. Codebase stable.
-
-**Monitoring (runs 4048-4054, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29) — CI tooling only. New open PRs: #5057 (ruff dep), #5058 (setup-uv action) — both CI/deps, not actionable.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting/dirty), #5056 (approved/blocked, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No dep updates. Toolchains current (stable 1.94.1, nightly 1.96.0). Codebase stable.
-
-**Monitoring (runs 4055-4056, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29) — CI tooling only. No new PRs since #5058 (Mar 30).
+**Monitoring (runs 4044-4063, 2026-03-30):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29) — CI tooling only. New non-actionable PRs: #5057 (ruff dep), #5058 (setup-uv action).
 - All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting/dirty), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Audited all `.expect()` calls in consensus/state_processing production code — all are in `#[cfg(test)]` blocks. Zero runtime panic risk in state transition paths.
-- Zero clippy warnings. Zero compiler warnings. No dep updates. Toolchains current (stable 1.94.1, nightly 1.96.0). CI green. Cargo audit: 1 rsa vuln (no fix). Codebase stable.
-
-**Monitoring (runs 4057-4061, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29) — CI tooling only. No new PRs since #5058 (Mar 30).
-- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting/dirty), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Updated nightly toolchain 1.96.0-nightly (fb27476aa 2026-03-28) → (a25435bcf 2026-03-29).
-- Zero clippy warnings. No dep updates (0 compatible, 10 behind latest require major bumps). Toolchains current (stable 1.94.1, nightly 1.96.0). Codebase stable.
-
-**Monitoring (run 4062, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29) — CI tooling only. No new PRs since #5058 (Mar 30).
-- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting/dirty), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No dep updates. Codebase stable.
+- Audits completed: remaining production `unreachable!()` calls all safe by construction (api_error.rs:90, protocol.rs:912, handler.rs:664, beacon_state.rs:1818); all 20 `unimplemented!()` are test-only mocks; all `.expect()` in consensus/state_processing are `#[cfg(test)]` only.
+- Updated nightly toolchain to 1.96.0-nightly (a25435bcf 2026-03-29). Dep updates checked: 0 compatible, 2 direct deps behind (hmac 0.12→0.13, rand_xorshift 0.4→0.5) both require major version bumps with cascading rand_core/sha2 changes — not viable.
+- Zero clippy warnings. Cargo audit: 1 rsa vuln (no fix). Toolchains current (stable 1.94.1, nightly 1.96.0). EF tests: 148/148. Codebase stable.
