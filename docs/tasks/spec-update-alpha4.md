@@ -107,6 +107,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 - **#5054 merged** (2026-03-29): test workflow update — CI only.
 - **#5057/#5058/#5059 merged** (2026-03-30): CI dependency updates (ruff, setup-uv, deepdiff) — no code changes.
 - **Run 4219** (2026-03-30): No new spec merges since Mar 30. CI green, clippy clean, devnet healthy (finalized epoch 8). All open Gloas PRs unchanged (#4843 blocked, #5056 blocked, #4747 dirty/conflicting).
+- **Run 4221** (2026-03-30): No new spec merges. CI green, clippy clean, devnet healthy (finalized epoch 8). Open PRs unchanged. #5055 (EIP-8025 refactor) opened — not in scope.
 - Created FCR design doc (`docs/workstreams/fast-confirmation-rule.md`) analyzing PR #4747.
 - Issue #5043 audited (Gloas genesis block hash): vibehouse already handles correctly.
 
