@@ -147,6 +147,6 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 - Added fork choice proofs (tier 1): 30 theorems/lemmas covering head selection, pruning safety, Gloas 3-state payload model, reorg resistance.
 
-### Steady state (runs 3966-4105, 2026-03-29/30)
+### Steady state (runs 3966-4107, 2026-03-29/30)
 
-No new consensus-specs merges or releases since alpha.4 (Mar 27). Post-alpha.4 merges (#5051-5054) are all CI/tooling/test-infra. All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, 148+ reviews, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed). Run 4105: verified #5056 implementation matches spec PR exactly (`len(bid.blob_kzg_commitments) <= max_blobs_per_block`). Zero clippy warnings. Cargo audit: 1 rsa vuln (no fix). CI all green. Codebase stable.
+No new consensus-specs merges or releases since alpha.4 (Mar 27). Post-alpha.4 merges (#5051-5054) are all CI/tooling/test-infra. New open PRs: #5057 (ruff dep update), #5058 (setup-uv action update) — both dependency/CI only, not relevant. All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, 148+ reviews, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed). Spec test vector repo still on v1.6.0-beta.0 (no v1.7.x test release). Cargo check clean (17s). CI all green. Codebase stable.
