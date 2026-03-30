@@ -127,7 +127,7 @@ impl Auth {
             .map_err(|e| Error::Encoding(format!("HMAC key error: {e}")))?;
         mac.update(signing_input.as_bytes());
         let signature = mac.finalize().into_bytes();
-        let signature_b64 = URL_SAFE_NO_PAD.encode(&signature);
+        let signature_b64 = URL_SAFE_NO_PAD.encode(signature);
 
         Ok(format!("{signing_input}.{signature_b64}"))
     }
