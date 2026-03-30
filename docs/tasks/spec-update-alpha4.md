@@ -44,6 +44,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 | #5051 | Increase test timeout from 12 to 24 hours | **Merged 2026-03-27.** CI infra only — no code changes. |
 | #5052 | Reduce `compute_shuffled_index` cache from 65536 to 1024 | **Merged 2026-03-27.** Python spec tooling only (reverts #5046 cache size). Not relevant to vibehouse. |
 | #5053 | Rename nightly-tests.yml to tests.yml | **Merged 2026-03-27.** CI file rename only — no code changes. |
+| #5054 | Update tests workflow | **Merged 2026-03-29.** CI workflow update — no code changes. |
 
 ### Open Gloas PRs (still monitoring)
 
