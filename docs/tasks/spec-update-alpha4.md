@@ -109,6 +109,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 - **Run 4219** (2026-03-30): No new spec merges since Mar 30. CI green, clippy clean, devnet healthy (finalized epoch 8). All open Gloas PRs unchanged (#4843 blocked, #5056 blocked, #4747 dirty/conflicting).
 - **Run 4221** (2026-03-30): No new spec merges. CI green, clippy clean, devnet healthy (finalized epoch 8). Open PRs unchanged. #5055 (EIP-8025 refactor) opened — not in scope.
 - **Run 4223** (2026-03-30): No new spec merges since #5059 (Mar 30). All open Gloas/Heze PRs unchanged. Devnet healthy (finalized epoch 8).
+- **Run 4227** (2026-03-30): No new spec merges. CI green, devnet healthy (finalized epoch 8). All open PRs unchanged.
 - Created FCR design doc (`docs/workstreams/fast-confirmation-rule.md`) analyzing PR #4747.
 - Issue #5043 audited (Gloas genesis block hash): vibehouse already handles correctly.
 
@@ -155,7 +156,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 - Added fork choice proofs (tier 1): 30 theorems/lemmas covering head selection, pruning safety, Gloas 3-state payload model, reorg resistance.
 
-### Steady state (runs 3966-4225, 2026-03-29/30)
+### Steady state (runs 3966-4227, 2026-03-29/30)
 
 No new consensus-specs merges or releases since alpha.4 (Mar 27). Post-alpha.4 merges (#5048-5059) are all CI/tooling/test-infra/dependency-bumps. All open Gloas/Heze PRs unchanged throughout this period.
 
@@ -167,7 +168,7 @@ No new consensus-specs merges or releases since alpha.4 (Mar 27). Post-alpha.4 m
 - **Run 4165:** consensus-specs "Tests" workflow failing on their master (mainnet gloas timeout) — their CI infra issue, not spec change.
 - **Run 4193:** Production code audit for unsafe unwrap()/expect() — all instances confirmed safe-by-construction or in test code. Consolidated monitoring log (collapsed 20 repetitive per-run entries into this summary).
 
-**Devnet health checks passed:** runs 4157, 4167, 4169, 4171, 4177, 4179, 4181, 4183, 4185, 4187, 4189, 4191, 4195, 4197, 4199, 4201, 4203, 4205, 4209, 4211, 4213, 4215, 4217, 4219, 4221, 4223, 4225 (all finalized_epoch=8, slot 80).
+**Devnet health checks passed:** runs 4157, 4167, 4169, 4171, 4177, 4179, 4181, 4183, 4185, 4187, 4189, 4191, 4195, 4197, 4199, 4201, 4203, 4205, 4209, 4211, 4213, 4215, 4217, 4219, 4221, 4223, 4225, 4227 (all finalized_epoch=8, slot 80).
 
 **Open PR status (unchanged since run 4155):**
 - #4747 (FCR): 79 commits, dirty/conflicting, 149+ reviews, active floor-vs-ceil discussion (updated Mar 30)
