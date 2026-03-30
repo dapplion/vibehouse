@@ -396,7 +396,8 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Audited all `.expect()` calls in consensus/state_processing production code — all are in `#[cfg(test)]` blocks. Zero runtime panic risk in state transition paths.
 - Zero clippy warnings. Zero compiler warnings. No dep updates. Toolchains current (stable 1.94.1, nightly 1.96.0). CI green. Cargo audit: 1 rsa vuln (no fix). Codebase stable.
 
-**Monitoring (runs 4057-4060, 2026-03-30):**
+**Monitoring (runs 4057-4061, 2026-03-30):**
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29) — CI tooling only. No new PRs since #5058 (Mar 30).
 - All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting/dirty), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- Updated nightly toolchain 1.96.0-nightly (fb27476aa 2026-03-28) → (a25435bcf 2026-03-29).
 - Zero clippy warnings. No dep updates (0 compatible, 10 behind latest require major bumps). Toolchains current (stable 1.94.1, nightly 1.96.0). Codebase stable.
