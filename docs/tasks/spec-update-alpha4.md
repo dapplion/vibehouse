@@ -316,3 +316,8 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). No new PRs since #5056 (Mar 29). All open Gloas/Heze PRs unchanged.
 - **Added 23 unit tests for sync RPC request handling** (commit 5976dde98): ActiveRequests state machine (10 tests — early completion, stream termination, RPC errors, invalid items, peer tracking, multi-request), BlocksByRangeRequestItems (9 tests — slot validation, duplicates, out-of-order, consume), BlocksByRootRequestItems (4 tests — root matching, rejection, consume). Previously 0 unit tests for these modules.
 - Zero clippy warnings. All 23 new tests pass. CI green.
+
+**Sync test coverage (run 4035, 2026-03-30):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new PRs since #5056 (Mar 29). All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- **Added 14 unit tests for ColumnRequest custody state machine** (commits c22ece239, 1ad833790): state transitions (NotStarted→Downloading→Downloaded), error paths (wrong req_id returns UnexpectedRequestId, invalid state transitions return BadState), failure counting via on_download_error_and_mark_failure, complete() extraction, full retry lifecycle. Previously 0 unit tests for this state machine.
+- Zero clippy warnings. All 14 new tests pass. CI green.
