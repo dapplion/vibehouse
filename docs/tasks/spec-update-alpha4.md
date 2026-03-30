@@ -160,10 +160,10 @@ No new consensus-specs merges or releases since alpha.4 (Mar 27). Post-alpha.4 m
 - **Run 4165:** consensus-specs "Tests" workflow failing on their master (mainnet gloas timeout) — their CI infra issue, not spec change.
 - **Run 4193:** Production code audit for unsafe unwrap()/expect() — all instances confirmed safe-by-construction or in test code. Consolidated monitoring log (collapsed 20 repetitive per-run entries into this summary).
 
-**Devnet health checks passed:** runs 4157, 4167, 4169, 4171, 4177, 4179, 4181, 4183, 4185, 4187, 4189, 4191, 4195, 4197 (all finalized_epoch=8, slot 80).
+**Devnet health checks passed:** runs 4157, 4167, 4169, 4171, 4177, 4179, 4181, 4183, 4185, 4187, 4189, 4191, 4195, 4197, 4199 (all finalized_epoch=8, slot 80).
 
 **Open PR status (unchanged since run 4155):**
-- #4747 (FCR): 79+ commits, dirty/conflicting, 149+ review comments, active floor-vs-ceil discussion
+- #4747 (FCR): 79 commits, dirty/conflicting, 149 review comments, active floor-vs-ceil discussion (latest comment Mar 30)
 - #5056 (blob KZG check): approved/blocked — already implemented in vibehouse
 - #4843 (variable PTC deadline): approved, stalled since Mar 20 — partially implemented in vibehouse
 - #5036 (relax bid gossip): re-opened/blocked — our proactive implementation was reverted
