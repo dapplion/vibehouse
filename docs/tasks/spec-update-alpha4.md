@@ -62,7 +62,8 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 | #4954 | Update fork choice store to use milliseconds | Open. Converts `Store.time`→`Store.time_ms`, `Store.genesis_time`→`Store.genesis_time_ms`. Not merged yet — will implement when merged. |
 | #4840 | Add support for EIP-7843 to Gloas | Open (2026-01-15). Raises blob throughput limits. Not merged — will implement when merged. |
 | #4630 | EIP-7688: Forward compatible SSZ types in Gloas | Open (2025-10-01). StableContainer/Profile types for light client compatibility. Not merged — will implement when merged. |
-| #4747 | Fast Confirmation Rule | Open, 82 commits (latest Mar 25), tests being added. Design doc: `docs/workstreams/fast-confirmation-rule.md`. 6 new Store fields, ~25 functions, Gloas compatibility needed. Will implement when merged. |
+| #5056 | Add check on bid gossip for blob kzg commitment len | Open (2026-03-29). Approved. Adds REJECT rule for oversized blob_kzg_commitments in bid gossip. **Already implemented** — vibehouse validates `blob_kzg_commitments.len() <= max_blobs_per_block` in gossip_methods.rs:3442. No code changes needed. |
+| #4747 | Fast Confirmation Rule | Open, 79 commits (latest Mar 30, mergeable_state=dirty), tests being added. Design doc: `docs/workstreams/fast-confirmation-rule.md`. 6 new Store fields, ~25 functions, Gloas compatibility needed. Will implement when merged. |
 
 ## Test Vectors
 
