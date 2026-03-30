@@ -90,7 +90,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 | #4840 | Add support for EIP-7843 to Gloas | Open, stale since Jan 2026. |
 | #4630 | EIP-7688: Forward compatible SSZ types | Open, stale since Feb 2026. Not implementing proactively. |
 
-## Consolidated Monitoring Log (runs 2477-4193)
+## Consolidated Monitoring Log (runs 2477-4197)
 
 ### Key events
 
@@ -148,7 +148,7 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 - Added fork choice proofs (tier 1): 30 theorems/lemmas covering head selection, pruning safety, Gloas 3-state payload model, reorg resistance.
 
-### Steady state (runs 3966-4193, 2026-03-29/30)
+### Steady state (runs 3966-4197, 2026-03-29/30)
 
 No new consensus-specs merges or releases since alpha.4 (Mar 27). Post-alpha.4 merges (#5048-5059) are all CI/tooling/test-infra/dependency-bumps. All open Gloas/Heze PRs unchanged throughout this period.
 
@@ -160,7 +160,7 @@ No new consensus-specs merges or releases since alpha.4 (Mar 27). Post-alpha.4 m
 - **Run 4165:** consensus-specs "Tests" workflow failing on their master (mainnet gloas timeout) — their CI infra issue, not spec change.
 - **Run 4193:** Production code audit for unsafe unwrap()/expect() — all instances confirmed safe-by-construction or in test code. Consolidated monitoring log (collapsed 20 repetitive per-run entries into this summary).
 
-**Devnet health checks passed:** runs 4157, 4167, 4169, 4171, 4177, 4179, 4181, 4183, 4185, 4187, 4189, 4191, 4195 (all finalized_epoch=8, slot 80).
+**Devnet health checks passed:** runs 4157, 4167, 4169, 4171, 4177, 4179, 4181, 4183, 4185, 4187, 4189, 4191, 4195, 4197 (all finalized_epoch=8, slot 80).
 
 **Open PR status (unchanged since run 4155):**
 - #4747 (FCR): 79+ commits, dirty/conflicting, 149+ review comments, active floor-vs-ceil discussion
