@@ -147,6 +147,6 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 - Added fork choice proofs (tier 1): 30 theorems/lemmas covering head selection, pruning safety, Gloas 3-state payload model, reorg resistance.
 
-### Steady state (runs 3966-4115, 2026-03-29/30)
+### Steady state (runs 3966-4117, 2026-03-29/30)
 
-No new consensus-specs merges or releases since alpha.4 (Mar 27). Post-alpha.4 merges (#5051-5054) are all CI/tooling/test-infra. All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, 79 commits, latest commit Mar 25 — still in active review), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed). New dependency-bump PRs (#5057, #5058) are CI-only. Cargo check clean, zero clippy warnings. CI all green. Devnet health check (run 4115): 4-node Gloas devnet SUCCESS — finalized_epoch=8 (slot 80, epoch 10) in 468s, continuous finalization, no stalls. Codebase stable.
+No new consensus-specs merges or releases since alpha.4 (Mar 27). Post-alpha.4 merges (#5051-5054) are all CI/tooling/test-infra. All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, 79 commits, latest commit Mar 25, PR has conflicts — still in active review with 149 review comments), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed). New dependency-bump PRs (#5057, #5058) are CI-only. Cargo check clean, zero clippy warnings. CI all green. Devnet health check (run 4117): 4-node Gloas devnet SUCCESS — finalized_epoch=8 (slot 80, epoch 10) in 468s, continuous finalization, no stalls. Codebase stable.
