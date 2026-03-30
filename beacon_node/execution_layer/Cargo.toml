@@ -11,6 +11,7 @@ alloy-rlp = { workspace = true }
 alloy-trie = { version = "0.9", default-features = false }
 arc-swap = "1.6.0"
 axum = { workspace = true }
+base64 = "0.22"
 builder_client = { path = "../builder_client" }
 bytes = { workspace = true }
 eth2 = { workspace = true }
@@ -19,7 +20,7 @@ ethereum_ssz = { workspace = true }
 fixed_bytes = { workspace = true }
 fork_choice = { workspace = true }
 hex = { workspace = true }
-jsonwebtoken = { version = "10", default-features = false, features = ["rust_crypto"] }
+hmac = "0.12"
 kzg = { workspace = true }
 logging = { workspace = true }
 lru = { workspace = true }
@@ -31,6 +32,7 @@ reqwest = { workspace = true }
 sensitive_url = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+sha2 = "0.10"
 slot_clock = { workspace = true }
 ssz_types = { workspace = true }
 state_processing = { workspace = true }

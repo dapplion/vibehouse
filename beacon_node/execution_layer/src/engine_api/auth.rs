@@ -1,25 +1,22 @@
-use jsonwebtoken::{Algorithm, EncodingKey, Header, encode, get_current_timestamp};
+use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
+use hmac::{Hmac, Mac};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use sha2::Sha256;
+use std::time::{SystemTime, UNIX_EPOCH};
 use zeroize::Zeroize;
 
-/// Default algorithm used for JWT token signing.
-const DEFAULT_ALGORITHM: Algorithm = Algorithm::HS256;
+type HmacSha256 = Hmac<Sha256>;
 
 /// JWT secret length in bytes.
 pub(crate) const JWT_SECRET_LENGTH: usize = 32;
 
 #[derive(Debug)]
 pub enum Error {
-    JWT(jsonwebtoken::errors::Error),
     InvalidToken,
+    InvalidSignature,
     InvalidKey(String),
-}
-
-impl From<jsonwebtoken::errors::Error> for Error {
-    fn from(e: jsonwebtoken::errors::Error) -> Self {
-        Error::JWT(e)
-    }
+    Encoding(String),
 }
 
 /// Provides wrapper around `[u8; JWT_SECRET_LENGTH]` that implements `Zeroize`.
@@ -66,20 +63,24 @@ pub(crate) fn strip_prefix(s: &str) -> &str {
     }
 }
 
+/// Validated JWT token data.
+pub(crate) struct TokenData {
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub claims: Claims,
+}
+
 /// Contains the JWT secret and claims parameters.
 pub(crate) struct Auth {
-    key: EncodingKey,
+    key: [u8; JWT_SECRET_LENGTH],
     id: Option<String>,
     clv: Option<String>,
 }
 
 impl Auth {
     pub(crate) fn new(secret: JwtKey, id: Option<String>, clv: Option<String>) -> Self {
-        Self {
-            key: EncodingKey::from_secret(secret.as_bytes()),
-            id,
-            clv,
-        }
+        let mut key = [0u8; JWT_SECRET_LENGTH];
+        key.copy_from_slice(secret.as_bytes());
+        Self { key, id, clv }
     }
 
     /// Create a new `Auth` struct given the path to the file containing the hex
@@ -113,34 +114,62 @@ impl Auth {
 
     /// Generate a JWT token with the given claims.
     fn generate_token_with_claims(&self, claims: &Claims) -> Result<String, Error> {
-        let header = Header::new(DEFAULT_ALGORITHM);
-        Ok(encode(&header, claims, &self.key)?)
+        let header = r#"{"alg":"HS256","typ":"JWT"}"#;
+        let header_b64 = URL_SAFE_NO_PAD.encode(header.as_bytes());
+
+        let payload = serde_json::to_vec(claims)
+            .map_err(|e| Error::Encoding(format!("Failed to serialize claims: {e}")))?;
+        let payload_b64 = URL_SAFE_NO_PAD.encode(&payload);
+
+        let signing_input = format!("{header_b64}.{payload_b64}");
+
+        let mut mac = HmacSha256::new_from_slice(&self.key)
+            .map_err(|e| Error::Encoding(format!("HMAC key error: {e}")))?;
+        mac.update(signing_input.as_bytes());
+        let signature = mac.finalize().into_bytes();
+        let signature_b64 = URL_SAFE_NO_PAD.encode(&signature);
+
+        Ok(format!("{signing_input}.{signature_b64}"))
     }
 
     /// Generate a `Claims` struct with `iat` set to current time
     fn generate_claims_at_timestamp(&self) -> Claims {
+        let iat = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time before UNIX epoch")
+            .as_secs();
         Claims {
-            iat: get_current_timestamp(),
+            iat,
             id: self.id.clone(),
             clv: self.clv.clone(),
         }
     }
 
     /// Validate a JWT token given the secret key and return the originally signed `TokenData`.
-    pub(crate) fn validate_token(
-        token: &str,
-        secret: &JwtKey,
-    ) -> Result<jsonwebtoken::TokenData<Claims>, Error> {
-        let mut validation = jsonwebtoken::Validation::new(DEFAULT_ALGORITHM);
-        validation.validate_exp = false;
-        validation.required_spec_claims.remove("exp");
+    pub(crate) fn validate_token(token: &str, secret: &JwtKey) -> Result<TokenData, Error> {
+        let parts: Vec<&str> = token.splitn(3, '.').collect();
+        if parts.len() != 3 {
+            return Err(Error::InvalidToken);
+        }
 
-        jsonwebtoken::decode::<Claims>(
-            token,
-            &jsonwebtoken::DecodingKey::from_secret(secret.as_bytes()),
-            &validation,
-        )
-        .map_err(Into::into)
+        let signing_input = format!("{}.{}", parts[0], parts[1]);
+        let signature = URL_SAFE_NO_PAD
+            .decode(parts[2])
+            .map_err(|_| Error::InvalidToken)?;
+
+        let mut mac =
+            HmacSha256::new_from_slice(secret.as_bytes()).map_err(|_| Error::InvalidToken)?;
+        mac.update(signing_input.as_bytes());
+        mac.verify_slice(&signature)
+            .map_err(|_| Error::InvalidSignature)?;
+
+        let payload_bytes = URL_SAFE_NO_PAD
+            .decode(parts[1])
+            .map_err(|_| Error::InvalidToken)?;
+        let claims: Claims =
+            serde_json::from_slice(&payload_bytes).map_err(|_| Error::InvalidToken)?;
+
+        Ok(TokenData { claims })
     }
 }
 
@@ -150,8 +179,10 @@ pub(crate) struct Claims {
     /// issued-at claim. Represented as seconds passed since UNIX_EPOCH.
     iat: u64,
     /// Optional unique identifier for the CL node.
+    #[serde(skip_serializing_if = "Option::is_none")]
     id: Option<String>,
     /// Optional client version for the CL node.
+    #[serde(skip_serializing_if = "Option::is_none")]
     clv: Option<String>,
 }
 
