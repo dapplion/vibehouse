@@ -368,3 +368,9 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). Only merge since last check: none. Last merge: #5054 (test workflow, Mar 29) — CI tooling only. No new PRs since #5056 (Mar 29).
 - All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
 - Zero clippy warnings. No dep updates available. Toolchains current (stable 1.94.1, nightly 1.96.0). EF tests: 148/148. Codebase stable.
+
+**Monitoring (run 4045, 2026-03-30):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new PRs since #5056 (Mar 29). All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting/dirty), #5056 (approved/blocked, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale).
+- Audited remaining production `unreachable!()` calls: api_error.rs:90 (structurally guaranteed by outer match), protocol.rs:912 (documented precondition — only called after multiple_responses()), handler.rs:664 (iterating collected keys — structurally impossible), beacon_state.rs:1818 (inside `if false` dead code for type inference). All are safe by construction — no changes needed.
+- Audited `unimplemented!()` calls: all 20 are in test-only mock implementations (ptc.rs, duties_service.rs). Safe.
+- Zero clippy warnings. No dep updates. Cargo audit: 1 rsa vuln (no fix). Codebase stable.
