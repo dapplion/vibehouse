@@ -147,6 +147,6 @@ All PRs included in alpha.4 (since alpha.3) have been audited. No code changes n
 
 - Added fork choice proofs (tier 1): 30 theorems/lemmas covering head selection, pruning safety, Gloas 3-state payload model, reorg resistance.
 
-### Steady state (runs 3966-4100, 2026-03-29/30)
+### Steady state (runs 3966-4101, 2026-03-29/30)
 
-No new consensus-specs merges or releases since alpha.4 (Mar 27). All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed). Zero clippy warnings. Toolchains: stable 1.94.1, nightly 1.96.0. Cargo audit: 1 rsa vuln (no fix). EF tests: 86/86 + 148/148. CI all green. Codebase stable.
+No new consensus-specs merges or releases since alpha.4 (Mar 27). New PRs #5055-5058 are CI/tooling or EIP-8025 (not relevant). All open Gloas/Heze PRs unchanged: #4843 (approved/stalled since Mar 20), #4747 (FCR, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed). Zero clippy warnings. Toolchains: stable 1.94.1, nightly 1.96.0. Cargo audit: 1 rsa vuln (no fix). EF tests: 86/86 + 148/148. CI all green. Codebase stable.
