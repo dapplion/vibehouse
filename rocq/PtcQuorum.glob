@@ -1,0 +1,241 @@
+DIGEST e4325e62e238ae365518644acdcb50bb
+FVibehouse.PtcQuorum
+R504:508 Stdlib.Arith.Arith <> <> lib
+R538:540 Stdlib.micromega.Lia <> <> lib
+R570:573 Stdlib.Lists.List <> <> lib
+R583:595 Stdlib.Lists.List ListNotations <> mod
+ax 715:722 <> PTC_SIZE
+R726:728 Corelib.Init.Datatypes <> nat ind
+ax 737:748 <> ptc_size_pos
+R760:762 Corelib.Init.Peano <> ::nat_scope:x_'>'_x not
+R752:759 Vibehouse.PtcQuorum <> PTC_SIZE defax
+def 778:801 <> PAYLOAD_TIMELY_THRESHOLD
+R814:816 Stdlib.Arith.PeanoNat <> ::nat_scope:x_'/'_x not
+R806:813 Vibehouse.PtcQuorum <> PTC_SIZE defax
+def 901:904 <> vote
+R909:911 Corelib.Init.Datatypes <> nat ind
+def 925:930 <> timely
+R934:937 Vibehouse.PtcQuorum <> vote def
+def 956:965 <> not_timely
+R969:972 Vibehouse.PtcQuorum <> vote def
+def 1028:1035 <> vote_sum
+R1046:1049 Corelib.Init.Datatypes <> list ind
+R1051:1054 Vibehouse.PtcQuorum <> vote def
+binder 1038:1042 <> votes:5
+R1059:1061 Corelib.Init.Datatypes <> nat ind
+R1074:1078 Vibehouse.PtcQuorum <> votes:5 var
+R1089:1090 Stdlib.Lists.List ListNotations ::list_scope:'['_']' not
+R1102:1105 Corelib.Init.Datatypes <> ::list_scope:x_'::'_x not
+R1113:1115 Corelib.Init.Peano <> ::nat_scope:x_'+'_x not
+R1116:1123 Vibehouse.PtcQuorum <> vote_sum:6 def
+def 1247:1256 <> has_quorum
+R1267:1270 Corelib.Init.Datatypes <> list ind
+R1272:1275 Vibehouse.PtcQuorum <> vote def
+binder 1259:1263 <> votes:8
+R1304:1306 Corelib.Init.Peano <> ::nat_scope:x_'>'_x not
+R1290:1297 Vibehouse.PtcQuorum <> vote_sum def
+R1299:1303 Vibehouse.PtcQuorum <> votes:8 var
+R1307:1330 Vibehouse.PtcQuorum <> PAYLOAD_TIMELY_THRESHOLD def
+prf 1365:1382 <> vote_sum_le_length
+R1402:1405 Corelib.Init.Datatypes <> list ind
+R1407:1410 Vibehouse.PtcQuorum <> vote def
+binder 1394:1398 <> votes:9
+R1446:1451 Corelib.Init.Logic <> ::type_scope:x_'->'_x not
+R1416:1421 Corelib.Lists.ListDef <> Forall ind
+R1441:1445 Vibehouse.PtcQuorum <> votes:9 var
+binder 1428:1428 <> v:10
+R1434:1437 Corelib.Init.Peano <> ::nat_scope:x_'<='_x not
+R1433:1433 Vibehouse.PtcQuorum <> v:10 var
+R1466:1469 Corelib.Init.Peano <> ::nat_scope:x_'<='_x not
+R1452:1459 Vibehouse.PtcQuorum <> vote_sum def
+R1461:1465 Vibehouse.PtcQuorum <> votes:9 var
+R1470:1475 Corelib.Init.Datatypes <> length def
+R1477:1481 Vibehouse.PtcQuorum <> votes:9 var
+def 1670:1681 <> count_timely
+R1692:1695 Corelib.Init.Datatypes <> list ind
+R1697:1700 Vibehouse.PtcQuorum <> vote def
+binder 1684:1688 <> votes:11
+R1705:1707 Corelib.Init.Datatypes <> nat ind
+R1714:1719 Corelib.Init.Datatypes <> length def
+R1722:1727 Stdlib.Lists.List <> filter def
+R1752:1756 Vibehouse.PtcQuorum <> votes:11 var
+binder 1734:1734 <> v:12
+R1739:1745 Stdlib.Arith.PeanoNat Nat eqb def
+R1747:1747 Vibehouse.PtcQuorum <> v:12 var
+prf 1767:1790 <> vote_sum_eq_count_timely
+R1810:1813 Corelib.Init.Datatypes <> list ind
+R1815:1818 Vibehouse.PtcQuorum <> vote def
+binder 1802:1806 <> votes:13
+R1854:1859 Corelib.Init.Logic <> ::type_scope:x_'->'_x not
+R1824:1829 Corelib.Lists.ListDef <> Forall ind
+R1849:1853 Vibehouse.PtcQuorum <> votes:13 var
+binder 1836:1836 <> v:14
+R1842:1845 Corelib.Init.Peano <> ::nat_scope:x_'<='_x not
+R1841:1841 Vibehouse.PtcQuorum <> v:14 var
+R1874:1876 Corelib.Init.Logic <> ::type_scope:x_'='_x not
+R1860:1867 Vibehouse.PtcQuorum <> vote_sum def
+R1869:1873 Vibehouse.PtcQuorum <> votes:13 var
+R1877:1888 Vibehouse.PtcQuorum <> count_timely def
+R1890:1894 Vibehouse.PtcQuorum <> votes:13 var
+R2043:2054 Vibehouse.PtcQuorum <> count_timely def
+R2083:2089 Stdlib.Arith.PeanoNat Nat eqb def
+R2083:2089 Stdlib.Arith.PeanoNat Nat eqb def
+R2117:2126 Stdlib.Arith.PeanoNat Nat eqb_eq thm
+R2117:2126 Stdlib.Arith.PeanoNat Nat eqb_eq thm
+R2167:2177 Stdlib.Arith.PeanoNat Nat eqb_neq thm
+R2167:2177 Stdlib.Arith.PeanoNat Nat eqb_neq thm
+R2196:2198 Corelib.Init.Logic <> ::type_scope:x_'='_x not
+R2196:2198 Corelib.Init.Logic <> ::type_scope:x_'='_x not
+prf 2297:2320 <> quorum_requires_majority
+R2340:2343 Corelib.Init.Datatypes <> list ind
+R2345:2348 Vibehouse.PtcQuorum <> vote def
+binder 2332:2336 <> votes:15
+R2384:2389 Corelib.Init.Logic <> ::type_scope:x_'->'_x not
+R2354:2359 Corelib.Lists.ListDef <> Forall ind
+R2379:2383 Vibehouse.PtcQuorum <> votes:15 var
+binder 2366:2366 <> v:16
+R2372:2375 Corelib.Init.Peano <> ::nat_scope:x_'<='_x not
+R2371:2371 Vibehouse.PtcQuorum <> v:16 var
+R2413:2418 Corelib.Init.Logic <> ::type_scope:x_'->'_x not
+R2402:2404 Corelib.Init.Logic <> ::type_scope:x_'='_x not
+R2390:2395 Corelib.Init.Datatypes <> length def
+R2397:2401 Vibehouse.PtcQuorum <> votes:15 var
+R2405:2412 Vibehouse.PtcQuorum <> PTC_SIZE defax
+R2435:2440 Corelib.Init.Logic <> ::type_scope:x_'->'_x not
+R2419:2428 Vibehouse.PtcQuorum <> has_quorum def
+R2430:2434 Vibehouse.PtcQuorum <> votes:15 var
+R2459:2461 Corelib.Init.Peano <> ::nat_scope:x_'>'_x not
+R2441:2452 Vibehouse.PtcQuorum <> count_timely def
+R2454:2458 Vibehouse.PtcQuorum <> votes:15 var
+R2470:2472 Stdlib.Arith.PeanoNat <> ::nat_scope:x_'/'_x not
+R2462:2469 Vibehouse.PtcQuorum <> PTC_SIZE defax
+R2530:2539 Vibehouse.PtcQuorum <> has_quorum def
+R2542:2565 Vibehouse.PtcQuorum <> PAYLOAD_TIMELY_THRESHOLD def
+R2589:2612 Vibehouse.PtcQuorum <> vote_sum_eq_count_timely thm
+R2589:2612 Vibehouse.PtcQuorum <> vote_sum_eq_count_timely thm
+R2589:2612 Vibehouse.PtcQuorum <> vote_sum_eq_count_timely thm
+prf 2742:2762 <> majority_gives_quorum
+R2782:2785 Corelib.Init.Datatypes <> list ind
+R2787:2790 Vibehouse.PtcQuorum <> vote def
+binder 2774:2778 <> votes:17
+R2826:2831 Corelib.Init.Logic <> ::type_scope:x_'->'_x not
+R2796:2801 Corelib.Lists.ListDef <> Forall ind
+R2821:2825 Vibehouse.PtcQuorum <> votes:17 var
+binder 2808:2808 <> v:18
+R2814:2817 Corelib.Init.Peano <> ::nat_scope:x_'<='_x not
+R2813:2813 Vibehouse.PtcQuorum <> v:18 var
+R2855:2860 Corelib.Init.Logic <> ::type_scope:x_'->'_x not
+R2844:2846 Corelib.Init.Logic <> ::type_scope:x_'='_x not
+R2832:2837 Corelib.Init.Datatypes <> length def
+R2839:2843 Vibehouse.PtcQuorum <> votes:17 var
+R2847:2854 Vibehouse.PtcQuorum <> PTC_SIZE defax
+R2894:2899 Corelib.Init.Logic <> ::type_scope:x_'->'_x not
+R2879:2881 Corelib.Init.Peano <> ::nat_scope:x_'>'_x not
+R2861:2872 Vibehouse.PtcQuorum <> count_timely def
+R2874:2878 Vibehouse.PtcQuorum <> votes:17 var
+R2890:2892 Stdlib.Arith.PeanoNat <> ::nat_scope:x_'/'_x not
+R2882:2889 Vibehouse.PtcQuorum <> PTC_SIZE defax
+R2900:2909 Vibehouse.PtcQuorum <> has_quorum def
+R2911:2915 Vibehouse.PtcQuorum <> votes:17 var
+R2969:2978 Vibehouse.PtcQuorum <> has_quorum def
+R2981:3004 Vibehouse.PtcQuorum <> PAYLOAD_TIMELY_THRESHOLD def
+R3017:3040 Vibehouse.PtcQuorum <> vote_sum_eq_count_timely thm
+R3017:3040 Vibehouse.PtcQuorum <> vote_sum_eq_count_timely thm
+R3017:3040 Vibehouse.PtcQuorum <> vote_sum_eq_count_timely thm
+prf 3126:3142 <> threshold_is_half
+R3170:3172 Corelib.Init.Logic <> ::type_scope:x_'='_x not
+R3146:3169 Vibehouse.PtcQuorum <> PAYLOAD_TIMELY_THRESHOLD def
+R3181:3183 Stdlib.Arith.PeanoNat <> ::nat_scope:x_'/'_x not
+R3173:3180 Vibehouse.PtcQuorum <> PTC_SIZE defax
+prf 3290:3310 <> threshold_lt_ptc_size
+R3338:3340 Corelib.Init.Peano <> ::nat_scope:x_'<'_x not
+R3314:3337 Vibehouse.PtcQuorum <> PAYLOAD_TIMELY_THRESHOLD def
+R3341:3348 Vibehouse.PtcQuorum <> PTC_SIZE defax
+R3367:3390 Vibehouse.PtcQuorum <> PAYLOAD_TIMELY_THRESHOLD def
+R3406:3417 Vibehouse.PtcQuorum <> ptc_size_pos prfax
+R3406:3417 Vibehouse.PtcQuorum <> ptc_size_pos prfax
+R3428:3449 Stdlib.Arith.PeanoNat Nat div_lt_upper_bound abbrev
+R3428:3449 Stdlib.Arith.PeanoNat Nat div_lt_upper_bound abbrev
+prf 3515:3534 <> vote_sum_repeat_zero
+binder 3545:3545 <> n:19
+R3578:3580 Corelib.Init.Logic <> ::type_scope:x_'='_x not
+R3548:3555 Vibehouse.PtcQuorum <> vote_sum def
+R3558:3563 Corelib.Lists.ListDef <> repeat def
+R3576:3576 Vibehouse.PtcQuorum <> n:19 var
+R3565:3574 Vibehouse.PtcQuorum <> not_timely def
+R3664:3673 Vibehouse.PtcQuorum <> not_timely def
+prf 3711:3729 <> vote_sum_repeat_one
+binder 3740:3740 <> n:20
+R3769:3771 Corelib.Init.Logic <> ::type_scope:x_'='_x not
+R3743:3750 Vibehouse.PtcQuorum <> vote_sum def
+R3753:3758 Corelib.Lists.ListDef <> repeat def
+R3767:3767 Vibehouse.PtcQuorum <> n:20 var
+R3760:3765 Vibehouse.PtcQuorum <> timely def
+R3772:3772 Vibehouse.PtcQuorum <> n:20 var
+R3855:3860 Vibehouse.PtcQuorum <> timely def
+prf 3937:3961 <> no_quorum_with_zero_votes
+binder 3974:3974 <> n:21
+R3977:3978 Corelib.Init.Logic <> ::type_scope:'~'_x not
+R3979:3988 Vibehouse.PtcQuorum <> has_quorum def
+R3991:3996 Corelib.Lists.ListDef <> repeat def
+R4009:4009 Vibehouse.PtcQuorum <> n:21 var
+R3998:4007 Vibehouse.PtcQuorum <> not_timely def
+R4043:4052 Vibehouse.PtcQuorum <> has_quorum def
+R4055:4078 Vibehouse.PtcQuorum <> PAYLOAD_TIMELY_THRESHOLD def
+R4096:4115 Vibehouse.PtcQuorum <> vote_sum_repeat_zero thm
+R4096:4115 Vibehouse.PtcQuorum <> vote_sum_repeat_zero thm
+R4096:4115 Vibehouse.PtcQuorum <> vote_sum_repeat_zero thm
+prf 4299:4322 <> unanimous_quorum_general
+binder 4333:4333 <> n:22
+R4354:4359 Corelib.Init.Logic <> ::type_scope:x_'->'_x not
+R4339:4341 Corelib.Init.Peano <> ::nat_scope:x_'>'_x not
+R4338:4338 Vibehouse.PtcQuorum <> n:22 var
+R4350:4352 Stdlib.Arith.PeanoNat <> ::nat_scope:x_'/'_x not
+R4342:4349 Vibehouse.PtcQuorum <> PTC_SIZE defax
+R4360:4369 Vibehouse.PtcQuorum <> has_quorum def
+R4372:4377 Corelib.Lists.ListDef <> repeat def
+R4386:4386 Vibehouse.PtcQuorum <> n:22 var
+R4379:4384 Vibehouse.PtcQuorum <> timely def
+R4422:4431 Vibehouse.PtcQuorum <> has_quorum def
+R4434:4457 Vibehouse.PtcQuorum <> PAYLOAD_TIMELY_THRESHOLD def
+R4470:4488 Vibehouse.PtcQuorum <> vote_sum_repeat_one thm
+R4470:4488 Vibehouse.PtcQuorum <> vote_sum_repeat_one thm
+R4470:4488 Vibehouse.PtcQuorum <> vote_sum_repeat_one thm
+prf 4581:4605 <> unanimous_quorum_full_ptc
+R4611:4620 Vibehouse.PtcQuorum <> has_quorum def
+R4623:4628 Corelib.Lists.ListDef <> repeat def
+R4637:4644 Vibehouse.PtcQuorum <> PTC_SIZE defax
+R4630:4635 Vibehouse.PtcQuorum <> timely def
+R4663:4686 Vibehouse.PtcQuorum <> unanimous_quorum_general thm
+R4663:4686 Vibehouse.PtcQuorum <> unanimous_quorum_general thm
+R4702:4713 Vibehouse.PtcQuorum <> ptc_size_pos prfax
+R4702:4713 Vibehouse.PtcQuorum <> ptc_size_pos prfax
+R4724:4745 Stdlib.Arith.PeanoNat Nat div_lt_upper_bound abbrev
+R4724:4745 Stdlib.Arith.PeanoNat Nat div_lt_upper_bound abbrev
+prf 4831:4843 <> vote_sum_cons
+binder 4854:4854 <> v:23
+binder 4856:4857 <> vs:24
+R4878:4880 Corelib.Init.Logic <> ::type_scope:x_'='_x not
+R4860:4867 Vibehouse.PtcQuorum <> vote_sum def
+R4871:4874 Corelib.Init.Datatypes <> ::list_scope:x_'::'_x not
+R4870:4870 Vibehouse.PtcQuorum <> v:23 var
+R4875:4876 Vibehouse.PtcQuorum <> vs:24 var
+R4882:4884 Corelib.Init.Peano <> ::nat_scope:x_'+'_x not
+R4881:4881 Vibehouse.PtcQuorum <> v:23 var
+R4885:4892 Vibehouse.PtcQuorum <> vote_sum def
+R4894:4895 Vibehouse.PtcQuorum <> vs:24 var
+prf 4932:4962 <> quorum_preserved_by_timely_vote
+binder 4973:4977 <> votes:25
+R4998:5003 Corelib.Init.Logic <> ::type_scope:x_'->'_x not
+R4982:4991 Vibehouse.PtcQuorum <> has_quorum def
+R4993:4997 Vibehouse.PtcQuorum <> votes:25 var
+R5004:5013 Vibehouse.PtcQuorum <> has_quorum def
+R5022:5025 Corelib.Init.Datatypes <> ::list_scope:x_'::'_x not
+R5016:5021 Vibehouse.PtcQuorum <> timely def
+R5026:5030 Vibehouse.PtcQuorum <> votes:25 var
+R5068:5077 Vibehouse.PtcQuorum <> has_quorum def
+R5094:5117 Vibehouse.PtcQuorum <> PAYLOAD_TIMELY_THRESHOLD def
+R5135:5147 Vibehouse.PtcQuorum <> vote_sum_cons thm
+R5135:5147 Vibehouse.PtcQuorum <> vote_sum_cons thm
+R5135:5147 Vibehouse.PtcQuorum <> vote_sum_cons thm
+R5157:5162 Vibehouse.PtcQuorum <> timely def
