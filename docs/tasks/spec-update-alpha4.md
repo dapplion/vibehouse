@@ -278,100 +278,19 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Zero clippy warnings. No dep updates available. CI all green. EF tests: 148/148. Codebase stable.
 - Rust stable 1.94.1, nightly 1.96.0 (fb27476aa) — both up to date. All toolchains current.
 
-**Monitoring (runs 4024-4027, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Only new merge: #5054 (test workflow update, Mar 29) — CI tooling only, not actionable. No new PRs since #5056 (Mar 29).
-- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale).
-- #5056 now APPROVED by jtraglia with suggestion to use `get_blob_parameters()` for dynamic lookup. Vibehouse already uses epoch-aware `spec.max_blobs_per_block(epoch)` in all 3 locations — exact equivalent. No code changes needed.
-- Codebase stable. All tests passing. Zero clippy warnings. No dep updates. EF tests: 148/148.
-
-**Monitoring + test coverage (run 4028, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Only new merge since last check: #5054 (test workflow, Mar 29) — CI tooling only. No new PRs.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale).
-- #5052 (reduce compute_shuffled_index cache) — test infra change, not actionable.
-- Added 3 pre-Heze fork early-return tests (commit d9ba3310c): check_inclusion_list_satisfaction returns true, compute_inclusion_list_bits_for_slot returns default, verify_inclusion_list_for_gossip returns PreHezeFork. 30/30 heze_verification tests pass.
-- Zero clippy warnings. No dep updates. Codebase stable.
-
-**Monitoring (run 4029, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29) — CI tooling only.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale).
-- #5056 (blob kzg commitment len check) now APPROVED by jtraglia, not yet merged. Proactive implementation verified — no code changes needed.
-- Zero clippy warnings. No dep updates. Toolchains current (stable 1.94.1, nightly 1.96.0). EF tests: 148/148. Codebase stable.
-
-**Monitoring (run 4030, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29) — CI tooling only. No new PRs opened since #5056 (Mar 29).
-- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No dep updates available. Codebase stable.
-
-**Monitoring (runs 4031-4032, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29) — CI tooling only. No new PRs opened since #5056 (Mar 29).
-- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Zero clippy warnings. No dep updates. Toolchains current (stable 1.94.1, nightly 1.96.0). Cargo audit: 1 rsa vuln (no fix). EF tests: 148/148. Codebase stable.
-
-**Sync test coverage + monitoring (run 4033, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new PRs since #5056 (Mar 29). All open Gloas/Heze PRs unchanged.
-- **Added 34 unit tests for SingleLookupRequestState and SingleBlockLookup** (commit 394a8d856): state machine transitions (AwaitingDownload→Downloading→AwaitingProcess→Processing→Processed), error paths (wrong request IDs, invalid transitions), failure counting, retry lifecycle, peer management, parent awaiting, component completion tracking. Previously 0 unit tests for this 692-line state machine.
-- Zero clippy warnings. All 34 new tests pass. CI green.
-
-**Sync test coverage (run 4034, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new PRs since #5056 (Mar 29). All open Gloas/Heze PRs unchanged.
-- **Added 23 unit tests for sync RPC request handling** (commit 5976dde98): ActiveRequests state machine (10 tests — early completion, stream termination, RPC errors, invalid items, peer tracking, multi-request), BlocksByRangeRequestItems (9 tests — slot validation, duplicates, out-of-order, consume), BlocksByRootRequestItems (4 tests — root matching, rejection, consume). Previously 0 unit tests for these modules.
-- Zero clippy warnings. All 23 new tests pass. CI green.
-
-**Sync test coverage (run 4035, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new PRs since #5056 (Mar 29). All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- **Added 14 unit tests for ColumnRequest custody state machine** (commits c22ece239, 1ad833790): state transitions (NotStarted→Downloading→Downloaded), error paths (wrong req_id returns UnexpectedRequestId, invalid state transitions return BadState), failure counting via on_download_error_and_mark_failure, complete() extraction, full retry lifecycle. Previously 0 unit tests for this state machine.
-- Zero clippy warnings. All 14 new tests pass. CI green.
-
-**Sync test coverage (run 4036, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new PRs since #5056 (Mar 29). All open Gloas/Heze PRs unchanged.
-- **Added 16 unit tests for blob and data column request items validation** (commit 51c60ec9c): BlobsByRangeRequestItems (6 tests — slot range rejection, index exceeding max_blobs, consume), BlobsByRootRequestItems (2 tests — wrong block root, consume), DataColumnsByRangeRequestItems (6 tests — slot range rejection, unrequested column index, consume), DataColumnsByRootRequestItems (2 tests — wrong block root via Gloas variant, consume). Tests cover all error paths before inclusion proof verification.
-- Zero clippy warnings. All 16 new tests pass. CI green.
-
-**Monitoring (run 4037, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29) — CI tooling only. No new PRs since #5056 (Mar 29).
-- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Comprehensive untested code audit: surveyed all sync/, store/, operation_pool/, proto_array/, fork_choice/, beacon_chain/, common/ directories. Nearly all remaining untested modules require complex BeaconChain<T> or BeaconState dependencies — not unit-testable without full integration harnesses. Self-contained modules (memory_store, historic_state_cache, justified_balances, hdiff, etc.) already have tests from prior runs.
-- Zero clippy warnings. No dep updates available (10 behind latest all require major version bumps). Toolchains current (stable 1.94.1, nightly 1.96.0). Codebase stable.
-
-**Monitoring (run 4038, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29) — CI tooling only. No new PRs since #5056 (Mar 29).
-- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Exhaustive search for untested self-contained modules: observed_execution_bids, observed_payload_envelopes, observed_payload_attestations, execution_bid_pool — all already have comprehensive test suites. bls_to_execution_changes depends on SigVerifiedOp/BeaconState (not unit-testable). peer_sync_info and sync_type depend on BeaconChain<T> (not unit-testable without mocking).
-- Zero clippy warnings. No dep updates available. Toolchains current (stable 1.94.1, nightly 1.96.0). Codebase stable.
-
-**Monitoring (run 4039, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29) — CI tooling only. No new PRs since #5056 (Mar 29).
-- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Surveyed remaining untested sync modules (range_data_column_batch_request.rs, custody.rs, common.rs) — all require BeaconChain<T> integration harness, not unit-testable.
-- Zero clippy warnings. No dep updates. Toolchains current (stable 1.94.1, nightly 1.96.0). Cargo audit: 1 rsa vuln (no fix). Codebase stable.
-
-**Monitoring (runs 4040-4041, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29) — CI tooling only. No new PRs since #5056 (Mar 29).
-- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Comprehensive untested module survey (run 4041): checked common/ (logging, system_health, pretty_reqwest_error), beacon_node/ (graffiti_calculator, block_sidecar_coupling), consensus/ (proto_array), sync/ (parent_chain, block_lookups). Nearly all candidates already have test suites or require complex integration harnesses (BeaconChain<T>, ExecutionLayer, sysinfo). No actionable test coverage gaps remain for self-contained modules.
-- Zero clippy warnings. No dep updates. Toolchains current (stable 1.94.1, nightly 1.96.0). Codebase stable.
-
-**Monitoring (run 4042, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29) — CI tooling only. No new PRs since #5056 (Mar 29).
-- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Fixed Cargo.lock: data-encoding-macro-internal was incorrectly pointing to syn 2.0.117 (requires syn 1.0.109). Commit 5cc5f4cb3.
-- Zero clippy warnings. No dep updates. Toolchains current (stable 1.94.1, nightly 1.96.0). Cargo audit: 1 rsa vuln (no fix). CI all green (nightly passing). Codebase stable.
-
-**Code safety (run 4043, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). No new PRs since #5056 (Mar 29). All open Gloas/Heze PRs unchanged.
-- Replaced 2 production `unreachable!()` calls with proper error handling (CLAUDE.md rule: "No Panics at Runtime"):
-  - `custody.rs:328`: `unreachable!()` on unexpected `LookupRequestResult` → returns `BadState` error
-  - `router.rs:349`: `unreachable!()` on unexpected light client RPC response → logs warning
-- 22/22 custody tests pass. Zero clippy warnings. Commit ef44e8c5a.
-
-**Monitoring (runs 4044-4063, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29) — CI tooling only. New non-actionable PRs: #5057 (ruff dep), #5058 (setup-uv action).
-- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting/dirty), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- Audits completed: remaining production `unreachable!()` calls all safe by construction (api_error.rs:90, protocol.rs:912, handler.rs:664, beacon_state.rs:1818); all 20 `unimplemented!()` are test-only mocks; all `.expect()` in consensus/state_processing are `#[cfg(test)]` only.
-- Updated nightly toolchain to 1.96.0-nightly (a25435bcf 2026-03-29). Dep updates checked: 0 compatible, 2 direct deps behind (hmac 0.12→0.13, rand_xorshift 0.4→0.5) both require major version bumps with cascading rand_core/sha2 changes — not viable.
-- Zero clippy warnings. Cargo audit: 1 rsa vuln (no fix). Toolchains current (stable 1.94.1, nightly 1.96.0). EF tests: 148/148. Codebase stable.
-
-**Monitoring (runs 4064-4067, 2026-03-30):**
-- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29) — CI tooling only. New non-actionable PRs: #5057 (ruff dep), #5058 (setup-uv action) — both CI/tooling.
-- All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
-- No dep updates available. Toolchains current (stable 1.94.1, nightly 1.96.0). EF tests: 148/148. Zero clippy warnings. Codebase stable.
+**Consolidated monitoring + test coverage (runs 4024-4068, 2026-03-30):**
+- No new consensus-specs merges or releases since alpha.4 (Mar 27). Last actionable merge: #5054 (test workflow, Mar 29) — CI tooling only. New non-actionable PRs: #5057 (ruff dep), #5058 (setup-uv action).
+- All open Gloas/Heze PRs unchanged throughout: #4843 (approved/blocked since Mar 20), #4747 (FCR, conflicting, 79 commits), #5056 (approved by jtraglia, not merged — vibehouse uses epoch-aware `spec.max_blobs_per_block(epoch)` which is exact equivalent of suggested `get_blob_parameters()`), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
+- **Sync test coverage added (runs 4033-4036):**
+  - 34 tests for SingleLookupRequestState/SingleBlockLookup state machine (commit 394a8d856)
+  - 23 tests for sync RPC request handling — ActiveRequests, BlocksByRange/Root (commit 5976dde98)
+  - 14 tests for ColumnRequest custody state machine (commits c22ece239, 1ad833790)
+  - 16 tests for blob/data column request items validation (commit 51c60ec9c)
+- **Other improvements:**
+  - 3 pre-Heze fork early-return tests (commit d9ba3310c)
+  - Fixed Cargo.lock: data-encoding-macro-internal syn version (commit 5cc5f4cb3)
+  - Replaced 2 production `unreachable!()` with proper error handling — custody.rs:328 → BadState, router.rs:349 → warning log (commit ef44e8c5a)
+  - Updated nightly toolchain to 1.96.0-nightly (a25435bcf 2026-03-29)
+- **Exhaustive untested code audit complete:** all sync/, store/, operation_pool/, proto_array/, fork_choice/, beacon_chain/, common/ surveyed. All remaining untested modules require BeaconChain<T>/BeaconState integration harnesses — no actionable self-contained test gaps remain.
+- **Safety audit complete:** remaining `unreachable!()` calls safe by construction (4 locations), all 20 `unimplemented!()` are test-only mocks, all `.expect()` in consensus/ are `#[cfg(test)]` only.
+- Zero clippy warnings. No compatible dep updates (2 behind latest require major version bumps). Toolchains current (stable 1.94.1, nightly 1.96.0). Cargo audit: 1 rsa vuln (no fix). EF tests: 86/86 + 148/148. CI all green. Codebase stable.
