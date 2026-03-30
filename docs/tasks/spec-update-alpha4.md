@@ -371,7 +371,7 @@ Run 2476: **#5035 merged** ("Allow same epoch proposer preferences"). No code ch
 - Updated nightly toolchain to 1.96.0-nightly (a25435bcf 2026-03-29). Dep updates checked: 0 compatible, 2 direct deps behind (hmac 0.12→0.13, rand_xorshift 0.4→0.5) both require major version bumps with cascading rand_core/sha2 changes — not viable.
 - Zero clippy warnings. Cargo audit: 1 rsa vuln (no fix). Toolchains current (stable 1.94.1, nightly 1.96.0). EF tests: 148/148. Codebase stable.
 
-**Monitoring (runs 4064-4066, 2026-03-30):**
+**Monitoring (runs 4064-4067, 2026-03-30):**
 - No new consensus-specs merges or releases since alpha.4 (Mar 27). Last merge: #5054 (test workflow, Mar 29) — CI tooling only. New non-actionable PRs: #5057 (ruff dep), #5058 (setup-uv action) — both CI/tooling.
 - All open Gloas/Heze PRs unchanged: #4843 (approved/blocked), #4747 (FCR, conflicting), #5056 (approved, not merged), #4954/#4898/#4892/#4960/#4932/#4840/#4630 (stale/unreviewed).
 - No dep updates available. Toolchains current (stable 1.94.1, nightly 1.96.0). EF tests: 148/148. Zero clippy warnings. Codebase stable.
