@@ -21,4 +21,4 @@ We model Rust `u64` arithmetic as natural numbers with overflow checks. The proo
 The proofs target:
 1. **Tier 2**: PTC quorum arithmetic, builder payment slot indexing, payment sweep logic
 2. **Tier 1**: Fork choice — head selection viability, best-child weight ordering, pruning safety (parent order + weight/viability preservation), Gloas payload status exclusivity/transitions, should_extend_payload characterization, reorg resistance, comparison totality
-3. **Tier 3** (planned): Execution payload envelope state transition consistency
+3. **Tier 3**: Execution payload envelope state transition — availability/payment index bounds, state mutation frame (bid fields preserved, payment blanking, block hash update, withdrawal queueing), header caching idempotence, verification completeness (all 8 consistency checks are necessary), availability index injectivity

@@ -1,7 +1,7 @@
 COQC := coqc
 COQFLAGS := -w -deprecated -R . Vibehouse
 
-SOURCES := PtcQuorum.v BuilderPayments.v ForkChoice.v
+SOURCES := PtcQuorum.v BuilderPayments.v ForkChoice.v EnvelopeTransition.v
 VOS := $(SOURCES:.v=.vo)
 
 .PHONY: all clean
@@ -18,3 +18,4 @@ clean:
 BuilderPayments.vo: BuilderPayments.v
 PtcQuorum.vo: PtcQuorum.v
 ForkChoice.vo: ForkChoice.v
+EnvelopeTransition.vo: EnvelopeTransition.v
